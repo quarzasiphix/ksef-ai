@@ -125,7 +125,7 @@ const InvoiceList = () => {
                 {searchTerm.length > 0 ? "Brak wyników wyszukiwania" : "Brak faktur"}
               </div>
             ) : (
-              <div className="p-4">
+              <div className="grid gap-4 p-4">
                 {filteredInvoices.map(invoice => (
                   <InvoiceCard key={invoice.id} invoice={invoice} />
                 ))}

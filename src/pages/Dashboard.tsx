@@ -1,11 +1,12 @@
-
 import React, { useEffect, useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { formatCurrency } from "@/lib/invoice-utils";
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer } from "recharts";
-import { supabase } from "@/integrations/supabase/client";
 import { Invoice, InvoiceType, PaymentMethod } from "@/types";
 import { getInvoices } from "@/integrations/supabase/repositories/invoiceRepository";
+import InvoiceCard from "@/components/invoices/InvoiceCard";
+import { Link } from "react-router-dom";
+import { Button } from "@/components/ui/button";
 
 const Dashboard = () => {
   const [invoices, setInvoices] = useState<Invoice[]>([]);
@@ -145,52 +146,30 @@ const Dashboard = () => {
       
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
         <Card>
-          <CardHeader>
-            <CardTitle>Ostatnie faktury</CardTitle>
+          <CardHeader className="flex justify-between items-center">
+            <div>
+              <CardTitle>Ostatnie faktury</CardTitle>
+            </div>
+            <Button variant="outline" asChild size="sm">
+              <Link to="/invoices">Zobacz wszystkie</Link>
+            </Button>
           </CardHeader>
           <CardContent className="p-0">
-            <div className="overflow-x-auto">
-              <table className="w-full invoice-table">
-                <thead>
-                  <tr>
-                    <th>Nr faktury</th>
-                    <th>Data</th>
-                    <th>Klient</th>
-                    <th>Kwota</th>
-                    <th>Status</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {loading ? (
-                    <tr>
-                      <td colSpan={5} className="text-center py-4">Ładowanie...</td>
-                    </tr>
-                  ) : invoices.length === 0 ? (
-                    <tr>
-                      <td colSpan={5} className="text-center py-4">Brak faktur</td>
-                    </tr>
-                  ) : (
-                    invoices.slice(0, 5).map((invoice) => (
-                      <tr key={invoice.id}>
-                        <td>{invoice.number}</td>
-                        <td>{new Date(invoice.issueDate).toLocaleDateString("pl-PL")}</td>
-                        <td>{invoice.customerName || "—"}</td>
-                        <td>{formatCurrency(invoice.totalGrossValue || 0)}</td>
-                        <td>
-                          <span className={`px-2 py-1 rounded-full text-xs ${
-                            invoice.isPaid 
-                              ? "bg-green-100 text-green-800" 
-                              : "bg-amber-100 text-amber-800"
-                          }`}>
-                            {invoice.isPaid ? "Zapłacono" : "Oczekuje"}
-                          </span>
-                        </td>
-                      </tr>
-                    ))
-                  )}
-                </tbody>
-              </table>
-            </div>
+            {loading ? (
+              <div className="text-center py-8">
+                <p>Ładowanie...</p>
+              </div>
+            ) : invoices.length === 0 ? (
+              <div className="text-center py-8">
+                <p>Brak faktur</p>
+              </div>
+            ) : (
+              <div className="grid gap-4 p-4">
+                {invoices.slice(0, 3).map((invoice) => (
+                  <InvoiceCard key={invoice.id} invoice={invoice} />
+                ))}
+              </div>
+            )}
           </CardContent>
         </Card>
         
