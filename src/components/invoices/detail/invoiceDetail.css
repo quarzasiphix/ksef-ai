@@ -1,0 +1,60 @@
+
+/* Responsive styles for invoice detail page */
+.invoice-table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.invoice-table th,
+.invoice-table td {
+  padding: 0.6rem;
+  border-bottom: 1px solid hsl(220 13% 91%);
+  text-align: left;
+}
+
+.invoice-table th {
+  font-weight: 500;
+  color: hsl(215.4 16.3% 46.9%);
+  background-color: hsl(220 14.3% 95.9%);
+}
+
+.invoice-table tr:hover {
+  background-color: hsl(214.3 31.8% 91.4% / 0.4);
+}
+
+@media screen and (max-width: 1200px) {
+  .invoice-table {
+    font-size: 0.875rem;
+  }
+  
+  .invoice-table th,
+  .invoice-table td {
+    padding: 0.5rem;
+  }
+}
+
+@media screen and (max-width: 992px) {
+  .invoice-table-container {
+    max-width: 100%;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    margin-bottom: 1rem;
+  }
+  
+  .invoice-table {
+    min-width: 800px;
+  }
+}
+
+@media print {
+  .invoice-table th {
+    background-color: #f2f2f2 !important;
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+  
+  .invoice-table th,
+  .invoice-table td {
+    padding: 0.4rem;
+  }
+}
