@@ -23,7 +23,7 @@ export const generateElementPdf = async (
 ) => {
   try {
     await generatePdf(
-      { element }, 
+      () => element, 
       { ...defaultOptions, ...options }
     );
     return true;
