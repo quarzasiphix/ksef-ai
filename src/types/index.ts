@@ -80,6 +80,9 @@ export interface Invoice {
     status: 'pending' | 'sent' | 'error' | 'none';
     referenceNumber?: string;
   };
+  // Additional display properties not stored in the database
+  businessName?: string;
+  customerName?: string;
 }
 
 // For Analytics Panel

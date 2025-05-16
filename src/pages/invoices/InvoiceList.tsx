@@ -13,7 +13,7 @@ import { Input } from "@/components/ui/input";
 import { formatCurrency } from "@/lib/invoice-utils";
 import { Invoice, InvoiceType, PaymentMethod } from "@/types";
 import { Plus, FileText, Search } from "lucide-react";
-import { supabase } from "@/integrations/supabase/client";
+import { getInvoices } from "@/integrations/supabase/repositories/invoiceRepository";
 
 const InvoiceList = () => {
   const [invoices, setInvoices] = useState<Invoice[]>([]);
@@ -24,41 +24,7 @@ const InvoiceList = () => {
     const fetchInvoices = async () => {
       setLoading(true);
       try {
-        const { data, error } = await supabase
-          .from("invoices")
-          .select(`
-            *,
-            business_profiles(name),
-            customers(name)
-          `)
-          .order("issue_date", { ascending: false });
-          
-        if (error) throw error;
-        
-        const invoicesData = data.map(item => ({
-          id: item.id,
-          number: item.number,
-          type: item.type as InvoiceType,
-          issueDate: item.issue_date,
-          dueDate: item.due_date,
-          sellDate: item.sell_date,
-          businessProfileId: item.business_profile_id,
-          customerId: item.customer_id,
-          items: [],
-          paymentMethod: item.payment_method as PaymentMethod,
-          isPaid: item.is_paid || false,
-          comments: item.comments || "",
-          totalNetValue: Number(item.total_net_value),
-          totalGrossValue: Number(item.total_gross_value),
-          totalVatValue: Number(item.total_vat_value),
-          ksef: {
-            status: item.ksef_status || 'none',
-            referenceNumber: item.ksef_reference_number || null
-          },
-          businessName: item.business_profiles?.name,
-          customerName: item.customers?.name
-        }));
-        
+        const invoicesData = await getInvoices();
         setInvoices(invoicesData);
       } catch (error) {
         console.error("Error fetching invoices:", error);

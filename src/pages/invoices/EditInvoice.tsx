@@ -5,8 +5,7 @@ import { toast } from "sonner";
 import { ArrowLeft } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Invoice } from "@/types";
-import { getInvoice, saveInvoice } from "@/integrations/supabase/repositories/invoiceRepository";
-import { useForm } from "react-hook-form";
+import { getInvoice } from "@/integrations/supabase/repositories/invoiceRepository";
 import NewInvoice from "./NewInvoice";
 
 const EditInvoice = () => {

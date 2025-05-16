@@ -1,6 +1,6 @@
 
 import { supabase } from "../client";
-import type { Invoice, InvoiceItem } from "@/types";
+import type { Invoice, InvoiceItem, InvoiceType, PaymentMethod } from "@/types";
 
 export async function saveInvoice(invoice: Invoice): Promise<Invoice> {
   // First, save the invoice
@@ -139,21 +139,21 @@ export async function getInvoice(id: string): Promise<Invoice> {
   return {
     id: invoiceData.id,
     number: invoiceData.number,
-    type: invoiceData.type as any,
+    type: invoiceData.type as InvoiceType,
     issueDate: invoiceData.issue_date,
     dueDate: invoiceData.due_date,
     sellDate: invoiceData.sell_date,
     businessProfileId: invoiceData.business_profile_id,
     customerId: invoiceData.customer_id,
     items,
-    paymentMethod: invoiceData.payment_method as any,
+    paymentMethod: invoiceData.payment_method as PaymentMethod,
     isPaid: invoiceData.is_paid || false,
     comments: invoiceData.comments || "",
     totalNetValue: Number(invoiceData.total_net_value),
     totalGrossValue: Number(invoiceData.total_gross_value),
     totalVatValue: Number(invoiceData.total_vat_value),
     ksef: {
-      status: (invoiceData.ksef_status as any) || 'none',
+      status: (invoiceData.ksef_status as 'pending' | 'sent' | 'error' | 'none') || 'none',
       referenceNumber: invoiceData.ksef_reference_number || null
     },
     businessName: invoiceData.business_profiles?.name,
@@ -179,21 +179,21 @@ export async function getInvoices(): Promise<Invoice[]> {
   return data.map(item => ({
     id: item.id,
     number: item.number,
-    type: item.type as any,
+    type: item.type as InvoiceType,
     issueDate: item.issue_date,
     dueDate: item.due_date,
     sellDate: item.sell_date,
     businessProfileId: item.business_profile_id,
     customerId: item.customer_id,
     items: [], // Items are loaded separately when needed
-    paymentMethod: item.payment_method as any,
+    paymentMethod: item.payment_method as PaymentMethod,
     isPaid: item.is_paid || false,
     comments: item.comments || "",
     totalNetValue: Number(item.total_net_value),
     totalGrossValue: Number(item.total_gross_value),
     totalVatValue: Number(item.total_vat_value),
     ksef: {
-      status: (item.ksef_status as any) || 'none',
+      status: (item.ksef_status as 'pending' | 'sent' | 'error' | 'none') || 'none',
       referenceNumber: item.ksef_reference_number || null
     },
     // Additional fields for display
