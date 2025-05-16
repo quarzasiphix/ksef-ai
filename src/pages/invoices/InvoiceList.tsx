@@ -15,11 +15,13 @@ import { Invoice, InvoiceType, PaymentMethod } from "@/types";
 import { Plus, FileText, Search } from "lucide-react";
 import { getInvoices } from "@/integrations/supabase/repositories/invoiceRepository";
 import InvoiceCard from "@/components/invoices/InvoiceCard";
+import { useIsMobile } from "@/hooks/use-mobile";
 
 const InvoiceList = () => {
   const [invoices, setInvoices] = useState<Invoice[]>([]);
   const [searchTerm, setSearchTerm] = useState("");
   const [loading, setLoading] = useState(true);
+  const isMobile = useIsMobile();
   
   useEffect(() => {
     const fetchInvoices = async () => {
@@ -114,8 +116,8 @@ const InvoiceList = () => {
           </div>
         </CardHeader>
         <CardContent className="p-0">
-          {/* Mobile view - Card list for screens ≤600px */}
-          <div className="block sm:hidden">
+          {/* Mobile/Tablet view - Card list for screens <768px */}
+          <div className="block md:hidden">
             {loading ? (
               <div className="text-center py-8">
                 Ładowanie...
@@ -133,96 +135,135 @@ const InvoiceList = () => {
             )}
           </div>
           
-          {/* Desktop view - Table for screens >600px */}
-          <div className="hidden sm:block overflow-x-auto">
-            <table className="w-full invoice-table">
-              <thead>
-                <tr>
-                  <th>Nr faktury</th>
-                  <th>Typ</th>
-                  <th>Data wystawienia</th>
-                  <th>Termin płatności</th>
-                  <th>Klient</th>
-                  <th>Wartość netto</th>
-                  <th>Wartość brutto</th>
-                  <th>Metoda płatności</th>
-                  <th>Status</th>
-                  <th>KSeF</th>
-                  <th></th>
-                </tr>
-              </thead>
-              <tbody>
+          {/* Tablet view - 2 cards per row */}
+          <div className="hidden md:block lg:hidden">
+            {loading ? (
+              <div className="text-center py-8">
+                Ładowanie...
+              </div>
+            ) : filteredInvoices.length === 0 ? (
+              <div className="text-center py-8">
+                {searchTerm.length > 0 ? "Brak wyników wyszukiwania" : "Brak faktur"}
+              </div>
+            ) : (
+              <div className="grid grid-cols-2 gap-4 p-4">
+                {filteredInvoices.map(invoice => (
+                  <InvoiceCard key={invoice.id} invoice={invoice} />
+                ))}
+              </div>
+            )}
+          </div>
+
+          {/* Desktop view - Table for large screens, or 3+ cards per row */}
+          <div className="hidden lg:block xl:block">
+            {isMobile ? (
+              <div className="grid grid-cols-3 xl:grid-cols-4 gap-4 p-4">
                 {loading ? (
-                  <tr>
-                    <td colSpan={11} className="text-center py-8">
-                      Ładowanie...
-                    </td>
-                  </tr>
+                  <div className="col-span-3 xl:col-span-4 text-center py-8">
+                    Ładowanie...
+                  </div>
                 ) : filteredInvoices.length === 0 ? (
-                  <tr>
-                    <td colSpan={11} className="text-center py-8">
-                      {searchTerm.length > 0 ? "Brak wyników wyszukiwania" : "Brak faktur"}
-                    </td>
-                  </tr>
+                  <div className="col-span-3 xl:col-span-4 text-center py-8">
+                    {searchTerm.length > 0 ? "Brak wyników wyszukiwania" : "Brak faktur"}
+                  </div>
                 ) : (
-                  filteredInvoices.map((invoice) => (
-                    <tr key={invoice.id}>
-                      <td>{invoice.number}</td>
-                      <td>{getInvoiceTypeText(invoice.type)}</td>
-                      <td>{new Date(invoice.issueDate).toLocaleDateString("pl-PL")}</td>
-                      <td>{new Date(invoice.dueDate).toLocaleDateString("pl-PL")}</td>
-                      <td>
-                        {invoice.customerName || "Nieznany"}
-                      </td>
-                      <td>{formatCurrency(invoice.totalNetValue || 0)}</td>
-                      <td>{formatCurrency(invoice.totalGrossValue || 0)}</td>
-                      <td>{getPaymentMethodText(invoice.paymentMethod)}</td>
-                      <td>
-                        <span
-                          className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium ${
-                            invoice.isPaid
-                              ? "bg-green-100 text-green-800"
-                              : "bg-amber-100 text-amber-800"
-                          }`}
-                        >
-                          {invoice.isPaid ? "Zapłacono" : "Oczekuje"}
-                        </span>
-                      </td>
-                      <td>
-                        <span
-                          className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium ${
-                            invoice.ksef?.status === "sent"
-                              ? "bg-green-100 text-green-800"
-                              : invoice.ksef?.status === "pending"
-                              ? "bg-amber-100 text-amber-800"
-                              : "bg-gray-100 text-gray-800"
-                          }`}
-                        >
-                          {invoice.ksef?.status === "sent"
-                            ? "Wysłano"
-                            : invoice.ksef?.status === "pending"
-                            ? "Oczekuje"
-                            : "Brak"}
-                        </span>
-                      </td>
-                      <td>
-                        <div className="flex space-x-2">
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            asChild
-                          >
-                            <Link to={`/invoices/${invoice.id}`}>
-                              <FileText className="h-4 w-4" />
-                            </Link>
-                          </Button>
-                        </div>
-                      </td>
-                    </tr>
+                  filteredInvoices.map(invoice => (
+                    <InvoiceCard key={invoice.id} invoice={invoice} />
                   ))
                 )}
-              </tbody>
-            </table>
+              </div>
+            ) : (
+              <div className="overflow-x-auto">
+                <table className="w-full invoice-table">
+                  <thead>
+                    <tr>
+                      <th>Nr faktury</th>
+                      <th>Typ</th>
+                      <th>Data wystawienia</th>
+                      <th>Termin płatności</th>
+                      <th>Klient</th>
+                      <th>Wartość netto</th>
+                      <th>Wartość brutto</th>
+                      <th>Metoda płatności</th>
+                      <th>Status</th>
+                      <th>KSeF</th>
+                      <th></th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {loading ? (
+                      <tr>
+                        <td colSpan={11} className="text-center py-8">
+                          Ładowanie...
+                        </td>
+                      </tr>
+                    ) : filteredInvoices.length === 0 ? (
+                      <tr>
+                        <td colSpan={11} className="text-center py-8">
+                          {searchTerm.length > 0 ? "Brak wyników wyszukiwania" : "Brak faktur"}
+                        </td>
+                      </tr>
+                    ) : (
+                      filteredInvoices.map((invoice) => (
+                        <tr key={invoice.id}>
+                          <td>{invoice.number}</td>
+                          <td>{getInvoiceTypeText(invoice.type)}</td>
+                          <td>{new Date(invoice.issueDate).toLocaleDateString("pl-PL")}</td>
+                          <td>{new Date(invoice.dueDate).toLocaleDateString("pl-PL")}</td>
+                          <td>
+                            {invoice.customerName || "Nieznany"}
+                          </td>
+                          <td>{formatCurrency(invoice.totalNetValue || 0)}</td>
+                          <td>{formatCurrency(invoice.totalGrossValue || 0)}</td>
+                          <td>{getPaymentMethodText(invoice.paymentMethod)}</td>
+                          <td>
+                            <span
+                              className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium ${
+                                invoice.isPaid
+                                  ? "bg-green-100 text-green-800"
+                                  : "bg-amber-100 text-amber-800"
+                              }`}
+                            >
+                              {invoice.isPaid ? "Zapłacono" : "Oczekuje"}
+                            </span>
+                          </td>
+                          <td>
+                            <span
+                              className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium ${
+                                invoice.ksef?.status === "sent"
+                                  ? "bg-green-100 text-green-800"
+                                  : invoice.ksef?.status === "pending"
+                                  ? "bg-amber-100 text-amber-800"
+                                  : "bg-gray-100 text-gray-800"
+                              }`}
+                            >
+                              {invoice.ksef?.status === "sent"
+                                ? "Wysłano"
+                                : invoice.ksef?.status === "pending"
+                                ? "Oczekuje"
+                                : "Brak"}
+                            </span>
+                          </td>
+                          <td>
+                            <div className="flex space-x-2">
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                asChild
+                              >
+                                <Link to={`/invoices/${invoice.id}`}>
+                                  <FileText className="h-4 w-4" />
+                                </Link>
+                              </Button>
+                            </div>
+                          </td>
+                        </tr>
+                      ))
+                    )}
+                  </tbody>
+                </table>
+              </div>
+            )}
           </div>
         </CardContent>
       </Card>

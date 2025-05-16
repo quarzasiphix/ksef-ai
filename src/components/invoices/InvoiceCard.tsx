@@ -26,39 +26,39 @@ const InvoiceCard: React.FC<InvoiceCardProps> = ({ invoice }) => {
 
   return (
     <Link to={`/invoices/${invoice.id}`} className="block no-underline">
-      <div className="bg-[#1A1F2C] text-white rounded-lg p-5 shadow-md hover:shadow-lg transition-all">
-        <div className="flex justify-between items-center mb-3">
-          <h3 className="font-bold text-lg">Faktura {invoice.number}</h3>
+      <div className="bg-[#1A1F2C] text-white rounded-lg p-4 shadow-md hover:shadow-lg transition-all h-full">
+        <div className="flex justify-between items-center mb-2">
+          <h3 className="font-bold text-base">Faktura {invoice.number}</h3>
           {getStatusBadge()}
         </div>
         
-        <div className="space-y-3">
-          <div className="flex items-center gap-2 text-gray-300">
-            <Calendar className="h-4 w-4" />
+        <div className="space-y-2">
+          <div className="flex items-center gap-2 text-gray-300 text-sm">
+            <Calendar className="h-3.5 w-3.5" />
             <span>Data: {new Date(invoice.issueDate).toLocaleDateString("pl-PL")}</span>
           </div>
           
-          <div className="flex items-center gap-2 text-gray-300">
-            <User className="h-4 w-4" />
+          <div className="flex items-center gap-2 text-gray-300 text-sm">
+            <User className="h-3.5 w-3.5" />
             <span className="truncate">{invoice.customerName || "Klient nieznany"}</span>
           </div>
           
-          <div className="flex items-center gap-2 text-gray-300">
-            <FileText className="h-4 w-4" />
+          <div className="flex items-center gap-2 text-gray-300 text-sm">
+            <FileText className="h-3.5 w-3.5" />
             <span>{invoice.type === "sales" ? "Faktura sprzedaży" : 
                   invoice.type === "receipt" ? "Rachunek" : 
                   invoice.type === "proforma" ? "Faktura proforma" : "Faktura korygująca"}</span>
           </div>
 
-          <div className="flex items-center gap-2 text-gray-300">
-            <CreditCard className="h-4 w-4" />
+          <div className="flex items-center gap-2 text-gray-300 text-sm">
+            <CreditCard className="h-3.5 w-3.5" />
             <span>{invoice.paymentMethod === "transfer" ? "Przelew" : 
                   invoice.paymentMethod === "cash" ? "Gotówka" : 
                   invoice.paymentMethod === "card" ? "Karta" : "Inna"}</span>
           </div>
           
-          <div className="pt-2 border-t border-gray-700 mt-2">
-            <span className="font-bold text-xl">{formatCurrency(invoice.totalGrossValue || 0)}</span>
+          <div className="pt-2 border-t border-gray-700 mt-1">
+            <span className="font-bold text-lg">{formatCurrency(invoice.totalGrossValue || 0)}</span>
           </div>
         </div>
       </div>

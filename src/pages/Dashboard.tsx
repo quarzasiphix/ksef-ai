@@ -1,3 +1,4 @@
+
 import React, { useEffect, useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { formatCurrency } from "@/lib/invoice-utils";
@@ -75,7 +76,7 @@ const Dashboard = () => {
         <h1 className="text-3xl font-bold">Dashboard</h1>
       </div>
       
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-3 md:gap-4">
         <Card>
           <CardHeader className="pb-2">
             <CardTitle className="text-sm font-medium text-muted-foreground">
@@ -126,7 +127,7 @@ const Dashboard = () => {
           <CardTitle>Miesięczna sprzedaż</CardTitle>
         </CardHeader>
         <CardContent className="pt-2">
-          <div className="h-80">
+          <div className="h-64 md:h-80">
             <ResponsiveContainer width="100%" height="100%">
               <BarChart data={monthlySummaries}>
                 <XAxis dataKey="monthLabel" />
@@ -164,7 +165,7 @@ const Dashboard = () => {
                 <p>Brak faktur</p>
               </div>
             ) : (
-              <div className="grid gap-4 p-4">
+              <div className="grid sm:grid-cols-2 gap-4 p-4">
                 {invoices.slice(0, 3).map((invoice) => (
                   <InvoiceCard key={invoice.id} invoice={invoice} />
                 ))}
