@@ -227,7 +227,7 @@ const InvoiceDetail = () => {
   const isReceipt = invoice.type === InvoiceType.RECEIPT;
   
   return (
-    <div className="space-y-4 md:space-y-6">
+    <div className="space-y-4 md:space-y-6 max-w-full">
       <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
         <div className="flex items-center gap-2">
           <Button variant="outline" size="icon" asChild>
