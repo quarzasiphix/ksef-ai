@@ -18,7 +18,8 @@ import {
   FileText, 
   Settings, 
   Users,
-  Package
+  Package,
+  CreditCard
 } from "lucide-react";
 
 const AppSidebar = () => {
@@ -26,10 +27,10 @@ const AppSidebar = () => {
   const location = useLocation();
   const pathname = location.pathname;
 
-  // Navigation items
+  // Navigation items - update "Faktury" to "Przychód" and change the path
   const navItems = [
     { title: "Dashboard", path: "/", icon: BarChart },
-    { title: "Faktury", path: "/invoices", icon: FileText },
+    { title: "Przychód", path: "/income", icon: CreditCard },
     { title: "Klienci", path: "/customers", icon: Users },
     { title: "Produkty", path: "/products", icon: Package },
     { title: "Ustawienia", path: "/settings", icon: Settings },

@@ -2,7 +2,7 @@
 import React from "react";
 import { Link } from "react-router-dom";
 import { formatCurrency } from "@/lib/invoice-utils";
-import { Invoice } from "@/types";
+import { Invoice, InvoiceType } from "@/types";
 import { Badge } from "@/components/ui/badge";
 import { Calendar, FileText, User, CreditCard } from "lucide-react";
 
@@ -24,11 +24,46 @@ const InvoiceCard: React.FC<InvoiceCardProps> = ({ invoice }) => {
     }
   };
 
+  // Helper function to get the document type title
+  const getDocumentTypeTitle = () => {
+    switch (invoice.type) {
+      case InvoiceType.SALES:
+        return "Faktura VAT";
+      case InvoiceType.RECEIPT:
+        return "Rachunek";
+      case InvoiceType.PROFORMA:
+        return "Faktura proforma";
+      case InvoiceType.CORRECTION:
+        return "Faktura korygująca";
+      default:
+        return "Dokument";
+    }
+  };
+
+  // Helper function to determine card color based on document type
+  const getCardColorClass = () => {
+    switch (invoice.type) {
+      case InvoiceType.SALES:
+        return "bg-[#1A1F2C]"; // Dark blue for invoices
+      case InvoiceType.RECEIPT:
+        return "bg-[#1E2A3B]"; // Dark blue-gray for receipts
+      case InvoiceType.PROFORMA:
+        return "bg-[#2C243B]"; // Dark purple for proforma
+      case InvoiceType.CORRECTION:
+        return "bg-[#2D2226]"; // Dark red for corrections
+      default:
+        return "bg-[#1A1F2C]";
+    }
+  };
+
+  // Check if document type is a receipt (rachunek) - hide VAT info
+  const isReceipt = invoice.type === InvoiceType.RECEIPT;
+
   return (
     <Link to={`/invoices/${invoice.id}`} className="block no-underline">
-      <div className="bg-[#1A1F2C] text-white rounded-lg p-3 shadow-md hover:shadow-lg transition-all h-full">
+      <div className={`${getCardColorClass()} text-white rounded-lg p-3 shadow-md hover:shadow-lg transition-all h-full`}>
         <div className="flex justify-between items-center mb-2">
-          <h3 className="font-bold text-sm">Faktura {invoice.number}</h3>
+          <h3 className="font-bold text-sm">{invoice.number}</h3>
           {getStatusBadge()}
         </div>
         
@@ -45,9 +80,7 @@ const InvoiceCard: React.FC<InvoiceCardProps> = ({ invoice }) => {
           
           <div className="flex items-center gap-1.5 text-gray-300 text-xs">
             <FileText className="h-3 w-3" />
-            <span>{invoice.type === "sales" ? "Faktura sprzedaży" : 
-                  invoice.type === "receipt" ? "Rachunek" : 
-                  invoice.type === "proforma" ? "Faktura proforma" : "Faktura korygująca"}</span>
+            <span>{getDocumentTypeTitle()}</span>
           </div>
 
           <div className="flex items-center gap-1.5 text-gray-300 text-xs">
@@ -58,7 +91,12 @@ const InvoiceCard: React.FC<InvoiceCardProps> = ({ invoice }) => {
           </div>
           
           <div className="pt-1.5 border-t border-gray-700 mt-1">
-            <span className="font-bold text-base">{formatCurrency(invoice.totalGrossValue || 0)}</span>
+            <div className="flex justify-between">
+              {!isReceipt && (
+                <span className="text-xs text-gray-300">VAT: {formatCurrency(invoice.totalVatValue || 0)}</span>
+              )}
+              <span className="font-bold text-base">{formatCurrency(invoice.totalGrossValue || 0)}</span>
+            </div>
           </div>
         </div>
       </div>

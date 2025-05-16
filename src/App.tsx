@@ -1,4 +1,3 @@
-
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -18,13 +17,13 @@ import NotFound from "./pages/NotFound";
 import CustomerList from "./pages/customers/CustomerList";
 import CustomerDetail from "./pages/customers/CustomerDetail";
 import ProductList from "./pages/products/ProductList";
-
-// Create these new pages
 import NewCustomer from "./pages/customers/NewCustomer";
 import EditCustomer from "./pages/customers/EditCustomer";
 import NewProduct from "./pages/products/NewProduct";
 import EditProduct from "./pages/products/EditProduct";
 import ProductDetail from "./pages/products/ProductDetail";
+import IncomeList from "./pages/income/IncomeList";
+import DocumentSettings from "./pages/settings/DocumentSettings";
 
 const queryClient = new QueryClient();
 
@@ -39,8 +38,10 @@ const App = () => (
             {/* Main routes */}
             <Route index element={<Dashboard />} />
             
-            {/* Invoice routes */}
-            <Route path="invoices" element={<InvoiceList />} />
+            {/* Income routes (replaces Invoice list) */}
+            <Route path="income" element={<IncomeList />} />
+            
+            {/* Keep invoice detail/edit/create routes as they are */}
             <Route path="invoices/:id" element={<InvoiceDetail />} />
             <Route path="invoices/new" element={<NewInvoice />} />
             <Route path="invoices/edit/:id" element={<EditInvoice />} />
@@ -61,6 +62,10 @@ const App = () => (
             <Route path="settings" element={<BusinessProfiles />} />
             <Route path="settings/business-profiles/new" element={<NewBusinessProfile />} />
             <Route path="settings/business-profiles/:id" element={<EditBusinessProfile />} />
+            <Route path="settings/documents" element={<DocumentSettings />} />
+            
+            {/* Legacy route for backward compatibility */}
+            <Route path="invoices" element={<IncomeList />} />
             
             {/* Catch-all for any other routes */}
             <Route path="*" element={<NotFound />} />

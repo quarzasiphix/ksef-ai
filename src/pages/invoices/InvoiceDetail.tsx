@@ -1,5 +1,5 @@
 
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useRef } from "react";
 import { useParams, Link } from "react-router-dom";
 import {
   Card,
@@ -10,10 +10,11 @@ import {
 import { Button } from "@/components/ui/button";
 import { formatCurrency, formatPolishDate } from "@/lib/invoice-utils";
 import { InvoiceType, Invoice } from "@/types";
-import { ArrowLeft, Printer, FileText, SendHorizontal, FilePlus, Pencil } from "lucide-react";
+import { ArrowLeft, Printer, FileText, SendHorizontal, FilePlus, Pencil, FileDown } from "lucide-react";
 import { getInvoice } from "@/integrations/supabase/repositories/invoiceRepository";
 import { toast } from "sonner";
 import { useIsMobile } from "@/hooks/use-mobile";
+import { generateElementPdf, getInvoiceFileName } from "@/lib/pdf-utils";
 
 const getInvoiceTypeTitle = (type: InvoiceType) => {
   switch (type) {
@@ -36,6 +37,8 @@ const InvoiceDetail = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const isMobile = useIsMobile();
+  const printRef = useRef<HTMLDivElement>(null);
+  const [pdfLoading, setPdfLoading] = useState(false);
   
   useEffect(() => {
     const fetchInvoice = async () => {
@@ -58,6 +61,31 @@ const InvoiceDetail = () => {
 
     fetchInvoice();
   }, [id]);
+
+  // Handle PDF generation
+  const handleGeneratePdf = async () => {
+    if (!invoice || !printRef.current) return;
+    
+    setPdfLoading(true);
+    try {
+      // Get PDF filename based on invoice details
+      const filename = getInvoiceFileName(invoice);
+      
+      // Generate PDF from the print ref element
+      const success = await generateElementPdf(printRef.current, { filename });
+      
+      if (success) {
+        toast.success('PDF został wygenerowany pomyślnie');
+      } else {
+        toast.error('Nie udało się wygenerować PDF');
+      }
+    } catch (error) {
+      console.error('Error generating PDF:', error);
+      toast.error('Błąd podczas generowania PDF');
+    } finally {
+      setPdfLoading(false);
+    }
+  };
   
   if (loading) {
     return (
@@ -72,7 +100,7 @@ const InvoiceDetail = () => {
       <div className="space-y-6">
         <div className="flex items-center gap-2">
           <Button variant="outline" size="icon" asChild>
-            <Link to="/invoices">
+            <Link to="/income">
               <ArrowLeft className="h-4 w-4" />
             </Link>
           </Button>
@@ -85,7 +113,7 @@ const InvoiceDetail = () => {
             className="mt-4"
             asChild
           >
-            <Link to="/invoices">Wróć do listy faktur</Link>
+            <Link to="/income">Wróć do listy dokumentów</Link>
           </Button>
         </div>
       </div>
@@ -195,12 +223,15 @@ const InvoiceDetail = () => {
     );
   };
   
+  // Check if document type is a receipt (rachunek) - hide VAT info
+  const isReceipt = invoice.type === InvoiceType.RECEIPT;
+  
   return (
     <div className="space-y-4 md:space-y-6">
       <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
         <div className="flex items-center gap-2">
           <Button variant="outline" size="icon" asChild>
-            <Link to="/invoices">
+            <Link to="/income">
               <ArrowLeft className="h-4 w-4" />
             </Link>
           </Button>
@@ -220,8 +251,14 @@ const InvoiceDetail = () => {
             <FilePlus className="h-4 w-4" />
             <span className="hidden sm:inline">Duplikat</span>
           </Button>
-          <Button variant="outline" className="flex items-center gap-1" size={isMobile ? "sm" : "default"}>
-            <FileText className="h-4 w-4" />
+          <Button 
+            variant="outline" 
+            className="flex items-center gap-1" 
+            size={isMobile ? "sm" : "default"}
+            onClick={handleGeneratePdf}
+            disabled={pdfLoading}
+          >
+            <FileDown className="h-4 w-4" />
             <span className="hidden sm:inline">PDF</span>
           </Button>
           <Button variant="outline" className="flex items-center gap-1" size={isMobile ? "sm" : "default"} asChild>
@@ -230,148 +267,157 @@ const InvoiceDetail = () => {
               <span className="hidden sm:inline">Edytuj</span>
             </Link>
           </Button>
-          <Button className="flex items-center gap-1" size={isMobile ? "sm" : "default"}>
-            <SendHorizontal className="h-4 w-4" />
-            <span className="hidden sm:inline">Wyślij do KSeF</span>
-          </Button>
+          {invoice.type !== InvoiceType.RECEIPT && (
+            <Button className="flex items-center gap-1" size={isMobile ? "sm" : "default"}>
+              <SendHorizontal className="h-4 w-4" />
+              <span className="hidden sm:inline">Wyślij do KSeF</span>
+            </Button>
+          )}
         </div>
       </div>
       
-      <div className="grid md:grid-cols-2 gap-4 md:gap-6">
+      {/* Printable content reference */}
+      <div ref={printRef} className="space-y-4 md:space-y-6 print:p-8">
+        <div className="grid md:grid-cols-2 gap-4 md:gap-6">
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-lg md:text-xl">Szczegóły dokumentu</CardTitle>
+            </CardHeader>
+            <CardContent className="grid grid-cols-2 gap-3 md:gap-4 text-sm md:text-base">
+              <div>
+                <p className="text-sm font-medium text-muted-foreground">Numer dokumentu</p>
+                <p className="font-medium">{invoice.number}</p>
+              </div>
+              <div>
+                <p className="text-sm font-medium text-muted-foreground">Data wystawienia</p>
+                <p className="font-medium">{formatPolishDate(invoice.issueDate)}</p>
+              </div>
+              <div>
+                <p className="text-sm font-medium text-muted-foreground">Termin płatności</p>
+                <p className="font-medium">{formatPolishDate(invoice.dueDate)}</p>
+              </div>
+              <div>
+                <p className="text-sm font-medium text-muted-foreground">Data sprzedaży</p>
+                <p className="font-medium">{formatPolishDate(invoice.sellDate)}</p>
+              </div>
+              <div>
+                <p className="text-sm font-medium text-muted-foreground">Status płatności</p>
+                <span 
+                  className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium ${
+                    invoice.isPaid
+                      ? "bg-green-100 text-green-800"
+                      : "bg-amber-100 text-amber-800"
+                  }`}
+                >
+                  {invoice.isPaid ? "Zapłacono" : "Oczekuje"}
+                </span>
+              </div>
+              {!isReceipt && (
+                <div>
+                  <p className="text-sm font-medium text-muted-foreground">Status KSeF</p>
+                  <span 
+                    className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium ${
+                      invoice.ksef?.status === "sent"
+                        ? "bg-green-100 text-green-800"
+                        : invoice.ksef?.status === "pending"
+                        ? "bg-amber-100 text-amber-800"
+                        : "bg-gray-100 text-gray-800"
+                    }`}
+                  >
+                    {invoice.ksef?.status === "sent"
+                      ? "Wysłano"
+                      : invoice.ksef?.status === "pending"
+                      ? "Oczekuje"
+                      : "Brak"}
+                  </span>
+                </div>
+              )}
+              {!isReceipt && invoice.ksef?.referenceNumber && (
+                <div className="col-span-2">
+                  <p className="text-sm font-medium text-muted-foreground">Nr referencyjny KSeF</p>
+                  <p className="font-medium">{invoice.ksef.referenceNumber}</p>
+                </div>
+              )}
+              <div className="col-span-2">
+                <p className="text-sm font-medium text-muted-foreground">Uwagi</p>
+                <p>{invoice.comments || "Brak uwag"}</p>
+              </div>
+            </CardContent>
+          </Card>
+          
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-lg md:text-xl">Dane kontrahentów</CardTitle>
+            </CardHeader>
+            <CardContent className="grid md:grid-cols-2 gap-4 md:gap-6">
+              <div>
+                <p className="text-sm font-medium text-muted-foreground mb-2">Sprzedawca</p>
+                <div>
+                  <p className="font-bold">{invoice.businessName || "Brak nazwy"}</p>
+                  <p>Brak dostępnych szczegółowych danych</p>
+                </div>
+              </div>
+              <div>
+                <p className="text-sm font-medium text-muted-foreground mb-2">Nabywca</p>
+                <div>
+                  <p className="font-bold">{invoice.customerName || "Brak nazwy"}</p>
+                  <p>Brak dostępnych szczegółowych danych</p>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+        
         <Card>
           <CardHeader>
-            <CardTitle className="text-lg md:text-xl">Szczegóły faktury</CardTitle>
+            <CardTitle className="text-lg md:text-xl">Pozycje na dokumencie</CardTitle>
           </CardHeader>
-          <CardContent className="grid grid-cols-2 gap-3 md:gap-4 text-sm md:text-base">
-            <div>
-              <p className="text-sm font-medium text-muted-foreground">Numer faktury</p>
-              <p className="font-medium">{invoice.number}</p>
-            </div>
-            <div>
-              <p className="text-sm font-medium text-muted-foreground">Data wystawienia</p>
-              <p className="font-medium">{formatPolishDate(invoice.issueDate)}</p>
-            </div>
-            <div>
-              <p className="text-sm font-medium text-muted-foreground">Termin płatności</p>
-              <p className="font-medium">{formatPolishDate(invoice.dueDate)}</p>
-            </div>
-            <div>
-              <p className="text-sm font-medium text-muted-foreground">Data sprzedaży</p>
-              <p className="font-medium">{formatPolishDate(invoice.sellDate)}</p>
-            </div>
-            <div>
-              <p className="text-sm font-medium text-muted-foreground">Status płatności</p>
-              <span 
-                className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium ${
-                  invoice.isPaid
-                    ? "bg-green-100 text-green-800"
-                    : "bg-amber-100 text-amber-800"
-                }`}
-              >
-                {invoice.isPaid ? "Zapłacono" : "Oczekuje"}
-              </span>
-            </div>
-            <div>
-              <p className="text-sm font-medium text-muted-foreground">Status KSeF</p>
-              <span 
-                className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium ${
-                  invoice.ksef?.status === "sent"
-                    ? "bg-green-100 text-green-800"
-                    : invoice.ksef?.status === "pending"
-                    ? "bg-amber-100 text-amber-800"
-                    : "bg-gray-100 text-gray-800"
-                }`}
-              >
-                {invoice.ksef?.status === "sent"
-                  ? "Wysłano"
-                  : invoice.ksef?.status === "pending"
-                  ? "Oczekuje"
-                  : "Brak"}
-              </span>
-            </div>
-            {invoice.ksef?.referenceNumber && (
-              <div className="col-span-2">
-                <p className="text-sm font-medium text-muted-foreground">Nr referencyjny KSeF</p>
-                <p className="font-medium">{invoice.ksef.referenceNumber}</p>
+          <CardContent>
+            {isMobile ? (
+              <>
+                {renderMobileItems()}
+                {renderMobileSummary()}
+              </>
+            ) : (
+              <div className="overflow-x-auto">
+                {renderDesktopItems()}
               </div>
             )}
-            <div className="col-span-2">
-              <p className="text-sm font-medium text-muted-foreground">Uwagi</p>
-              <p>{invoice.comments || "Brak uwag"}</p>
-            </div>
           </CardContent>
         </Card>
         
         <Card>
           <CardHeader>
-            <CardTitle className="text-lg md:text-xl">Dane kontrahentów</CardTitle>
+            <CardTitle className="text-lg md:text-xl">Płatność</CardTitle>
           </CardHeader>
-          <CardContent className="grid md:grid-cols-2 gap-4 md:gap-6">
+          <CardContent className="grid md:grid-cols-2 gap-6">
             <div>
-              <p className="text-sm font-medium text-muted-foreground mb-2">Sprzedawca</p>
-              <div>
-                <p className="font-bold">{invoice.businessName || "Brak nazwy"}</p>
-                <p>Brak dostępnych szczegółowych danych</p>
-              </div>
+              <p className="text-sm font-medium text-muted-foreground">Metoda płatności</p>
+              <p className="font-medium">
+                {invoice.paymentMethod === "transfer" ? "Przelew" : 
+                 invoice.paymentMethod === "cash" ? "Gotówka" : 
+                 invoice.paymentMethod === "card" ? "Karta" : "Inna"}
+              </p>
             </div>
             <div>
-              <p className="text-sm font-medium text-muted-foreground mb-2">Nabywca</p>
-              <div>
-                <p className="font-bold">{invoice.customerName || "Brak nazwy"}</p>
-                <p>Brak dostępnych szczegółowych danych</p>
+              <div className="flex items-center justify-between">
+                <p className="text-sm font-medium text-muted-foreground">Wartość netto:</p>
+                <p className="font-medium">{formatCurrency(invoice.totalNetValue || 0)}</p>
+              </div>
+              {!isReceipt && (
+                <div className="flex items-center justify-between mt-1">
+                  <p className="text-sm font-medium text-muted-foreground">Kwota VAT:</p>
+                  <p className="font-medium">{formatCurrency(invoice.totalVatValue || 0)}</p>
+                </div>
+              )}
+              <div className="flex items-center justify-between mt-2 text-base md:text-lg font-bold">
+                <p>Do zapłaty:</p>
+                <p>{formatCurrency(invoice.totalGrossValue || 0)}</p>
               </div>
             </div>
           </CardContent>
         </Card>
       </div>
-      
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-lg md:text-xl">Pozycje na fakturze</CardTitle>
-        </CardHeader>
-        <CardContent>
-          {isMobile ? (
-            <>
-              {renderMobileItems()}
-              {renderMobileSummary()}
-            </>
-          ) : (
-            <div className="overflow-x-auto">
-              {renderDesktopItems()}
-            </div>
-          )}
-        </CardContent>
-      </Card>
-      
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-lg md:text-xl">Płatność</CardTitle>
-        </CardHeader>
-        <CardContent className="grid md:grid-cols-2 gap-6">
-          <div>
-            <p className="text-sm font-medium text-muted-foreground">Metoda płatności</p>
-            <p className="font-medium">
-              {invoice.paymentMethod === "transfer" ? "Przelew" : 
-               invoice.paymentMethod === "cash" ? "Gotówka" : 
-               invoice.paymentMethod === "card" ? "Karta" : "Inna"}
-            </p>
-          </div>
-          <div>
-            <div className="flex items-center justify-between">
-              <p className="text-sm font-medium text-muted-foreground">Wartość netto:</p>
-              <p className="font-medium">{formatCurrency(invoice.totalNetValue || 0)}</p>
-            </div>
-            <div className="flex items-center justify-between mt-1">
-              <p className="text-sm font-medium text-muted-foreground">Kwota VAT:</p>
-              <p className="font-medium">{formatCurrency(invoice.totalVatValue || 0)}</p>
-            </div>
-            <div className="flex items-center justify-between mt-2 text-base md:text-lg font-bold">
-              <p>Do zapłaty:</p>
-              <p>{formatCurrency(invoice.totalGrossValue || 0)}</p>
-            </div>
-          </div>
-        </CardContent>
-      </Card>
     </div>
   );
 };
