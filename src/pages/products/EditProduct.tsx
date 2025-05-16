@@ -1,7 +1,7 @@
+
 import React, { useState, useEffect } from "react";
 import { useParams, useNavigate, Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { ArrowLeft } from "lucide-react";
 import { Product } from "@/types";
 import { getProducts } from "@/integrations/supabase/repositories/productRepository";
@@ -60,45 +60,23 @@ const EditProduct = () => {
           </Button>
           <h1 className="text-2xl font-bold">Nie znaleziono produktu</h1>
         </div>
-        <Card>
-          <CardContent className="text-center py-8">
-            <p>Produkt o podanym ID nie istnieje.</p>
-            <Button className="mt-4" asChild>
-              <Link to="/products">Wróć do listy produktów</Link>
-            </Button>
-          </CardContent>
-        </Card>
+        <div className="text-center py-8">
+          <p>Produkt o podanym ID nie istnieje.</p>
+          <Button className="mt-4" onClick={() => navigate("/products")}>
+            Wróć do listy produktów
+          </Button>
+        </div>
       </div>
     );
   }
   
   return (
-    <div className="space-y-6">
-      <div className="flex items-center gap-2">
-        <Button variant="outline" size="icon" asChild>
-          <Link to="/products">
-            <ArrowLeft className="h-4 w-4" />
-          </Link>
-        </Button>
-        <h1 className="text-2xl font-bold">Edytuj produkt</h1>
-      </div>
-      
-      <Card>
-        <CardHeader>
-          <CardTitle>Dane produktu</CardTitle>
-        </CardHeader>
-        <CardContent>
-          {product && (
-            <ProductForm
-              initialData={product}
-              isOpen={isOpen}
-              onClose={handleClose}
-              onSuccess={handleSuccess}
-            />
-          )}
-        </CardContent>
-      </Card>
-    </div>
+    <ProductForm
+      initialData={product}
+      isOpen={isOpen}
+      onClose={handleClose}
+      onSuccess={handleSuccess}
+    />
   );
 };
 
