@@ -57,7 +57,7 @@ const AppSidebar = () => {
 
   return (
     <Sidebar 
-      className={`border-r ${!open ? "w-14" : "w-60"}`}
+      className={`border-r ${!open ? "w-14" : "w-60"} hidden md:block`}
       collapsible="icon"
     >
       <SidebarTrigger className="m-2 self-end" />
