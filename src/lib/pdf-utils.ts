@@ -1,5 +1,5 @@
 
-import { generatePdf } from 'react-to-pdf';
+import generatePdf from 'react-to-pdf';
 import { Invoice } from '@/types';
 import { formatPolishDate, formatCurrency } from '@/lib/invoice-utils';
 
