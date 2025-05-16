@@ -7,7 +7,7 @@ import Header from "./Header";
 
 const Layout = () => {
   return (
-    <SidebarProvider collapsedWidth={56}>
+    <SidebarProvider defaultOpen={true}>
       <div className="flex min-h-screen w-full">
         <AppSidebar />
         <div className="flex flex-1 flex-col">

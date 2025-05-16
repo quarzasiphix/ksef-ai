@@ -14,24 +14,24 @@ import {
   useSidebar
 } from "@/components/ui/sidebar";
 import { 
-  ChartBar, 
+  BarChart, 
   FileText, 
   Settings, 
   Users,
-  PolishZloty
+  Package
 } from "lucide-react";
 
 const AppSidebar = () => {
-  const { collapsed } = useSidebar();
+  const { open } = useSidebar();
   const location = useLocation();
   const pathname = location.pathname;
 
   // Navigation items
   const navItems = [
-    { title: "Dashboard", path: "/", icon: ChartBar },
+    { title: "Dashboard", path: "/", icon: BarChart },
     { title: "Faktury", path: "/invoices", icon: FileText },
     { title: "Klienci", path: "/customers", icon: Users },
-    { title: "Produkty", path: "/products", icon: PolishZloty },
+    { title: "Produkty", path: "/products", icon: Package },
     { title: "Ustawienia", path: "/settings", icon: Settings },
   ];
 
@@ -57,13 +57,13 @@ const AppSidebar = () => {
 
   return (
     <Sidebar 
-      className={`border-r ${collapsed ? "w-14" : "w-60"}`}
-      collapsible
+      className={`border-r ${!open ? "w-14" : "w-60"}`}
+      collapsible="icon"
     >
       <SidebarTrigger className="m-2 self-end" />
       
       <SidebarContent>
-        <div className={`mb-8 px-3 ${collapsed ? "hidden" : "block"}`}>
+        <div className={`mb-8 px-3 ${!open ? "hidden" : "block"}`}>
           <h2 className="text-2xl font-bold text-invoice">KSeF</h2>
           <p className="text-xs text-muted-foreground">System Faktur</p>
         </div>
@@ -79,8 +79,8 @@ const AppSidebar = () => {
                       end={item.path === "/"}
                       className={getNavClassName}
                     >
-                      <item.icon className={`h-5 w-5 ${!collapsed ? "mr-2" : ""}`} />
-                      {!collapsed && <span>{item.title}</span>}
+                      <item.icon className={`h-5 w-5 ${open ? "mr-2" : ""}`} />
+                      {open && <span>{item.title}</span>}
                     </NavLink>
                   </SidebarMenuButton>
                 </SidebarMenuItem>
