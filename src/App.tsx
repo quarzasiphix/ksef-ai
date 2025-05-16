@@ -1,10 +1,24 @@
+
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
-import Index from "./pages/Index";
+
+import Layout from "./components/layout/Layout";
+import Dashboard from "./pages/Dashboard";
+import InvoiceList from "./pages/invoices/InvoiceList";
+import InvoiceDetail from "./pages/invoices/InvoiceDetail";
+import BusinessProfiles from "./pages/settings/BusinessProfiles";
 import NotFound from "./pages/NotFound";
+
+// Placeholder for future pages
+const PlaceholderPage = ({ title }: { title: string }) => (
+  <div className="p-8">
+    <h1 className="text-2xl font-bold mb-4">{title}</h1>
+    <p>Ta strona jest w trakcie implementacji.</p>
+  </div>
+);
 
 const queryClient = new QueryClient();
 
@@ -15,9 +29,28 @@ const App = () => (
       <Sonner />
       <BrowserRouter>
         <Routes>
-          <Route path="/" element={<Index />} />
-          {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
-          <Route path="*" element={<NotFound />} />
+          <Route path="/" element={<Layout />}>
+            {/* Main routes */}
+            <Route index element={<Dashboard />} />
+            
+            {/* Invoice routes */}
+            <Route path="invoices" element={<InvoiceList />} />
+            <Route path="invoices/:id" element={<InvoiceDetail />} />
+            <Route path="invoices/new" element={<PlaceholderPage title="Nowa Faktura" />} />
+            
+            {/* Customer routes */}
+            <Route path="customers" element={<PlaceholderPage title="Klienci" />} />
+            <Route path="customers/:id" element={<PlaceholderPage title="Szczegóły Klienta" />} />
+            
+            {/* Product routes */}
+            <Route path="products" element={<PlaceholderPage title="Produkty" />} />
+            
+            {/* Settings routes */}
+            <Route path="settings" element={<BusinessProfiles />} />
+            
+            {/* Catch-all for any other routes */}
+            <Route path="*" element={<NotFound />} />
+          </Route>
         </Routes>
       </BrowserRouter>
     </TooltipProvider>
