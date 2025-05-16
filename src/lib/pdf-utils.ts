@@ -1,5 +1,5 @@
 
-import generatePdf from 'react-to-pdf';
+import { generatePdf } from 'react-to-pdf';
 import { Invoice } from '@/types';
 import { formatPolishDate, formatCurrency } from '@/lib/invoice-utils';
 
@@ -11,7 +11,7 @@ const defaultOptions = {
     format: 'a4',
   },
   canvas: {
-    mimeType: 'image/png',
+    mimeType: 'image/png' as 'image/png', // Type assertion to ensure correct literal type
     qualityRatio: 1
   }
 };
