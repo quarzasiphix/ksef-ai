@@ -15,14 +15,15 @@ import BusinessProfiles from "./pages/settings/BusinessProfiles";
 import NewBusinessProfile from "./pages/settings/NewBusinessProfile";
 import EditBusinessProfile from "./pages/settings/EditBusinessProfile";
 import NotFound from "./pages/NotFound";
+import CustomerList from "./pages/customers/CustomerList";
+import CustomerDetail from "./pages/customers/CustomerDetail";
+import ProductList from "./pages/products/ProductList";
 
-// Placeholder for future pages
-const PlaceholderPage = ({ title }: { title: string }) => (
-  <div className="p-8">
-    <h1 className="text-2xl font-bold mb-4">{title}</h1>
-    <p>Ta strona jest w trakcie implementacji.</p>
-  </div>
-);
+// Create these new pages
+import NewCustomer from "./pages/customers/NewCustomer";
+import EditCustomer from "./pages/customers/EditCustomer";
+import NewProduct from "./pages/products/NewProduct";
+import EditProduct from "./pages/products/EditProduct";
 
 const queryClient = new QueryClient();
 
@@ -44,11 +45,15 @@ const App = () => (
             <Route path="invoices/edit/:id" element={<EditInvoice />} />
             
             {/* Customer routes */}
-            <Route path="customers" element={<PlaceholderPage title="Klienci" />} />
-            <Route path="customers/:id" element={<PlaceholderPage title="Szczegóły Klienta" />} />
+            <Route path="customers" element={<CustomerList />} />
+            <Route path="customers/:id" element={<CustomerDetail />} />
+            <Route path="customers/new" element={<NewCustomer />} />
+            <Route path="customers/edit/:id" element={<EditCustomer />} />
             
             {/* Product routes */}
-            <Route path="products" element={<PlaceholderPage title="Produkty" />} />
+            <Route path="products" element={<ProductList />} />
+            <Route path="products/new" element={<NewProduct />} />
+            <Route path="products/edit/:id" element={<EditProduct />} />
             
             {/* Settings routes */}
             <Route path="settings" element={<BusinessProfiles />} />

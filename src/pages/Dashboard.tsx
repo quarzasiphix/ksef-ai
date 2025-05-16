@@ -1,9 +1,8 @@
-
 import React, { useEffect, useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { formatCurrency } from "@/lib/invoice-utils";
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer } from "recharts";
-import { Invoice, InvoiceType, PaymentMethod } from "@/types";
+import { Invoice } from "@/types";
 import { getInvoices } from "@/integrations/supabase/repositories/invoiceRepository";
 import InvoiceCard from "@/components/invoices/InvoiceCard";
 import { Link } from "react-router-dom";
@@ -145,89 +144,84 @@ const Dashboard = () => {
         </CardContent>
       </Card>
       
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-        <Card>
-          <CardHeader className="flex justify-between items-center">
-            <div>
-              <CardTitle>Ostatnie faktury</CardTitle>
-            </div>
-            <Button variant="outline" asChild size="sm">
-              <Link to="/invoices">Zobacz wszystkie</Link>
-            </Button>
-          </CardHeader>
-          <CardContent className="p-0">
-            {loading ? (
-              <div className="text-center py-8">
-                <p>Ładowanie...</p>
-              </div>
-            ) : invoices.length === 0 ? (
-              <div className="text-center py-8">
-                <p>Brak faktur</p>
-              </div>
-            ) : (
-              <div className="grid sm:grid-cols-2 gap-4 p-4">
-                {invoices.slice(0, 3).map((invoice) => (
-                  <InvoiceCard key={invoice.id} invoice={invoice} />
-                ))}
-              </div>
-            )}
-          </CardContent>
-        </Card>
+      <div className="space-y-4">
+        <div className="flex justify-between items-center">
+          <h2 className="text-xl font-bold">Ostatnie faktury</h2>
+          <Button variant="outline" asChild size="sm">
+            <Link to="/invoices">Zobacz wszystkie</Link>
+          </Button>
+        </div>
         
-        <Card>
-          <CardHeader>
-            <CardTitle>KSeF Status</CardTitle>
-          </CardHeader>
-          <CardContent className="p-0">
-            <div className="overflow-x-auto">
-              <table className="w-full invoice-table">
-                <thead>
-                  <tr>
-                    <th>Nr faktury</th>
-                    <th>Data</th>
-                    <th>Status KSeF</th>
-                    <th>Nr referencyjny</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {loading ? (
-                    <tr>
-                      <td colSpan={4} className="text-center py-4">Ładowanie...</td>
-                    </tr>
-                  ) : invoices.length === 0 ? (
-                    <tr>
-                      <td colSpan={4} className="text-center py-4">Brak faktur</td>
-                    </tr>
-                  ) : (
-                    invoices.slice(0, 5).map((invoice) => (
-                      <tr key={invoice.id}>
-                        <td>{invoice.number}</td>
-                        <td>{new Date(invoice.issueDate).toLocaleDateString("pl-PL")}</td>
-                        <td>
-                          <span className={`px-2 py-1 rounded-full text-xs ${
-                            invoice.ksef?.status === "sent" 
-                              ? "bg-green-100 text-green-800" 
-                              : invoice.ksef?.status === "pending" 
-                                ? "bg-amber-100 text-amber-800" 
-                                : "bg-gray-100 text-gray-800"
-                          }`}>
-                            {invoice.ksef?.status === "sent" 
-                              ? "Wysłano" 
-                              : invoice.ksef?.status === "pending" 
-                                ? "Oczekuje" 
-                                : "Brak"}
-                          </span>
-                        </td>
-                        <td>{invoice.ksef?.referenceNumber || "—"}</td>
-                      </tr>
-                    ))
-                  )}
-                </tbody>
-              </table>
-            </div>
-          </CardContent>
-        </Card>
+        {loading ? (
+          <div className="text-center py-8">
+            <p>Ładowanie...</p>
+          </div>
+        ) : invoices.length === 0 ? (
+          <div className="text-center py-8">
+            <p>Brak faktur</p>
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+            {invoices.slice(0, 8).map((invoice) => (
+              <InvoiceCard key={invoice.id} invoice={invoice} />
+            ))}
+          </div>
+        )}
       </div>
+      
+      <Card>
+        <CardHeader>
+          <CardTitle>KSeF Status</CardTitle>
+        </CardHeader>
+        <CardContent className="p-0">
+          <div className="overflow-x-auto">
+            <table className="w-full invoice-table">
+              <thead>
+                <tr>
+                  <th>Nr faktury</th>
+                  <th>Data</th>
+                  <th>Status KSeF</th>
+                  <th>Nr referencyjny</th>
+                </tr>
+              </thead>
+              <tbody>
+                {loading ? (
+                  <tr>
+                    <td colSpan={4} className="text-center py-4">Ładowanie...</td>
+                  </tr>
+                ) : invoices.length === 0 ? (
+                  <tr>
+                    <td colSpan={4} className="text-center py-4">Brak faktur</td>
+                  </tr>
+                ) : (
+                  invoices.slice(0, 5).map((invoice) => (
+                    <tr key={invoice.id}>
+                      <td>{invoice.number}</td>
+                      <td>{new Date(invoice.issueDate).toLocaleDateString("pl-PL")}</td>
+                      <td>
+                        <span className={`px-2 py-1 rounded-full text-xs ${
+                          invoice.ksef?.status === "sent" 
+                            ? "bg-green-100 text-green-800" 
+                            : invoice.ksef?.status === "pending" 
+                              ? "bg-amber-100 text-amber-800" 
+                              : "bg-gray-100 text-gray-800"
+                        }`}>
+                          {invoice.ksef?.status === "sent" 
+                            ? "Wysłano" 
+                            : invoice.ksef?.status === "pending" 
+                              ? "Oczekuje" 
+                              : "Brak"}
+                        </span>
+                      </td>
+                      <td>{invoice.ksef?.referenceNumber || "—"}</td>
+                    </tr>
+                  ))
+                )}
+              </tbody>
+            </table>
+          </div>
+        </CardContent>
+      </Card>
     </div>
   );
 };
