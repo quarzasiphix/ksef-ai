@@ -1,5 +1,5 @@
 
-import React from "react";
+import React, { useEffect, useState } from "react";
 import { useParams, Link } from "react-router-dom";
 import {
   Card,
@@ -8,10 +8,11 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { getInvoiceById, getBusinessProfileById, getCustomerById } from "@/data/mockData";
 import { formatCurrency, formatPolishDate } from "@/lib/invoice-utils";
-import { InvoiceType } from "@/types";
-import { ArrowLeft, Printer, FileText, SendHorizontal, FilePlus } from "lucide-react";
+import { InvoiceType, Invoice } from "@/types";
+import { ArrowLeft, Printer, FileText, SendHorizontal, FilePlus, Pencil } from "lucide-react";
+import { getInvoice } from "@/integrations/supabase/repositories/invoiceRepository";
+import { toast } from "sonner";
 
 const getInvoiceTypeTitle = (type: InvoiceType) => {
   switch (type) {
@@ -30,21 +31,64 @@ const getInvoiceTypeTitle = (type: InvoiceType) => {
 
 const InvoiceDetail = () => {
   const { id } = useParams<{ id: string }>();
-  const invoice = getInvoiceById(id || "");
+  const [invoice, setInvoice] = useState<Invoice | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   
-  if (!invoice) {
+  useEffect(() => {
+    const fetchInvoice = async () => {
+      if (!id) {
+        setError("Brak identyfikatora faktury");
+        setLoading(false);
+        return;
+      }
+
+      try {
+        const invoiceData = await getInvoice(id);
+        setInvoice(invoiceData);
+      } catch (err) {
+        console.error("Error fetching invoice:", err);
+        setError("Nie udało się pobrać danych faktury");
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchInvoice();
+  }, [id]);
+  
+  if (loading) {
     return (
-      <div className="p-8 text-center">
-        <h2 className="text-2xl font-bold mb-4">Faktura nie znaleziona</h2>
-        <Button asChild>
-          <Link to="/invoices">Wróć do listy faktur</Link>
-        </Button>
+      <div className="flex items-center justify-center h-64">
+        <p>Ładowanie...</p>
       </div>
     );
   }
   
-  const business = getBusinessProfileById(invoice.businessProfileId);
-  const customer = getCustomerById(invoice.customerId);
+  if (error || !invoice) {
+    return (
+      <div className="space-y-6">
+        <div className="flex items-center gap-2">
+          <Button variant="outline" size="icon" asChild>
+            <Link to="/invoices">
+              <ArrowLeft className="h-4 w-4" />
+            </Link>
+          </Button>
+          <h1 className="text-2xl font-bold">Błąd</h1>
+        </div>
+        <div className="bg-red-50 border border-red-200 rounded-md p-4">
+          <p className="text-red-800">{error || "Nie znaleziono faktury"}</p>
+          <Button
+            variant="outline"
+            className="mt-4"
+            asChild
+          >
+            <Link to="/invoices">Wróć do listy faktur</Link>
+          </Button>
+        </div>
+      </div>
+    );
+  }
   
   return (
     <div className="space-y-6">
@@ -74,6 +118,12 @@ const InvoiceDetail = () => {
           <Button variant="outline" className="flex items-center gap-1">
             <FileText className="h-4 w-4" />
             <span>PDF</span>
+          </Button>
+          <Button variant="outline" className="flex items-center gap-1" asChild>
+            <Link to={`/invoices/edit/${invoice.id}`}>
+              <Pencil className="h-4 w-4" />
+              <span>Edytuj</span>
+            </Link>
           </Button>
           <Button className="flex items-center gap-1">
             <SendHorizontal className="h-4 w-4" />
@@ -154,34 +204,17 @@ const InvoiceDetail = () => {
           <CardContent className="grid md:grid-cols-2 gap-6">
             <div>
               <p className="text-sm font-medium text-muted-foreground mb-2">Sprzedawca</p>
-              {business ? (
-                <div>
-                  <p className="font-bold">{business.name}</p>
-                  <p>{business.address}</p>
-                  <p>{business.postalCode} {business.city}</p>
-                  <p className="mt-2">NIP: {business.taxId}</p>
-                  {business.regon && <p>REGON: {business.regon}</p>}
-                  {business.email && <p>Email: {business.email}</p>}
-                  {business.phone && <p>Tel: {business.phone}</p>}
-                </div>
-              ) : (
-                <p>Brak danych sprzedawcy</p>
-              )}
+              <div>
+                <p className="font-bold">{invoice.businessName || "Brak nazwy"}</p>
+                <p>Brak dostępnych szczegółowych danych</p>
+              </div>
             </div>
             <div>
               <p className="text-sm font-medium text-muted-foreground mb-2">Nabywca</p>
-              {customer ? (
-                <div>
-                  <p className="font-bold">{customer.name}</p>
-                  <p>{customer.address}</p>
-                  <p>{customer.postalCode} {customer.city}</p>
-                  {customer.taxId && <p className="mt-2">NIP: {customer.taxId}</p>}
-                  {customer.email && <p>Email: {customer.email}</p>}
-                  {customer.phone && <p>Tel: {customer.phone}</p>}
-                </div>
-              ) : (
-                <p>Brak danych nabywcy</p>
-              )}
+              <div>
+                <p className="font-bold">{invoice.customerName || "Brak nazwy"}</p>
+                <p>Brak dostępnych szczegółowych danych</p>
+              </div>
             </div>
           </CardContent>
         </Card>
@@ -244,14 +277,10 @@ const InvoiceDetail = () => {
           <div>
             <p className="text-sm font-medium text-muted-foreground">Metoda płatności</p>
             <p className="font-medium">
-              {invoice.paymentMethod === "transfer" ? "Przelew" : invoice.paymentMethod}
+              {invoice.paymentMethod === "transfer" ? "Przelew" : 
+               invoice.paymentMethod === "cash" ? "Gotówka" : 
+               invoice.paymentMethod === "card" ? "Karta" : "Inna"}
             </p>
-            {business?.bankAccount && invoice.paymentMethod === "transfer" && (
-              <div className="mt-2">
-                <p className="text-sm font-medium text-muted-foreground">Numer konta</p>
-                <p className="font-medium">{business.bankAccount}</p>
-              </div>
-            )}
           </div>
           <div>
             <div className="flex items-center justify-between">

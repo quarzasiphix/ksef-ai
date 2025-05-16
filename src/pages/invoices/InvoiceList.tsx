@@ -14,6 +14,7 @@ import { formatCurrency } from "@/lib/invoice-utils";
 import { Invoice, InvoiceType, PaymentMethod } from "@/types";
 import { Plus, FileText, Search } from "lucide-react";
 import { getInvoices } from "@/integrations/supabase/repositories/invoiceRepository";
+import InvoiceCard from "@/components/invoices/InvoiceCard";
 
 const InvoiceList = () => {
   const [invoices, setInvoices] = useState<Invoice[]>([]);
@@ -113,7 +114,27 @@ const InvoiceList = () => {
           </div>
         </CardHeader>
         <CardContent className="p-0">
-          <div className="overflow-x-auto">
+          {/* Mobile view - Card list for screens ≤600px */}
+          <div className="block sm:hidden">
+            {loading ? (
+              <div className="text-center py-8">
+                Ładowanie...
+              </div>
+            ) : filteredInvoices.length === 0 ? (
+              <div className="text-center py-8">
+                {searchTerm.length > 0 ? "Brak wyników wyszukiwania" : "Brak faktur"}
+              </div>
+            ) : (
+              <div className="p-4">
+                {filteredInvoices.map(invoice => (
+                  <InvoiceCard key={invoice.id} invoice={invoice} />
+                ))}
+              </div>
+            )}
+          </div>
+          
+          {/* Desktop view - Table for screens >600px */}
+          <div className="hidden sm:block overflow-x-auto">
             <table className="w-full invoice-table">
               <thead>
                 <tr>
