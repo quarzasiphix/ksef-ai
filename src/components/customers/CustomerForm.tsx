@@ -1,0 +1,199 @@
+
+import React from "react";
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { z } from "zod";
+import { toast } from "sonner";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import {
+  Form,
+  FormControl,
+  FormField,
+  FormItem,
+  FormLabel,
+  FormMessage,
+} from "@/components/ui/form";
+import { Customer } from "@/types";
+import { saveCustomer } from "@/integrations/supabase/repositories/customerRepository";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+
+const formSchema = z.object({
+  name: z.string().min(1, "Nazwa jest wymagana"),
+  taxId: z.string().max(10).optional(),
+  address: z.string().min(1, "Adres jest wymagany"),
+  postalCode: z.string().min(1, "Kod pocztowy jest wymagany"),
+  city: z.string().min(1, "Miasto jest wymagane"),
+  email: z.string().email("Niepoprawny format email").optional().or(z.literal("")),
+  phone: z.string().optional(),
+});
+
+interface CustomerFormProps {
+  initialData?: Customer;
+  isOpen: boolean;
+  onClose: () => void;
+  onSuccess: (customer: Customer) => void;
+}
+
+const CustomerForm = ({
+  initialData,
+  isOpen,
+  onClose,
+  onSuccess,
+}: CustomerFormProps) => {
+  const isEditing = !!initialData?.id;
+
+  const form = useForm<z.infer<typeof formSchema>>({
+    resolver: zodResolver(formSchema),
+    defaultValues: {
+      name: initialData?.name || "",
+      taxId: initialData?.taxId || "",
+      address: initialData?.address || "",
+      postalCode: initialData?.postalCode || "",
+      city: initialData?.city || "",
+      email: initialData?.email || "",
+      phone: initialData?.phone || "",
+    },
+  });
+
+  const onSubmit = async (values: z.infer<typeof formSchema>) => {
+    try {
+      const customer: Customer = {
+        ...values,
+        id: initialData?.id,
+      };
+
+      const savedCustomer = await saveCustomer(customer);
+      toast.success(
+        isEditing ? "Klient zaktualizowany" : "Klient utworzony"
+      );
+      onSuccess(savedCustomer);
+      onClose();
+    } catch (error) {
+      console.error("Error saving customer:", error);
+      toast.error("Wystąpił błąd podczas zapisywania klienta");
+    }
+  };
+
+  return (
+    <Dialog open={isOpen} onOpenChange={onClose}>
+      <DialogContent className="sm:max-w-[525px] max-h-[90vh] overflow-y-auto">
+        <DialogHeader>
+          <DialogTitle>
+            {isEditing ? "Edytuj klienta" : "Dodaj nowego klienta"}
+          </DialogTitle>
+        </DialogHeader>
+        <Form {...form}>
+          <form
+            onSubmit={form.handleSubmit(onSubmit)}
+            className="space-y-4 pt-2"
+          >
+            <FormField
+              control={form.control}
+              name="name"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Nazwa</FormLabel>
+                  <FormControl>
+                    <Input placeholder="Nazwa firmy lub imię i nazwisko" {...field} />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+            <FormField
+              control={form.control}
+              name="taxId"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>NIP (opcjonalnie)</FormLabel>
+                  <FormControl>
+                    <Input placeholder="NIP" {...field} />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+            <FormField
+              control={form.control}
+              name="address"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Adres</FormLabel>
+                  <FormControl>
+                    <Input placeholder="Adres" {...field} />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+            <div className="grid grid-cols-2 gap-4">
+              <FormField
+                control={form.control}
+                name="postalCode"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Kod pocztowy</FormLabel>
+                    <FormControl>
+                      <Input placeholder="Kod pocztowy" {...field} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <FormField
+                control={form.control}
+                name="city"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Miasto</FormLabel>
+                    <FormControl>
+                      <Input placeholder="Miasto" {...field} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+            </div>
+            <FormField
+              control={form.control}
+              name="email"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Email (opcjonalnie)</FormLabel>
+                  <FormControl>
+                    <Input placeholder="Email" {...field} />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+            <FormField
+              control={form.control}
+              name="phone"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Telefon (opcjonalnie)</FormLabel>
+                  <FormControl>
+                    <Input placeholder="Telefon" {...field} />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+            <div className="flex justify-end gap-2 pt-4">
+              <Button type="button" variant="outline" onClick={onClose}>
+                Anuluj
+              </Button>
+              <Button type="submit">
+                {isEditing ? "Aktualizuj" : "Dodaj klienta"}
+              </Button>
+            </div>
+          </form>
+        </Form>
+      </DialogContent>
+    </Dialog>
+  );
+};
+
+export default CustomerForm;

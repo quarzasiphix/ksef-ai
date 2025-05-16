@@ -9,7 +9,10 @@ import Layout from "./components/layout/Layout";
 import Dashboard from "./pages/Dashboard";
 import InvoiceList from "./pages/invoices/InvoiceList";
 import InvoiceDetail from "./pages/invoices/InvoiceDetail";
+import NewInvoice from "./pages/invoices/NewInvoice";
 import BusinessProfiles from "./pages/settings/BusinessProfiles";
+import NewBusinessProfile from "./pages/settings/NewBusinessProfile";
+import EditBusinessProfile from "./pages/settings/EditBusinessProfile";
 import NotFound from "./pages/NotFound";
 
 // Placeholder for future pages
@@ -36,7 +39,7 @@ const App = () => (
             {/* Invoice routes */}
             <Route path="invoices" element={<InvoiceList />} />
             <Route path="invoices/:id" element={<InvoiceDetail />} />
-            <Route path="invoices/new" element={<PlaceholderPage title="Nowa Faktura" />} />
+            <Route path="invoices/new" element={<NewInvoice />} />
             
             {/* Customer routes */}
             <Route path="customers" element={<PlaceholderPage title="Klienci" />} />
@@ -47,6 +50,8 @@ const App = () => (
             
             {/* Settings routes */}
             <Route path="settings" element={<BusinessProfiles />} />
+            <Route path="settings/business-profiles/new" element={<NewBusinessProfile />} />
+            <Route path="settings/business-profiles/:id" element={<EditBusinessProfile />} />
             
             {/* Catch-all for any other routes */}
             <Route path="*" element={<NotFound />} />

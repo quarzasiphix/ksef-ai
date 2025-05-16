@@ -9,7 +9,267 @@ export type Json =
 export type Database = {
   public: {
     Tables: {
-      [_ in never]: never
+      business_profiles: {
+        Row: {
+          address: string
+          bank_account: string | null
+          city: string
+          created_at: string
+          email: string | null
+          id: string
+          is_default: boolean | null
+          logo: string | null
+          name: string
+          phone: string | null
+          postal_code: string
+          regon: string | null
+          tax_id: string
+          updated_at: string
+        }
+        Insert: {
+          address: string
+          bank_account?: string | null
+          city: string
+          created_at?: string
+          email?: string | null
+          id?: string
+          is_default?: boolean | null
+          logo?: string | null
+          name: string
+          phone?: string | null
+          postal_code: string
+          regon?: string | null
+          tax_id: string
+          updated_at?: string
+        }
+        Update: {
+          address?: string
+          bank_account?: string | null
+          city?: string
+          created_at?: string
+          email?: string | null
+          id?: string
+          is_default?: boolean | null
+          logo?: string | null
+          name?: string
+          phone?: string | null
+          postal_code?: string
+          regon?: string | null
+          tax_id?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      customers: {
+        Row: {
+          address: string
+          city: string
+          created_at: string
+          email: string | null
+          id: string
+          name: string
+          phone: string | null
+          postal_code: string
+          tax_id: string | null
+          updated_at: string
+        }
+        Insert: {
+          address: string
+          city: string
+          created_at?: string
+          email?: string | null
+          id?: string
+          name: string
+          phone?: string | null
+          postal_code: string
+          tax_id?: string | null
+          updated_at?: string
+        }
+        Update: {
+          address?: string
+          city?: string
+          created_at?: string
+          email?: string | null
+          id?: string
+          name?: string
+          phone?: string | null
+          postal_code?: string
+          tax_id?: string | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      invoice_items: {
+        Row: {
+          created_at: string
+          id: string
+          invoice_id: string
+          name: string
+          product_id: string | null
+          quantity: number
+          total_gross_value: number
+          total_net_value: number
+          total_vat_value: number
+          unit: string
+          unit_price: number
+          updated_at: string
+          vat_rate: number
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          invoice_id: string
+          name: string
+          product_id?: string | null
+          quantity: number
+          total_gross_value: number
+          total_net_value: number
+          total_vat_value: number
+          unit: string
+          unit_price: number
+          updated_at?: string
+          vat_rate: number
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          invoice_id?: string
+          name?: string
+          product_id?: string | null
+          quantity?: number
+          total_gross_value?: number
+          total_net_value?: number
+          total_vat_value?: number
+          unit?: string
+          unit_price?: number
+          updated_at?: string
+          vat_rate?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "invoice_items_invoice_id_fkey"
+            columns: ["invoice_id"]
+            isOneToOne: false
+            referencedRelation: "invoices"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "invoice_items_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "products"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      invoices: {
+        Row: {
+          business_profile_id: string
+          comments: string | null
+          created_at: string
+          customer_id: string
+          due_date: string
+          id: string
+          is_paid: boolean | null
+          issue_date: string
+          ksef_reference_number: string | null
+          ksef_status: string | null
+          number: string
+          payment_method: string
+          sell_date: string
+          total_gross_value: number
+          total_net_value: number
+          total_vat_value: number
+          type: string
+          updated_at: string
+        }
+        Insert: {
+          business_profile_id: string
+          comments?: string | null
+          created_at?: string
+          customer_id: string
+          due_date: string
+          id?: string
+          is_paid?: boolean | null
+          issue_date: string
+          ksef_reference_number?: string | null
+          ksef_status?: string | null
+          number: string
+          payment_method: string
+          sell_date: string
+          total_gross_value: number
+          total_net_value: number
+          total_vat_value: number
+          type: string
+          updated_at?: string
+        }
+        Update: {
+          business_profile_id?: string
+          comments?: string | null
+          created_at?: string
+          customer_id?: string
+          due_date?: string
+          id?: string
+          is_paid?: boolean | null
+          issue_date?: string
+          ksef_reference_number?: string | null
+          ksef_status?: string | null
+          number?: string
+          payment_method?: string
+          sell_date?: string
+          total_gross_value?: number
+          total_net_value?: number
+          total_vat_value?: number
+          type?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "invoices_business_profile_id_fkey"
+            columns: ["business_profile_id"]
+            isOneToOne: false
+            referencedRelation: "business_profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "invoices_customer_id_fkey"
+            columns: ["customer_id"]
+            isOneToOne: false
+            referencedRelation: "customers"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      products: {
+        Row: {
+          created_at: string
+          id: string
+          name: string
+          unit: string
+          unit_price: number
+          updated_at: string
+          vat_rate: number
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          name: string
+          unit: string
+          unit_price: number
+          updated_at?: string
+          vat_rate: number
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          name?: string
+          unit?: string
+          unit_price?: number
+          updated_at?: string
+          vat_rate?: number
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
