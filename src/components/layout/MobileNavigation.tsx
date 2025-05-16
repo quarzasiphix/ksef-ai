@@ -1,7 +1,7 @@
 
 import React from "react";
 import { NavLink } from "react-router-dom";
-import { BarChart, FileText, Users, Package, Settings } from "lucide-react";
+import { BarChart, FileText, Users, Settings } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 const MobileNavigation = () => {
@@ -10,7 +10,6 @@ const MobileNavigation = () => {
     { title: "Dashboard", path: "/", icon: BarChart },
     { title: "Faktury", path: "/invoices", icon: FileText },
     { title: "Klienci", path: "/customers", icon: Users },
-    { title: "Produkty", path: "/products", icon: Package },
     { title: "Ustawienia", path: "/settings", icon: Settings },
   ];
 
