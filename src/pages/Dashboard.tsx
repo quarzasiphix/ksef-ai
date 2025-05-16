@@ -1,23 +1,105 @@
 
-import React from "react";
+import React, { useEffect, useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { mockInvoices, getMonthlyInvoiceSummaries } from "@/data/mockData";
 import { formatCurrency } from "@/lib/invoice-utils";
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer } from "recharts";
+import { supabase } from "@/integrations/supabase/client";
+import { Invoice } from "@/types";
 
 const Dashboard = () => {
-  const totalInvoices = mockInvoices.length;
-  const unpaidInvoices = mockInvoices.filter(inv => !inv.isPaid).length;
-  const totalGross = mockInvoices.reduce((sum, inv) => sum + (inv.totalGrossValue || 0), 0);
-  const totalTax = mockInvoices.reduce((sum, inv) => sum + (inv.totalVatValue || 0), 0);
+  const [invoices, setInvoices] = useState<Invoice[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [monthlySummaries, setMonthlySummaries] = useState<any[]>([]);
   
-  const monthlySummaries = getMonthlyInvoiceSummaries();
+  useEffect(() => {
+    const fetchInvoices = async () => {
+      setLoading(true);
+      try {
+        const { data, error } = await supabase
+          .from("invoices")
+          .select(`
+            *,
+            business_profiles(name),
+            customers(name)
+          `)
+          .order("issue_date", { ascending: false });
+          
+        if (error) throw error;
+        
+        const invoicesData = data.map(item => ({
+          id: item.id,
+          number: item.number,
+          type: item.type,
+          issueDate: item.issue_date,
+          dueDate: item.due_date,
+          sellDate: item.sell_date,
+          businessProfileId: item.business_profile_id,
+          customerId: item.customer_id,
+          items: [],
+          paymentMethod: item.payment_method,
+          isPaid: item.is_paid || false,
+          comments: item.comments,
+          totalNetValue: Number(item.total_net_value),
+          totalGrossValue: Number(item.total_gross_value),
+          totalVatValue: Number(item.total_vat_value),
+          ksef: {
+            status: item.ksef_status || 'none',
+            referenceNumber: item.ksef_reference_number
+          },
+          businessName: item.business_profiles?.name,
+          customerName: item.customers?.name
+        }));
+        
+        setInvoices(invoicesData);
+        generateMonthlySummaries(invoicesData);
+      } catch (error) {
+        console.error("Error fetching invoices:", error);
+      } finally {
+        setLoading(false);
+      }
+    };
+    
+    fetchInvoices();
+  }, []);
   
-  // Format month labels
-  const formattedMonthlySummaries = monthlySummaries.map(summary => ({
-    ...summary,
-    monthLabel: new Date(summary.month + "-01").toLocaleString("pl-PL", { month: "short" }),
-  }));
+  const generateMonthlySummaries = (invoicesData: Invoice[]) => {
+    // Group invoices by month
+    const monthlyData: Record<string, { totalNetValue: number, totalGrossValue: number, totalVatValue: number }> = {};
+    
+    invoicesData.forEach(invoice => {
+      const date = new Date(invoice.issueDate);
+      const monthKey = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
+      
+      if (!monthlyData[monthKey]) {
+        monthlyData[monthKey] = {
+          totalNetValue: 0,
+          totalGrossValue: 0,
+          totalVatValue: 0
+        };
+      }
+      
+      monthlyData[monthKey].totalNetValue += invoice.totalNetValue || 0;
+      monthlyData[monthKey].totalGrossValue += invoice.totalGrossValue || 0;
+      monthlyData[monthKey].totalVatValue += invoice.totalVatValue || 0;
+    });
+    
+    // Convert to array for chart
+    const formattedSummaries = Object.entries(monthlyData).map(([month, values]) => ({
+      month,
+      monthLabel: new Date(`${month}-01`).toLocaleString("pl-PL", { month: "short" }),
+      ...values
+    }));
+    
+    // Sort by month
+    formattedSummaries.sort((a, b) => a.month.localeCompare(b.month));
+    
+    setMonthlySummaries(formattedSummaries);
+  };
+
+  const totalInvoices = invoices.length;
+  const unpaidInvoices = invoices.filter(inv => !inv.isPaid).length;
+  const totalGross = invoices.reduce((sum, inv) => sum + (inv.totalGrossValue || 0), 0);
+  const totalTax = invoices.reduce((sum, inv) => sum + (inv.totalVatValue || 0), 0);
 
   return (
     <div className="space-y-6">
@@ -78,7 +160,7 @@ const Dashboard = () => {
         <CardContent className="pt-2">
           <div className="h-80">
             <ResponsiveContainer width="100%" height="100%">
-              <BarChart data={formattedMonthlySummaries}>
+              <BarChart data={monthlySummaries}>
                 <XAxis dataKey="monthLabel" />
                 <YAxis />
                 <Tooltip
@@ -100,36 +182,48 @@ const Dashboard = () => {
             <CardTitle>Ostatnie faktury</CardTitle>
           </CardHeader>
           <CardContent className="p-0">
-            <table className="w-full invoice-table">
-              <thead>
-                <tr>
-                  <th>Nr faktury</th>
-                  <th>Data</th>
-                  <th>Klient</th>
-                  <th>Kwota</th>
-                  <th>Status</th>
-                </tr>
-              </thead>
-              <tbody>
-                {mockInvoices.slice(0, 5).map((invoice) => (
-                  <tr key={invoice.id}>
-                    <td>{invoice.number}</td>
-                    <td>{new Date(invoice.issueDate).toLocaleDateString("pl-PL")}</td>
-                    <td>{invoice.customerId}</td>
-                    <td>{formatCurrency(invoice.totalGrossValue || 0)}</td>
-                    <td>
-                      <span className={`px-2 py-1 rounded-full text-xs ${
-                        invoice.isPaid 
-                          ? "bg-green-100 text-green-800" 
-                          : "bg-amber-100 text-amber-800"
-                      }`}>
-                        {invoice.isPaid ? "Zapłacono" : "Oczekuje"}
-                      </span>
-                    </td>
+            <div className="overflow-x-auto">
+              <table className="w-full invoice-table">
+                <thead>
+                  <tr>
+                    <th>Nr faktury</th>
+                    <th>Data</th>
+                    <th>Klient</th>
+                    <th>Kwota</th>
+                    <th>Status</th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
+                </thead>
+                <tbody>
+                  {loading ? (
+                    <tr>
+                      <td colSpan={5} className="text-center py-4">Ładowanie...</td>
+                    </tr>
+                  ) : invoices.length === 0 ? (
+                    <tr>
+                      <td colSpan={5} className="text-center py-4">Brak faktur</td>
+                    </tr>
+                  ) : (
+                    invoices.slice(0, 5).map((invoice) => (
+                      <tr key={invoice.id}>
+                        <td>{invoice.number}</td>
+                        <td>{new Date(invoice.issueDate).toLocaleDateString("pl-PL")}</td>
+                        <td>{invoice.customerName || "—"}</td>
+                        <td>{formatCurrency(invoice.totalGrossValue || 0)}</td>
+                        <td>
+                          <span className={`px-2 py-1 rounded-full text-xs ${
+                            invoice.isPaid 
+                              ? "bg-green-100 text-green-800" 
+                              : "bg-amber-100 text-amber-800"
+                          }`}>
+                            {invoice.isPaid ? "Zapłacono" : "Oczekuje"}
+                          </span>
+                        </td>
+                      </tr>
+                    ))
+                  )}
+                </tbody>
+              </table>
+            </div>
           </CardContent>
         </Card>
         
@@ -138,40 +232,52 @@ const Dashboard = () => {
             <CardTitle>KSeF Status</CardTitle>
           </CardHeader>
           <CardContent className="p-0">
-            <table className="w-full invoice-table">
-              <thead>
-                <tr>
-                  <th>Nr faktury</th>
-                  <th>Data</th>
-                  <th>Status KSeF</th>
-                  <th>Nr referencyjny</th>
-                </tr>
-              </thead>
-              <tbody>
-                {mockInvoices.slice(0, 5).map((invoice) => (
-                  <tr key={invoice.id}>
-                    <td>{invoice.number}</td>
-                    <td>{new Date(invoice.issueDate).toLocaleDateString("pl-PL")}</td>
-                    <td>
-                      <span className={`px-2 py-1 rounded-full text-xs ${
-                        invoice.ksef?.status === "sent" 
-                          ? "bg-green-100 text-green-800" 
-                          : invoice.ksef?.status === "pending" 
-                            ? "bg-amber-100 text-amber-800" 
-                            : "bg-gray-100 text-gray-800"
-                      }`}>
-                        {invoice.ksef?.status === "sent" 
-                          ? "Wysłano" 
-                          : invoice.ksef?.status === "pending" 
-                            ? "Oczekuje" 
-                            : "Brak"}
-                      </span>
-                    </td>
-                    <td>{invoice.ksef?.referenceNumber || "-"}</td>
+            <div className="overflow-x-auto">
+              <table className="w-full invoice-table">
+                <thead>
+                  <tr>
+                    <th>Nr faktury</th>
+                    <th>Data</th>
+                    <th>Status KSeF</th>
+                    <th>Nr referencyjny</th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
+                </thead>
+                <tbody>
+                  {loading ? (
+                    <tr>
+                      <td colSpan={4} className="text-center py-4">Ładowanie...</td>
+                    </tr>
+                  ) : invoices.length === 0 ? (
+                    <tr>
+                      <td colSpan={4} className="text-center py-4">Brak faktur</td>
+                    </tr>
+                  ) : (
+                    invoices.slice(0, 5).map((invoice) => (
+                      <tr key={invoice.id}>
+                        <td>{invoice.number}</td>
+                        <td>{new Date(invoice.issueDate).toLocaleDateString("pl-PL")}</td>
+                        <td>
+                          <span className={`px-2 py-1 rounded-full text-xs ${
+                            invoice.ksef?.status === "sent" 
+                              ? "bg-green-100 text-green-800" 
+                              : invoice.ksef?.status === "pending" 
+                                ? "bg-amber-100 text-amber-800" 
+                                : "bg-gray-100 text-gray-800"
+                          }`}>
+                            {invoice.ksef?.status === "sent" 
+                              ? "Wysłano" 
+                              : invoice.ksef?.status === "pending" 
+                                ? "Oczekuje" 
+                                : "Brak"}
+                          </span>
+                        </td>
+                        <td>{invoice.ksef?.referenceNumber || "—"}</td>
+                      </tr>
+                    ))
+                  )}
+                </tbody>
+              </table>
+            </div>
           </CardContent>
         </Card>
       </div>

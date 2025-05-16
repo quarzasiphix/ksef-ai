@@ -1,5 +1,5 @@
 
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import {
@@ -10,21 +10,71 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
-import { mockInvoices, getCustomerById } from "@/data/mockData";
 import { formatCurrency } from "@/lib/invoice-utils";
-import { InvoiceType, PaymentMethod } from "@/types";
+import { Invoice, InvoiceType, PaymentMethod } from "@/types";
 import { Plus, FileText, Search } from "lucide-react";
+import { supabase } from "@/integrations/supabase/client";
 
 const InvoiceList = () => {
+  const [invoices, setInvoices] = useState<Invoice[]>([]);
   const [searchTerm, setSearchTerm] = useState("");
+  const [loading, setLoading] = useState(true);
+  
+  useEffect(() => {
+    const fetchInvoices = async () => {
+      setLoading(true);
+      try {
+        const { data, error } = await supabase
+          .from("invoices")
+          .select(`
+            *,
+            business_profiles(name),
+            customers(name)
+          `)
+          .order("issue_date", { ascending: false });
+          
+        if (error) throw error;
+        
+        const invoicesData = data.map(item => ({
+          id: item.id,
+          number: item.number,
+          type: item.type as InvoiceType,
+          issueDate: item.issue_date,
+          dueDate: item.due_date,
+          sellDate: item.sell_date,
+          businessProfileId: item.business_profile_id,
+          customerId: item.customer_id,
+          items: [],
+          paymentMethod: item.payment_method as PaymentMethod,
+          isPaid: item.is_paid || false,
+          comments: item.comments || "",
+          totalNetValue: Number(item.total_net_value),
+          totalGrossValue: Number(item.total_gross_value),
+          totalVatValue: Number(item.total_vat_value),
+          ksef: {
+            status: item.ksef_status || 'none',
+            referenceNumber: item.ksef_reference_number || null
+          },
+          businessName: item.business_profiles?.name,
+          customerName: item.customers?.name
+        }));
+        
+        setInvoices(invoicesData);
+      } catch (error) {
+        console.error("Error fetching invoices:", error);
+      } finally {
+        setLoading(false);
+      }
+    };
+    
+    fetchInvoices();
+  }, []);
   
   // Filter invoices based on search term
-  const filteredInvoices = mockInvoices.filter(
+  const filteredInvoices = invoices.filter(
     (invoice) =>
       invoice.number.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      getCustomerById(invoice.customerId)?.name
-        .toLowerCase()
-        .includes(searchTerm.toLowerCase())
+      (invoice.customerName || "").toLowerCase().includes(searchTerm.toLowerCase())
   );
   
   // Translate invoice type to Polish
@@ -115,61 +165,75 @@ const InvoiceList = () => {
                 </tr>
               </thead>
               <tbody>
-                {filteredInvoices.map((invoice) => (
-                  <tr key={invoice.id}>
-                    <td>{invoice.number}</td>
-                    <td>{getInvoiceTypeText(invoice.type)}</td>
-                    <td>{new Date(invoice.issueDate).toLocaleDateString("pl-PL")}</td>
-                    <td>{new Date(invoice.dueDate).toLocaleDateString("pl-PL")}</td>
-                    <td>
-                      {getCustomerById(invoice.customerId)?.name || "Nieznany"}
-                    </td>
-                    <td>{formatCurrency(invoice.totalNetValue || 0)}</td>
-                    <td>{formatCurrency(invoice.totalGrossValue || 0)}</td>
-                    <td>{getPaymentMethodText(invoice.paymentMethod)}</td>
-                    <td>
-                      <span
-                        className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium ${
-                          invoice.isPaid
-                            ? "bg-green-100 text-green-800"
-                            : "bg-amber-100 text-amber-800"
-                        }`}
-                      >
-                        {invoice.isPaid ? "Zapłacono" : "Oczekuje"}
-                      </span>
-                    </td>
-                    <td>
-                      <span
-                        className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium ${
-                          invoice.ksef?.status === "sent"
-                            ? "bg-green-100 text-green-800"
-                            : invoice.ksef?.status === "pending"
-                            ? "bg-amber-100 text-amber-800"
-                            : "bg-gray-100 text-gray-800"
-                        }`}
-                      >
-                        {invoice.ksef?.status === "sent"
-                          ? "Wysłano"
-                          : invoice.ksef?.status === "pending"
-                          ? "Oczekuje"
-                          : "Brak"}
-                      </span>
-                    </td>
-                    <td>
-                      <div className="flex space-x-2">
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          asChild
-                        >
-                          <Link to={`/invoices/${invoice.id}`}>
-                            <FileText className="h-4 w-4" />
-                          </Link>
-                        </Button>
-                      </div>
+                {loading ? (
+                  <tr>
+                    <td colSpan={11} className="text-center py-8">
+                      Ładowanie...
                     </td>
                   </tr>
-                ))}
+                ) : filteredInvoices.length === 0 ? (
+                  <tr>
+                    <td colSpan={11} className="text-center py-8">
+                      {searchTerm.length > 0 ? "Brak wyników wyszukiwania" : "Brak faktur"}
+                    </td>
+                  </tr>
+                ) : (
+                  filteredInvoices.map((invoice) => (
+                    <tr key={invoice.id}>
+                      <td>{invoice.number}</td>
+                      <td>{getInvoiceTypeText(invoice.type)}</td>
+                      <td>{new Date(invoice.issueDate).toLocaleDateString("pl-PL")}</td>
+                      <td>{new Date(invoice.dueDate).toLocaleDateString("pl-PL")}</td>
+                      <td>
+                        {invoice.customerName || "Nieznany"}
+                      </td>
+                      <td>{formatCurrency(invoice.totalNetValue || 0)}</td>
+                      <td>{formatCurrency(invoice.totalGrossValue || 0)}</td>
+                      <td>{getPaymentMethodText(invoice.paymentMethod)}</td>
+                      <td>
+                        <span
+                          className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium ${
+                            invoice.isPaid
+                              ? "bg-green-100 text-green-800"
+                              : "bg-amber-100 text-amber-800"
+                          }`}
+                        >
+                          {invoice.isPaid ? "Zapłacono" : "Oczekuje"}
+                        </span>
+                      </td>
+                      <td>
+                        <span
+                          className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium ${
+                            invoice.ksef?.status === "sent"
+                              ? "bg-green-100 text-green-800"
+                              : invoice.ksef?.status === "pending"
+                              ? "bg-amber-100 text-amber-800"
+                              : "bg-gray-100 text-gray-800"
+                          }`}
+                        >
+                          {invoice.ksef?.status === "sent"
+                            ? "Wysłano"
+                            : invoice.ksef?.status === "pending"
+                            ? "Oczekuje"
+                            : "Brak"}
+                        </span>
+                      </td>
+                      <td>
+                        <div className="flex space-x-2">
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            asChild
+                          >
+                            <Link to={`/invoices/${invoice.id}`}>
+                              <FileText className="h-4 w-4" />
+                            </Link>
+                          </Button>
+                        </div>
+                      </td>
+                    </tr>
+                  ))
+                )}
               </tbody>
             </table>
           </div>

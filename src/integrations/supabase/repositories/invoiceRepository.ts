@@ -99,7 +99,11 @@ export async function getInvoice(id: string): Promise<Invoice> {
   // Fetch invoice
   const { data: invoiceData, error: invoiceError } = await supabase
     .from("invoices")
-    .select("*")
+    .select(`
+      *,
+      business_profiles(name),
+      customers(name)
+    `)
     .eq("id", id)
     .single();
 
@@ -144,14 +148,16 @@ export async function getInvoice(id: string): Promise<Invoice> {
     items,
     paymentMethod: invoiceData.payment_method as any,
     isPaid: invoiceData.is_paid || false,
-    comments: invoiceData.comments,
+    comments: invoiceData.comments || "",
     totalNetValue: Number(invoiceData.total_net_value),
     totalGrossValue: Number(invoiceData.total_gross_value),
     totalVatValue: Number(invoiceData.total_vat_value),
     ksef: {
       status: (invoiceData.ksef_status as any) || 'none',
-      referenceNumber: invoiceData.ksef_reference_number
-    }
+      referenceNumber: invoiceData.ksef_reference_number || null
+    },
+    businessName: invoiceData.business_profiles?.name,
+    customerName: invoiceData.customers?.name
   };
 }
 
@@ -182,13 +188,13 @@ export async function getInvoices(): Promise<Invoice[]> {
     items: [], // Items are loaded separately when needed
     paymentMethod: item.payment_method as any,
     isPaid: item.is_paid || false,
-    comments: item.comments,
+    comments: item.comments || "",
     totalNetValue: Number(item.total_net_value),
     totalGrossValue: Number(item.total_gross_value),
     totalVatValue: Number(item.total_vat_value),
     ksef: {
       status: (item.ksef_status as any) || 'none',
-      referenceNumber: item.ksef_reference_number
+      referenceNumber: item.ksef_reference_number || null
     },
     // Additional fields for display
     businessName: item.business_profiles?.name,

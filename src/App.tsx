@@ -10,6 +10,7 @@ import Dashboard from "./pages/Dashboard";
 import InvoiceList from "./pages/invoices/InvoiceList";
 import InvoiceDetail from "./pages/invoices/InvoiceDetail";
 import NewInvoice from "./pages/invoices/NewInvoice";
+import EditInvoice from "./pages/invoices/EditInvoice";
 import BusinessProfiles from "./pages/settings/BusinessProfiles";
 import NewBusinessProfile from "./pages/settings/NewBusinessProfile";
 import EditBusinessProfile from "./pages/settings/EditBusinessProfile";
@@ -40,6 +41,7 @@ const App = () => (
             <Route path="invoices" element={<InvoiceList />} />
             <Route path="invoices/:id" element={<InvoiceDetail />} />
             <Route path="invoices/new" element={<NewInvoice />} />
+            <Route path="invoices/edit/:id" element={<EditInvoice />} />
             
             {/* Customer routes */}
             <Route path="customers" element={<PlaceholderPage title="Klienci" />} />
