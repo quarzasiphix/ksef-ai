@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from "react";
 import { useParams, useNavigate, Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
@@ -7,12 +6,14 @@ import { ArrowLeft } from "lucide-react";
 import { Product } from "@/types";
 import { getProducts } from "@/integrations/supabase/repositories/productRepository";
 import ProductForm from "@/components/products/ProductForm";
+import { toast } from "sonner";
 
 const EditProduct = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const [product, setProduct] = useState<Product | null>(null);
   const [loading, setLoading] = useState(true);
+  const [isOpen, setIsOpen] = useState(true);
   
   useEffect(() => {
     const fetchProduct = async () => {
@@ -32,6 +33,15 @@ const EditProduct = () => {
     
     fetchProduct();
   }, [id]);
+  
+  const handleClose = () => {
+    navigate('/products');
+  };
+  
+  const handleSuccess = (product: Product) => {
+    toast.success('Produkt został zaktualizowany');
+    navigate('/products');
+  };
   
   if (loading) {
     return (
@@ -78,7 +88,14 @@ const EditProduct = () => {
           <CardTitle>Dane produktu</CardTitle>
         </CardHeader>
         <CardContent>
-          <ProductForm initialData={product} />
+          {product && (
+            <ProductForm
+              initialData={product}
+              isOpen={isOpen}
+              onClose={handleClose}
+              onSuccess={handleSuccess}
+            />
+          )}
         </CardContent>
       </Card>
     </div>

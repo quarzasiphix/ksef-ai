@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from "react";
 import { useParams, useNavigate, Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
@@ -7,12 +6,14 @@ import { ArrowLeft } from "lucide-react";
 import { Customer } from "@/types";
 import { getCustomers } from "@/integrations/supabase/repositories/customerRepository";
 import CustomerForm from "@/components/customers/CustomerForm";
+import { toast } from "sonner";
 
 const EditCustomer = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const [customer, setCustomer] = useState<Customer | null>(null);
   const [loading, setLoading] = useState(true);
+  const [isOpen, setIsOpen] = useState(true);
   
   useEffect(() => {
     const fetchCustomer = async () => {
@@ -32,6 +33,15 @@ const EditCustomer = () => {
     
     fetchCustomer();
   }, [id]);
+  
+  const handleClose = () => {
+    navigate(`/customers/${id}`);
+  };
+  
+  const handleSuccess = (customer: Customer) => {
+    toast.success('Klient został zaktualizowany');
+    navigate(`/customers/${customer.id}`);
+  };
   
   if (loading) {
     return (
@@ -78,7 +88,14 @@ const EditCustomer = () => {
           <CardTitle>Dane klienta</CardTitle>
         </CardHeader>
         <CardContent>
-          <CustomerForm initialData={customer} />
+          {customer && (
+            <CustomerForm
+              initialData={customer}
+              isOpen={isOpen}
+              onClose={handleClose}
+              onSuccess={handleSuccess}
+            />
+          )}
         </CardContent>
       </Card>
     </div>

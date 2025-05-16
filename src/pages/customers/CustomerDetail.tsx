@@ -6,7 +6,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Customer, Invoice } from "@/types";
 import { getCustomers } from "@/integrations/supabase/repositories/customerRepository";
 import { getInvoices } from "@/integrations/supabase/repositories/invoiceRepository";
-import { ArrowLeft, User, Mail, Phone, MapPin, Building, FileText, Edit } from "lucide-react";
+import { ArrowLeft, User, Mail, Phone, MapPin, Building, FileText, Edit, Plus } from "lucide-react";
 import InvoiceCard from "@/components/invoices/InvoiceCard";
 
 const CustomerDetail = () => {
