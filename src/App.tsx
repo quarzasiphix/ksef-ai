@@ -24,6 +24,7 @@ import NewCustomer from "./pages/customers/NewCustomer";
 import EditCustomer from "./pages/customers/EditCustomer";
 import NewProduct from "./pages/products/NewProduct";
 import EditProduct from "./pages/products/EditProduct";
+import ProductDetail from "./pages/products/ProductDetail";
 
 const queryClient = new QueryClient();
 
@@ -52,6 +53,7 @@ const App = () => (
             
             {/* Product routes */}
             <Route path="products" element={<ProductList />} />
+            <Route path="products/:id" element={<ProductDetail />} />
             <Route path="products/new" element={<NewProduct />} />
             <Route path="products/edit/:id" element={<EditProduct />} />
             
