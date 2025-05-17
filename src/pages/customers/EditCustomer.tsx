@@ -1,38 +1,22 @@
+
 import React, { useState, useEffect } from "react";
 import { useParams, useNavigate, Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { ArrowLeft } from "lucide-react";
 import { Customer } from "@/types";
-import { getCustomers } from "@/integrations/supabase/repositories/customerRepository";
 import CustomerForm from "@/components/customers/CustomerForm";
 import { toast } from "sonner";
+import { useGlobalData } from "@/hooks/use-global-data";
 
 const EditCustomer = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
-  const [customer, setCustomer] = useState<Customer | null>(null);
-  const [loading, setLoading] = useState(true);
   const [isOpen, setIsOpen] = useState(true);
+  const { customers: { data: customers, isLoading } } = useGlobalData();
   
-  useEffect(() => {
-    const fetchCustomer = async () => {
-      if (!id) return;
-      
-      setLoading(true);
-      try {
-        const customers = await getCustomers();
-        const foundCustomer = customers.find(c => c.id === id) || null;
-        setCustomer(foundCustomer);
-      } catch (error) {
-        console.error("Error fetching customer:", error);
-      } finally {
-        setLoading(false);
-      }
-    };
-    
-    fetchCustomer();
-  }, [id]);
+  // Find the customer from the global data cache instead of refetching
+  const customer = customers.find(c => c.id === id) || null;
   
   const handleClose = () => {
     navigate(`/customers/${id}`);
@@ -43,7 +27,7 @@ const EditCustomer = () => {
     navigate(`/customers/${customer.id}`);
   };
   
-  if (loading) {
+  if (isLoading) {
     return (
       <div className="text-center py-8">
         Ładowanie...

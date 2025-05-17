@@ -9,9 +9,20 @@ const GlobalDataLoader: React.FC = () => {
   const [initialLoad, setInitialLoad] = useState(true);
   
   useEffect(() => {
-    // When app starts, initialize data loading
-    if (!isLoading && initialLoad) {
-      setInitialLoad(false);
+    const initializeData = async () => {
+      try {
+        // When app starts, initialize data loading
+        await refreshAllData();
+        setInitialLoad(false);
+      } catch (error) {
+        console.error("Error loading initial data:", error);
+        toast.error("Wystąpił błąd podczas ładowania danych");
+        setInitialLoad(false);
+      }
+    };
+    
+    if (initialLoad) {
+      initializeData();
     }
     
     // Set up periodic refresh (optional) - every 10 minutes
@@ -22,7 +33,7 @@ const GlobalDataLoader: React.FC = () => {
     return () => {
       clearInterval(refreshInterval);
     };
-  }, [refreshAllData, isLoading, initialLoad]);
+  }, [refreshAllData, initialLoad]);
 
   if (initialLoad && isLoading) {
     return (

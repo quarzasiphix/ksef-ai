@@ -44,11 +44,13 @@ export function useGlobalData() {
   });
 
   // Function to manually refresh all data
-  const refreshAllData = () => {
-    queryClient.invalidateQueries({ queryKey: QUERY_KEYS.invoices });
-    queryClient.invalidateQueries({ queryKey: QUERY_KEYS.businessProfiles });
-    queryClient.invalidateQueries({ queryKey: QUERY_KEYS.customers });
-    queryClient.invalidateQueries({ queryKey: QUERY_KEYS.products });
+  const refreshAllData = async () => {
+    await Promise.all([
+      queryClient.invalidateQueries({ queryKey: QUERY_KEYS.invoices }),
+      queryClient.invalidateQueries({ queryKey: QUERY_KEYS.businessProfiles }),
+      queryClient.invalidateQueries({ queryKey: QUERY_KEYS.customers }),
+      queryClient.invalidateQueries({ queryKey: QUERY_KEYS.products })
+    ]);
   };
 
   // Set up refetch on window focus (when user returns to the app)
