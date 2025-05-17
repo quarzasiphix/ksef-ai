@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { formatCurrency } from "@/lib/invoice-utils";
@@ -62,7 +63,7 @@ const Dashboard = () => {
   const totalTax = invoices.reduce((sum, inv) => sum + (inv.totalVatValue || 0), 0);
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 max-w-full">
       <div className="flex items-center justify-between">
         <h1 className="text-3xl font-bold">Dashboard</h1>
       </div>
@@ -97,7 +98,7 @@ const Dashboard = () => {
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{formatCurrency(totalGross)}</div>
+            <div className="text-2xl font-bold truncate">{formatCurrency(totalGross)}</div>
           </CardContent>
         </Card>
         
@@ -108,7 +109,7 @@ const Dashboard = () => {
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{formatCurrency(totalTax)}</div>
+            <div className="text-2xl font-bold truncate">{formatCurrency(totalTax)}</div>
           </CardContent>
         </Card>
       </div>
@@ -122,13 +123,14 @@ const Dashboard = () => {
             <ResponsiveContainer width="100%" height="100%">
               <BarChart 
                 data={monthlySummaries}
-                margin={isMobile ? { top: 5, right: 0, left: -20, bottom: 0 } : { top: 5, right: 10, left: 0, bottom: 0 }}
+                margin={isMobile ? { top: 5, right: 5, left: -25, bottom: 0 } : { top: 5, right: 10, left: 0, bottom: 0 }}
               >
                 <XAxis dataKey="monthLabel" fontSize={isMobile ? 10 : 12} />
-                <YAxis fontSize={isMobile ? 10 : 12} width={isMobile ? 40 : 60} />
+                <YAxis fontSize={isMobile ? 10 : 12} width={isMobile ? 35 : 60} />
                 <Tooltip
                   formatter={(value: number) => formatCurrency(value)}
                   labelFormatter={(label) => `Miesiąc: ${label}`}
+                  contentStyle={{ fontSize: isMobile ? '10px' : '12px' }}
                 />
                 <Bar dataKey="totalNetValue" name="Netto" fill="#93c5fd" />
                 <Bar dataKey="totalVatValue" name="VAT" fill="#3b82f6" />
@@ -191,8 +193,8 @@ const Dashboard = () => {
                 ) : (
                   invoices.slice(0, 5).map((invoice) => (
                     <tr key={invoice.id}>
-                      <td>{invoice.number}</td>
-                      <td>{new Date(invoice.issueDate).toLocaleDateString("pl-PL")}</td>
+                      <td className="truncate max-w-[100px]">{invoice.number}</td>
+                      <td className="whitespace-nowrap">{new Date(invoice.issueDate).toLocaleDateString("pl-PL")}</td>
                       <td>
                         <span className={`px-2 py-1 rounded-full text-xs ${
                           invoice.ksef?.status === "sent" 
@@ -208,7 +210,7 @@ const Dashboard = () => {
                               : "Brak"}
                         </span>
                       </td>
-                      {!isMobile && <td>{invoice.ksef?.referenceNumber || "—"}</td>}
+                      {!isMobile && <td className="truncate">{invoice.ksef?.referenceNumber || "—"}</td>}
                     </tr>
                   ))
                 )}

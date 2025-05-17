@@ -74,18 +74,18 @@ const InvoiceList = () => {
     );
   }, [invoices, searchTerm, selectedType]);
   
-  // Determine which types to show in the main filter bar vs dropdown
+  // For mobile, show first 2 options on main bar, rest in dropdown
   const mainTypes = useMemo(() => {
-    if (isMobile && availableTypes.length > 3) {
-      // On mobile with many types, show only "all" and one more
-      return availableTypes.slice(0, 2);
+    if (isMobile) {
+      // On mobile, only show 2 options (usually "all" and one more)
+      return availableTypes.slice(0, Math.min(2, availableTypes.length));
     }
     return availableTypes;
   }, [availableTypes, isMobile]);
   
   const dropdownTypes = useMemo(() => {
-    if (isMobile && availableTypes.length > 3) {
-      // Extra types for dropdown
+    if (isMobile && availableTypes.length > 2) {
+      // Extra types for dropdown on mobile
       return availableTypes.slice(2);
     }
     return [];
@@ -109,7 +109,7 @@ const InvoiceList = () => {
       </div>
       
       {/* Document Type Filter */}
-      <div className="flex items-center gap-2 overflow-x-auto pb-2 scrollbar-none">
+      <div className="flex items-center gap-2">
         {mainTypes.map((type) => (
           <Button
             key={type}
@@ -134,6 +134,7 @@ const InvoiceList = () => {
                 <DropdownMenuItem 
                   key={type}
                   onClick={() => setSelectedType(type)}
+                  className={selectedType === type ? "bg-muted" : ""}
                 >
                   {translateInvoiceType(type)}
                 </DropdownMenuItem>

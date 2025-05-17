@@ -38,7 +38,7 @@ const GlobalDataLoader: React.FC = () => {
   if (initialLoad && isLoading) {
     return (
       <div className="fixed inset-0 bg-background/80 backdrop-blur-sm z-50 flex items-center justify-center">
-        <div className="flex flex-col items-center gap-2">
+        <div className="flex flex-col items-center gap-2 px-4 text-center">
           <Loader className="h-10 w-10 animate-spin text-primary" />
           <p className="text-sm text-muted-foreground">Ładowanie danych aplikacji...</p>
         </div>
