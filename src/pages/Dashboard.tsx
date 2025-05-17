@@ -69,17 +69,17 @@ const Dashboard = () => {
       </div>
       
       {isMobile ? (
-        // Mobile view - combined card for the first two metrics
+        // Mobile view - combined card for the first two metrics with vertical layout
         <div className="grid grid-cols-1 gap-3">
           <Card>
             <CardContent className="pt-6">
-              <div className="grid grid-cols-2 gap-4">
-                <div className="flex flex-col">
+              <div className="space-y-3">
+                <div className="flex justify-between items-center">
                   <span className="text-sm font-medium text-muted-foreground">Wszystkie faktury</span>
                   <span className="text-2xl font-bold">{totalInvoices}</span>
                 </div>
                 
-                <div className="flex flex-col">
+                <div className="flex justify-between items-center">
                   <span className="text-sm font-medium text-muted-foreground">Niezapłacone faktury</span>
                   <span className="text-2xl font-bold text-amber-500">{unpaidInvoices}</span>
                 </div>
