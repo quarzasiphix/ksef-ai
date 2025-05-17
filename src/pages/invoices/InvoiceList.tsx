@@ -77,7 +77,7 @@ const InvoiceList = () => {
   // For mobile, show first 2 options on main bar, rest in dropdown
   const mainTypes = useMemo(() => {
     if (isMobile) {
-      // On mobile, only show 2 options (usually "all" and one more)
+      // On mobile, only show 2 options (including "all")
       return availableTypes.slice(0, Math.min(2, availableTypes.length));
     }
     return availableTypes;
@@ -109,7 +109,7 @@ const InvoiceList = () => {
       </div>
       
       {/* Document Type Filter */}
-      <div className="flex items-center gap-2">
+      <div className="flex items-center gap-2 overflow-x-hidden">
         {mainTypes.map((type) => (
           <Button
             key={type}
