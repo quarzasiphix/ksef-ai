@@ -28,30 +28,30 @@ export const InvoicePaymentCard: React.FC<InvoicePaymentCardProps> = ({
   
   return (
     <Card>
-      <CardHeader>
-        <CardTitle className="text-lg md:text-xl">Płatność</CardTitle>
+      <CardHeader className="py-3 px-4">
+        <CardTitle className="text-base md:text-lg">Płatność</CardTitle>
       </CardHeader>
-      <CardContent className="grid md:grid-cols-2 gap-6">
+      <CardContent className="grid md:grid-cols-2 gap-4 px-4 py-2">
         <div>
-          <p className="text-sm font-medium text-muted-foreground">Metoda płatności</p>
+          <p className="text-xs font-medium text-muted-foreground mb-1">Metoda płatności</p>
           <p className="font-medium">
             {paymentMethod === "transfer" ? "Przelew" : 
              paymentMethod === "cash" ? "Gotówka" : 
              paymentMethod === "card" ? "Karta" : "Inna"}
           </p>
         </div>
-        <div>
-          <div className="flex items-center justify-between">
-            <p className="text-sm font-medium text-muted-foreground">Wartość netto:</p>
-            <p className="font-medium">{formatCurrency(totalNetValue || 0)}</p>
+        <div className="bg-gray-50 p-3 rounded-md">
+          <div className="flex items-center justify-between text-sm">
+            <p className="text-muted-foreground">Wartość netto:</p>
+            <p>{formatCurrency(totalNetValue || 0)}</p>
           </div>
           {!isReceipt && (
-            <div className="flex items-center justify-between mt-1">
-              <p className="text-sm font-medium text-muted-foreground">Kwota VAT:</p>
-              <p className="font-medium">{formatCurrency(totalVatValue || 0)}</p>
+            <div className="flex items-center justify-between text-sm mt-1">
+              <p className="text-muted-foreground">Kwota VAT:</p>
+              <p>{formatCurrency(totalVatValue || 0)}</p>
             </div>
           )}
-          <div className="flex items-center justify-between mt-2 text-base md:text-lg font-bold">
+          <div className="flex items-center justify-between mt-2 text-base font-bold">
             <p>Do zapłaty:</p>
             <p>{formatCurrency(totalGrossValue || 0)}</p>
           </div>

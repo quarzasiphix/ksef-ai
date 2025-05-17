@@ -3,11 +3,12 @@
 .invoice-table {
   width: 100%;
   border-collapse: collapse;
+  font-size: 0.875rem;
 }
 
 .invoice-table th,
 .invoice-table td {
-  padding: 0.6rem;
+  padding: 0.5rem;
   border-bottom: 1px solid hsl(220 13% 91%);
   text-align: left;
 }
@@ -16,36 +17,40 @@
   font-weight: 500;
   color: hsl(215.4 16.3% 46.9%);
   background-color: hsl(220 14.3% 95.9%);
+  white-space: nowrap;
 }
 
 .invoice-table tr:hover {
   background-color: hsl(214.3 31.8% 91.4% / 0.4);
 }
 
+.invoice-table-container {
+  max-width: 100%;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  margin-bottom: 1rem;
+}
+
+/* Condensed table on smaller screens */
 @media screen and (max-width: 1200px) {
   .invoice-table {
-    font-size: 0.875rem;
+    font-size: 0.75rem;
   }
   
   .invoice-table th,
   .invoice-table td {
-    padding: 0.5rem;
+    padding: 0.4rem;
   }
 }
 
+/* Ensure table is scrollable on tablets and smaller screens */
 @media screen and (max-width: 992px) {
-  .invoice-table-container {
-    max-width: 100%;
-    overflow-x: auto;
-    -webkit-overflow-scrolling: touch;
-    margin-bottom: 1rem;
-  }
-  
   .invoice-table {
-    min-width: 800px;
+    min-width: 650px;
   }
 }
 
+/* Print styles */
 @media print {
   .invoice-table th {
     background-color: #f2f2f2 !important;

@@ -80,7 +80,7 @@ const InvoiceDetail = () => {
   }
   
   return (
-    <div className="space-y-4 md:space-y-6 max-w-full px-0 sm:px-4">
+    <div className="space-y-4 max-w-full px-0 sm:px-2">
       <InvoiceHeader 
         id={invoice.id}
         number={invoice.number}
@@ -90,8 +90,8 @@ const InvoiceDetail = () => {
       />
       
       {/* Printable content reference */}
-      <div ref={printRef} className="space-y-4 md:space-y-6 print:p-8">
-        <div className="grid md:grid-cols-2 gap-4 md:gap-6">
+      <div ref={printRef} className="space-y-4 print:p-8">
+        <div className="grid md:grid-cols-2 gap-4">
           <InvoiceDetailsCard
             number={invoice.number}
             issueDate={invoice.issueDate}

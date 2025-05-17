@@ -1,7 +1,7 @@
 
 import React, { useState, useEffect } from "react";
 import { useSearchParams, useNavigate } from "react-router-dom";
-import { Invoice, InvoiceType } from "@/types";
+import { Invoice, InvoiceType, PaymentMethod } from "@/types";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -16,6 +16,13 @@ import {
   FormMessage
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
+import { 
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue
+} from "@/components/ui/select";
 import { toast } from "sonner";
 import { ArrowLeft } from "lucide-react";
 
@@ -25,7 +32,12 @@ const invoiceFormSchema = z.object({
   customerName: z.string().min(1, "Nazwa klienta jest wymagana"),
   issueDate: z.string(),
   dueDate: z.string(),
-  totalAmount: z.coerce.number().positive("Kwota musi być większa od zera")
+  sellDate: z.string(),
+  paymentMethod: z.string().min(1, "Metoda płatności jest wymagana"),
+  totalNetValue: z.coerce.number().nonnegative("Kwota musi być dodatnia lub zero"),
+  totalVatValue: z.coerce.number().nonnegative("Kwota VAT musi być dodatnia lub zero").optional().default(0),
+  totalGrossValue: z.coerce.number().positive("Kwota brutto musi być większa od zera"),
+  comments: z.string().optional()
 });
 
 type InvoiceFormValues = z.infer<typeof invoiceFormSchema>;
@@ -38,6 +50,7 @@ const NewInvoice: React.FC<{
   const navigate = useNavigate();
   const [documentType, setDocumentType] = useState<InvoiceType>(InvoiceType.SALES);
   const [documentSettings, setDocumentSettings] = useState<any[]>([]);
+  const today = new Date().toISOString().split('T')[0];
 
   // Setup form with default values
   const form = useForm<InvoiceFormValues>({
@@ -45,9 +58,14 @@ const NewInvoice: React.FC<{
     defaultValues: {
       number: initialData?.number || "",
       customerName: initialData?.customerName || "",
-      issueDate: initialData?.issueDate || new Date().toISOString().split('T')[0],
-      dueDate: initialData?.dueDate || new Date().toISOString().split('T')[0],
-      totalAmount: initialData?.totalGrossValue || 0
+      issueDate: initialData?.issueDate || today,
+      sellDate: initialData?.sellDate || today,
+      dueDate: initialData?.dueDate || today,
+      paymentMethod: initialData?.paymentMethod || "transfer",
+      totalNetValue: initialData?.totalNetValue || 0,
+      totalVatValue: initialData?.totalVatValue || 0,
+      totalGrossValue: initialData?.totalGrossValue || 0,
+      comments: initialData?.comments || ""
     }
   });
 
@@ -91,6 +109,7 @@ const NewInvoice: React.FC<{
 
   // Form submission handler
   function onSubmit(data: InvoiceFormValues) {
+    console.log("Form data", data);
     toast.success("Dokument zapisany pomyślnie!");
     navigate("/income");
   }
@@ -105,23 +124,25 @@ const NewInvoice: React.FC<{
       default: return "Dokument";
     }
   };
+  
+  const isReceipt = documentType === InvoiceType.RECEIPT;
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4">
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2">
-          <Button variant="outline" size="icon" asChild>
-            <ArrowLeft className="h-4 w-4" onClick={() => navigate(-1)} />
+          <Button variant="outline" size="icon" onClick={() => navigate(-1)}>
+            <ArrowLeft className="h-4 w-4" />
           </Button>
-          <h1 className="text-2xl font-bold">
+          <h1 className="text-xl font-bold">
             {initialData ? "Edytuj dokument" : `Nowy ${getDocumentTitle().toLowerCase()}`}
           </h1>
         </div>
       </div>
       
       <Card>
-        <CardHeader>
-          <CardTitle>{getDocumentTitle()} - dane podstawowe</CardTitle>
+        <CardHeader className="py-4">
+          <CardTitle className="text-lg">{getDocumentTitle()} - dane podstawowe</CardTitle>
         </CardHeader>
         <CardContent>
           <Form {...form}>
@@ -171,6 +192,20 @@ const NewInvoice: React.FC<{
                 
                 <FormField
                   control={form.control}
+                  name="sellDate"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Data sprzedaży</FormLabel>
+                      <FormControl>
+                        <Input type="date" {...field} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                
+                <FormField
+                  control={form.control}
                   name="dueDate"
                   render={({ field }) => (
                     <FormItem>
@@ -183,13 +218,51 @@ const NewInvoice: React.FC<{
                   )}
                 />
                 
-                {documentType !== InvoiceType.RECEIPT && (
+                <FormField
+                  control={form.control}
+                  name="paymentMethod"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Metoda płatności</FormLabel>
+                      <Select onValueChange={field.onChange} defaultValue={field.value}>
+                        <FormControl>
+                          <SelectTrigger>
+                            <SelectValue placeholder="Wybierz metodę płatności" />
+                          </SelectTrigger>
+                        </FormControl>
+                        <SelectContent>
+                          <SelectItem value="transfer">Przelew</SelectItem>
+                          <SelectItem value="cash">Gotówka</SelectItem>
+                          <SelectItem value="card">Karta</SelectItem>
+                          <SelectItem value="other">Inna</SelectItem>
+                        </SelectContent>
+                      </Select>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                
+                <FormField
+                  control={form.control}
+                  name="totalNetValue"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Kwota netto</FormLabel>
+                      <FormControl>
+                        <Input type="number" step="0.01" {...field} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                
+                {!isReceipt && (
                   <FormField
                     control={form.control}
-                    name="totalAmount"
+                    name="totalVatValue"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel>Kwota brutto</FormLabel>
+                        <FormLabel>Kwota VAT</FormLabel>
                         <FormControl>
                           <Input type="number" step="0.01" {...field} />
                         </FormControl>
@@ -198,6 +271,36 @@ const NewInvoice: React.FC<{
                     )}
                   />
                 )}
+                
+                <FormField
+                  control={form.control}
+                  name="totalGrossValue"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Kwota brutto</FormLabel>
+                      <FormControl>
+                        <Input type="number" step="0.01" {...field} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                
+                <div className={isReceipt ? "col-span-2" : ""}>
+                  <FormField
+                    control={form.control}
+                    name="comments"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Uwagi</FormLabel>
+                        <FormControl>
+                          <Input placeholder="Opcjonalne uwagi do dokumentu" {...field} />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                </div>
               </div>
               
               <div className="flex justify-end space-x-2 pt-4">
