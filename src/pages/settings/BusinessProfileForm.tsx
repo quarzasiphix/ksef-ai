@@ -7,7 +7,6 @@ import { useNavigate } from "react-router-dom";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
 import {
   Form,
@@ -19,6 +18,7 @@ import {
 } from "@/components/ui/form";
 import { BusinessProfile } from "@/types";
 import { saveBusinessProfile } from "@/integrations/supabase/repositories/businessProfileRepository";
+import { useIsMobile } from "@/hooks/use-mobile";
 
 const formSchema = z.object({
   name: z.string().min(1, "Nazwa jest wymagana"),
@@ -44,6 +44,7 @@ const BusinessProfileForm = ({
 }: BusinessProfileFormProps) => {
   const navigate = useNavigate();
   const isEditing = !!initialData?.id;
+  const isMobile = useIsMobile();
 
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
@@ -99,7 +100,7 @@ const BusinessProfileForm = ({
     <Form {...form}>
       <form
         onSubmit={form.handleSubmit(onSubmit)}
-        className="space-y-6 pb-10 max-w-2xl mx-auto"
+        className="space-y-6 pb-10 max-w-full mx-auto"
       >
         <div className="space-y-4">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -250,15 +251,16 @@ const BusinessProfileForm = ({
           />
         </div>
 
-        <div className="flex gap-4 justify-end">
+        <div className={`flex gap-4 ${isMobile ? 'flex-col' : 'justify-end'}`}>
           <Button
             type="button"
             variant="outline"
             onClick={() => navigate("/settings")}
+            className={isMobile ? 'w-full' : ''}
           >
             Anuluj
           </Button>
-          <Button type="submit">
+          <Button type="submit" className={isMobile ? 'w-full' : ''}>
             {isEditing ? "Aktualizuj" : "Utwórz"} profil
           </Button>
         </div>

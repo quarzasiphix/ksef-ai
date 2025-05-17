@@ -69,15 +69,15 @@ const DocumentSettings = () => {
   };
   
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 max-w-full">
       <div>
-        <h1 className="text-3xl font-bold">Ustawienia dokumentów</h1>
+        <h1 className="text-2xl font-bold">Ustawienia dokumentów</h1>
         <p className="text-muted-foreground">
           Dostosuj typy dokumentów i ich wyświetlanie
         </p>
       </div>
       
-      <Card>
+      <Card className="overflow-hidden">
         <CardHeader>
           <CardTitle>Typy dokumentów</CardTitle>
           <CardDescription>
@@ -88,7 +88,7 @@ const DocumentSettings = () => {
           <div className="space-y-6">
             {documentTypes.map((type) => (
               <div key={type.id} className="flex flex-col gap-2">
-                <div className="flex items-center justify-between">
+                <div className="flex items-center justify-between flex-wrap gap-2">
                   <Label htmlFor={`${type.id}-enabled`} className="font-medium">
                     {type.name}
                   </Label>
@@ -100,7 +100,7 @@ const DocumentSettings = () => {
                 </div>
                 
                 {type.id !== "receipt" && (
-                  <div className="flex items-center justify-between ml-6 text-sm">
+                  <div className="flex items-center justify-between ml-4 text-sm flex-wrap gap-2">
                     <Label htmlFor={`${type.id}-vat`} className="text-muted-foreground">
                       Pokazuj informacje o VAT
                     </Label>
@@ -117,7 +117,7 @@ const DocumentSettings = () => {
               </div>
             ))}
             
-            <Button onClick={handleSave} className="mt-4">
+            <Button onClick={handleSave} className="w-full sm:w-auto">
               Zapisz ustawienia
             </Button>
           </div>

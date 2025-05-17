@@ -1,3 +1,4 @@
+
 import React, { useEffect, useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { formatCurrency } from "@/lib/invoice-utils";
@@ -7,11 +8,13 @@ import { getInvoices } from "@/integrations/supabase/repositories/invoiceReposit
 import InvoiceCard from "@/components/invoices/InvoiceCard";
 import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
+import { useIsMobile } from "@/hooks/use-mobile";
 
 const Dashboard = () => {
   const [invoices, setInvoices] = useState<Invoice[]>([]);
   const [loading, setLoading] = useState(true);
   const [monthlySummaries, setMonthlySummaries] = useState<any[]>([]);
+  const isMobile = useIsMobile();
   
   useEffect(() => {
     const fetchInvoices = async () => {
@@ -75,7 +78,7 @@ const Dashboard = () => {
         <h1 className="text-3xl font-bold">Dashboard</h1>
       </div>
       
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-3 md:gap-4">
+      <div className="grid grid-cols-2 gap-3">
         <Card>
           <CardHeader className="pb-2">
             <CardTitle className="text-sm font-medium text-muted-foreground">
@@ -126,11 +129,14 @@ const Dashboard = () => {
           <CardTitle>Miesięczna sprzedaż</CardTitle>
         </CardHeader>
         <CardContent className="pt-2">
-          <div className="h-64 md:h-80">
+          <div className={isMobile ? "h-48" : "h-64 md:h-80"}>
             <ResponsiveContainer width="100%" height="100%">
-              <BarChart data={monthlySummaries}>
-                <XAxis dataKey="monthLabel" />
-                <YAxis />
+              <BarChart 
+                data={monthlySummaries}
+                margin={isMobile ? { top: 5, right: 0, left: -20, bottom: 0 } : { top: 5, right: 10, left: 0, bottom: 0 }}
+              >
+                <XAxis dataKey="monthLabel" fontSize={isMobile ? 10 : 12} />
+                <YAxis fontSize={isMobile ? 10 : 12} width={isMobile ? 40 : 60} />
                 <Tooltip
                   formatter={(value: number) => formatCurrency(value)}
                   labelFormatter={(label) => `Miesiąc: ${label}`}
@@ -161,8 +167,8 @@ const Dashboard = () => {
             <p>Brak faktur</p>
           </div>
         ) : (
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
-            {invoices.slice(0, 8).map((invoice) => (
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            {invoices.slice(0, 4).map((invoice) => (
               <InvoiceCard key={invoice.id} invoice={invoice} />
             ))}
           </div>
@@ -181,17 +187,17 @@ const Dashboard = () => {
                   <th>Nr faktury</th>
                   <th>Data</th>
                   <th>Status KSeF</th>
-                  <th>Nr referencyjny</th>
+                  {!isMobile && <th>Nr referencyjny</th>}
                 </tr>
               </thead>
               <tbody>
                 {loading ? (
                   <tr>
-                    <td colSpan={4} className="text-center py-4">Ładowanie...</td>
+                    <td colSpan={isMobile ? 3 : 4} className="text-center py-4">Ładowanie...</td>
                   </tr>
                 ) : invoices.length === 0 ? (
                   <tr>
-                    <td colSpan={4} className="text-center py-4">Brak faktur</td>
+                    <td colSpan={isMobile ? 3 : 4} className="text-center py-4">Brak faktur</td>
                   </tr>
                 ) : (
                   invoices.slice(0, 5).map((invoice) => (
@@ -213,7 +219,7 @@ const Dashboard = () => {
                               : "Brak"}
                         </span>
                       </td>
-                      <td>{invoice.ksef?.referenceNumber || "—"}</td>
+                      {!isMobile && <td>{invoice.ksef?.referenceNumber || "—"}</td>}
                     </tr>
                   ))
                 )}

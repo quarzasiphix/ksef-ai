@@ -21,11 +21,13 @@ import {
 import { Edit, Plus, MoreVertical, Building2, Star } from "lucide-react";
 import { getBusinessProfiles } from "@/integrations/supabase/repositories/businessProfileRepository";
 import type { BusinessProfile } from "@/types";
+import { useIsMobile } from "@/hooks/use-mobile";
 
 const BusinessProfiles = () => {
   const navigate = useNavigate();
   const [profiles, setProfiles] = useState<BusinessProfile[]>([]);
   const [loading, setLoading] = useState(true);
+  const isMobile = useIsMobile();
 
   useEffect(() => {
     const fetchProfiles = async () => {
@@ -79,7 +81,41 @@ const BusinessProfiles = () => {
                 Dodaj pierwszy profil
               </Button>
             </div>
+          ) : isMobile ? (
+            // Mobile view with cards
+            <div className="space-y-4">
+              {profiles.map((profile) => (
+                <Card key={profile.id} className="overflow-hidden">
+                  <CardContent className="p-4">
+                    <div className="flex justify-between items-start">
+                      <div className="space-y-2">
+                        <div className="flex items-center">
+                          <h3 className="font-medium">{profile.name}</h3>
+                          {profile.isDefault && (
+                            <Star className="ml-2 h-4 w-4 text-yellow-500" />
+                          )}
+                        </div>
+                        <div className="text-sm text-muted-foreground">
+                          <p>NIP: {profile.taxId}</p>
+                          <p>
+                            {profile.address}, {profile.postalCode} {profile.city}
+                          </p>
+                        </div>
+                      </div>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        onClick={() => navigate(`/settings/business-profiles/${profile.id}`)}
+                      >
+                        <Edit className="h-4 w-4" />
+                      </Button>
+                    </div>
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
           ) : (
+            // Desktop view with table
             <div className="overflow-x-auto">
               <Table>
                 <TableHeader>
