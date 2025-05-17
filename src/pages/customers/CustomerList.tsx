@@ -1,5 +1,5 @@
 
-import React, { useEffect, useState } from "react";
+import React, { useState } from "react";
 import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import {
@@ -12,8 +12,8 @@ import {
 import { Input } from "@/components/ui/input";
 import { Customer } from "@/types";
 import { Plus, Search, User, MapPin, Phone, Mail } from "lucide-react";
-import { getCustomers } from "@/integrations/supabase/repositories/customerRepository";
 import { Badge } from "@/components/ui/badge";
+import { useGlobalData } from "@/hooks/use-global-data";
 
 const CustomerCard = ({ customer }: { customer: Customer }) => {
   return (
@@ -52,25 +52,8 @@ const CustomerCard = ({ customer }: { customer: Customer }) => {
 };
 
 const CustomerList = () => {
-  const [customers, setCustomers] = useState<Customer[]>([]);
+  const { customers: { data: customers, isLoading } } = useGlobalData();
   const [searchTerm, setSearchTerm] = useState("");
-  const [loading, setLoading] = useState(true);
-  
-  useEffect(() => {
-    const fetchCustomers = async () => {
-      setLoading(true);
-      try {
-        const customersData = await getCustomers();
-        setCustomers(customersData);
-      } catch (error) {
-        console.error("Error fetching customers:", error);
-      } finally {
-        setLoading(false);
-      }
-    };
-    
-    fetchCustomers();
-  }, []);
   
   // Filter customers based on search term
   const filteredCustomers = customers.filter(
@@ -118,7 +101,7 @@ const CustomerList = () => {
           </div>
         </CardHeader>
         <CardContent>
-          {loading ? (
+          {isLoading ? (
             <div className="text-center py-8">
               Ładowanie...
             </div>

@@ -36,32 +36,32 @@ export const InvoiceItemsCard: React.FC<InvoiceItemsCardProps> = ({
         <CardContent className="p-3">
           <div className="font-medium text-base mb-2">{index + 1}. {item.name}</div>
           
-          <div className="grid grid-cols-2 gap-2 text-sm">
-            <div>
+          <div className="space-y-2 text-sm">
+            <div className="flex items-center justify-between">
               <p className="text-muted-foreground">Ilość:</p>
               <p>{item.quantity} {item.unit}</p>
             </div>
-            <div>
+            <div className="flex items-center justify-between">
               <p className="text-muted-foreground">Cena netto:</p>
               <p>{formatCurrency(item.unitPrice)}</p>
             </div>
             {!isReceipt && (
-              <div>
+              <div className="flex items-center justify-between">
                 <p className="text-muted-foreground">VAT:</p>
                 <p>{item.vatRate}%</p>
               </div>
             )}
-            <div>
-              <p className="text-muted-foreground">Wartość netto:</p>
-              <p>{formatCurrency(item.totalNetValue || 0)}</p>
+            <div className="flex items-center justify-between">
+              <p className="netto-label">Wartość netto:</p>
+              <p className="netto-value">{formatCurrency(item.totalNetValue || 0)}</p>
             </div>
             {!isReceipt && (
-              <div>
+              <div className="flex items-center justify-between">
                 <p className="text-muted-foreground">Kwota VAT:</p>
                 <p>{formatCurrency(item.totalVatValue || 0)}</p>
               </div>
             )}
-            <div className={isReceipt ? "col-span-2" : ""}>
+            <div className="flex items-center justify-between">
               <p className="text-muted-foreground">Wartość brutto:</p>
               <p className="font-medium">{formatCurrency(item.totalGrossValue || 0)}</p>
             </div>
@@ -97,7 +97,7 @@ export const InvoiceItemsCard: React.FC<InvoiceItemsCardProps> = ({
                 <td>{item.quantity}</td>
                 <td>{item.unit}</td>
                 <td>{formatCurrency(item.unitPrice)}</td>
-                <td>{formatCurrency(item.totalNetValue || 0)}</td>
+                <td className="netto-value">{formatCurrency(item.totalNetValue || 0)}</td>
                 {!isReceipt && <td>{item.vatRate}%</td>}
                 {!isReceipt && <td>{formatCurrency(item.totalVatValue || 0)}</td>}
                 <td>{formatCurrency(item.totalGrossValue || 0)}</td>
@@ -120,20 +120,20 @@ export const InvoiceItemsCard: React.FC<InvoiceItemsCardProps> = ({
   // Mobile summary for totals
   const renderMobileSummary = () => {
     return (
-      <div className="bg-gray-50 p-3 rounded-md mt-4">
+      <div className="bg-muted p-3 rounded-md mt-4">
         <div className="flex justify-between mb-1">
           <span className="text-muted-foreground">Razem netto:</span>
-          <span>{formatCurrency(totalNetValue || 0)}</span>
+          <span className="text-foreground">{formatCurrency(totalNetValue || 0)}</span>
         </div>
         {!isReceipt && (
           <div className="flex justify-between mb-1">
             <span className="text-muted-foreground">Razem VAT:</span>
-            <span>{formatCurrency(totalVatValue || 0)}</span>
+            <span className="text-foreground">{formatCurrency(totalVatValue || 0)}</span>
           </div>
         )}
         <div className="flex justify-between font-bold">
-          <span>Razem brutto:</span>
-          <span>{formatCurrency(totalGrossValue || 0)}</span>
+          <span className="text-foreground">Razem brutto:</span>
+          <span className="text-foreground">{formatCurrency(totalGrossValue || 0)}</span>
         </div>
       </div>
     );

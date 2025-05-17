@@ -65,7 +65,7 @@ const AppSidebar = () => {
       
       <SidebarContent>
         <div className={`mb-8 px-3 ${!open ? "hidden" : "block"}`}>
-          <h2 className="text-2xl font-bold text-invoice">KSeF</h2>
+          <h2 className="text-2xl font-bold text-invoice">AiFaktura</h2>
           <p className="text-xs text-muted-foreground">System Faktur</p>
         </div>
         

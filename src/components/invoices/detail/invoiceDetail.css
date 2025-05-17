@@ -6,22 +6,34 @@
   font-size: 0.875rem;
 }
 
+/* Dark mode styles for netto values */
+[data-theme="dark"] .netto-value {
+  background-color: var(--primary);
+  color: var(--primary-foreground);
+  border-radius: 0.25rem;
+  padding: 0.25rem 0.5rem;
+}
+
+[data-theme="dark"] .netto-label {
+  color: var(--primary-foreground);
+}
+
 .invoice-table th,
 .invoice-table td {
   padding: 0.4rem 0.5rem;
-  border-bottom: 1px solid hsl(220 13% 91%);
+  border-bottom: 1px solid var(--border);
   text-align: left;
 }
 
 .invoice-table th {
   font-weight: 500;
-  color: hsl(215.4 16.3% 46.9%);
-  background-color: hsl(220 14.3% 95.9%);
+  color: var(--muted-foreground);
+  background-color: var(--muted);
   white-space: nowrap;
 }
 
 .invoice-table tr:hover {
-  background-color: hsl(214.3 31.8% 91.4% / 0.4);
+  background-color: var(--accent);
 }
 
 .invoice-table-container {
@@ -30,7 +42,7 @@
   -webkit-overflow-scrolling: touch;
   margin-bottom: 1rem;
   border-radius: 0.5rem;
-  border: 1px solid hsl(220 13% 91%);
+  border: 1px solid var(--border);
 }
 
 /* More compact table for all screen sizes */
@@ -72,6 +84,7 @@
 @media print {
   .invoice-table th {
     background-color: #f2f2f2 !important;
+    color: #333 !important;
     -webkit-print-color-adjust: exact;
     print-color-adjust: exact;
   }
@@ -79,5 +92,11 @@
   .invoice-table th,
   .invoice-table td {
     padding: 0.35rem;
+    color: #333 !important;
+    border-color: #ddd !important;
+  }
+  
+  .invoice-table {
+    background-color: white !important;
   }
 }

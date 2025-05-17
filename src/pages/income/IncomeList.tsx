@@ -1,5 +1,5 @@
 
-import React, { useEffect, useState, useMemo } from "react";
+import React, { useState, useMemo } from "react";
 import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import {
@@ -12,8 +12,8 @@ import {
 import { Input } from "@/components/ui/input";
 import { Invoice, InvoiceType } from "@/types";
 import { Plus, Search, Filter } from "lucide-react";
-import { getInvoices } from "@/integrations/supabase/repositories/invoiceRepository";
 import InvoiceCard from "@/components/invoices/InvoiceCard";
+import { useGlobalData } from "@/hooks/use-global-data";
 import {
   Select,
   SelectContent,
@@ -31,26 +31,9 @@ import {
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
 const IncomeList = () => {
-  const [invoices, setInvoices] = useState<Invoice[]>([]);
+  const { invoices: { data: invoices, isLoading } } = useGlobalData();
   const [searchTerm, setSearchTerm] = useState("");
-  const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState<string>("all");
-  
-  useEffect(() => {
-    const fetchInvoices = async () => {
-      setLoading(true);
-      try {
-        const invoicesData = await getInvoices();
-        setInvoices(invoicesData);
-      } catch (error) {
-        console.error("Error fetching invoices:", error);
-      } finally {
-        setLoading(false);
-      }
-    };
-    
-    fetchInvoices();
-  }, []);
 
   // Get only document types that exist in the data
   const availableTypes = useMemo(() => {
@@ -174,7 +157,7 @@ const IncomeList = () => {
         </div>
         
         <CardContent>
-          {loading ? (
+          {isLoading ? (
             <div className="text-center py-8">
               Ładowanie...
             </div>

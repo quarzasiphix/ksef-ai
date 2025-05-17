@@ -11,7 +11,7 @@ const GlobalDataLoader: React.FC = () => {
   useEffect(() => {
     const initializeData = async () => {
       try {
-        // When app starts, initialize data loading
+        // Only load data once when the app first starts
         await refreshAllData();
         setInitialLoad(false);
       } catch (error) {
@@ -25,14 +25,9 @@ const GlobalDataLoader: React.FC = () => {
       initializeData();
     }
     
-    // Set up periodic refresh (optional) - every 10 minutes
-    const refreshInterval = setInterval(() => {
-      refreshAllData();
-    }, 1000 * 60 * 10); // 10 minutes
+    // We're disabling periodic refreshes to prevent unnecessary data fetching
+    // Data will only be refreshed when explicitly requested or when a mutation occurs
     
-    return () => {
-      clearInterval(refreshInterval);
-    };
   }, [refreshAllData, initialLoad]);
 
   if (initialLoad && isLoading) {

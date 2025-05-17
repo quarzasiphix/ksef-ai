@@ -4,7 +4,7 @@ import { getInvoices } from "@/integrations/supabase/repositories/invoiceReposit
 import { getBusinessProfiles } from "@/integrations/supabase/repositories/businessProfileRepository";
 import { getCustomers } from "@/integrations/supabase/repositories/customerRepository";
 import { getProducts } from "@/integrations/supabase/repositories/productRepository";
-import { useEffect } from "react";
+import React, { useEffect, useRef } from "react";
 
 // Custom hook for prefetching and caching global data
 export function useGlobalData() {
@@ -45,6 +45,13 @@ export function useGlobalData() {
 
   // Function to manually refresh all data
   const refreshAllData = async () => {
+    // Update all refresh timestamps to now
+    const now = Date.now();
+    Object.keys(lastRefreshTimeRef.current).forEach(key => {
+      lastRefreshTimeRef.current[key] = now;
+    });
+    
+    // Invalidate all queries to trigger refetch
     await Promise.all([
       queryClient.invalidateQueries({ queryKey: QUERY_KEYS.invoices }),
       queryClient.invalidateQueries({ queryKey: QUERY_KEYS.businessProfiles }),
@@ -53,20 +60,16 @@ export function useGlobalData() {
     ]);
   };
 
-  // Set up refetch on window focus (when user returns to the app)
-  useEffect(() => {
-    const handleVisibilityChange = () => {
-      if (document.visibilityState === "visible") {
-        refreshAllData();
-      }
-    };
+  // Track last refresh time to prevent excessive refreshes
+  const lastRefreshTimeRef = useRef<Record<string, number>>({
+    invoices: Date.now(),
+    businessProfiles: Date.now(),
+    customers: Date.now(),
+    products: Date.now(),
+  });
 
-    document.addEventListener("visibilitychange", handleVisibilityChange);
-    
-    return () => {
-      document.removeEventListener("visibilitychange", handleVisibilityChange);
-    };
-  }, []);
+  // We're completely disabling automatic refetching on visibility change
+  // Data will only be refreshed when explicitly requested or when a mutation occurs
 
   return {
     invoices: {

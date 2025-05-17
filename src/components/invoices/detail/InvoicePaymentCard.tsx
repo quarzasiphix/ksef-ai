@@ -40,7 +40,7 @@ export const InvoicePaymentCard: React.FC<InvoicePaymentCardProps> = ({
              paymentMethod === "card" ? "Karta" : "Inna"}
           </p>
         </div>
-        <div className="bg-gray-50 p-3 rounded-md">
+        <div className="bg-muted p-3 rounded-md">
           <div className="flex items-center justify-between text-sm">
             <p className="text-muted-foreground">Wartość netto:</p>
             <p>{formatCurrency(totalNetValue || 0)}</p>

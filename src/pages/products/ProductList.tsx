@@ -1,5 +1,5 @@
 
-import React, { useEffect, useState } from "react";
+import React, { useState } from "react";
 import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import {
@@ -12,9 +12,9 @@ import {
 import { Input } from "@/components/ui/input";
 import { Product } from "@/types";
 import { Plus, Search, Package, CircleDollarSign, Percent } from "lucide-react";
-import { getProducts } from "@/integrations/supabase/repositories/productRepository";
 import { formatCurrency } from "@/lib/invoice-utils";
 import { Badge } from "@/components/ui/badge";
+import { useGlobalData } from "@/hooks/use-global-data";
 
 const ProductCard = ({ product }: { product: Product }) => {
   return (
@@ -49,25 +49,8 @@ const ProductCard = ({ product }: { product: Product }) => {
 };
 
 const ProductList = () => {
-  const [products, setProducts] = useState<Product[]>([]);
+  const { products: { data: products, isLoading } } = useGlobalData();
   const [searchTerm, setSearchTerm] = useState("");
-  const [loading, setLoading] = useState(true);
-  
-  useEffect(() => {
-    const fetchProducts = async () => {
-      setLoading(true);
-      try {
-        const productsData = await getProducts();
-        setProducts(productsData);
-      } catch (error) {
-        console.error("Error fetching products:", error);
-      } finally {
-        setLoading(false);
-      }
-    };
-    
-    fetchProducts();
-  }, []);
   
   // Filter products based on search term
   const filteredProducts = products.filter(
@@ -114,7 +97,7 @@ const ProductList = () => {
           </div>
         </CardHeader>
         <CardContent>
-          {loading ? (
+          {isLoading ? (
             <div className="text-center py-8">
               Ładowanie...
             </div>

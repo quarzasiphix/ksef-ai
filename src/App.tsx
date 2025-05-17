@@ -32,15 +32,18 @@ import DocumentSettings from "./pages/settings/DocumentSettings";
 const queryClient = new QueryClient({
   defaultOptions: {
     queries: {
-      refetchOnWindowFocus: false, // We handle this manually in useGlobalData
+      refetchOnWindowFocus: false, // Disable refetch on window focus
+      refetchOnMount: false, // Disable refetch when component mounts
+      refetchOnReconnect: false, // Disable refetch on reconnect
       retry: 1, // Only retry failed requests once
-      staleTime: 1000 * 60 * 5, // 5 minutes before data is considered stale
+      staleTime: Infinity, // Data never goes stale automatically
+      gcTime: Infinity // Cache never expires automatically
     },
   },
 });
 
 const App = () => (
-  <ThemeProvider defaultTheme="light">
+  <ThemeProvider defaultTheme="dark">
     <QueryClientProvider client={queryClient}>
       <TooltipProvider>
         <Toaster />
@@ -56,21 +59,21 @@ const App = () => (
             <Route path="income" element={<IncomeList />} />
             
             {/* Keep invoice detail/edit/create routes as they are */}
-            <Route path="invoices/:id" element={<InvoiceDetail />} />
             <Route path="invoices/new" element={<NewInvoice />} />
             <Route path="invoices/edit/:id" element={<EditInvoice />} />
+            <Route path="invoices/:id" element={<InvoiceDetail />} />
             
             {/* Customer routes */}
             <Route path="customers" element={<CustomerList />} />
-            <Route path="customers/:id" element={<CustomerDetail />} />
             <Route path="customers/new" element={<NewCustomer />} />
             <Route path="customers/edit/:id" element={<EditCustomer />} />
+            <Route path="customers/:id" element={<CustomerDetail />} />
             
             {/* Product routes */}
             <Route path="products" element={<ProductList />} />
-            <Route path="products/:id" element={<ProductDetail />} />
             <Route path="products/new" element={<NewProduct />} />
             <Route path="products/edit/:id" element={<EditProduct />} />
+            <Route path="products/:id" element={<ProductDetail />} />
             
             {/* Settings routes */}
             <Route path="settings" element={<BusinessProfiles />} />
