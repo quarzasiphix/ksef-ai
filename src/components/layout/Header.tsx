@@ -1,11 +1,17 @@
-
 import React from "react";
 import { SidebarTrigger } from "@/components/ui/sidebar";
 import { Button } from "@/components/ui/button";
 import { Plus } from "lucide-react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, Link } from "react-router-dom";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { ThemeToggle } from "@/components/theme/ThemeToggle";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuGroup,
+  DropdownMenuItem,
+  DropdownMenuTrigger
+} from "@/components/ui/dropdown-menu";
 
 const Header = () => {
   const navigate = useNavigate();
@@ -19,16 +25,40 @@ const Header = () => {
           {isMobile ? "KSeF" : "System Fakturowy"}
         </h1>
       </div>
-      <div className="flex items-center gap-2">
+      <div className="flex items-center gap-4">
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button>
+              <Plus className="mr-2 h-4 w-4" />
+              Nowy dokument
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end">
+            <DropdownMenuGroup>
+              <DropdownMenuItem asChild>
+                <Link to="/invoices/new?type=sales">
+                  Faktura VAT
+                </Link>
+              </DropdownMenuItem>
+              <DropdownMenuItem asChild>
+                <Link to="/invoices/new?type=receipt">
+                  Rachunek
+                </Link>
+              </DropdownMenuItem>
+              <DropdownMenuItem asChild>
+                <Link to="/invoices/new?type=proforma">
+                  Faktura proforma
+                </Link>
+              </DropdownMenuItem>
+              <DropdownMenuItem asChild>
+                <Link to="/invoices/new?type=correction">
+                  Faktura korygująca
+                </Link>
+              </DropdownMenuItem>
+            </DropdownMenuGroup>
+          </DropdownMenuContent>
+        </DropdownMenu>
         <ThemeToggle size={isMobile ? "sm" : "icon"} />
-        <Button 
-          className="flex items-center" 
-          size={isMobile ? "sm" : "default"}
-          onClick={() => navigate("/invoices/new")}
-        >
-          <Plus className={`${isMobile ? "mr-1 h-3 w-3" : "mr-2 h-4 w-4"}`} />
-          {isMobile ? "Nowa" : "Nowa faktura"}
-        </Button>
       </div>
     </header>
   );
