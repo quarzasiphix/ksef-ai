@@ -1,5 +1,5 @@
 
-import React, { useState, useEffect } from "react";
+import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
@@ -19,31 +19,22 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Edit, Plus, MoreVertical, Building2, Star } from "lucide-react";
-import { getBusinessProfiles } from "@/integrations/supabase/repositories/businessProfileRepository";
 import type { BusinessProfile } from "@/types";
 import { useIsMobile } from "@/hooks/use-mobile";
+import { useGlobalData } from "@/hooks/use-global-data";
 
 const BusinessProfiles = () => {
   const navigate = useNavigate();
-  const [profiles, setProfiles] = useState<BusinessProfile[]>([]);
-  const [loading, setLoading] = useState(true);
+  const { businessProfiles: { data: profiles, isLoading, error } } = useGlobalData();
   const isMobile = useIsMobile();
 
-  useEffect(() => {
-    const fetchProfiles = async () => {
-      try {
-        const data = await getBusinessProfiles();
-        setProfiles(data);
-      } catch (error) {
-        console.error("Error fetching business profiles:", error);
-        toast.error("Nie udało się pobrać profili firm");
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    fetchProfiles();
-  }, []);
+  // Show error toast if there's an issue fetching the data
+  React.useEffect(() => {
+    if (error) {
+      toast.error("Nie udało się pobrać profili firm");
+      console.error("Error fetching business profiles:", error);
+    }
+  }, [error]);
 
   return (
     <div className="space-y-6">
@@ -68,7 +59,7 @@ const BusinessProfiles = () => {
           </CardTitle>
         </CardHeader>
         <CardContent>
-          {loading ? (
+          {isLoading ? (
             <div className="flex justify-center py-8">Ładowanie...</div>
           ) : profiles.length === 0 ? (
             <div className="text-center py-8">

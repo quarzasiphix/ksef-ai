@@ -1,5 +1,5 @@
 
-import React, { useEffect, useState } from "react";
+import React, { useEffect } from "react";
 import { 
   Select,
   SelectContent,
@@ -8,10 +8,10 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Customer } from "@/types";
-import { getCustomers } from "@/integrations/supabase/repositories/customerRepository";
 import { Button } from "@/components/ui/button";
 import { useNavigate } from "react-router-dom";
 import { Plus } from "lucide-react";
+import { useGlobalData } from "@/hooks/use-global-data";
 
 interface CustomerSelectorProps {
   value?: string;
@@ -22,42 +22,26 @@ export const CustomerSelector: React.FC<CustomerSelectorProps> = ({
   value,
   onChange,
 }) => {
-  const [customers, setCustomers] = useState<Customer[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const { customers: { data: customers, isLoading, error } } = useGlobalData();
   const navigate = useNavigate();
 
   useEffect(() => {
-    const loadCustomers = async () => {
-      try {
-        const data = await getCustomers();
-        setCustomers(data);
-        
-        // Set first customer as default if no value and customers exist
-        if (!value && data.length > 0) {
-          onChange(data[0].id, data[0].name);
-        }
-      } catch (err) {
-        console.error("Error loading customers:", err);
-        setError("Nie udało się załadować klientów");
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    loadCustomers();
-  }, [onChange, value]);
+    // Set first customer as default if no value and customers exist
+    if (!value && customers.length > 0 && !isLoading) {
+      onChange(customers[0].id, customers[0].name);
+    }
+  }, [customers, isLoading, value, onChange]);
 
   const handleAddCustomer = () => {
     navigate("/customers/new");
   };
 
-  if (loading) {
+  if (isLoading) {
     return <div className="text-sm text-muted-foreground">Ładowanie klientów...</div>;
   }
 
   if (error) {
-    return <div className="text-sm text-red-500">{error}</div>;
+    return <div className="text-sm text-red-500">Nie udało się załadować klientów</div>;
   }
 
   return (

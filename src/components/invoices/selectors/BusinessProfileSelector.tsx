@@ -1,5 +1,5 @@
 
-import React, { useEffect, useState } from "react";
+import React, { useEffect } from "react";
 import { 
   Select,
   SelectContent,
@@ -8,7 +8,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { BusinessProfile } from "@/types";
-import { getBusinessProfiles } from "@/integrations/supabase/repositories/businessProfileRepository";
+import { useGlobalData } from "@/hooks/use-global-data";
 
 interface BusinessProfileSelectorProps {
   value?: string;
@@ -19,38 +19,22 @@ export const BusinessProfileSelector: React.FC<BusinessProfileSelectorProps> = (
   value,
   onChange,
 }) => {
-  const [profiles, setProfiles] = useState<BusinessProfile[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const { businessProfiles: { data: profiles, isLoading, error } } = useGlobalData();
 
   useEffect(() => {
-    const loadProfiles = async () => {
-      try {
-        const data = await getBusinessProfiles();
-        setProfiles(data);
-        
-        // If no value is set and we have profiles, use the default one
-        if (!value && data.length > 0) {
-          const defaultProfile = data.find(p => p.isDefault) || data[0];
-          onChange(defaultProfile.id, defaultProfile.name);
-        }
-      } catch (err) {
-        console.error("Error loading business profiles:", err);
-        setError("Nie udało się załadować profili biznesowych");
-      } finally {
-        setLoading(false);
-      }
-    };
+    // If no value is set and we have profiles, use the default one
+    if (!value && profiles.length > 0 && !isLoading) {
+      const defaultProfile = profiles.find(p => p.isDefault) || profiles[0];
+      onChange(defaultProfile.id, defaultProfile.name);
+    }
+  }, [profiles, isLoading, value, onChange]);
 
-    loadProfiles();
-  }, [onChange, value]);
-
-  if (loading) {
+  if (isLoading) {
     return <div className="text-sm text-muted-foreground">Ładowanie profili...</div>;
   }
 
   if (error) {
-    return <div className="text-sm text-red-500">{error}</div>;
+    return <div className="text-sm text-red-500">Nie udało się załadować profili biznesowych</div>;
   }
 
   if (profiles.length === 0) {

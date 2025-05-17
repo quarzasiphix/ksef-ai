@@ -11,6 +11,7 @@ import {
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { toast } from "sonner";
+import { useIsMobile } from "@/hooks/use-mobile";
 
 // These would ideally be stored in the database
 interface DocumentTypeSetting {
@@ -20,6 +21,8 @@ interface DocumentTypeSetting {
   showVat: boolean;
 }
 
+const STORAGE_KEY = "documentTypeSettings";
+
 const DocumentSettings = () => {
   const [documentTypes, setDocumentTypes] = useState<DocumentTypeSetting[]>([
     { id: "sales", name: "Faktura VAT", enabled: true, showVat: true },
@@ -28,9 +31,12 @@ const DocumentSettings = () => {
     { id: "correction", name: "Faktura korygująca", enabled: true, showVat: true },
   ]);
   
+  const [isDirty, setIsDirty] = useState(false);
+  const isMobile = useIsMobile();
+  
   // Load settings from localStorage on component mount
   useEffect(() => {
-    const savedSettings = localStorage.getItem("documentTypeSettings");
+    const savedSettings = localStorage.getItem(STORAGE_KEY);
     if (savedSettings) {
       try {
         const parsed = JSON.parse(savedSettings);
@@ -41,17 +47,13 @@ const DocumentSettings = () => {
     }
   }, []);
   
-  // Save settings to localStorage when they change
-  useEffect(() => {
-    localStorage.setItem("documentTypeSettings", JSON.stringify(documentTypes));
-  }, [documentTypes]);
-  
   const toggleEnabled = (id: string) => {
     setDocumentTypes(prev => 
       prev.map(type => 
         type.id === id ? { ...type, enabled: !type.enabled } : type
       )
     );
+    setIsDirty(true);
   };
   
   const toggleVatVisibility = (id: string) => {
@@ -60,11 +62,12 @@ const DocumentSettings = () => {
         type.id === id ? { ...type, showVat: !type.showVat } : type
       )
     );
+    setIsDirty(true);
   };
   
   const handleSave = () => {
-    // In a real app, this would save to the database
-    localStorage.setItem("documentTypeSettings", JSON.stringify(documentTypes));
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(documentTypes));
+    setIsDirty(false);
     toast.success("Ustawienia dokumentów zostały zapisane");
   };
   
@@ -85,7 +88,7 @@ const DocumentSettings = () => {
           </CardDescription>
         </CardHeader>
         <CardContent>
-          <div className="space-y-6">
+          <div className={`space-y-6 ${isMobile ? '' : 'max-w-2xl'}`}>
             {documentTypes.map((type) => (
               <div key={type.id} className="flex flex-col gap-2">
                 <div className="flex items-center justify-between flex-wrap gap-2">
@@ -117,8 +120,12 @@ const DocumentSettings = () => {
               </div>
             ))}
             
-            <Button onClick={handleSave} className="w-full sm:w-auto">
-              Zapisz ustawienia
+            <Button 
+              onClick={handleSave} 
+              className="w-full sm:w-auto"
+              disabled={!isDirty}
+            >
+              {isDirty ? "Zapisz zmiany" : "Zapisane"}
             </Button>
           </div>
         </CardContent>

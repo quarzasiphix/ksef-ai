@@ -1,37 +1,26 @@
-
-import React, { useEffect, useState } from "react";
+import React, { useState, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { formatCurrency } from "@/lib/invoice-utils";
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer } from "recharts";
 import { Invoice } from "@/types";
-import { getInvoices } from "@/integrations/supabase/repositories/invoiceRepository";
 import InvoiceCard from "@/components/invoices/InvoiceCard";
 import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { useIsMobile } from "@/hooks/use-mobile";
+import { useGlobalData } from "@/hooks/use-global-data";
 
 const Dashboard = () => {
-  const [invoices, setInvoices] = useState<Invoice[]>([]);
-  const [loading, setLoading] = useState(true);
   const [monthlySummaries, setMonthlySummaries] = useState<any[]>([]);
   const isMobile = useIsMobile();
   
+  // Get data from our global data cache
+  const { invoices: { data: invoices, isLoading } } = useGlobalData();
+  
   useEffect(() => {
-    const fetchInvoices = async () => {
-      setLoading(true);
-      try {
-        const invoicesData = await getInvoices();
-        setInvoices(invoicesData);
-        generateMonthlySummaries(invoicesData);
-      } catch (error) {
-        console.error("Error fetching invoices:", error);
-      } finally {
-        setLoading(false);
-      }
-    };
-    
-    fetchInvoices();
-  }, []);
+    if (invoices?.length > 0) {
+      generateMonthlySummaries(invoices);
+    }
+  }, [invoices]);
   
   const generateMonthlySummaries = (invoicesData: Invoice[]) => {
     // Group invoices by month
@@ -158,7 +147,7 @@ const Dashboard = () => {
           </Button>
         </div>
         
-        {loading ? (
+        {isLoading ? (
           <div className="text-center py-8">
             <p>Ładowanie...</p>
           </div>
@@ -191,7 +180,7 @@ const Dashboard = () => {
                 </tr>
               </thead>
               <tbody>
-                {loading ? (
+                {isLoading ? (
                   <tr>
                     <td colSpan={isMobile ? 3 : 4} className="text-center py-4">Ładowanie...</td>
                   </tr>

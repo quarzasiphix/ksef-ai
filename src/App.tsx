@@ -1,3 +1,4 @@
+
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -5,6 +6,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 
 import Layout from "./components/layout/Layout";
+import GlobalDataLoader from "./components/layout/GlobalDataLoader";
 import Dashboard from "./pages/Dashboard";
 import InvoiceList from "./pages/invoices/InvoiceList";
 import InvoiceDetail from "./pages/invoices/InvoiceDetail";
@@ -25,7 +27,16 @@ import ProductDetail from "./pages/products/ProductDetail";
 import IncomeList from "./pages/income/IncomeList";
 import DocumentSettings from "./pages/settings/DocumentSettings";
 
-const queryClient = new QueryClient();
+// Set up QueryClient with global default options
+const queryClient = new QueryClient({
+  defaultOptions: {
+    queries: {
+      refetchOnWindowFocus: false, // We handle this manually in useGlobalData
+      retry: 1, // Only retry failed requests once
+      staleTime: 1000 * 60 * 5, // 5 minutes before data is considered stale
+    },
+  },
+});
 
 const App = () => (
   <QueryClientProvider client={queryClient}>
@@ -33,6 +44,7 @@ const App = () => (
       <Toaster />
       <Sonner />
       <BrowserRouter>
+        <GlobalDataLoader /> {/* Add our global data loader */}
         <Routes>
           <Route path="/" element={<Layout />}>
             {/* Main routes */}
