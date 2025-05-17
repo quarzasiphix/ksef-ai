@@ -50,6 +50,7 @@ const InvoiceList = () => {
     const types = new Set<string>();
     types.add("all"); // Always include "all" option
     
+    // Only add types that actually have invoices
     invoices.forEach(invoice => {
       if (invoice.type) {
         types.add(invoice.type);

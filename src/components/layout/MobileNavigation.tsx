@@ -1,15 +1,15 @@
 
 import React, { useState } from "react";
 import { NavLink } from "react-router-dom";
-import { BarChart, FileText, Settings, Menu, Users, Package } from "lucide-react";
+import { BarChart, FileText, Settings, Menu, Users, Package, CreditCard } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 
 const MobileNavigation = () => {
-  // Main navigation items
+  // Main navigation items - Changed "Faktury" to "Przychód" and icon to CreditCard
   const mainNavItems = [
     { title: "Dashboard", path: "/", icon: BarChart },
-    { title: "Faktury", path: "/invoices", icon: FileText },
+    { title: "Przychód", path: "/invoices", icon: CreditCard },
     { title: "Ustawienia", path: "/settings", icon: Settings },
   ];
   
