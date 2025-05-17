@@ -1,5 +1,5 @@
 
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useMemo } from "react";
 import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import {
@@ -51,6 +51,21 @@ const IncomeList = () => {
     
     fetchInvoices();
   }, []);
+
+  // Get only document types that exist in the data
+  const availableTypes = useMemo(() => {
+    const typeMap = new Map<string, boolean>();
+    typeMap.set('all', true); // Always include "all"
+    
+    invoices.forEach(invoice => {
+      if (invoice.type === InvoiceType.SALES) typeMap.set('invoice', true);
+      else if (invoice.type === InvoiceType.RECEIPT) typeMap.set('receipt', true);
+      else if (invoice.type === InvoiceType.PROFORMA) typeMap.set('proforma', true);
+      else if (invoice.type === InvoiceType.CORRECTION) typeMap.set('correction', true);
+    });
+    
+    return Array.from(typeMap.keys());
+  }, [invoices]);
   
   // Filter invoices based on search term and document type
   const filteredInvoices = invoices.filter(
@@ -148,12 +163,12 @@ const IncomeList = () => {
         
         <div className="px-6 pb-2">
           <Tabs defaultValue="all" value={activeTab} onValueChange={setActiveTab}>
-            <TabsList className="mb-4">
-              <TabsTrigger value="all">Wszystkie</TabsTrigger>
-              <TabsTrigger value="invoice">Faktury VAT</TabsTrigger>
-              <TabsTrigger value="receipt">Rachunki</TabsTrigger>
-              <TabsTrigger value="proforma">Proforma</TabsTrigger>
-              <TabsTrigger value="correction">Korekty</TabsTrigger>
+            <TabsList className="mb-4 overflow-x-auto">
+              {availableTypes.map(type => (
+                <TabsTrigger key={type} value={type}>
+                  {getDocumentTypeName(type)}
+                </TabsTrigger>
+              ))}
             </TabsList>
           </Tabs>
         </div>
