@@ -2,6 +2,9 @@ import React, { useEffect, useState, useRef } from "react";
 import { useParams } from "react-router-dom";
 import jsPDF from 'jspdf';
 import html2canvas from 'html2canvas';
+import { Capacitor } from '@capacitor/core';
+import { Filesystem, Directory, Encoding } from '@capacitor/filesystem';
+import { Share } from '@capacitor/share';
 import { Invoice } from "@/types";
 import { getInvoice } from "@/integrations/supabase/repositories/invoiceRepository";
 import { useGlobalData } from "@/hooks/use-global-data";
@@ -23,56 +26,70 @@ const InvoiceDetailComponent: React.FC = () => {
   const printRef = useRef<HTMLDivElement>(null);
 
   const generatePdf = async () => {
-    if (!printRef.current || !invoice) return;
+    if (!printRef.current || !invoice) {
+      console.error("PDF generation prerequisites not met: printRef or invoice missing.");
+      alert("Nie można wygenerować PDF: brak danych.");
+      return;
+    }
     
     setPdfLoading(true);
     try {
-      const pdfContainer = document.createElement('div');
-      pdfContainer.style.width = '794px'; // A4 width in pixels
-      pdfContainer.style.position = 'absolute';
-      pdfContainer.style.left = '-9999px';
-      document.body.appendChild(pdfContainer);
-
-      // Create temporary div for PDF content
-      const tempDiv = document.createElement('div');
-      tempDiv.style.width = '100%';
-      pdfContainer.appendChild(tempDiv);
-
-      // Render PDF template
-      const root = document.createElement('div');
-      root.style.width = '100%';
-      root.style.backgroundColor = 'white';
-      root.innerHTML = printRef.current.innerHTML;
-      tempDiv.appendChild(root);
-
-      // Generate PDF
-      const canvas = await html2canvas(root, {
-        scale: 2,
+      // Directly use printRef.current which is the styled, hidden div containing InvoicePdfTemplate
+      const canvas = await html2canvas(printRef.current, {
+        scale: 2, // Keep scale for better quality
         useCORS: true,
-        logging: false,
-        width: 794,
-        height: 1123,
-        backgroundColor: '#ffffff',
-        windowWidth: 794,
-        windowHeight: 1123
+        logging: false, // Keep logging off for production
+        backgroundColor: '#ffffff', // Ensure background is white
       });
 
-      const imgData = canvas.toDataURL('image/jpeg', 1.0);
+      const imgData = canvas.toDataURL('image/jpeg', 0.9); // Use 0.9 for good compression
       
-      // Use px units for both jsPDF and addImage
       const pdf = new jsPDF({
         orientation: 'portrait',
         unit: 'px',
-        format: [794, 1123],
+        format: [794, 1123], // A4 in pixels at 96 DPI
       });
 
       pdf.addImage(imgData, 'JPEG', 0, 0, 794, 1123);
-      pdf.save(`faktura-${invoice.number}.pdf`);
+      
+      const fileName = `faktura-${invoice.number || 'bez-numeru'}.pdf`;
 
-      // Cleanup
-      document.body.removeChild(pdfContainer);
+      if (Capacitor.isNativePlatform()) {
+        // Mobile (Capacitor)
+        const pdfBase64 = pdf.output('datauristring').split(',')[1];
+        
+        const result = await Filesystem.writeFile({
+          path: fileName,
+          data: pdfBase64,
+          directory: Directory.Cache, // Saves to app's sandboxed Cache directory
+        });
+
+        console.log('PDF saved to:', result.uri);
+        // Consider using a more user-friendly notification like a Toast
+        alert(`Faktura zapisana w Dokumentach: ${fileName}`);
+
+        // Optional: Offer to share the file
+        if (await Share.canShare()) {
+           await Share.share({
+             title: `Faktura ${invoice.number || ''}`,
+             text: `Załączona faktura ${fileName}`,
+             url: result.uri, // This is the file path which can be shared
+             dialogTitle: 'Udostępnij fakturę',
+           });
+        } else {
+          console.log("Sharing not available on this platform or URI.");
+          // You could provide an alternative here, e.g., using @capacitor-community/file-opener
+          // if (result.uri) { FileOpener.open({ filePath: result.uri, contentType: 'application/pdf' }) }
+        }
+
+      } else {
+        // Web browser
+        pdf.save(fileName);
+      }
+
     } catch (err) {
       console.error('Error generating PDF:', err);
+      alert('Błąd podczas generowania PDF: ' + (err instanceof Error ? err.message : String(err)));
     } finally {
       setPdfLoading(false);
     }

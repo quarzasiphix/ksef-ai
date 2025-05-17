@@ -1,4 +1,3 @@
-
 import React, { useEffect, useState } from "react";
 import {
   Card,
@@ -52,7 +51,7 @@ export const InvoiceParties: React.FC<InvoicePartiesProps> = ({
         <div>
           <p className="text-xs font-medium text-muted-foreground mb-1">Sprzedawca</p>
           <div>
-            <p className="font-medium">{businessName || "Brak nazwy"}</p>
+            <p className="font-medium" style={{ overflowWrap: 'break-word' }}>{businessName || "Brak nazwy"}</p>
             {businessProfile ? (
               <div className="text-xs space-y-1 mt-1">
                 {businessProfile.taxId && (
@@ -61,7 +60,7 @@ export const InvoiceParties: React.FC<InvoicePartiesProps> = ({
                 {businessProfile.regon && (
                   <p>REGON: {businessProfile.regon}</p>
                 )}
-                <p>{businessProfile.address}</p>
+                <p style={{ overflowWrap: 'break-word' }}>{businessProfile.address}</p>
                 <p>{businessProfile.postalCode} {businessProfile.city}</p>
                 {businessProfile.email && (
                   <p>Email: {businessProfile.email}</p>
@@ -81,13 +80,13 @@ export const InvoiceParties: React.FC<InvoicePartiesProps> = ({
         <div>
           <p className="text-xs font-medium text-muted-foreground mb-1">Nabywca</p>
           <div>
-            <p className="font-medium">{customerName || "Brak nazwy"}</p>
+            <p className="font-medium" style={{ overflowWrap: 'break-word' }}>{customerName || "Brak nazwy"}</p>
             {customer ? (
               <div className="text-xs space-y-1 mt-1">
                 {customer.taxId && (
                   <p>NIP: {customer.taxId}</p>
                 )}
-                <p>{customer.address}</p>
+                <p style={{ overflowWrap: 'break-word' }}>{customer.address}</p>
                 <p>{customer.postalCode} {customer.city}</p>
                 {customer.email && (
                   <p>Email: {customer.email}</p>

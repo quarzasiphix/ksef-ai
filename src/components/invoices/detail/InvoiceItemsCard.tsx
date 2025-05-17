@@ -1,4 +1,3 @@
-
 import React from "react";
 import {
   Card,
@@ -34,7 +33,12 @@ export const InvoiceItemsCard: React.FC<InvoiceItemsCardProps> = ({
     return items.map((item, index) => (
       <Card key={item.id} className="mb-3">
         <CardContent className="p-3">
-          <div className="font-medium text-base mb-2">{index + 1}. {item.name}</div>
+          <div 
+            className="font-medium text-base mb-2" 
+            style={{ overflowWrap: 'break-word' }}
+          >
+            {index + 1}. {item.name}
+          </div>
           
           <div className="space-y-2 text-sm">
             <div className="flex items-center justify-between">
