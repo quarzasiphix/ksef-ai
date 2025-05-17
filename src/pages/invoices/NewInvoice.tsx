@@ -27,8 +27,8 @@ import { toast } from "sonner";
 import { ArrowLeft } from "lucide-react";
 import { CustomerSelector } from "@/components/invoices/selectors/CustomerSelector";
 import { BusinessProfileSelector } from "@/components/invoices/selectors/BusinessProfileSelector";
-import { ProductSelector } from "@/components/invoices/selectors/ProductSelector";
-import { InvoiceItemsTable } from "@/components/invoices/InvoiceItemsTable";
+import { getProducts } from "@/integrations/supabase/repositories/productRepository";
+import { EditableInvoiceItemsTable } from "@/components/invoices/EditableInvoiceItemsTable";
 import { calculateInvoiceTotals, generateInvoiceNumber } from "@/lib/invoice-utils";
 import { saveInvoice } from "@/integrations/supabase/repositories/invoiceRepository";
 
@@ -57,6 +57,8 @@ const NewInvoice: React.FC<{
   const [businessName, setBusinessName] = useState<string>(initialData?.businessName || "");
   const [customerId, setCustomerId] = useState<string>(initialData?.customerId || "");
   const [customerName, setCustomerName] = useState<string>(initialData?.customerName || "");
+  const [products, setProducts] = useState([]);
+  const [productsLoading, setProductsLoading] = useState(true);
   
   const today = new Date().toISOString().split('T')[0];
   
@@ -72,6 +74,23 @@ const NewInvoice: React.FC<{
       comments: initialData?.comments || ""
     }
   });
+
+  // Load products
+  useEffect(() => {
+    const loadProducts = async () => {
+      try {
+        const productData = await getProducts();
+        setProducts(productData);
+      } catch (error) {
+        console.error("Error loading products:", error);
+        toast.error("Nie udało się załadować produktów");
+      } finally {
+        setProductsLoading(false);
+      }
+    };
+    
+    loadProducts();
+  }, []);
 
   // Load document type settings from localStorage
   useEffect(() => {
@@ -356,19 +375,18 @@ const NewInvoice: React.FC<{
               <CardTitle className="text-lg">Pozycje dokumentu</CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
-              <ProductSelector 
-                onAddProduct={handleAddProduct} 
-                documentType={documentType}
-              />
-              
-              <div className="mt-4">
-                <InvoiceItemsTable
+              {productsLoading ? (
+                <div className="text-sm text-muted-foreground">Ładowanie produktów...</div>
+              ) : (
+                <EditableInvoiceItemsTable
                   items={items}
+                  products={products}
                   onRemoveItem={handleRemoveItem}
                   onUpdateItem={handleUpdateItem}
+                  onAddItem={handleAddProduct}
                   documentType={documentType}
                 />
-              </div>
+              )}
             </CardContent>
           </Card>
           
