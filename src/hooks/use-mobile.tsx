@@ -26,3 +26,8 @@ export function useMediaQuery(query: string): boolean {
 
   return matches;
 }
+
+// Add the useIsMobile hook that returns true when screen width is less than 768px (md breakpoint)
+export function useIsMobile(): boolean {
+  return useMediaQuery("(max-width: 767px)");
+}
