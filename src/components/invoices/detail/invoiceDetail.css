@@ -52,7 +52,14 @@
 
 @media screen and (max-width: 767px) {
   .invoice-table {
-    min-width: 500px;
+    min-width: 100%;
+    width: 100%;
+  }
+  
+  .invoice-table th,
+  .invoice-table td {
+    padding: 0.25rem 0.35rem;
+    font-size: 0.7rem;
   }
 }
 

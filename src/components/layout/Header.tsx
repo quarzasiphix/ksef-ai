@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Plus } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { useIsMobile } from "@/hooks/use-mobile";
+import { ThemeToggle } from "@/components/theme/ThemeToggle";
 
 const Header = () => {
   const navigate = useNavigate();
@@ -18,7 +19,8 @@ const Header = () => {
           {isMobile ? "KSeF" : "System Fakturowy"}
         </h1>
       </div>
-      <div>
+      <div className="flex items-center gap-2">
+        <ThemeToggle size={isMobile ? "sm" : "icon"} />
         <Button 
           className="flex items-center" 
           size={isMobile ? "sm" : "default"}

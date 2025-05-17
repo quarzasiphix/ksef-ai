@@ -4,6 +4,7 @@ import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
+import { ThemeProvider } from "./components/theme/ThemeProvider";
 
 import Layout from "./components/layout/Layout";
 import GlobalDataLoader from "./components/layout/GlobalDataLoader";
@@ -39,14 +40,15 @@ const queryClient = new QueryClient({
 });
 
 const App = () => (
-  <QueryClientProvider client={queryClient}>
-    <TooltipProvider>
-      <Toaster />
-      <Sonner />
-      <BrowserRouter>
-        <GlobalDataLoader /> {/* Add our global data loader */}
-        <Routes>
-          <Route path="/" element={<Layout />}>
+  <ThemeProvider defaultTheme="light">
+    <QueryClientProvider client={queryClient}>
+      <TooltipProvider>
+        <Toaster />
+        <Sonner />
+        <BrowserRouter>
+          <GlobalDataLoader /> {/* Add our global data loader */}
+          <Routes>
+            <Route path="/" element={<Layout />}>
             {/* Main routes */}
             <Route index element={<Dashboard />} />
             
@@ -86,6 +88,7 @@ const App = () => (
       </BrowserRouter>
     </TooltipProvider>
   </QueryClientProvider>
+  </ThemeProvider>
 );
 
 export default App;

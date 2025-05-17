@@ -164,21 +164,36 @@ const Dashboard = () => {
         </CardHeader>
         <CardContent className="pt-2">
           <div className={isMobile ? "h-48" : "h-64 md:h-80"}>
-            <ResponsiveContainer width="100%" height="100%">
+            <ResponsiveContainer width="99%" height="100%">
               <BarChart 
                 data={monthlySummaries}
-                margin={isMobile ? { top: 5, right: 5, left: -25, bottom: 0 } : { top: 5, right: 10, left: 0, bottom: 0 }}
+                margin={isMobile ? { top: 5, right: 0, left: -30, bottom: 0 } : { top: 5, right: 10, left: 0, bottom: 0 }}
               >
-                <XAxis dataKey="monthLabel" fontSize={isMobile ? 10 : 12} />
-                <YAxis fontSize={isMobile ? 10 : 12} width={isMobile ? 35 : 60} />
+                <XAxis 
+                  dataKey="monthLabel" 
+                  fontSize={isMobile ? 9 : 12}
+                  tickMargin={5}
+                />
+                <YAxis 
+                  fontSize={isMobile ? 9 : 12} 
+                  width={isMobile ? 30 : 60}
+                  tickFormatter={(value) => isMobile ? value.toLocaleString('pl-PL', {notation: 'compact'}) : value.toLocaleString('pl-PL')}
+                />
                 <Tooltip
                   formatter={(value: number) => formatCurrency(value)}
                   labelFormatter={(label) => `Miesiąc: ${label}`}
                   contentStyle={{ fontSize: isMobile ? '10px' : '12px' }}
                 />
-                <Bar dataKey="totalNetValue" name="Netto" fill="#93c5fd" />
-                <Bar dataKey="totalVatValue" name="VAT" fill="#3b82f6" />
-                <Bar dataKey="totalGrossValue" name="Brutto" fill="#1d4ed8" />
+                {/* Reduce number of bars on mobile */}
+                {isMobile ? (
+                  <Bar dataKey="totalGrossValue" name="Brutto" fill="#1d4ed8" />
+                ) : (
+                  <>
+                    <Bar dataKey="totalNetValue" name="Netto" fill="#93c5fd" />
+                    <Bar dataKey="totalVatValue" name="VAT" fill="#3b82f6" />
+                    <Bar dataKey="totalGrossValue" name="Brutto" fill="#1d4ed8" />
+                  </>
+                )}
               </BarChart>
             </ResponsiveContainer>
           </div>
@@ -219,9 +234,9 @@ const Dashboard = () => {
             <table className="w-full invoice-table">
               <thead>
                 <tr>
-                  <th>Nr faktury</th>
-                  <th>Data</th>
-                  <th>Status KSeF</th>
+                  <th className="w-1/3">{isMobile ? "Nr" : "Nr faktury"}</th>
+                  <th className="w-1/4">{isMobile ? "Data" : "Data wystawienia"}</th>
+                  <th className="w-1/3">Status</th>
                   {!isMobile && <th>Nr referencyjny</th>}
                 </tr>
               </thead>
@@ -237,10 +252,10 @@ const Dashboard = () => {
                 ) : (
                   invoices.slice(0, 5).map((invoice) => (
                     <tr key={invoice.id}>
-                      <td className="truncate max-w-[100px]">{invoice.number}</td>
-                      <td className="whitespace-nowrap">{new Date(invoice.issueDate).toLocaleDateString("pl-PL")}</td>
+                      <td className="truncate max-w-[80px]">{invoice.number}</td>
+                      <td>{new Date(invoice.issueDate).toLocaleDateString("pl-PL")}</td>
                       <td>
-                        <span className={`px-2 py-1 rounded-full text-xs ${
+                        <span className={`px-1 py-0.5 rounded-full text-xs ${
                           invoice.ksef?.status === "sent" 
                             ? "bg-green-100 text-green-800" 
                             : invoice.ksef?.status === "pending" 

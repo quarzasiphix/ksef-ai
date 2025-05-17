@@ -4,6 +4,7 @@ import { NavLink } from "react-router-dom";
 import { BarChart, FileText, Settings, Menu, Users, Package, CreditCard } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
+import { ThemeToggle } from "@/components/theme/ThemeToggle";
 
 const MobileNavigation = () => {
   // Main navigation items - Changed "Faktury" to "Przychód" and icon to CreditCard
@@ -61,6 +62,13 @@ const MobileNavigation = () => {
                 <span>{item.title}</span>
               </NavLink>
             ))}
+            
+            <div className="mt-4 px-4 py-2">
+              <div className="flex items-center justify-between">
+                <span className="text-sm font-medium">Motyw</span>
+                <ThemeToggle size="sm" />
+              </div>
+            </div>
           </div>
         </SheetContent>
       </Sheet>
