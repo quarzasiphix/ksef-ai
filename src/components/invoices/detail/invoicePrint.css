@@ -1,0 +1,147 @@
+/* Print styles for invoice */
+@page {
+  margin: 0;
+  size: A4;
+}
+
+.print-container {
+  background-color: white !important;
+  color: #000 !important;
+}
+
+/* Only override specific elements that need light mode styling */
+.print-container .bg-muted,
+.print-container .bg-muted-foreground {
+  background-color: white !important;
+  color: #000 !important;
+}
+
+.print-container .text-muted-foreground {
+  color: #666 !important;
+}
+
+.print-container .font-bold {
+  font-weight: 600 !important;
+}
+
+.print-container .text-sm {
+  font-size: 0.875rem !important;
+}
+
+.print-container .text-base {
+  font-size: 1rem !important;
+}
+
+.print-container .text-lg {
+  font-size: 1.125rem !important;
+}
+
+.print-container .rounded-md {
+  border-radius: 0.375rem !important;
+}
+
+.print-container .p-3 {
+  padding: 0.75rem !important;
+}
+
+.print-container .p-4 {
+  padding: 1rem !important;
+}
+
+.print-container .px-2 {
+  padding-left: 0.5rem !important;
+  padding-right: 0.5rem !important;
+}
+
+.print-container .py-2 {
+  padding-top: 0.5rem !important;
+  padding-bottom: 0.5rem !important;
+}
+
+.print-container .grid-cols-2 {
+  grid-template-columns: repeat(2, 1fr) !important;
+}
+
+.print-container .space-y-2 > * + * {
+  margin-top: 0.5rem !important;
+}
+
+.print-container .space-y-4 > * + * {
+  margin-top: 1rem !important;
+}
+
+.print-container .space-y-6 > * + * {
+  margin-top: 1.5rem !important;
+}
+
+/* Table styles */
+.print-container table {
+  width: 100% !important;
+  border-collapse: collapse !important;
+}
+
+.print-container th,
+.print-container td {
+  border: 1px solid #000 !important;
+  padding: 0.5rem !important;
+}
+
+.print-container th {
+  background-color: #f3f4f6 !important;
+  font-weight: 600 !important;
+  text-align: left !important;
+}
+
+.print-container .text-right {
+  text-align: right !important;
+}
+
+.print-container .text-center {
+  text-align: center !important;
+}
+
+.print-container .font-medium {
+  font-weight: 500 !important;
+}
+
+/* Card styles - only add borders where needed */
+.print-container .card {
+  background-color: white !important;
+  border-radius: 0.375rem !important;
+}
+
+.print-container .card-header {
+  padding: 0.75rem !important;
+}
+
+.print-container .card-content {
+  padding: 0.75rem !important;
+}
+
+/* Mobile layout adjustments */
+@media screen and (max-width: 768px) {
+  .print-container .grid-cols-2 {
+    grid-template-columns: 1fr !important;
+  }
+  
+  .print-container .space-y-2 > * + * {
+    margin-top: 0.75rem !important;
+  }
+  
+  .print-container .space-y-4 > * + * {
+    margin-top: 1.25rem !important;
+  }
+  
+  .print-container .space-y-6 > * + * {
+    margin-top: 1.75rem !important;
+  }
+}
+
+/* Responsive adjustments */
+@media print {
+  .print-container {
+    max-width: 210mm !important;
+    width: 210mm !important;
+    margin: 0 auto !important;
+  }
+}
