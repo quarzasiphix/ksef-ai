@@ -1,14 +1,18 @@
 
-import React, { useEffect } from "react";
+import React, { useEffect, useState } from "react";
 import { useGlobalData } from "@/hooks/use-global-data";
 import { toast } from "sonner";
+import { Loader } from "lucide-react";
 
 const GlobalDataLoader: React.FC = () => {
   const { isLoading, refreshAllData } = useGlobalData();
+  const [initialLoad, setInitialLoad] = useState(true);
   
   useEffect(() => {
     // When app starts, initialize data loading
-    // Note: this is handled implicitly by the useGlobalData hook
+    if (!isLoading && initialLoad) {
+      setInitialLoad(false);
+    }
     
     // Set up periodic refresh (optional) - every 10 minutes
     const refreshInterval = setInterval(() => {
@@ -18,9 +22,20 @@ const GlobalDataLoader: React.FC = () => {
     return () => {
       clearInterval(refreshInterval);
     };
-  }, [refreshAllData]);
+  }, [refreshAllData, isLoading, initialLoad]);
 
-  // We don't need to render anything here - this is just a "side effect" component
+  if (initialLoad && isLoading) {
+    return (
+      <div className="fixed inset-0 bg-background/80 backdrop-blur-sm z-50 flex items-center justify-center">
+        <div className="flex flex-col items-center gap-2">
+          <Loader className="h-10 w-10 animate-spin text-primary" />
+          <p className="text-sm text-muted-foreground">Ładowanie danych aplikacji...</p>
+        </div>
+      </div>
+    );
+  }
+
+  // Once loaded, don't render anything
   return null;
 };
 

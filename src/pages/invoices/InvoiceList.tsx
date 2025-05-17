@@ -1,5 +1,5 @@
 
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useMemo } from "react";
 import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import {
@@ -10,38 +10,86 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
-import { Invoice } from "@/types";
-import { Plus, Search } from "lucide-react";
-import { getInvoices } from "@/integrations/supabase/repositories/invoiceRepository";
+import { Invoice, InvoiceType } from "@/types";
+import { Plus, Search, ChevronDown } from "lucide-react";
 import InvoiceCard from "@/components/invoices/InvoiceCard";
+import { useGlobalData } from "@/hooks/use-global-data";
+import { useIsMobile } from "@/hooks/use-mobile";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import { ScrollArea } from "@/components/ui/scroll-area";
+
+// Helper function to translate invoice type to Polish
+const translateInvoiceType = (type: string): string => {
+  switch (type) {
+    case "sales":
+      return "Faktura";
+    case "receipt":
+      return "Rachunek";
+    case "proforma":
+      return "Proforma";
+    case "correction":
+      return "Korekta";
+    default:
+      return type;
+  }
+};
 
 const InvoiceList = () => {
-  const [invoices, setInvoices] = useState<Invoice[]>([]);
+  const { invoices: { data: invoices, isLoading } } = useGlobalData();
   const [searchTerm, setSearchTerm] = useState("");
-  const [loading, setLoading] = useState(true);
+  const [selectedType, setSelectedType] = useState<string>("all");
+  const isMobile = useIsMobile();
   
-  useEffect(() => {
-    const fetchInvoices = async () => {
-      setLoading(true);
-      try {
-        const invoicesData = await getInvoices();
-        setInvoices(invoicesData);
-      } catch (error) {
-        console.error("Error fetching invoices:", error);
-      } finally {
-        setLoading(false);
-      }
-    };
+  // Get unique invoice types that exist in the data
+  const availableTypes = useMemo(() => {
+    const types = new Set<string>();
+    types.add("all"); // Always include "all" option
     
-    fetchInvoices();
-  }, []);
+    invoices.forEach(invoice => {
+      if (invoice.type) {
+        types.add(invoice.type);
+      }
+    });
+    
+    return Array.from(types);
+  }, [invoices]);
   
-  // Filter invoices based on search term
-  const filteredInvoices = invoices.filter(
-    (invoice) =>
-      invoice.number.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      (invoice.customerName || "").toLowerCase().includes(searchTerm.toLowerCase())
-  );
+  // Filter invoices based on search term and selected type
+  const filteredInvoices = useMemo(() => {
+    return invoices.filter(
+      (invoice) => {
+        const matchesSearch = 
+          invoice.number.toLowerCase().includes(searchTerm.toLowerCase()) ||
+          (invoice.customerName || "").toLowerCase().includes(searchTerm.toLowerCase());
+          
+        const matchesType = selectedType === "all" || invoice.type === selectedType;
+        
+        return matchesSearch && matchesType;
+      }
+    );
+  }, [invoices, searchTerm, selectedType]);
+  
+  // Determine which types to show in the main filter bar vs dropdown
+  const mainTypes = useMemo(() => {
+    if (isMobile && availableTypes.length > 3) {
+      // On mobile with many types, show only "all" and one more
+      return availableTypes.slice(0, 2);
+    }
+    return availableTypes;
+  }, [availableTypes, isMobile]);
+  
+  const dropdownTypes = useMemo(() => {
+    if (isMobile && availableTypes.length > 3) {
+      // Extra types for dropdown
+      return availableTypes.slice(2);
+    }
+    return [];
+  }, [availableTypes, isMobile]);
   
   return (
     <div className="space-y-6">
@@ -60,11 +108,50 @@ const InvoiceList = () => {
         </Button>
       </div>
       
+      {/* Document Type Filter */}
+      <div className="flex items-center gap-2 overflow-x-auto pb-2 scrollbar-none">
+        {mainTypes.map((type) => (
+          <Button
+            key={type}
+            variant={selectedType === type ? "default" : "outline"}
+            size="sm"
+            onClick={() => setSelectedType(type)}
+            className="whitespace-nowrap"
+          >
+            {type === "all" ? "Wszystkie" : translateInvoiceType(type)}
+          </Button>
+        ))}
+        
+        {dropdownTypes.length > 0 && (
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="outline" size="sm">
+                Więcej <ChevronDown className="h-4 w-4 ml-1" />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end">
+              {dropdownTypes.map((type) => (
+                <DropdownMenuItem 
+                  key={type}
+                  onClick={() => setSelectedType(type)}
+                >
+                  {translateInvoiceType(type)}
+                </DropdownMenuItem>
+              ))}
+            </DropdownMenuContent>
+          </DropdownMenu>
+        )}
+      </div>
+      
       <Card>
         <CardHeader className="pb-3">
           <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
             <div>
-              <CardTitle>Wszystkie faktury</CardTitle>
+              <CardTitle>
+                {selectedType === "all" 
+                  ? "Wszystkie dokumenty" 
+                  : `${translateInvoiceType(selectedType)}`}
+              </CardTitle>
               <CardDescription>
                 Łączna liczba: {filteredInvoices.length}
               </CardDescription>
@@ -81,13 +168,13 @@ const InvoiceList = () => {
           </div>
         </CardHeader>
         <CardContent>
-          {loading ? (
+          {isLoading ? (
             <div className="text-center py-8">
               Ładowanie...
             </div>
           ) : filteredInvoices.length === 0 ? (
             <div className="text-center py-8">
-              {searchTerm.length > 0 ? "Brak wyników wyszukiwania" : "Brak faktur"}
+              {searchTerm.length > 0 ? "Brak wyników wyszukiwania" : "Brak dokumentów"}
             </div>
           ) : (
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
