@@ -2,35 +2,18 @@
 import React, { useState, useEffect } from "react";
 import { useSearchParams, useNavigate } from "react-router-dom";
 import { Invoice, InvoiceType, InvoiceItem, PaymentMethod } from "@/types";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
 import * as z from "zod";
-import { 
-  Form,
-  FormControl,
-  FormField,
-  FormItem,
-  FormLabel,
-  FormMessage
-} from "@/components/ui/form";
-import { Input } from "@/components/ui/input";
-import { 
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue
-} from "@/components/ui/select";
+import { Form } from "@/components/ui/form";
 import { toast } from "sonner";
-import { ArrowLeft } from "lucide-react";
-import { CustomerSelector } from "@/components/invoices/selectors/CustomerSelector";
-import { BusinessProfileSelector } from "@/components/invoices/selectors/BusinessProfileSelector";
-import { getProducts } from "@/integrations/supabase/repositories/productRepository";
-import { EditableInvoiceItemsTable } from "@/components/invoices/EditableInvoiceItemsTable";
 import { calculateInvoiceTotals, generateInvoiceNumber } from "@/lib/invoice-utils";
 import { saveInvoice } from "@/integrations/supabase/repositories/invoiceRepository";
+import { InvoiceFormHeader } from "@/components/invoices/forms/InvoiceFormHeader";
+import { InvoiceBasicInfoForm } from "@/components/invoices/forms/InvoiceBasicInfoForm";
+import { InvoicePartiesForm } from "@/components/invoices/forms/InvoicePartiesForm";
+import { InvoiceItemsForm } from "@/components/invoices/forms/InvoiceItemsForm";
+import { InvoiceFormActions } from "@/components/invoices/forms/InvoiceFormActions";
 
 // Create a basic invoice form schema
 const invoiceFormSchema = z.object({
@@ -57,8 +40,6 @@ const NewInvoice: React.FC<{
   const [businessName, setBusinessName] = useState<string>(initialData?.businessName || "");
   const [customerId, setCustomerId] = useState<string>(initialData?.customerId || "");
   const [customerName, setCustomerName] = useState<string>(initialData?.customerName || "");
-  const [products, setProducts] = useState([]);
-  const [productsLoading, setProductsLoading] = useState(true);
   
   const today = new Date().toISOString().split('T')[0];
   
@@ -74,23 +55,6 @@ const NewInvoice: React.FC<{
       comments: initialData?.comments || ""
     }
   });
-
-  // Load products
-  useEffect(() => {
-    const loadProducts = async () => {
-      try {
-        const productData = await getProducts();
-        setProducts(productData);
-      } catch (error) {
-        console.error("Error loading products:", error);
-        toast.error("Nie udało się załadować produktów");
-      } finally {
-        setProductsLoading(false);
-      }
-    };
-    
-    loadProducts();
-  }, []);
 
   // Load document type settings from localStorage
   useEffect(() => {
@@ -129,22 +93,6 @@ const NewInvoice: React.FC<{
       }
     }
   }, [documentType, documentSettings, navigate]);
-
-  const handleAddProduct = (newItem: InvoiceItem) => {
-    setItems(prevItems => [...prevItems, newItem]);
-  };
-
-  const handleRemoveItem = (id: string) => {
-    setItems(prevItems => prevItems.filter(item => item.id !== id));
-  };
-
-  const handleUpdateItem = (id: string, updates: Partial<InvoiceItem>) => {
-    setItems(prevItems => 
-      prevItems.map(item => 
-        item.id === id ? { ...item, ...updates } : item
-      )
-    );
-  };
 
   // Form submission handler
   const onSubmit = async (data: InvoiceFormValues) => {
@@ -216,194 +164,54 @@ const NewInvoice: React.FC<{
     }
   };
   
-  const isReceipt = documentType === InvoiceType.RECEIPT;
+  const isEditing = !!initialData;
+  const documentTitle = getDocumentTitle();
 
   return (
     <div className="space-y-4">
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-2">
-          <Button variant="outline" size="icon" onClick={() => navigate(-1)}>
-            <ArrowLeft className="h-4 w-4" />
-          </Button>
-          <h1 className="text-xl font-bold">
-            {initialData ? "Edytuj dokument" : `Nowy ${getDocumentTitle().toLowerCase()}`}
-          </h1>
-        </div>
-      </div>
+      <InvoiceFormHeader 
+        title={documentTitle} 
+        documentType={documentType}
+        isEditing={isEditing}
+      />
       
       <Form {...form}>
         <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
           <div className="grid md:grid-cols-2 gap-4">
             {/* Basic Invoice Info Card */}
-            <Card className="md:col-span-1">
-              <CardHeader className="py-4">
-                <CardTitle className="text-lg">{getDocumentTitle()} - dane podstawowe</CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <FormField
-                  control={form.control}
-                  name="number"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Numer dokumentu</FormLabel>
-                      <FormControl>
-                        <Input placeholder="np. FV/2023/05/001" {...field} />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-                
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                  <FormField
-                    control={form.control}
-                    name="issueDate"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Data wystawienia</FormLabel>
-                        <FormControl>
-                          <Input type="date" {...field} />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                  
-                  <FormField
-                    control={form.control}
-                    name="sellDate"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Data sprzedaży</FormLabel>
-                        <FormControl>
-                          <Input type="date" {...field} />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                  
-                  <FormField
-                    control={form.control}
-                    name="dueDate"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Termin płatności</FormLabel>
-                        <FormControl>
-                          <Input type="date" {...field} />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                </div>
-                
-                <FormField
-                  control={form.control}
-                  name="paymentMethod"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Metoda płatności</FormLabel>
-                      <Select onValueChange={field.onChange} defaultValue={field.value}>
-                        <FormControl>
-                          <SelectTrigger>
-                            <SelectValue placeholder="Wybierz metodę płatności" />
-                          </SelectTrigger>
-                        </FormControl>
-                        <SelectContent>
-                          <SelectItem value="transfer">Przelew</SelectItem>
-                          <SelectItem value="cash">Gotówka</SelectItem>
-                          <SelectItem value="card">Karta</SelectItem>
-                          <SelectItem value="other">Inna</SelectItem>
-                        </SelectContent>
-                      </Select>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-                
-                <FormField
-                  control={form.control}
-                  name="comments"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Uwagi</FormLabel>
-                      <FormControl>
-                        <Input placeholder="Opcjonalne uwagi do dokumentu" {...field} />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-              </CardContent>
-            </Card>
+            <InvoiceBasicInfoForm 
+              form={form} 
+              documentTitle={documentTitle} 
+            />
             
             {/* Parties Card */}
-            <Card className="md:col-span-1">
-              <CardHeader className="py-4">
-                <CardTitle className="text-lg">Kontrahenci</CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <div>
-                  <FormLabel>Profil biznesowy (sprzedawca)</FormLabel>
-                  <BusinessProfileSelector
-                    value={businessProfileId}
-                    onChange={(id, name) => {
-                      setBusinessProfileId(id);
-                      setBusinessName(name || "");
-                    }}
-                  />
-                </div>
-                
-                <div>
-                  <FormLabel>Klient (nabywca)</FormLabel>
-                  <CustomerSelector
-                    value={customerId}
-                    onChange={(id, name) => {
-                      setCustomerId(id);
-                      setCustomerName(name || "");
-                    }}
-                  />
-                </div>
-              </CardContent>
-            </Card>
+            <InvoicePartiesForm 
+              businessProfileId={businessProfileId}
+              customerId={customerId}
+              onBusinessProfileChange={(id, name) => {
+                setBusinessProfileId(id);
+                setBusinessName(name || "");
+              }}
+              onCustomerChange={(id, name) => {
+                setCustomerId(id);
+                setCustomerName(name || "");
+              }}
+            />
           </div>
           
           {/* Products Section */}
-          <Card>
-            <CardHeader className="py-4">
-              <CardTitle className="text-lg">Pozycje dokumentu</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              {productsLoading ? (
-                <div className="text-sm text-muted-foreground">Ładowanie produktów...</div>
-              ) : (
-                <EditableInvoiceItemsTable
-                  items={items}
-                  products={products}
-                  onRemoveItem={handleRemoveItem}
-                  onUpdateItem={handleUpdateItem}
-                  onAddItem={handleAddProduct}
-                  documentType={documentType}
-                />
-              )}
-            </CardContent>
-          </Card>
+          <InvoiceItemsForm 
+            items={items}
+            documentType={documentType}
+            onItemsChange={setItems}
+          />
           
           {/* Action Buttons */}
-          <div className="flex justify-end space-x-2 pt-4">
-            <Button 
-              variant="outline" 
-              type="button"
-              onClick={() => navigate("/income")}
-              disabled={isLoading}
-            >
-              Anuluj
-            </Button>
-            <Button type="submit" disabled={isLoading}>
-              {isLoading ? "Zapisywanie..." : initialData ? "Zapisz zmiany" : "Utwórz dokument"}
-            </Button>
-          </div>
+          <InvoiceFormActions 
+            isLoading={isLoading}
+            isEditing={isEditing}
+            onSubmit={form.handleSubmit(onSubmit)}
+          />
         </form>
       </Form>
     </div>
