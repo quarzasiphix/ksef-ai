@@ -68,51 +68,95 @@ const Dashboard = () => {
         <h1 className="text-3xl font-bold">Dashboard</h1>
       </div>
       
-      <div className="grid grid-cols-2 gap-3">
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground">
-              Wszystkie faktury
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{totalInvoices}</div>
-          </CardContent>
-        </Card>
-        
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground">
-              Niezapłacone faktury
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold text-amber-500">{unpaidInvoices}</div>
-          </CardContent>
-        </Card>
-        
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground">
-              Suma brutto
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold truncate">{formatCurrency(totalGross)}</div>
-          </CardContent>
-        </Card>
-        
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground">
-              Suma VAT
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold truncate">{formatCurrency(totalTax)}</div>
-          </CardContent>
-        </Card>
-      </div>
+      {isMobile ? (
+        // Mobile view - combined card for the first two metrics
+        <div className="grid grid-cols-1 gap-3">
+          <Card>
+            <CardContent className="pt-6">
+              <div className="grid grid-cols-2 gap-4">
+                <div className="flex flex-col">
+                  <span className="text-sm font-medium text-muted-foreground">Wszystkie faktury</span>
+                  <span className="text-2xl font-bold">{totalInvoices}</span>
+                </div>
+                
+                <div className="flex flex-col">
+                  <span className="text-sm font-medium text-muted-foreground">Niezapłacone faktury</span>
+                  <span className="text-2xl font-bold text-amber-500">{unpaidInvoices}</span>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+          
+          <Card>
+            <CardHeader className="pb-2">
+              <CardTitle className="text-sm font-medium text-muted-foreground">
+                Suma brutto
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold truncate">{formatCurrency(totalGross)}</div>
+            </CardContent>
+          </Card>
+          
+          <Card>
+            <CardHeader className="pb-2">
+              <CardTitle className="text-sm font-medium text-muted-foreground">
+                Suma VAT
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold truncate">{formatCurrency(totalTax)}</div>
+            </CardContent>
+          </Card>
+        </div>
+      ) : (
+        // Desktop/Tablet view - original 2x2 grid
+        <div className="grid grid-cols-2 gap-3">
+          <Card>
+            <CardHeader className="pb-2">
+              <CardTitle className="text-sm font-medium text-muted-foreground">
+                Wszystkie faktury
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold">{totalInvoices}</div>
+            </CardContent>
+          </Card>
+          
+          <Card>
+            <CardHeader className="pb-2">
+              <CardTitle className="text-sm font-medium text-muted-foreground">
+                Niezapłacone faktury
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold text-amber-500">{unpaidInvoices}</div>
+            </CardContent>
+          </Card>
+          
+          <Card>
+            <CardHeader className="pb-2">
+              <CardTitle className="text-sm font-medium text-muted-foreground">
+                Suma brutto
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold truncate">{formatCurrency(totalGross)}</div>
+            </CardContent>
+          </Card>
+          
+          <Card>
+            <CardHeader className="pb-2">
+              <CardTitle className="text-sm font-medium text-muted-foreground">
+                Suma VAT
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold truncate">{formatCurrency(totalTax)}</div>
+            </CardContent>
+          </Card>
+        </div>
+      )}
       
       <Card className="col-span-full">
         <CardHeader>
