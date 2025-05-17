@@ -8,7 +8,7 @@
 
 .invoice-table th,
 .invoice-table td {
-  padding: 0.5rem;
+  padding: 0.4rem 0.5rem;
   border-bottom: 1px solid hsl(220 13% 91%);
   text-align: left;
 }
@@ -29,25 +29,36 @@
   overflow-x: auto;
   -webkit-overflow-scrolling: touch;
   margin-bottom: 1rem;
+  border-radius: 0.5rem;
+  border: 1px solid hsl(220 13% 91%);
 }
 
-/* Condensed table on smaller screens */
-@media screen and (max-width: 1200px) {
-  .invoice-table {
-    font-size: 0.75rem;
-  }
-  
-  .invoice-table th,
-  .invoice-table td {
-    padding: 0.4rem;
-  }
+/* More compact table for all screen sizes */
+.invoice-table {
+  font-size: 0.75rem;
 }
 
-/* Ensure table is scrollable on tablets and smaller screens */
-@media screen and (max-width: 992px) {
+.invoice-table th,
+.invoice-table td {
+  padding: 0.35rem 0.4rem;
+}
+
+/* Table sizing for different screens */
+@media screen and (min-width: 768px) and (max-width: 1200px) {
   .invoice-table {
     min-width: 650px;
   }
+}
+
+@media screen and (max-width: 767px) {
+  .invoice-table {
+    min-width: 500px;
+  }
+}
+
+/* Container margins for better spacing */
+.invoice-table-container {
+  margin: 0.5rem 0;
 }
 
 /* Print styles */
@@ -60,6 +71,6 @@
   
   .invoice-table th,
   .invoice-table td {
-    padding: 0.4rem;
+    padding: 0.35rem;
   }
 }

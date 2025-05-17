@@ -141,10 +141,10 @@ export const InvoiceItemsCard: React.FC<InvoiceItemsCardProps> = ({
   
   return (
     <Card className="overflow-hidden">
-      <CardHeader className="py-4">
-        <CardTitle className="text-lg md:text-xl">Pozycje na dokumencie</CardTitle>
+      <CardHeader className="py-3">
+        <CardTitle className="text-lg">Pozycje na dokumencie</CardTitle>
       </CardHeader>
-      <CardContent className={isMobile ? "px-3" : "px-0 sm:px-4 md:px-6"}>
+      <CardContent className={isMobile ? "px-3 py-2" : "px-0 py-2 sm:px-3"}>
         {isMobile ? (
           <>
             {renderMobileItems()}

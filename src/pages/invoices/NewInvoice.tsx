@@ -1,7 +1,7 @@
 
 import React, { useState, useEffect } from "react";
 import { useSearchParams, useNavigate } from "react-router-dom";
-import { Invoice, InvoiceType, PaymentMethod } from "@/types";
+import { Invoice, InvoiceType, InvoiceItem, PaymentMethod } from "@/types";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -25,24 +25,25 @@ import {
 } from "@/components/ui/select";
 import { toast } from "sonner";
 import { ArrowLeft } from "lucide-react";
+import { CustomerSelector } from "@/components/invoices/selectors/CustomerSelector";
+import { BusinessProfileSelector } from "@/components/invoices/selectors/BusinessProfileSelector";
+import { ProductSelector } from "@/components/invoices/selectors/ProductSelector";
+import { InvoiceItemsTable } from "@/components/invoices/InvoiceItemsTable";
+import { calculateInvoiceTotals, generateInvoiceNumber } from "@/lib/invoice-utils";
+import { saveInvoice } from "@/integrations/supabase/repositories/invoiceRepository";
 
 // Create a basic invoice form schema
 const invoiceFormSchema = z.object({
   number: z.string().min(1, "Numer dokumentu jest wymagany"),
-  customerName: z.string().min(1, "Nazwa klienta jest wymagana"),
   issueDate: z.string(),
   dueDate: z.string(),
   sellDate: z.string(),
   paymentMethod: z.string().min(1, "Metoda płatności jest wymagana"),
-  totalNetValue: z.coerce.number().nonnegative("Kwota musi być dodatnia lub zero"),
-  totalVatValue: z.coerce.number().nonnegative("Kwota VAT musi być dodatnia lub zero").optional().default(0),
-  totalGrossValue: z.coerce.number().positive("Kwota brutto musi być większa od zera"),
-  comments: z.string().optional()
+  comments: z.string().optional().default("")
 });
 
 type InvoiceFormValues = z.infer<typeof invoiceFormSchema>;
 
-// We're updating the NewInvoice component to handle document type with a basic form
 const NewInvoice: React.FC<{
   initialData?: Invoice;
 }> = ({ initialData }) => {
@@ -50,21 +51,24 @@ const NewInvoice: React.FC<{
   const navigate = useNavigate();
   const [documentType, setDocumentType] = useState<InvoiceType>(InvoiceType.SALES);
   const [documentSettings, setDocumentSettings] = useState<any[]>([]);
+  const [isLoading, setIsLoading] = useState(false);
+  const [items, setItems] = useState<InvoiceItem[]>(initialData?.items || []);
+  const [businessProfileId, setBusinessProfileId] = useState<string>(initialData?.businessProfileId || "");
+  const [businessName, setBusinessName] = useState<string>(initialData?.businessName || "");
+  const [customerId, setCustomerId] = useState<string>(initialData?.customerId || "");
+  const [customerName, setCustomerName] = useState<string>(initialData?.customerName || "");
+  
   const today = new Date().toISOString().split('T')[0];
-
+  
   // Setup form with default values
   const form = useForm<InvoiceFormValues>({
     resolver: zodResolver(invoiceFormSchema),
     defaultValues: {
-      number: initialData?.number || "",
-      customerName: initialData?.customerName || "",
+      number: initialData?.number || generateInvoiceNumber(new Date(), 1),
       issueDate: initialData?.issueDate || today,
       sellDate: initialData?.sellDate || today,
       dueDate: initialData?.dueDate || today,
-      paymentMethod: initialData?.paymentMethod || "transfer",
-      totalNetValue: initialData?.totalNetValue || 0,
-      totalVatValue: initialData?.totalVatValue || 0,
-      totalGrossValue: initialData?.totalGrossValue || 0,
+      paymentMethod: initialData?.paymentMethod || PaymentMethod.TRANSFER,
       comments: initialData?.comments || ""
     }
   });
@@ -107,12 +111,80 @@ const NewInvoice: React.FC<{
     }
   }, [documentType, documentSettings, navigate]);
 
+  const handleAddProduct = (newItem: InvoiceItem) => {
+    setItems(prevItems => [...prevItems, newItem]);
+  };
+
+  const handleRemoveItem = (id: string) => {
+    setItems(prevItems => prevItems.filter(item => item.id !== id));
+  };
+
+  const handleUpdateItem = (id: string, updates: Partial<InvoiceItem>) => {
+    setItems(prevItems => 
+      prevItems.map(item => 
+        item.id === id ? { ...item, ...updates } : item
+      )
+    );
+  };
+
   // Form submission handler
-  function onSubmit(data: InvoiceFormValues) {
-    console.log("Form data", data);
-    toast.success("Dokument zapisany pomyślnie!");
-    navigate("/income");
-  }
+  const onSubmit = async (data: InvoiceFormValues) => {
+    if (!businessProfileId) {
+      toast.error("Wybierz profil biznesowy");
+      return;
+    }
+    
+    if (!customerId) {
+      toast.error("Wybierz klienta");
+      return;
+    }
+    
+    if (items.length === 0) {
+      toast.error("Dodaj przynajmniej jedną pozycję do dokumentu");
+      return;
+    }
+    
+    try {
+      setIsLoading(true);
+      
+      // Calculate totals
+      const { totalNetValue, totalVatValue, totalGrossValue } = calculateInvoiceTotals(items);
+      
+      const invoice: Invoice = {
+        id: initialData?.id || "",
+        number: data.number,
+        type: documentType,
+        issueDate: data.issueDate,
+        sellDate: data.sellDate,
+        dueDate: data.dueDate,
+        businessProfileId: businessProfileId,
+        customerId: customerId,
+        items: items,
+        paymentMethod: data.paymentMethod as PaymentMethod,
+        isPaid: initialData?.isPaid || false,
+        comments: data.comments,
+        totalNetValue,
+        totalVatValue,
+        totalGrossValue,
+        businessName,
+        customerName
+      };
+      
+      const savedInvoice = await saveInvoice(invoice);
+      
+      toast.success(initialData 
+        ? "Dokument został zaktualizowany" 
+        : "Dokument został utworzony"
+      );
+      
+      navigate(`/invoices/${savedInvoice.id}`);
+    } catch (error) {
+      console.error("Error saving invoice:", error);
+      toast.error("Wystąpił błąd podczas zapisywania dokumentu");
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
   // Get the document type title
   const getDocumentTitle = () => {
@@ -140,14 +212,15 @@ const NewInvoice: React.FC<{
         </div>
       </div>
       
-      <Card>
-        <CardHeader className="py-4">
-          <CardTitle className="text-lg">{getDocumentTitle()} - dane podstawowe</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <Form {...form}>
-            <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
-              <div className="grid md:grid-cols-2 gap-4">
+      <Form {...form}>
+        <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+          <div className="grid md:grid-cols-2 gap-4">
+            {/* Basic Invoice Info Card */}
+            <Card className="md:col-span-1">
+              <CardHeader className="py-4">
+                <CardTitle className="text-lg">{getDocumentTitle()} - dane podstawowe</CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-4">
                 <FormField
                   control={form.control}
                   name="number"
@@ -162,61 +235,49 @@ const NewInvoice: React.FC<{
                   )}
                 />
                 
-                <FormField
-                  control={form.control}
-                  name="customerName"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Nabywca</FormLabel>
-                      <FormControl>
-                        <Input placeholder="Nazwa nabywcy" {...field} />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-                
-                <FormField
-                  control={form.control}
-                  name="issueDate"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Data wystawienia</FormLabel>
-                      <FormControl>
-                        <Input type="date" {...field} />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-                
-                <FormField
-                  control={form.control}
-                  name="sellDate"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Data sprzedaży</FormLabel>
-                      <FormControl>
-                        <Input type="date" {...field} />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-                
-                <FormField
-                  control={form.control}
-                  name="dueDate"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Termin płatności</FormLabel>
-                      <FormControl>
-                        <Input type="date" {...field} />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                  <FormField
+                    control={form.control}
+                    name="issueDate"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Data wystawienia</FormLabel>
+                        <FormControl>
+                          <Input type="date" {...field} />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  
+                  <FormField
+                    control={form.control}
+                    name="sellDate"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Data sprzedaży</FormLabel>
+                        <FormControl>
+                          <Input type="date" {...field} />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  
+                  <FormField
+                    control={form.control}
+                    name="dueDate"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Termin płatności</FormLabel>
+                        <FormControl>
+                          <Input type="date" {...field} />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                </div>
                 
                 <FormField
                   control={form.control}
@@ -244,81 +305,89 @@ const NewInvoice: React.FC<{
                 
                 <FormField
                   control={form.control}
-                  name="totalNetValue"
+                  name="comments"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Kwota netto</FormLabel>
+                      <FormLabel>Uwagi</FormLabel>
                       <FormControl>
-                        <Input type="number" step="0.01" {...field} />
+                        <Input placeholder="Opcjonalne uwagi do dokumentu" {...field} />
                       </FormControl>
                       <FormMessage />
                     </FormItem>
                   )}
                 />
-                
-                {!isReceipt && (
-                  <FormField
-                    control={form.control}
-                    name="totalVatValue"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Kwota VAT</FormLabel>
-                        <FormControl>
-                          <Input type="number" step="0.01" {...field} />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                )}
-                
-                <FormField
-                  control={form.control}
-                  name="totalGrossValue"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Kwota brutto</FormLabel>
-                      <FormControl>
-                        <Input type="number" step="0.01" {...field} />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-                
-                <div className={isReceipt ? "col-span-2" : ""}>
-                  <FormField
-                    control={form.control}
-                    name="comments"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Uwagi</FormLabel>
-                        <FormControl>
-                          <Input placeholder="Opcjonalne uwagi do dokumentu" {...field} />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
+              </CardContent>
+            </Card>
+            
+            {/* Parties Card */}
+            <Card className="md:col-span-1">
+              <CardHeader className="py-4">
+                <CardTitle className="text-lg">Kontrahenci</CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div>
+                  <FormLabel>Profil biznesowy (sprzedawca)</FormLabel>
+                  <BusinessProfileSelector
+                    value={businessProfileId}
+                    onChange={(id, name) => {
+                      setBusinessProfileId(id);
+                      setBusinessName(name || "");
+                    }}
                   />
                 </div>
-              </div>
+                
+                <div>
+                  <FormLabel>Klient (nabywca)</FormLabel>
+                  <CustomerSelector
+                    value={customerId}
+                    onChange={(id, name) => {
+                      setCustomerId(id);
+                      setCustomerName(name || "");
+                    }}
+                  />
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+          
+          {/* Products Section */}
+          <Card>
+            <CardHeader className="py-4">
+              <CardTitle className="text-lg">Pozycje dokumentu</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <ProductSelector 
+                onAddProduct={handleAddProduct} 
+                documentType={documentType}
+              />
               
-              <div className="flex justify-end space-x-2 pt-4">
-                <Button 
-                  variant="outline" 
-                  type="button"
-                  onClick={() => navigate("/income")}
-                >
-                  Anuluj
-                </Button>
-                <Button type="submit">
-                  {initialData ? "Zapisz zmiany" : "Utwórz dokument"}
-                </Button>
+              <div className="mt-4">
+                <InvoiceItemsTable
+                  items={items}
+                  onRemoveItem={handleRemoveItem}
+                  onUpdateItem={handleUpdateItem}
+                  documentType={documentType}
+                />
               </div>
-            </form>
-          </Form>
-        </CardContent>
-      </Card>
+            </CardContent>
+          </Card>
+          
+          {/* Action Buttons */}
+          <div className="flex justify-end space-x-2 pt-4">
+            <Button 
+              variant="outline" 
+              type="button"
+              onClick={() => navigate("/income")}
+              disabled={isLoading}
+            >
+              Anuluj
+            </Button>
+            <Button type="submit" disabled={isLoading}>
+              {isLoading ? "Zapisywanie..." : initialData ? "Zapisz zmiany" : "Utwórz dokument"}
+            </Button>
+          </div>
+        </form>
+      </Form>
     </div>
   );
 };
