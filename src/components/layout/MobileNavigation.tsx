@@ -1,6 +1,6 @@
 
 import React, { useState } from "react";
-import { NavLink } from "react-router-dom";
+import { NavLink, useLocation } from "react-router-dom";
 import { BarChart, FileText, Settings, Menu, Users, Package, CreditCard } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
@@ -27,6 +27,11 @@ const MobileNavigation = () => {
       isActive ? "text-primary" : "text-muted-foreground"
     );
   };
+
+  const location = useLocation();
+  const hideNav = location.pathname.startsWith('/invoices/edit');
+
+  if (hideNav) return null;
 
   return (
     <nav className="fixed bottom-0 left-0 right-0 z-50 flex h-16 items-center justify-around border-t bg-background md:hidden">

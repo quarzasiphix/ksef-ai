@@ -18,7 +18,7 @@ const Header = () => {
   const isMobile = useIsMobile();
 
   return (
-    <header className="border-b px-4 md:px-6 py-3 flex items-center justify-between bg-background">
+    <header className="sticky top-0 z-40 border-b px-4 md:px-6 py-3 flex items-center justify-between bg-background md:static">
       <div className="flex items-center">
         <SidebarTrigger className="mr-4 hidden md:flex" />
         <h1 className={`font-bold text-invoice ${isMobile ? "text-base" : "text-lg"}`}>

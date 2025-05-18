@@ -17,17 +17,20 @@ export const InvoiceFormActions: React.FC<InvoiceFormActionsProps> = ({
   const navigate = useNavigate();
   
   return (
-    <div className="flex justify-end space-x-2 pt-4">
-      <Button 
-        variant="outline" 
+    <div
+      className="fixed bottom-0 left-0 w-full z-[100] bg-background border-t p-3 py-4 mb-[13px] flex justify-end space-x-2 pointer-events-auto sm:static sm:bg-transparent sm:border-0 sm:p-0 sm:pt-4 sm:mb-0"
+      style={{ boxShadow: '0 -2px 8px rgba(0,0,0,0.04)', marginBottom: 0, paddingBottom: 12 }}
+    >
+      <Button
+        variant="outline"
         type="button"
         onClick={() => navigate("/income")}
         disabled={isLoading}
       >
         Anuluj
       </Button>
-      <Button 
-        type="submit" 
+      <Button
+        type="submit"
         disabled={isLoading}
         onClick={onSubmit}
       >

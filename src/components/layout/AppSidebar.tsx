@@ -23,9 +23,41 @@ import {
 } from "lucide-react";
 
 const AppSidebar = () => {
-  const { open } = useSidebar();
+  const { open, openMobile, setOpenMobile } = useSidebar();
   const location = useLocation();
   const pathname = location.pathname;
+
+  // --- DRAG STATE FOR MOBILE SIDEBAR ---
+  const [dragX, setDragX] = React.useState(0);
+  const [dragging, setDragging] = React.useState(false);
+  const dragStartX = React.useRef(0);
+  const sidebarRef = React.useRef<HTMLDivElement>(null);
+
+  // Only enable drag on mobile sidebar (Sheet)
+  const isMobile = window.innerWidth < 768; // tailwind md breakpoint
+
+  // Touch event handlers
+  const handleTouchStart = (e: React.TouchEvent) => {
+    if (!isMobile || !openMobile) return;
+    setDragging(true);
+    dragStartX.current = e.touches[0].clientX;
+  };
+  const handleTouchMove = (e: React.TouchEvent) => {
+    if (!dragging) return;
+    const deltaX = e.touches[0].clientX - dragStartX.current;
+    // Only allow left swipe
+    if (deltaX < 0) setDragX(deltaX);
+  };
+  const handleTouchEnd = () => {
+    if (!dragging) return;
+    // If dragged more than 40% width, close sidebar
+    const sidebarWidth = sidebarRef.current?.offsetWidth || 300;
+    if (Math.abs(dragX) > sidebarWidth * 0.4) {
+      setOpenMobile(false);
+    }
+    setDragX(0);
+    setDragging(false);
+  };
 
   // Navigation items - update "Faktury" to "Przychód" and change the path
   const navItems = [
@@ -56,6 +88,59 @@ const AppSidebar = () => {
     }`;
   };
 
+  // --- MOBILE SHEET SIDEBAR: Drag to close overlay ---
+  if (isMobile) {
+    return (
+      <div
+        ref={sidebarRef}
+        style={{
+          position: 'fixed',
+          top: 0,
+          left: 0,
+          height: '100%',
+          width: '75vw',
+          maxWidth: 320,
+          background: 'var(--background, #181a20)',
+          zIndex: 1000,
+          boxShadow: '2px 0 8px rgba(0,0,0,0.15)',
+          transform: `translateX(${dragX}px)`,
+          transition: dragging ? 'none' : 'transform 0.25s cubic-bezier(.4,0,.2,1)',
+          display: openMobile ? 'block' : 'none',
+        }}
+        onTouchStart={handleTouchStart}
+        onTouchMove={handleTouchMove}
+        onTouchEnd={handleTouchEnd}
+      >
+        <div className="mb-8 px-3 pt-4">
+          <h2 className="text-2xl font-bold text-invoice">AiFaktura</h2>
+          <p className="text-xs text-muted-foreground">System Faktur</p>
+        </div>
+        <SidebarGroup>
+          <SidebarGroupContent>
+            <SidebarMenu>
+              {navItems.map((item) => (
+                <SidebarMenuItem key={item.path}>
+                  <SidebarMenuButton asChild>
+                    <NavLink
+                      to={item.path}
+                      end={item.path === "/"}
+                      className={getNavClassName}
+                      onClick={() => setOpenMobile(false)}
+                    >
+                      <item.icon className="h-5 w-5 mr-2" />
+                      <span>{item.title}</span>
+                    </NavLink>
+                  </SidebarMenuButton>
+                </SidebarMenuItem>
+              ))}
+            </SidebarMenu>
+          </SidebarGroupContent>
+        </SidebarGroup>
+      </div>
+    );
+  }
+
+  // --- DESKTOP SIDEBAR ---
   return (
     <Sidebar 
       className={`border-r ${!open ? "w-14" : "w-60"} hidden md:block`}
