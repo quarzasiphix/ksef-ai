@@ -32,16 +32,16 @@ import ProductDetail from "./pages/products/ProductDetail";
 import IncomeList from "./pages/income/IncomeList";
 import DocumentSettings from "./pages/settings/DocumentSettings";
 
-// Set up QueryClient with global default options
-const queryClient = new QueryClient({
+// Export the query client for use in other files
+export const queryClient = new QueryClient({
   defaultOptions: {
     queries: {
-      refetchOnWindowFocus: false, // Disable refetch on window focus
-      refetchOnMount: false, // Disable refetch when component mounts
-      refetchOnReconnect: false, // Disable refetch on reconnect
+      refetchOnWindowFocus: true, // Enable refetch on window focus
+      refetchOnMount: true, // Enable refetch when component mounts
+      refetchOnReconnect: true, // Enable refetch on reconnect
+      staleTime: 5 * 60 * 1000, // 5 minutes before data is considered stale
+      gcTime: 10 * 60 * 1000, // 10 minutes before inactive queries are garbage collected
       retry: 1, // Only retry failed requests once
-      staleTime: Infinity, // Data never goes stale automatically
-      gcTime: Infinity // Cache never expires automatically
     },
   },
 });
@@ -81,9 +81,32 @@ const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => 
   };
 
   const logout = async () => {
-    await supabase.auth.signOut();
-    // Clear all queries when logging out
-    queryClient.clear();
+    try {
+      // Sign out from Supabase
+      await supabase.auth.signOut();
+      
+      // Clear all queries
+      queryClient.clear();
+      
+      // Explicitly remove specific query caches
+      queryClient.removeQueries({ queryKey: ['invoices'] });
+      queryClient.removeQueries({ queryKey: ['businessProfiles'] });
+      queryClient.removeQueries({ queryKey: ['customers'] });
+      queryClient.removeQueries({ queryKey: ['products'] });
+      queryClient.removeQueries({ queryKey: ['settings'] });
+      
+      // Clear any persisted query state in localStorage/sessionStorage
+      ['invoices', 'businessProfiles', 'customers', 'products', 'settings'].forEach(key => {
+        localStorage.removeItem(`tanstack-query-${key}`);
+        sessionStorage.removeItem(`tanstack-query-${key}`);
+      });
+      
+      // Reset user state
+      setUser(null);
+      localStorage.removeItem("sb_session");
+    } catch (error) {
+      console.error("Error during logout:", error);
+    }
   };
 
   useEffect(() => {

@@ -179,7 +179,8 @@ export async function getInvoice(id: string): Promise<Invoice> {
       status: (invoiceData.ksef_status as 'pending' | 'sent' | 'error' | 'none') || 'none',
       referenceNumber: invoiceData.ksef_reference_number || undefined
     },
-    user_id: invoiceData.user_id || '',
+    // Get user_id from the business profile or use an empty string as fallback
+    user_id: invoiceDataWithRelations.business_profiles?.user_id || '',
     businessName: invoiceDataWithRelations.business_profiles?.name || '',
     customerName: invoiceDataWithRelations.customers?.name || ''
   };
