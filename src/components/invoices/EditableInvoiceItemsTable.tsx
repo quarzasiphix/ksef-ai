@@ -55,11 +55,12 @@ export const EditableInvoiceItemsTable: React.FC<EditableInvoiceItemsTableProps>
     const item = items.find(item => item.id === id);
     if (!item) return;
     
-    const vatRate = Number(value);
-    if (isNaN(vatRate) || vatRate < 0) return;
+    let vatRate = Number(value);
+    if (isNaN(vatRate) || vatRate < 0) vatRate = 0;
     
     recalculateItemTotals(id, { vatRate });
   };
+
 
   const recalculateItemTotals = (id: string, updates: Partial<InvoiceItem>) => {
     const item = items.find(item => item.id === id);
@@ -67,8 +68,9 @@ export const EditableInvoiceItemsTable: React.FC<EditableInvoiceItemsTableProps>
     
     const quantity = updates.quantity !== undefined ? updates.quantity : item.quantity;
     const unitPrice = updates.unitPrice !== undefined ? updates.unitPrice : item.unitPrice;
-    const vatRate = updates.vatRate !== undefined ? updates.vatRate : item.vatRate;
-    
+    let vatRate = updates.vatRate !== undefined ? updates.vatRate : item.vatRate;
+    if (isNaN(vatRate) || vatRate < 0) vatRate = 0;
+
     const totalNetValue = unitPrice * quantity;
     const totalVatValue = isReceipt ? 0 : totalNetValue * (vatRate / 100);
     const totalGrossValue = totalNetValue + totalVatValue;
@@ -87,7 +89,8 @@ export const EditableInvoiceItemsTable: React.FC<EditableInvoiceItemsTableProps>
     const product = products.find(p => p.id === productId);
     if (!product) return;
     
-    const vatRate = isReceipt ? 0 : product.vatRate;
+    let vatRate = isReceipt ? 0 : product.vatRate;
+    if (isNaN(vatRate) || vatRate < 0) vatRate = 0;
     const quantity = 1;
     const unitPrice = product.unitPrice;
     const totalNetValue = unitPrice * quantity;
@@ -111,7 +114,8 @@ export const EditableInvoiceItemsTable: React.FC<EditableInvoiceItemsTableProps>
   };
 
   const handleNewProductAdded = (product: Product) => {
-    const vatRate = isReceipt ? 0 : product.vatRate;
+    let vatRate = isReceipt ? 0 : product.vatRate;
+    if (isNaN(vatRate) || vatRate < 0) vatRate = 0;
     const quantity = 1;
     const unitPrice = product.unitPrice;
     const totalNetValue = unitPrice * quantity;
@@ -133,6 +137,7 @@ export const EditableInvoiceItemsTable: React.FC<EditableInvoiceItemsTableProps>
     
     onAddItem(newItem);
   };
+
 
   return (
     <div className="space-y-4">

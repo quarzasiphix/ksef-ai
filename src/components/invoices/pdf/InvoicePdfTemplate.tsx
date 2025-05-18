@@ -1,6 +1,7 @@
 import toWords from 'numbers-to-words-pl';
 import React from 'react';
 import { Invoice, InvoiceType, BusinessProfile, Customer, PaymentMethod, getPolishPaymentMethod } from '@/types';
+import { calculateItemValues, calculateInvoiceTotals, formatCurrency as formatCurrencyUtil } from '@/lib/invoice-utils';
 
 // Helper to check for transfer payment method robustly
 function isTransfer(paymentMethod: string | PaymentMethod): boolean {
@@ -182,6 +183,10 @@ const pdfStyles: Record<string, React.CSSProperties> = {
 export const InvoicePdfTemplate: React.FC<InvoicePdfTemplateProps> = ({ invoice, businessProfile, customer }) => {
   const isReceipt = invoice.type === InvoiceType.RECEIPT;
 
+  // Always recalculate items and totals
+  const itemsWithValues = invoice.items.map(calculateItemValues);
+  const { totalNetValue, totalVatValue, totalGrossValue } = calculateInvoiceTotals(invoice.items);
+
   return (
     <div style={{ background: '#fff', margin: 0, padding: 0, width: '794px', height: '1123px', boxSizing: 'border-box' }}>
       <div style={{ ...pdfStyles.container, width: '100%', height: '100%', boxSizing: 'border-box' }}>
@@ -279,19 +284,23 @@ export const InvoicePdfTemplate: React.FC<InvoicePdfTemplateProps> = ({ invoice,
               <th style={{ textAlign: 'left', padding: 6, border: '1px solid #e5e7eb' }}>Nazwa</th>
               <th style={{ textAlign: 'right', padding: 6, border: '1px solid #e5e7eb' }}>Ilość</th>
               <th style={{ textAlign: 'right', padding: 6, border: '1px solid #e5e7eb' }}>Cena netto</th>
-              <th style={{ textAlign: 'right', padding: 6, border: '1px solid #e5e7eb' }}>VAT</th>
-              <th style={{ textAlign: 'right', padding: 6, border: '1px solid #e5e7eb' }}>Cena brutto</th>
+              <th style={{ textAlign: 'right', padding: 6, border: '1px solid #e5e7eb' }}>Wartość netto</th>
+              <th style={{ textAlign: 'right', padding: 6, border: '1px solid #e5e7eb' }}>VAT %</th>
+              <th style={{ textAlign: 'right', padding: 6, border: '1px solid #e5e7eb' }}>Kwota VAT</th>
+              <th style={{ textAlign: 'right', padding: 6, border: '1px solid #e5e7eb' }}>Wartość brutto</th>
             </tr>
           </thead>
           <tbody>
-            {invoice.items && invoice.items.map((item, idx) => (
+            {itemsWithValues.map((item, idx) => (
               <tr key={idx}>
                 <td style={{ padding: 6, border: '1px solid #e5e7eb' }}>{idx + 1}</td>
                 <td style={{ padding: 6, border: '1px solid #e5e7eb' }}>{item.name}</td>
                 <td style={{ padding: 6, border: '1px solid #e5e7eb', textAlign: 'right' }}>{item.quantity}</td>
-                <td style={{ padding: '4px 6px', border: '1px solid #e5e7eb', textAlign: 'right' }}>{formatCurrency(item.unitPrice)}</td>
+                <td style={{ padding: '4px 6px', border: '1px solid #e5e7eb', textAlign: 'right' }}>{formatCurrencyUtil(item.unitPrice)}</td>
+                <td style={{ padding: '4px 6px', border: '1px solid #e5e7eb', textAlign: 'right' }}>{formatCurrencyUtil(item.totalNetValue || 0)}</td>
                 <td style={{ padding: 6, border: '1px solid #e5e7eb', textAlign: 'right' }}>{item.vatRate}%</td>
-                <td style={{ padding: '4px 6px', border: '1px solid #e5e7eb', textAlign: 'right' }}>{formatCurrency(item.totalGrossValue)}</td>
+                <td style={{ padding: '4px 6px', border: '1px solid #e5e7eb', textAlign: 'right' }}>{formatCurrencyUtil(item.totalVatValue || 0)}</td>
+                <td style={{ padding: '4px 6px', border: '1px solid #e5e7eb', textAlign: 'right' }}>{formatCurrencyUtil(item.totalGrossValue || 0)}</td>
               </tr>
             ))}
           </tbody>
@@ -299,18 +308,18 @@ export const InvoicePdfTemplate: React.FC<InvoicePdfTemplateProps> = ({ invoice,
 
         {/* Totals Section */}
         <div style={{ width: '100%', display: 'flex', justifyContent: 'flex-end', marginBottom: 16 }}>
-          <div style={{ minWidth: 220 }}>
+          <div style={{ minWidth: 300 }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 13, marginBottom: 2 }}>
               <span>Razem netto:</span>
-              <span>{invoice.totalNetValue?.toFixed(2) || '0.00'} PLN</span>
+              <span>{formatCurrencyUtil(totalNetValue || 0)}</span>
             </div>
             <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 13, marginBottom: 2 }}>
               <span>VAT:</span>
-              <span>{invoice.totalVatValue?.toFixed(2) || '0.00'} PLN</span>
+              <span>{formatCurrencyUtil(totalVatValue || 0)}</span>
             </div>
             <div style={{ display: 'flex', justifyContent: 'space-between', fontWeight: 700, fontSize: 14, marginTop: 6 }}>
               <span>Razem brutto:</span>
-              <span>{invoice.totalGrossValue?.toFixed(2) || '0.00'} PLN</span>
+              <span>{formatCurrencyUtil(totalGrossValue || 0)}</span>
             </div>
           </div>
         </div>
@@ -331,7 +340,7 @@ export const InvoicePdfTemplate: React.FC<InvoicePdfTemplateProps> = ({ invoice,
             Do zapłaty: <span style={{ color: '#2c2930' }}>{formatCurrency(invoice.totalGrossValue || 0)}</span>
           </div>
           <div style={{ fontSize: '15px', color: '#495057', fontStyle: 'italic' }}>
-            Słownie: {toWords(invoice.totalGrossValue || 0)} złoty.
+            Słownie: {toWords(invoice.totalGrossValue || 0)}, złoty.
           </div>
 
           {/* Payment Method and Bank Account */}

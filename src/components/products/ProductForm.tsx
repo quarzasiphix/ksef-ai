@@ -36,7 +36,7 @@ const VAT_RATES = [
   { label: "8%", value: 8 },
   { label: "5%", value: 5 },
   { label: "0%", value: 0 },
-  { label: "Zwolniony", value: -1 },
+  { label: "Zwolniony", value: 0 },
 ];
 
 const UNITS = ["szt.", "godz.", "usł.", "kg", "m", "m²", "m³", "l", "komplet"];
@@ -210,7 +210,7 @@ const ProductForm = ({
                   )}
                 />
 
-                <div className="sticky bottom-0 bg-white border-t p-4 mt-auto">
+                <div className="sticky bottom-0  border-t p-4 mt-auto">
                   <div className="flex justify-end gap-2">
                     <Button type="button" variant="outline" onClick={onClose}>
                       Anuluj

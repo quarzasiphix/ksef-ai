@@ -18,6 +18,8 @@ interface InvoiceItemsCardProps {
   type: InvoiceType;
 }
 
+import { calculateItemValues } from "@/lib/invoice-utils";
+
 export const InvoiceItemsCard: React.FC<InvoiceItemsCardProps> = ({
   items,
   totalNetValue,
@@ -25,12 +27,14 @@ export const InvoiceItemsCard: React.FC<InvoiceItemsCardProps> = ({
   totalGrossValue,
   type,
 }) => {
+  // Always recalculate item values defensively
+  const safeItems = items.map(calculateItemValues);
   const isMobile = useIsMobile();
   const isReceipt = type === InvoiceType.RECEIPT;
 
   // Mobile view for invoice items
   const renderMobileItems = () => {
-    return items.map((item, index) => (
+    return safeItems.map((item, index) => (
       <Card key={item.id} className="mb-3">
         <CardContent className="p-3">
           <div 
@@ -94,7 +98,7 @@ export const InvoiceItemsCard: React.FC<InvoiceItemsCardProps> = ({
             </tr>
           </thead>
           <tbody>
-            {items.map((item, index) => (
+            {safeItems.map((item, index) => (
               <tr key={item.id}>
                 <td>{index + 1}</td>
                 <td>{item.name}</td>

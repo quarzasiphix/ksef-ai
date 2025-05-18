@@ -19,12 +19,17 @@ export const formatNumber = (
 
 // Calculate net, VAT, and gross values for an invoice item
 export const calculateItemValues = (item: InvoiceItem): InvoiceItem => {
+  // Defensive: Clamp VAT rate to 0 if negative or NaN
+  let vatRate = isNaN(item.vatRate) || item.vatRate < 0 ? 0 : item.vatRate;
   const totalNetValue = item.unitPrice * item.quantity;
-  const totalVatValue = totalNetValue * (item.vatRate / 100);
+  let totalVatValue = totalNetValue * (vatRate / 100);
+  // Defensive: Prevent negative VAT value
+  if (totalVatValue < 0) totalVatValue = 0;
   const totalGrossValue = totalNetValue + totalVatValue;
 
   return {
     ...item,
+    vatRate, // Ensure the corrected VAT rate is used
     totalNetValue,
     totalVatValue,
     totalGrossValue,

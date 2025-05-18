@@ -11,7 +11,7 @@ interface InvoiceHeaderProps {
   number: string;
   type: InvoiceType;
   pdfLoading: boolean;
-  handleGeneratePdf: () => Promise<void>;
+  handleGeneratePdf: () => Promise<string | null>;
   handleSharePdf: () => Promise<void>;
   canSharePdf: boolean;
 }
@@ -76,13 +76,13 @@ export const InvoiceHeader: React.FC<InvoiceHeaderProps> = ({
           <FileDown className="h-3.5 w-3.5" />
           <span className="hidden sm:inline">PDF</span>
         </Button>
-        {Capacitor.isNativePlatform() && (
+        {(canSharePdf || Capacitor.getPlatform() === 'android' || isMobile) && (
           <Button 
             variant="outline" 
             className="flex items-center gap-1 text-xs"
             size={isMobile ? "sm" : "sm"}
             onClick={handleSharePdf}
-            disabled={pdfLoading || !canSharePdf}
+            disabled={pdfLoading}
           >
             <Share2 className="h-3.5 w-3.5" />
             <span className="hidden sm:inline">Udostępnij</span>

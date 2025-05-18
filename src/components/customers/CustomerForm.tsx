@@ -20,7 +20,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 
 const formSchema = z.object({
   name: z.string().min(1, "Nazwa jest wymagana"),
-  taxId: z.string().max(10).optional(),
+  taxId: z.string().min(10, "NIP jest wymagany i musi mieć 10 cyfr").max(10, "NIP musi mieć 10 cyfr"),
   address: z.string().min(1, "Adres jest wymagany"),
   postalCode: z.string().min(1, "Kod pocztowy jest wymagany"),
   city: z.string().min(1, "Miasto jest wymagane"),
@@ -113,10 +113,51 @@ const CustomerForm = ({
               name="taxId"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>NIP (opcjonalnie)</FormLabel>
-                  <FormControl>
-                    <Input placeholder="NIP" {...field} />
-                  </FormControl>
+                  <FormLabel>NIP</FormLabel>
+                  <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+                    <FormControl>
+                      <Input placeholder="NIP" maxLength={10} {...field} />
+                    </FormControl>
+                    <Button
+                      type="button"
+                      size="sm"
+                      variant="secondary"
+                      style={{ minWidth: 60, padding: '0 10px' }}
+                      onClick={async () => {
+                        const nip = form.getValues("taxId");
+                        if (!nip || nip.length !== 10) {
+                          toast.error("Podaj poprawny NIP (10 cyfr)");
+                          return;
+                        }
+                        try {
+                          const today = new Date().toISOString().slice(0, 10);
+                          const res = await fetch(`https://wl-api.mf.gov.pl/api/search/nip/${nip}?date=${today}`);
+                          const data = await res.json();
+                          if (data.result && data.result.subject) {
+                            const subject = data.result.subject;
+                            form.setValue("name", subject.name || "");
+                            form.setValue("address", subject.workingAddress || subject.residenceAddress || "");
+                            // Try to extract postal code and city from address
+                            if (subject.workingAddress || subject.residenceAddress) {
+                              const addr = subject.workingAddress || subject.residenceAddress;
+                              const match = addr.match(/(\d{2}-\d{3})\s+(.+)/);
+                              if (match) {
+                                form.setValue("postalCode", match[1]);
+                                form.setValue("city", match[2]);
+                              }
+                            }
+                            toast.success("Dane firmy pobrane z GUS");
+                          } else {
+                            toast.error("Nie znaleziono firmy dla podanego NIP");
+                          }
+                        } catch (err) {
+                          toast.error("Błąd podczas pobierania danych z API");
+                        }
+                      }}
+                    >
+                      Szukaj
+                    </Button>
+                  </div>
                   <FormMessage />
                 </FormItem>
               )}
