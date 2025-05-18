@@ -9,6 +9,7 @@ import { Invoice } from "@/types";
 import { getInvoice } from "@/integrations/supabase/repositories/invoiceRepository";
 import { useGlobalData } from "@/hooks/use-global-data";
 import { InvoiceHeader } from "@/components/invoices/detail/InvoiceHeader";
+import MobileStickyInvoiceHeader from "@/components/invoices/detail/MobileStickyInvoiceHeader";
 import { InvoiceDetailsCard } from "@/components/invoices/detail/InvoiceDetailsCard";
 import { InvoiceItemsCard } from "@/components/invoices/detail/InvoiceItemsCard";
 import ContractorCard, { ContractorData } from "@/components/invoices/detail/ContractorCard";
@@ -241,7 +242,7 @@ const InvoiceDetailComponent: React.FC = () => {
   }
 
   return (
-    <div ref={containerRef} className="flex-1 space-y-3 p-2 sm:p-4 md:p-6 lg:space-y-4">
+    <div ref={containerRef} className="flex-1 space-y-3 lg:space-y-4">
       <InvoiceHeader 
         id={invoice.id}
         number={invoice.number}
@@ -250,14 +251,22 @@ const InvoiceDetailComponent: React.FC = () => {
         handleGeneratePdf={generatePdf}
         handleSharePdf={sharePdf}
         canSharePdf={!!(savedPdfUri && savedPdfUri !== 'web_downloaded')}
+        // Add header id for sticky detection
+        // @ts-ignore
+        ref={undefined}
+        // Add id for DOM
+        {...{ id: undefined }}
       />
-      <div className="mt-8 p-4 bg-card rounded-lg border"> 
-        <CardTitle className="text-base md:text-lg">Dane Kontrahentów</CardTitle>
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          <ContractorCard title="Sprzedawca" contractor={sellerCardData} /> 
-          <ContractorCard title="Nabywca" contractor={buyerCardData} />
-        </div>
-      </div>
+      {/* Sticky mobile bar for actions */}
+      <MobileStickyInvoiceHeader
+        invoiceId={invoice.id}
+        invoiceNumber={invoice.number}
+        invoiceType={invoice.type}
+        pdfLoading={pdfLoading}
+        onEdit={() => window.location.href = `/invoices/edit/${invoice.id}`}
+        onShare={sharePdf}
+        onDownload={generatePdf}
+      />
       <InvoiceDetailsCard
         number={invoice.number}
         issueDate={invoice.issueDate}
@@ -270,6 +279,13 @@ const InvoiceDetailComponent: React.FC = () => {
         type={invoice.type}
         bankAccount={sellerCardData?.bankAccount}
       />
+      <div className="mt-8 p-4 bg-card rounded-lg border"> 
+        <CardTitle className="text-base md:text-lg">Dane Kontrahentów</CardTitle>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          <ContractorCard title="Sprzedawca" contractor={sellerCardData} /> 
+          <ContractorCard title="Nabywca" contractor={buyerCardData} />
+        </div>
+      </div>
       <InvoiceItemsCard
         items={invoice.items}
         totalNetValue={invoice.totalNetValue || 0}

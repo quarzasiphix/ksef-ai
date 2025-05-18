@@ -9,13 +9,17 @@ interface ProductSelectorProps {
   documentType: InvoiceType;
   onProductSelected: (productId: string) => void;
   onNewProductAdded: (product: Product) => void;
+  refetchProducts: () => Promise<void>;
+  onProductSavedAndSync?: (product: Product) => void; // NEW: for instant UI update
 }
 
 export const ProductSelector: React.FC<ProductSelectorProps> = ({
   products,
   documentType,
   onProductSelected,
-  onNewProductAdded
+  onNewProductAdded,
+  refetchProducts,
+  onProductSavedAndSync // FIX: destructure from props
 }) => {
   const [selectedProductId, setSelectedProductId] = useState<string>("");
   
@@ -52,7 +56,12 @@ export const ProductSelector: React.FC<ProductSelectorProps> = ({
       <ProductEditDialog 
         mode="create" 
         documentType={documentType}
-        onProductSaved={onNewProductAdded}
+        onProductSaved={async (product) => {
+          onNewProductAdded(product);
+          await refetchProducts();
+        }}
+        onProductSavedAndSync={onProductSavedAndSync} // NEW: pass down
+        refetchProducts={refetchProducts}
       />
     </div>
   );

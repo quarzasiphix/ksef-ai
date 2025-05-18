@@ -4,7 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { X } from "lucide-react";
 import { InvoiceItem, InvoiceType } from "@/types";
-import { formatCurrency } from "@/lib/invoice-utils";
+import { formatCurrency, calculateItemValues } from "@/lib/invoice-utils";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { ProductEditDialog } from "../ProductEditDialog";
 
@@ -29,21 +29,24 @@ export const InvoiceItemRow: React.FC<InvoiceItemRowProps> = ({
     const quantity = Number(value);
     if (isNaN(quantity) || quantity < 0) return;
     
-    onUpdateItem(item.id, { quantity });
+    const updated = calculateItemValues({ ...item, quantity });
+    onUpdateItem(item.id, updated);
   };
 
   const handleUnitPriceChange = (value: string) => {
     const unitPrice = Number(value);
     if (isNaN(unitPrice) || unitPrice < 0) return;
     
-    onUpdateItem(item.id, { unitPrice });
+    const updated = calculateItemValues({ ...item, unitPrice });
+    onUpdateItem(item.id, updated);
   };
 
   const handleVatRateChange = (value: string) => {
     const vatRate = Number(value);
     if (isNaN(vatRate) || vatRate < 0) return;
     
-    onUpdateItem(item.id, { vatRate });
+    const updated = calculateItemValues({ ...item, vatRate });
+    onUpdateItem(item.id, updated);
   };
 
   return (
@@ -108,7 +111,15 @@ export const InvoiceItemRow: React.FC<InvoiceItemRowProps> = ({
               }}
               documentType={documentType}
               onProductSaved={(product) => {
-                // Optional: Update this item with the updated product data
+                onUpdateItem(item.id, {
+                  ...calculateItemValues({
+                    ...item,
+                    name: product.name,
+                    unitPrice: product.unitPrice,
+                    vatRate: product.vatRate,
+                    unit: product.unit
+                  })
+                });
               }}
             />
           )}

@@ -47,7 +47,7 @@ const App = () => (
     <QueryClientProvider client={queryClient}>
       <TooltipProvider>
         <Toaster />
-        <Sonner />
+        <Sonner position="top-center" offset={10} />
         <BrowserRouter>
           <GlobalDataLoader /> {/* Add our global data loader */}
           <Routes>

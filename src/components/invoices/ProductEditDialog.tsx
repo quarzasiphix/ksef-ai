@@ -15,7 +15,9 @@ interface ProductEditDialogProps {
   initialProduct?: Product;
   documentType: InvoiceType;
   onProductSaved: (product: Product) => void;
+  onProductSavedAndSync?: (product: Product) => void; // NEW: called immediately after save for instant UI update
   trigger?: React.ReactNode;
+  refetchProducts?: () => Promise<void>;
 }
 
 export const ProductEditDialog: React.FC<ProductEditDialogProps> = ({
@@ -23,7 +25,9 @@ export const ProductEditDialog: React.FC<ProductEditDialogProps> = ({
   initialProduct,
   documentType,
   onProductSaved,
-  trigger
+  onProductSavedAndSync, // FIX: destructure from props
+  trigger,
+  refetchProducts
 }) => {
   const isReceipt = documentType === InvoiceType.RECEIPT;
   const [open, setOpen] = useState(false);
@@ -70,6 +74,8 @@ export const ProductEditDialog: React.FC<ProductEditDialogProps> = ({
         const savedProduct = await saveProduct(productData);
         toast.success("Produkt został zaktualizowany");
         onProductSaved(savedProduct);
+        if (onProductSavedAndSync) onProductSavedAndSync(savedProduct); // NEW: instant UI update
+        if (refetchProducts) await refetchProducts();
       } else {
         // Just return the new product without saving to database
         onProductSaved({
@@ -100,8 +106,9 @@ export const ProductEditDialog: React.FC<ProductEditDialogProps> = ({
       <DialogTrigger asChild>
         {trigger || defaultTrigger}
       </DialogTrigger>
-      <DialogContent className="sm:max-w-md">
+      <DialogContent className="sm:max-w-md" aria-describedby="product-edit-description">
         <DialogHeader>
+          <span id="product-edit-description" style={{display: 'none'}}>Edytuj lub dodaj produkt do faktury.</span>
           <DialogTitle>
             {mode === 'edit' ? "Edytuj produkt" : "Dodaj nowy produkt"}
           </DialogTitle>

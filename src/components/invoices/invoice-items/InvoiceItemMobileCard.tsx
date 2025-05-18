@@ -63,7 +63,12 @@ export const InvoiceItemMobileCard: React.FC<InvoiceItemMobileCardProps> = ({
               }}
               documentType={documentType}
               onProductSaved={(product) => {
-                // Optional: Update this item with the updated product data
+                onUpdateItem(item.id, {
+                  name: product.name,
+                  unitPrice: product.unitPrice,
+                  vatRate: product.vatRate,
+                  unit: product.unit
+                });
               }}
             />
           )}

@@ -15,6 +15,8 @@ import { Plus, Search, Package, CircleDollarSign, Percent } from "lucide-react";
 import { formatCurrency } from "@/lib/invoice-utils";
 import { Badge } from "@/components/ui/badge";
 import { useGlobalData } from "@/hooks/use-global-data";
+import { useQueryClient } from "@tanstack/react-query";
+import { useEffect } from "react";
 
 const ProductCard = ({ product }: { product: Product }) => {
   return (
@@ -49,6 +51,11 @@ const ProductCard = ({ product }: { product: Product }) => {
 };
 
 const ProductList = () => {
+  const queryClient = useQueryClient();
+  useEffect(() => {
+    // Invalidate products query on mount for background fetch
+    queryClient.invalidateQueries({ queryKey: ["products"] });
+  }, [queryClient]);
   const { products: { data: products, isLoading } } = useGlobalData();
   const [searchTerm, setSearchTerm] = useState("");
   

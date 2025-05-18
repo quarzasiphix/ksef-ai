@@ -43,7 +43,7 @@ export const InvoiceHeader: React.FC<InvoiceHeaderProps> = ({
   const isMobile = useIsMobile();
   
   return (
-    <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mb-4 sticky top-0 bg-background z-10 pb-2 pt-1">
+    <div id="invoice-header" className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mb-4 sticky top-0 bg-background z-10 pb-2 pt-1">
       <div className="flex items-center gap-2">
         <Button variant="outline" size="icon" asChild>
           <Link to="/income">

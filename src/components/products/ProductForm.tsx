@@ -1,5 +1,6 @@
 
 import React from "react";
+import { useQueryClient } from "@tanstack/react-query";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
@@ -61,6 +62,7 @@ const ProductForm = ({
   onClose,
   onSuccess,
 }: ProductFormProps) => {
+  const queryClient = useQueryClient();
   const isEditing = !!initialData?.id;
 
   const form = useForm<z.infer<typeof formSchema>>({
@@ -88,6 +90,16 @@ const ProductForm = ({
       toast.success(
         isEditing ? "Produkt zaktualizowany" : "Produkt utworzony"
       );
+      // Update the products cache instantly
+      queryClient.setQueryData(["products"], (old: Product[] = []) => {
+        if (isEditing) {
+          // Replace the edited product
+          return old.map(p => p.id === savedProduct.id ? savedProduct : p);
+        } else {
+          // Add the new product
+          return [...old, savedProduct];
+        }
+      });
       onSuccess(savedProduct);
     } catch (error) {
       console.error("Error saving product:", error);

@@ -1,6 +1,7 @@
 
 import React, { useState } from "react";
 import { InvoiceItem, InvoiceType, Product } from "@/types";
+import { calculateItemValues } from "@/lib/invoice-utils";
 import { useMediaQuery } from "@/hooks/use-mobile";
 import { ProductSelector } from "./invoice-items/ProductSelector";
 import { DesktopInvoiceItemsTable } from "./invoice-items/DesktopInvoiceItemsTable";
@@ -13,6 +14,8 @@ interface EditableInvoiceItemsTableProps {
   onAddItem: (item: InvoiceItem) => void;
   documentType: InvoiceType;
   products: Product[];
+  refetchProducts: () => Promise<void>;
+  onProductSavedAndSync?: (product: Product) => void; // NEW: for instant UI update
 }
 
 export const EditableInvoiceItemsTable: React.FC<EditableInvoiceItemsTableProps> = ({
@@ -21,15 +24,18 @@ export const EditableInvoiceItemsTable: React.FC<EditableInvoiceItemsTableProps>
   onUpdateItem,
   onAddItem,
   documentType,
-  products
+  products,
+  refetchProducts,
+  onProductSavedAndSync // NEW: instant UI update
 }) => {
   const isReceipt = documentType === InvoiceType.RECEIPT;
   const isMobile = useMediaQuery("(max-width: 768px)");
 
-  // Calculate totals
-  const totalNetValue = items.reduce((sum, item) => sum + (item.totalNetValue || 0), 0);
-  const totalVatValue = items.reduce((sum, item) => sum + (item.totalVatValue || 0), 0);
-  const totalGrossValue = items.reduce((sum, item) => sum + (item.totalGrossValue || 0), 0);
+  // Calculate totals using defensive calculation
+  const calculatedItems: InvoiceItem[] = items.map(calculateItemValues);
+  const totalNetValue = calculatedItems.reduce((sum, item) => sum + (item.totalNetValue || 0), 0);
+  const totalVatValue = calculatedItems.reduce((sum, item) => sum + (item.totalVatValue || 0), 0);
+  const totalGrossValue = calculatedItems.reduce((sum, item) => sum + (item.totalGrossValue || 0), 0);
   
   const handleQuantityChange = (id: string, value: string) => {
     const item = items.find(item => item.id === id);
@@ -65,22 +71,9 @@ export const EditableInvoiceItemsTable: React.FC<EditableInvoiceItemsTableProps>
   const recalculateItemTotals = (id: string, updates: Partial<InvoiceItem>) => {
     const item = items.find(item => item.id === id);
     if (!item) return;
-    
-    const quantity = updates.quantity !== undefined ? updates.quantity : item.quantity;
-    const unitPrice = updates.unitPrice !== undefined ? updates.unitPrice : item.unitPrice;
-    let vatRate = updates.vatRate !== undefined ? updates.vatRate : item.vatRate;
-    if (isNaN(vatRate) || vatRate < 0) vatRate = 0;
-
-    const totalNetValue = unitPrice * quantity;
-    const totalVatValue = isReceipt ? 0 : totalNetValue * (vatRate / 100);
-    const totalGrossValue = totalNetValue + totalVatValue;
-    
-    onUpdateItem(id, {
-      ...updates,
-      totalNetValue,
-      totalVatValue,
-      totalGrossValue
-    });
+    // Always use defensive calculation
+    const updated = calculateItemValues({ ...item, ...updates });
+    onUpdateItem(id, updated);
   };
 
   const handleProductSelected = (productId: string) => {
@@ -139,15 +132,18 @@ export const EditableInvoiceItemsTable: React.FC<EditableInvoiceItemsTableProps>
   };
 
 
-  return (
-    <div className="space-y-4">
-      <ProductSelector
-        products={products}
-        documentType={documentType}
-        onProductSelected={handleProductSelected}
-        onNewProductAdded={handleNewProductAdded}
-      />
+  // NEW: when a product is edited, update all invoice items with matching productId instantly
+  const handleProductSavedAndSync = (product: Product) => {
+    items.forEach(item => {
+      if (item.productId === product.id && item.name !== product.name) {
+        onUpdateItem(item.id, { name: product.name });
+      }
+    });
+    if (onProductSavedAndSync) onProductSavedAndSync(product);
+  };
 
+  return (
+    <div>
       {isMobile ? (
         <MobileInvoiceItemsList
           items={items}
@@ -171,6 +167,16 @@ export const EditableInvoiceItemsTable: React.FC<EditableInvoiceItemsTableProps>
           onUpdateItem={onUpdateItem}
         />
       )}
+      <div className="pt-4">
+        <ProductSelector 
+          products={products}
+          documentType={documentType}
+          onProductSelected={handleProductSelected}
+          onNewProductAdded={handleNewProductAdded}
+          refetchProducts={refetchProducts}
+          onProductSavedAndSync={handleProductSavedAndSync} // NEW: pass handler
+        />
+      </div>
     </div>
   );
 };
