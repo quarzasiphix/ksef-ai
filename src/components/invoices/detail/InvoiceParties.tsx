@@ -44,59 +44,61 @@ export const InvoiceParties: React.FC<InvoicePartiesProps> = ({
   }, [businessProfileId, customerId, profiles, customers]);
   return (
     <Card>
-      <CardHeader className="py-3 px-4">
+      <CardHeader className="py-2.5 px-3 sm:py-3 sm:px-4">
         <CardTitle className="text-base md:text-lg">Dane kontrahentów</CardTitle>
       </CardHeader>
-      <CardContent className="grid md:grid-cols-2 gap-3 px-4 py-2">
-        <div>
-          <p className="text-xs font-medium text-muted-foreground mb-1">Sprzedawca</p>
+      <CardContent className="grid grid-cols-2 gap-x-2 gap-y-1 px-3 py-2 text-xs sm:gap-x-2.5 sm:gap-y-1.5 md:text-sm">
+        {/* Sprzedawca Section */}
+        <div className="space-y-0.5">
+          <p className="text-[11px] sm:text-xs font-medium text-muted-foreground mb-0.5">Sprzedawca</p>
           <div>
-            <p className="font-medium" style={{ overflowWrap: 'break-word' }}>{businessName || "Brak nazwy"}</p>
+            <p className="font-semibold" style={{ overflowWrap: 'break-word', wordBreak: 'break-all' }}>{businessName || "Brak nazwy"}</p>
             {businessProfile ? (
-              <div className="text-xs space-y-1 mt-1">
+              <div className="text-[10px] sm:text-[11px] space-y-0.5 mt-0.5">
                 {businessProfile.taxId && (
-                  <p>NIP: {businessProfile.taxId}</p>
+                  <p style={{ overflowWrap: 'break-word', wordBreak: 'break-all' }}>NIP: {businessProfile.taxId}</p>
                 )}
                 {businessProfile.regon && (
-                  <p>REGON: {businessProfile.regon}</p>
+                  <p style={{ overflowWrap: 'break-word', wordBreak: 'break-all' }}>REGON: {businessProfile.regon}</p>
                 )}
-                <p style={{ overflowWrap: 'break-word' }}>{businessProfile.address}</p>
-                <p>{businessProfile.postalCode} {businessProfile.city}</p>
+                <p style={{ overflowWrap: 'break-word', wordBreak: 'break-all' }}>{businessProfile.address}</p>
+                <p style={{ overflowWrap: 'break-word', wordBreak: 'break-all' }}>{businessProfile.postalCode} {businessProfile.city}</p>
                 {businessProfile.email && (
-                  <p>Email: {businessProfile.email}</p>
+                  <p style={{ overflowWrap: 'break-word', wordBreak: 'break-all' }}>Email: {businessProfile.email}</p>
                 )}
                 {businessProfile.phone && (
-                  <p>Tel: {businessProfile.phone}</p>
+                  <p style={{ overflowWrap: 'break-word', wordBreak: 'break-all' }}>Tel: {businessProfile.phone}</p>
                 )}
                 {businessProfile.bankAccount && (
-                  <p>Konto: {businessProfile.bankAccount}</p>
+                  <p style={{ overflowWrap: 'break-word', wordBreak: 'break-all' }}>Konto: {businessProfile.bankAccount}</p>
                 )}
               </div>
             ) : (
-              <p className="text-xs text-muted-foreground">Brak dostępnych szczegółowych danych</p>
+              <p className="text-[10px] sm:text-[11px] text-muted-foreground">Brak szczegółów</p>
             )}
           </div>
         </div>
-        <div>
-          <p className="text-xs font-medium text-muted-foreground mb-1">Nabywca</p>
+        {/* Nabywca Section */}
+        <div className="space-y-0.5">
+          <p className="text-[11px] sm:text-xs font-medium text-muted-foreground mb-0.5">Nabywca</p>
           <div>
-            <p className="font-medium" style={{ overflowWrap: 'break-word' }}>{customerName || "Brak nazwy"}</p>
+            <p className="font-semibold" style={{ overflowWrap: 'break-word', wordBreak: 'break-all' }}>{customerName || "Brak nazwy"}</p>
             {customer ? (
-              <div className="text-xs space-y-1 mt-1">
+              <div className="text-[10px] sm:text-[11px] space-y-0.5 mt-0.5">
                 {customer.taxId && (
-                  <p>NIP: {customer.taxId}</p>
+                  <p style={{ overflowWrap: 'break-word', wordBreak: 'break-all' }}>NIP: {customer.taxId}</p>
                 )}
-                <p style={{ overflowWrap: 'break-word' }}>{customer.address}</p>
-                <p>{customer.postalCode} {customer.city}</p>
+                <p style={{ overflowWrap: 'break-word', wordBreak: 'break-all' }}>{customer.address}</p>
+                <p style={{ overflowWrap: 'break-word', wordBreak: 'break-all' }}>{customer.postalCode} {customer.city}</p>
                 {customer.email && (
-                  <p>Email: {customer.email}</p>
+                  <p style={{ overflowWrap: 'break-word', wordBreak: 'break-all' }}>Email: {customer.email}</p>
                 )}
                 {customer.phone && (
-                  <p>Tel: {customer.phone}</p>
+                  <p style={{ overflowWrap: 'break-word', wordBreak: 'break-all' }}>Tel: {customer.phone}</p>
                 )}
               </div>
             ) : (
-              <p className="text-xs text-muted-foreground">Brak dostępnych szczegółowych danych</p>
+              <p className="text-[10px] sm:text-[11px] text-muted-foreground">Brak szczegółów</p>
             )}
           </div>
         </div>

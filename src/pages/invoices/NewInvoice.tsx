@@ -1,7 +1,7 @@
 
 import React, { useState, useEffect } from "react";
 import { useSearchParams, useNavigate } from "react-router-dom";
-import { Invoice, InvoiceType, InvoiceItem, PaymentMethod } from "@/types";
+import { Invoice, InvoiceType, InvoiceItem, PaymentMethod, paymentMethodToEnglish } from "@/types";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
 import * as z from "zod";
@@ -127,7 +127,7 @@ const NewInvoice: React.FC<{
         businessProfileId: businessProfileId,
         customerId: customerId,
         items: items,
-        paymentMethod: data.paymentMethod as PaymentMethod,
+        paymentMethod: paymentMethodToEnglish[data.paymentMethod] || data.paymentMethod,
         isPaid: initialData?.isPaid || false,
         comments: data.comments,
         totalNetValue,

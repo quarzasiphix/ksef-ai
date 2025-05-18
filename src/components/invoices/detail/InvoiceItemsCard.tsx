@@ -78,8 +78,8 @@ export const InvoiceItemsCard: React.FC<InvoiceItemsCardProps> = ({
   // Desktop view for invoice items
   const renderDesktopItems = () => {
     return (
-      <div className="invoice-table-container">
-        <table className="invoice-table">
+      <div className="invoice-table-container overflow-x-auto">
+        <table className="invoice-table w-full">
           <thead>
             <tr>
               <th>Lp.</th>

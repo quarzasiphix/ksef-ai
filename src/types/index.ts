@@ -41,11 +41,40 @@ export enum InvoiceType {
 }
 
 export enum PaymentMethod {
-  TRANSFER = "transfer",
-  CASH = "cash",
-  CARD = "card",
-  OTHER = "other",
+  TRANSFER = "przelew",
+  CASH = "gotówka",
+  CARD = "karta",
+  OTHER = "inny",
 }
+
+// Payment method display mapping
+export const paymentMethodToPolish: Record<string, string> = {
+  transfer: 'Przelew',
+  cash: 'Gotówka',
+  card: 'Karta',
+  other: 'Inna',
+  przelew: 'Przelew',
+  'gotówka': 'Gotówka',
+  karta: 'Karta',
+  inny: 'Inna',
+};
+
+export const paymentMethodToEnglish: Record<string, string> = {
+  przelew: 'transfer',
+  'gotówka': 'cash',
+  karta: 'card',
+  inny: 'other',
+  transfer: 'transfer',
+  cash: 'cash',
+  card: 'card',
+  other: 'other',
+};
+
+export function getPolishPaymentMethod(method: string | undefined): string {
+  if (!method) return '';
+  return paymentMethodToPolish[method] || method;
+}
+
 
 export interface InvoiceItem {
   id: string;

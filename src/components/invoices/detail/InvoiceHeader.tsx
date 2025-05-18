@@ -1,10 +1,10 @@
-
 import React from "react";
 import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
-import { ArrowLeft, Printer, FilePlus, FileDown, Pencil, SendHorizontal } from "lucide-react";
+import { ArrowLeft, Printer, FilePlus, FileDown, Pencil, SendHorizontal, Share2 } from "lucide-react";
 import { InvoiceType } from "@/types";
 import { useIsMobile } from "@/hooks/use-mobile";
+import { Capacitor } from '@capacitor/core';
 
 interface InvoiceHeaderProps {
   id: string;
@@ -12,6 +12,8 @@ interface InvoiceHeaderProps {
   type: InvoiceType;
   pdfLoading: boolean;
   handleGeneratePdf: () => Promise<void>;
+  handleSharePdf: () => Promise<void>;
+  canSharePdf: boolean;
 }
 
 const getInvoiceTypeTitle = (type: InvoiceType) => {
@@ -35,6 +37,8 @@ export const InvoiceHeader: React.FC<InvoiceHeaderProps> = ({
   type,
   pdfLoading,
   handleGeneratePdf,
+  handleSharePdf,
+  canSharePdf,
 }) => {
   const isMobile = useIsMobile();
   
@@ -72,6 +76,18 @@ export const InvoiceHeader: React.FC<InvoiceHeaderProps> = ({
           <FileDown className="h-3.5 w-3.5" />
           <span className="hidden sm:inline">PDF</span>
         </Button>
+        {Capacitor.isNativePlatform() && (
+          <Button 
+            variant="outline" 
+            className="flex items-center gap-1 text-xs"
+            size={isMobile ? "sm" : "sm"}
+            onClick={handleSharePdf}
+            disabled={pdfLoading || !canSharePdf}
+          >
+            <Share2 className="h-3.5 w-3.5" />
+            <span className="hidden sm:inline">Udostępnij</span>
+          </Button>
+        )}
         <Button variant="outline" className="flex items-center gap-1 text-xs" size={isMobile ? "sm" : "sm"} asChild>
           <Link to={`/invoices/edit/${id}`}>
             <Pencil className="h-3.5 w-3.5" />

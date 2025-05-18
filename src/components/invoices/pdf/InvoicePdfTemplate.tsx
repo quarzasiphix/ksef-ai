@@ -1,6 +1,11 @@
 import toWords from 'numbers-to-words-pl';
 import React from 'react';
-import { Invoice, InvoiceType, BusinessProfile, Customer } from '@/types';
+import { Invoice, InvoiceType, BusinessProfile, Customer, PaymentMethod, getPolishPaymentMethod } from '@/types';
+
+// Helper to check for transfer payment method robustly
+function isTransfer(paymentMethod: string | PaymentMethod): boolean {
+  return paymentMethod === PaymentMethod.TRANSFER || paymentMethod === 'transfer';
+}
 
 const formatPrice = (value: number) => {
   return new Intl.NumberFormat('pl-PL', {
@@ -326,8 +331,31 @@ export const InvoicePdfTemplate: React.FC<InvoicePdfTemplateProps> = ({ invoice,
             Do zapłaty: <span style={{ color: '#2c2930' }}>{formatCurrency(invoice.totalGrossValue || 0)}</span>
           </div>
           <div style={{ fontSize: '15px', color: '#495057', fontStyle: 'italic' }}>
-            Słownie: {toWords(invoice.totalGrossValue || 0)}
+            Słownie: {toWords(invoice.totalGrossValue || 0)} złoty.
           </div>
+
+          {/* Payment Method and Bank Account */}
+          <div style={{ marginTop: '12px', fontSize: '15px', color: '#495057' }}>
+            Sposób płatności: <span style={{ fontWeight: 600 }}>{getPolishPaymentMethod(invoice.paymentMethod) || 'Nie określono'}</span>
+          </div>
+
+          {/* Debugging Logs Start */}
+          {(() => {
+            console.log("PDF Gen - Invoice Payment Method:", invoice.paymentMethod);
+            console.log("PDF Gen - Expected Payment Method for Transfer:", PaymentMethod.TRANSFER);
+            console.log("PDF Gen - Is Payment Method Transfer?:", invoice.paymentMethod === PaymentMethod.TRANSFER);
+            console.log("PDF Gen - Business Profile Bank Account:", businessProfile?.bankAccount);
+            console.log("PDF Gen - Full Business Profile:", businessProfile);
+            console.log("PDF Gen - Full Invoice Object:", invoice);
+            return null; // Ensure the expression evaluates to a valid ReactNode
+          })()}
+          {/* Debugging Logs End */}
+
+          {isTransfer(invoice.paymentMethod) && businessProfile?.bankAccount && (
+            <div style={{ marginTop: '4px', fontSize: '15px', color: '#495057' }}>
+              Numer konta: <span style={{ fontWeight: 600 }}>{businessProfile.bankAccount}</span>
+            </div>
+          )}
         </div>
 
       </div>
