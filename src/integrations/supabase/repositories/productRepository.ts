@@ -27,7 +27,8 @@ export async function saveProduct(product: Product): Promise<Product> {
     name: product.name,
     unit_price: product.unitPrice,
     vat_rate: product.vatRate,
-    unit: product.unit
+    unit: product.unit,
+    user_id: product.user_id // Always include user_id for RLS
   };
 
   if (product.id) {

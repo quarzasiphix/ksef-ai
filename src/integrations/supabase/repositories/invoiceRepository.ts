@@ -1,10 +1,19 @@
 
 import { supabase } from "../client";
-import type { Invoice, InvoiceItem, InvoiceType, PaymentMethod } from "@/types";
+import type { InvoiceItem, InvoiceType, PaymentMethod, PaymentMethodDb, Invoice } from "@/types";
+import { toPaymentMethodUi } from "@/types";
+import { useAuth } from "@/App";
 
-export async function saveInvoice(invoice: Invoice): Promise<Invoice> {
+export async function saveInvoice(invoice: Omit<Invoice, 'id'> & { id?: string }): Promise<Invoice> {
+  // Validate required fields
+  if (!invoice.user_id) {
+    throw new Error("User ID is required");
+  }
   // First, save the invoice
+  // Create a clean payload with all required fields
   const invoicePayload = {
+    // Always include user_id first for clarity
+    user_id: invoice.user_id,
     number: invoice.number,
     type: invoice.type,
     issue_date: invoice.issueDate,
@@ -12,14 +21,15 @@ export async function saveInvoice(invoice: Invoice): Promise<Invoice> {
     sell_date: invoice.sellDate,
     business_profile_id: invoice.businessProfileId,
     customer_id: invoice.customerId,
-    payment_method: invoice.paymentMethod,
+    payment_method: invoice.paymentMethod, // Already in correct format
     is_paid: invoice.isPaid,
     comments: invoice.comments || null,
     total_net_value: invoice.totalNetValue || 0,
     total_gross_value: invoice.totalGrossValue || 0,
     total_vat_value: invoice.totalVatValue || 0,
     ksef_status: invoice.ksef?.status || 'none',
-    ksef_reference_number: invoice.ksef?.referenceNumber || null
+    ksef_reference_number: invoice.ksef?.referenceNumber || null,
+    // Other fields follow
   };
 
   let invoiceId: string;
@@ -67,27 +77,37 @@ export async function saveInvoice(invoice: Invoice): Promise<Invoice> {
   }
 
   // Then, save all invoice items
-  const itemsPayload = invoice.items.map(item => ({
-    invoice_id: invoiceId,
-    product_id: item.productId || null,
-    name: item.name,
-    quantity: item.quantity,
-    unit_price: item.unitPrice,
-    vat_rate: item.vatRate,
-    unit: item.unit,
-    total_net_value: item.totalNetValue || item.unitPrice * item.quantity,
-    total_gross_value: item.totalGrossValue || (item.unitPrice * item.quantity) * (1 + item.vatRate / 100),
-    total_vat_value: item.totalVatValue || (item.unitPrice * item.quantity) * (item.vatRate / 100)
-  }));
+  if (invoice.items && invoice.items.length > 0) {
+    const itemsPayload = invoice.items.map(item => ({
+      invoice_id: invoiceId,
+      user_id: invoice.user_id, // Include user_id for RLS
+      product_id: item.productId || null,
+      name: item.name,
+      quantity: item.quantity,
+      unit_price: item.unitPrice,
+      vat_rate: item.vatRate,
+      unit: item.unit,
+      total_net_value: item.totalNetValue || item.unitPrice * item.quantity,
+      total_gross_value: item.totalGrossValue || (item.unitPrice * item.quantity) * (1 + item.vatRate / 100),
+      total_vat_value: item.totalVatValue || (item.unitPrice * item.quantity) * (item.vatRate / 100)
+    }));
 
-  if (itemsPayload.length > 0) {
+    console.log('Saving invoice items with payload:', itemsPayload);
+
     const { error: itemsError } = await supabase
       .from("invoice_items")
       .insert(itemsPayload);
 
     if (itemsError) {
       console.error("Error saving invoice items:", itemsError);
-      throw itemsError;
+      // If there's an error with items, we should also clean up the invoice we just created
+      if (!invoice.id) {
+        await supabase
+          .from("invoices")
+          .delete()
+          .eq("id", invoiceId);
+      }
+      throw new Error(`Error saving invoice items: ${itemsError.message}`);
     }
   }
 
@@ -136,7 +156,10 @@ export async function getInvoice(id: string): Promise<Invoice> {
     totalVatValue: Number(item.total_vat_value)
   }));
 
-  return {
+  // Type assertion for the invoice data to include joined tables
+  const invoiceDataWithRelations = invoiceData as any;
+
+  const invoice: Invoice = {
     id: invoiceData.id,
     number: invoiceData.number,
     type: invoiceData.type as InvoiceType,
@@ -146,7 +169,7 @@ export async function getInvoice(id: string): Promise<Invoice> {
     businessProfileId: invoiceData.business_profile_id,
     customerId: invoiceData.customer_id,
     items,
-    paymentMethod: invoiceData.payment_method as PaymentMethod,
+    paymentMethod: invoiceData.payment_method as PaymentMethodDb,
     isPaid: invoiceData.is_paid || false,
     comments: invoiceData.comments || "",
     totalNetValue: Number(invoiceData.total_net_value),
@@ -154,21 +177,30 @@ export async function getInvoice(id: string): Promise<Invoice> {
     totalVatValue: Number(invoiceData.total_vat_value),
     ksef: {
       status: (invoiceData.ksef_status as 'pending' | 'sent' | 'error' | 'none') || 'none',
-      referenceNumber: invoiceData.ksef_reference_number || null
+      referenceNumber: invoiceData.ksef_reference_number || undefined
     },
-    businessName: invoiceData.business_profiles?.name,
-    customerName: invoiceData.customers?.name
+    user_id: invoiceData.user_id || '',
+    businessName: invoiceDataWithRelations.business_profiles?.name || '',
+    customerName: invoiceDataWithRelations.customers?.name || ''
   };
+
+  return invoice;
 }
 
-export async function getInvoices(): Promise<Invoice[]> {
+export async function getInvoices(userId: string): Promise<Invoice[]> {
+  if (!userId) {
+    console.error("No user ID provided to getInvoices");
+    return [];
+  }
+
   const { data, error } = await supabase
     .from("invoices")
     .select(`
       *,
-      business_profiles(name),
-      customers(name)
+      business_profiles!inner(*),
+      customers!inner(*)
     `)
+    .eq('user_id', userId)
     .order("issue_date", { ascending: false });
 
   if (error) {
@@ -176,28 +208,35 @@ export async function getInvoices(): Promise<Invoice[]> {
     throw error;
   }
 
-  return data.map(item => ({
-    id: item.id,
-    number: item.number,
-    type: item.type as InvoiceType,
-    issueDate: item.issue_date,
-    dueDate: item.due_date,
-    sellDate: item.sell_date,
-    businessProfileId: item.business_profile_id,
-    customerId: item.customer_id,
-    items: [], // Items are loaded separately when needed
-    paymentMethod: item.payment_method as PaymentMethod,
-    isPaid: item.is_paid || false,
-    comments: item.comments || "",
-    totalNetValue: Number(item.total_net_value),
-    totalGrossValue: Number(item.total_gross_value),
-    totalVatValue: Number(item.total_vat_value),
-    ksef: {
-      status: (item.ksef_status as 'pending' | 'sent' | 'error' | 'none') || 'none',
-      referenceNumber: item.ksef_reference_number || null
-    },
-    // Additional fields for display
-    businessName: item.business_profiles?.name,
-    customerName: item.customers?.name
-  }));
+  return data.map(item => {
+    // Type assertion to handle missing user_id in the database
+    const itemWithAny = item as any;
+    const businessProfilesWithAny = item.business_profiles as any;
+    
+    return {
+      id: item.id,
+      number: item.number,
+      type: item.type as InvoiceType,
+      issueDate: item.issue_date,
+      dueDate: item.due_date,
+      sellDate: item.sell_date,
+      businessProfileId: item.business_profile_id,
+      customerId: item.customer_id,
+      items: [], // Items are loaded separately when needed
+      paymentMethod: item.payment_method as PaymentMethodDb,
+      isPaid: item.is_paid || false,
+      comments: item.comments || "",
+      totalNetValue: Number(item.total_net_value),
+      totalGrossValue: Number(item.total_gross_value),
+      totalVatValue: Number(item.total_vat_value),
+      ksef: {
+        status: (item.ksef_status as 'pending' | 'sent' | 'error' | 'none') || 'none',
+        referenceNumber: item.ksef_reference_number || null
+      },
+      // Additional fields for display
+      businessName: item.business_profiles?.name,
+      customerName: item.customers?.name,
+      user_id: itemWithAny.user_id || businessProfilesWithAny?.user_id // Fallback to business profile user_id if invoice user_id is not set
+    } as Invoice;
+  });
 }

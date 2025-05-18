@@ -15,7 +15,8 @@ interface EditableInvoiceItemsTableProps {
   documentType: InvoiceType;
   products: Product[];
   refetchProducts: () => Promise<void>;
-  onProductSavedAndSync?: (product: Product) => void; // NEW: for instant UI update
+  onProductSavedAndSync?: (product: Product) => void;
+  userId: string;
 }
 
 export const EditableInvoiceItemsTable: React.FC<EditableInvoiceItemsTableProps> = ({
@@ -26,7 +27,8 @@ export const EditableInvoiceItemsTable: React.FC<EditableInvoiceItemsTableProps>
   documentType,
   products,
   refetchProducts,
-  onProductSavedAndSync // NEW: instant UI update
+  onProductSavedAndSync, // NEW: instant UI update
+  userId
 }) => {
   const isReceipt = documentType === InvoiceType.RECEIPT;
   const isMobile = useMediaQuery("(max-width: 768px)");
@@ -175,6 +177,7 @@ export const EditableInvoiceItemsTable: React.FC<EditableInvoiceItemsTableProps>
           onNewProductAdded={handleNewProductAdded}
           refetchProducts={refetchProducts}
           onProductSavedAndSync={handleProductSavedAndSync} // NEW: pass handler
+          userId={userId}
         />
       </div>
     </div>

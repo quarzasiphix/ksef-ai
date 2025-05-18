@@ -5,7 +5,7 @@ import type { Customer } from "@/types";
 export async function getCustomers(): Promise<Customer[]> {
   const { data, error } = await supabase
     .from("customers")
-    .select("*")
+    .select("*") // Will add user_id after DB update
     .order("name");
 
   if (error) {
@@ -13,16 +13,21 @@ export async function getCustomers(): Promise<Customer[]> {
     throw error;
   }
 
-  return data.map(item => ({
-    id: item.id,
-    name: item.name,
-    taxId: item.tax_id || undefined,
-    address: item.address,
-    postalCode: item.postal_code,
-    city: item.city,
-    email: item.email || undefined,
-    phone: item.phone || undefined
-  }));
+  return data.map(item => {
+    // Type assertion to handle missing user_id in the database
+    const itemWithAny = item as any;
+    return {
+      id: item.id,
+      name: item.name,
+      taxId: item.tax_id || undefined,
+      address: item.address,
+      postalCode: item.postal_code,
+      city: item.city,
+      email: item.email || undefined,
+      phone: item.phone || undefined,
+      user_id: itemWithAny.user_id // Type assertion for now, will be fixed after DB update
+    };
+  });
 }
 
 export async function saveCustomer(customer: Customer): Promise<Customer> {
@@ -33,7 +38,8 @@ export async function saveCustomer(customer: Customer): Promise<Customer> {
     postal_code: customer.postalCode,
     city: customer.city,
     email: customer.email || null,
-    phone: customer.phone || null
+    phone: customer.phone || null,
+    user_id: customer.user_id // Always include user_id for RLS
   };
 
   if (customer.id) {
@@ -58,7 +64,8 @@ export async function saveCustomer(customer: Customer): Promise<Customer> {
       postalCode: data.postal_code,
       city: data.city,
       email: data.email || undefined,
-      phone: data.phone || undefined
+      phone: data.phone || undefined,
+      user_id: data.user_id // Always include user_id for RLS
     };
   } else {
     // Insert new customer
@@ -81,7 +88,8 @@ export async function saveCustomer(customer: Customer): Promise<Customer> {
       postalCode: data.postal_code,
       city: data.city,
       email: data.email || undefined,
-      phone: data.phone || undefined
+      phone: data.phone || undefined,
+      user_id: data.user_id // Include user_id in the response
     };
   }
 }

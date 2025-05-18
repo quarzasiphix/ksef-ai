@@ -1,10 +1,11 @@
 
 import React, { useState } from "react";
-import { NavLink, useLocation } from "react-router-dom";
+import { NavLink, useLocation, useNavigate } from "react-router-dom";
 import { BarChart, FileText, Settings, Menu, Users, Package, CreditCard } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 import { ThemeToggle } from "@/components/theme/ThemeToggle";
+import { useAuth } from "@/App";
 
 const MobileNavigation = () => {
   // Main navigation items - Changed "Faktury" to "Przychód" and icon to CreditCard
@@ -74,10 +75,33 @@ const MobileNavigation = () => {
                 <ThemeToggle size="sm" />
               </div>
             </div>
+            <UserMenuFooter />
           </div>
         </SheetContent>
       </Sheet>
     </nav>
+  );
+};
+
+const UserMenuFooter = () => {
+  const { user, setUser } = useAuth();
+  const navigate = useNavigate();
+  if (!user) return null;
+  return (
+    <div className="mt-8 border-t pt-4 flex flex-col items-start">
+      <span className="text-xs text-muted-foreground mb-2">Zalogowano jako:</span>
+      <span className="text-sm font-medium mb-2">{user.email}</span>
+      <button
+        className="text-xs text-red-500 hover:underline"
+        onClick={() => {
+          localStorage.removeItem("sb_session");
+          setUser(null);
+          navigate("/auth/login");
+        }}
+      >
+        Wyloguj się
+      </button>
+    </div>
   );
 };
 

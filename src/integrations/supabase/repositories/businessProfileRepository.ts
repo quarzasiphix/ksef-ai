@@ -13,20 +13,47 @@ export async function getBusinessProfiles(): Promise<BusinessProfile[]> {
     throw error;
   }
 
-  return data.map(item => ({
-    id: item.id,
-    name: item.name,
-    taxId: item.tax_id,
-    address: item.address,
-    postalCode: item.postal_code,
-    city: item.city,
-    regon: item.regon || undefined,
-    bankAccount: item.bank_account || undefined,
-    email: item.email || undefined,
-    phone: item.phone || undefined,
-    logo: item.logo || undefined,
-    isDefault: item.is_default || false
-  }));
+  return (data as BusinessProfileRow[]).map(item => {
+    if (!item.user_id) {
+      console.error('Business profile found without user_id:', item.id);
+      throw new Error('Invalid business profile: missing user_id');
+    }
+    
+    return {
+      id: item.id,
+      name: item.name,
+      taxId: item.tax_id,
+      address: item.address,
+      postalCode: item.postal_code,
+      city: item.city,
+      regon: item.regon || undefined,
+      bankAccount: item.bank_account || undefined,
+      email: item.email || undefined,
+      phone: item.phone || undefined,
+      logo: item.logo || undefined,
+      isDefault: item.is_default || false,
+      user_id: item.user_id
+    };
+  });
+}
+
+// Define the database row type with all fields
+interface BusinessProfileRow {
+  id: string;
+  name: string;
+  tax_id: string;
+  address: string;
+  postal_code: string;
+  city: string;
+  regon: string | null;
+  bank_account: string | null;
+  email: string | null;
+  phone: string | null;
+  logo: string | null;
+  is_default: boolean;
+  user_id: string | null;
+  created_at: string;
+  updated_at: string;
 }
 
 export async function getDefaultBusinessProfile(): Promise<BusinessProfile | null> {
@@ -34,7 +61,7 @@ export async function getDefaultBusinessProfile(): Promise<BusinessProfile | nul
     .from("business_profiles")
     .select("*")
     .eq("is_default", true)
-    .single();
+    .single<BusinessProfileRow>();
 
   if (error) {
     if (error.code === "PGRST116") { // No rows returned
@@ -42,6 +69,11 @@ export async function getDefaultBusinessProfile(): Promise<BusinessProfile | nul
     }
     console.error("Error fetching default business profile:", error);
     throw error;
+  }
+
+  if (!data.user_id) {
+    console.error('Business profile found without user_id:', data.id);
+    throw new Error('Invalid business profile: missing user_id');
   }
 
   return {
@@ -56,7 +88,8 @@ export async function getDefaultBusinessProfile(): Promise<BusinessProfile | nul
     email: data.email || undefined,
     phone: data.phone || undefined,
     logo: data.logo || undefined,
-    isDefault: data.is_default || false
+    isDefault: data.is_default || false,
+    user_id: data.user_id
   };
 }
 
@@ -80,7 +113,8 @@ export async function saveBusinessProfile(profile: BusinessProfile): Promise<Bus
     email: profile.email || null,
     phone: profile.phone || null,
     logo: profile.logo || null,
-    is_default: profile.isDefault || false
+    is_default: profile.isDefault || false,
+    user_id: profile.user_id // Always include user_id for RLS
   };
 
   if (profile.id) {

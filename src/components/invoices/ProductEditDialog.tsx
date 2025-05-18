@@ -12,22 +12,24 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 
 interface ProductEditDialogProps {
   mode: 'edit' | 'create';
-  initialProduct?: Product;
+  initialProduct?: Partial<Product>;
   documentType: InvoiceType;
-  onProductSaved: (product: Product) => void;
-  onProductSavedAndSync?: (product: Product) => void; // NEW: called immediately after save for instant UI update
+  onProductSaved: (product: Omit<Product, 'id'> & { id?: string }) => void;
+  onProductSavedAndSync?: (product: Omit<Product, 'id'> & { id?: string }) => void;
   trigger?: React.ReactNode;
   refetchProducts?: () => Promise<void>;
+  userId: string; // Add userId prop
 }
 
 export const ProductEditDialog: React.FC<ProductEditDialogProps> = ({
   mode,
-  initialProduct,
+  initialProduct = {},
   documentType,
   onProductSaved,
-  onProductSavedAndSync, // FIX: destructure from props
+  onProductSavedAndSync,
   trigger,
-  refetchProducts
+  refetchProducts,
+  userId
 }) => {
   const isReceipt = documentType === InvoiceType.RECEIPT;
   const [open, setOpen] = useState(false);
@@ -66,7 +68,8 @@ export const ProductEditDialog: React.FC<ProductEditDialogProps> = ({
         name,
         unitPrice: Number(unitPrice),
         vatRate: Number(vatRate),
-        unit
+        unit,
+        user_id: userId
       };
       
       if (mode === 'edit') {
@@ -83,7 +86,8 @@ export const ProductEditDialog: React.FC<ProductEditDialogProps> = ({
           name,
           unitPrice: Number(unitPrice),
           vatRate: Number(vatRate),
-          unit
+          unit,
+          user_id: ""
         });
         toast.success("Produkt został dodany do dokumentu");
       }

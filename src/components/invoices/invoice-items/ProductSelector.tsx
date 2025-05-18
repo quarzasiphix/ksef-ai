@@ -8,9 +8,10 @@ interface ProductSelectorProps {
   products: Product[];
   documentType: InvoiceType;
   onProductSelected: (productId: string) => void;
-  onNewProductAdded: (product: Product) => void;
+  onNewProductAdded: (product: Omit<Product, 'id'> & { id?: string }) => void;
   refetchProducts: () => Promise<void>;
   onProductSavedAndSync?: (product: Product) => void; // NEW: for instant UI update
+  userId: string;
 }
 
 export const ProductSelector: React.FC<ProductSelectorProps> = ({
@@ -19,7 +20,8 @@ export const ProductSelector: React.FC<ProductSelectorProps> = ({
   onProductSelected,
   onNewProductAdded,
   refetchProducts,
-  onProductSavedAndSync // FIX: destructure from props
+  onProductSavedAndSync, // FIX: destructure from props
+  userId
 }) => {
   const [selectedProductId, setSelectedProductId] = useState<string>("");
   
@@ -62,6 +64,7 @@ export const ProductSelector: React.FC<ProductSelectorProps> = ({
         }}
         onProductSavedAndSync={onProductSavedAndSync} // NEW: pass down
         refetchProducts={refetchProducts}
+        userId={userId}
       />
     </div>
   );

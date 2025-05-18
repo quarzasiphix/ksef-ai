@@ -130,6 +130,31 @@ const DocumentSettings = () => {
           </div>
         </CardContent>
       </Card>
+      <UserMenuFooter />
+    </div>
+  );
+};
+
+import { useAuth } from "@/App";
+import { useNavigate } from "react-router-dom";
+const UserMenuFooter = () => {
+  const { user, setUser } = useAuth();
+  const navigate = useNavigate();
+  if (!user) return null;
+  return (
+    <div className="mt-12 border-t pt-4 flex flex-col items-start">
+      <span className="text-xs text-muted-foreground mb-2">Zalogowano jako:</span>
+      <span className="text-sm font-medium mb-2">{user.email}</span>
+      <button
+        className="text-xs text-red-500 hover:underline"
+        onClick={() => {
+          localStorage.removeItem("sb_session");
+          setUser(null);
+          navigate("/auth/login");
+        }}
+      >
+        Wyloguj się
+      </button>
     </div>
   );
 };

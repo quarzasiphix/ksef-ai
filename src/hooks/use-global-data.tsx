@@ -4,10 +4,12 @@ import { getInvoices } from "@/integrations/supabase/repositories/invoiceReposit
 import { getBusinessProfiles } from "@/integrations/supabase/repositories/businessProfileRepository";
 import { getCustomers } from "@/integrations/supabase/repositories/customerRepository";
 import { getProducts } from "@/integrations/supabase/repositories/productRepository";
+import { useAuth } from "@/App";
 import React, { useEffect, useRef } from "react";
 
 // Custom hook for prefetching and caching global data
 export function useGlobalData() {
+  const { user } = useAuth();
   const queryClient = useQueryClient();
 
   // Setup query keys for our global data
@@ -20,8 +22,12 @@ export function useGlobalData() {
 
   // Fetch data with React Query
   const invoicesQuery = useQuery({
-    queryKey: QUERY_KEYS.invoices,
-    queryFn: getInvoices,
+    queryKey: [...QUERY_KEYS.invoices, user?.id],
+    queryFn: () => {
+      if (!user?.id) return Promise.resolve([]);
+      return getInvoices(user.id);
+    },
+    enabled: !!user?.id,
     staleTime: 1000 * 60 * 5, // 5 minutes
   });
 

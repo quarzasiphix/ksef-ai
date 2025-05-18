@@ -24,7 +24,7 @@ export const InvoiceFormActions: React.FC<InvoiceFormActionsProps> = ({
       <Button
         variant="outline"
         type="button"
-        onClick={() => navigate("/income")}
+        onClick={() => navigate("/invoices")}
         disabled={isLoading}
       >
         Anuluj

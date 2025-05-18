@@ -8,10 +8,12 @@ import { getCustomers } from "@/integrations/supabase/repositories/customerRepos
 import { getInvoices } from "@/integrations/supabase/repositories/invoiceRepository";
 import { ArrowLeft, User, Mail, Phone, MapPin, Building, FileText, Edit, Plus } from "lucide-react";
 import InvoiceCard from "@/components/invoices/InvoiceCard";
+import { useAuth } from "@/App";
 
 const CustomerDetail = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
+  const { user } = useAuth();
   const [customer, setCustomer] = useState<Customer | null>(null);
   const [customerInvoices, setCustomerInvoices] = useState<Invoice[]>([]);
   const [loading, setLoading] = useState(true);
@@ -29,7 +31,11 @@ const CustomerDetail = () => {
         
         // Get invoices for this customer
         if (foundCustomer) {
-          const allInvoices = await getInvoices();
+          if (!user?.id) {
+            console.error("No user ID available");
+            return;
+          }
+          const allInvoices = await getInvoices(user.id);
           const filteredInvoices = allInvoices.filter(inv => inv.customerId === id);
           setCustomerInvoices(filteredInvoices);
         }

@@ -1,7 +1,7 @@
-
 import React, { useState, useEffect } from "react";
+import { useAuth } from "@/App";
 import { useSearchParams, useNavigate } from "react-router-dom";
-import { Invoice, InvoiceType, InvoiceItem, PaymentMethod, paymentMethodToEnglish } from "@/types";
+import { Invoice, InvoiceType, InvoiceItem, PaymentMethod, PaymentMethodDb, toPaymentMethodDb, toPaymentMethodUi } from "@/types";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
 import * as z from "zod";
@@ -30,6 +30,8 @@ type InvoiceFormValues = z.infer<typeof invoiceFormSchema>;
 const NewInvoice: React.FC<{
   initialData?: Invoice;
 }> = ({ initialData }) => {
+  const { user } = useAuth();
+  const userId = user?.id || ''; // Add this line to get the user ID
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
   const [documentType, setDocumentType] = useState<InvoiceType>(InvoiceType.SALES);
@@ -46,10 +48,10 @@ const NewInvoice: React.FC<{
   // Setup form with default values
   // Normalize paymentMethod to ensure it's a valid enum value
   const validPaymentMethods = Object.values(PaymentMethod);
-  const normalizedPaymentMethod =
-    initialData?.paymentMethod && validPaymentMethods.includes(initialData.paymentMethod)
-      ? initialData.paymentMethod
-      : PaymentMethod.TRANSFER;
+  // Convert payment method to UI format for the form
+  const normalizedPaymentMethod = initialData?.paymentMethod 
+    ? toPaymentMethodUi(initialData.paymentMethod as PaymentMethodDb)
+    : PaymentMethod.TRANSFER;
 
   const form = useForm<InvoiceFormValues>({
     resolver: zodResolver(invoiceFormSchema),
@@ -58,7 +60,7 @@ const NewInvoice: React.FC<{
       issueDate: initialData?.issueDate || today,
       sellDate: initialData?.sellDate || today,
       dueDate: initialData?.dueDate || today,
-      paymentMethod: normalizedPaymentMethod,
+      paymentMethod: normalizedPaymentMethod as PaymentMethod,
       comments: initialData?.comments || ""
     }
   });
@@ -121,11 +123,18 @@ const NewInvoice: React.FC<{
     try {
       setIsLoading(true);
       
+      // Ensure user is authenticated
+      if (!user?.id) {
+        toast.error("Brak informacji o użytkowniku. Zaloguj się ponownie.");
+        setIsLoading(false);
+        return;
+      }
       // Calculate totals
       const { totalNetValue, totalVatValue, totalGrossValue } = calculateInvoiceTotals(items);
       
       const invoice: Invoice = {
         id: initialData?.id || "",
+        user_id: user.id, // Enforce RLS: always include user_id
         number: data.number,
         type: documentType,
         issueDate: data.issueDate,
@@ -134,7 +143,7 @@ const NewInvoice: React.FC<{
         businessProfileId: businessProfileId,
         customerId: customerId,
         items: items,
-        paymentMethod: paymentMethodToEnglish[data.paymentMethod] || data.paymentMethod,
+        paymentMethod: toPaymentMethodDb(data.paymentMethod as PaymentMethod),
         isPaid: initialData?.isPaid || false,
         comments: data.comments,
         totalNetValue,
@@ -211,6 +220,7 @@ const NewInvoice: React.FC<{
             items={items}
             documentType={documentType}
             onItemsChange={setItems}
+            userId={userId}
           />
           
           {/* Action Buttons */}

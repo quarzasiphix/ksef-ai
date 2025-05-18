@@ -1,6 +1,7 @@
 
 export interface BusinessProfile {
   id: string;
+  user_id: string; // Added for RLS
   name: string;
   taxId: string; // NIP
   address: string;
@@ -16,6 +17,7 @@ export interface BusinessProfile {
 
 export interface Customer {
   id: string;
+  user_id: string; // Added for RLS
   name: string;
   taxId?: string; // NIP
   address: string;
@@ -27,6 +29,7 @@ export interface Customer {
 
 export interface Product {
   id: string;
+  user_id: string; // Added for RLS
   name: string;
   unitPrice: number; // Netto price
   vatRate: number; // VAT percentage, e.g., 23
@@ -40,11 +43,31 @@ export enum InvoiceType {
   CORRECTION = "correction", // Faktura korygująca
 }
 
+// For database storage
+export type PaymentMethodDb = 'transfer' | 'cash' | 'card' | 'other';
+
+// For UI display
 export enum PaymentMethod {
   TRANSFER = "przelew",
   CASH = "gotówka",
   CARD = "karta",
   OTHER = "inny",
+}
+
+// Convert UI payment method to database format
+export function toPaymentMethodDb(method: PaymentMethod): PaymentMethodDb {
+  return paymentMethodToEnglish[method] as PaymentMethodDb;
+}
+
+// Convert database payment method to UI format
+export function toPaymentMethodUi(method: PaymentMethodDb | string): PaymentMethod {
+  const reverseMap: Record<string, PaymentMethod> = {
+    'transfer': PaymentMethod.TRANSFER,
+    'cash': PaymentMethod.CASH,
+    'card': PaymentMethod.CARD,
+    'other': PaymentMethod.OTHER,
+  };
+  return reverseMap[method] || PaymentMethod.TRANSFER; // Default to transfer if not found
 }
 
 // Payment method display mapping
@@ -91,6 +114,7 @@ export interface InvoiceItem {
 
 export interface Invoice {
   id: string;
+  user_id: string; // Added for RLS
   number: string;
   type: InvoiceType;
   issueDate: string; // ISO date string
@@ -99,7 +123,7 @@ export interface Invoice {
   businessProfileId: string;
   customerId: string;
   items: InvoiceItem[];
-  paymentMethod: PaymentMethod;
+  paymentMethod: PaymentMethodDb; // Stored in database format
   isPaid: boolean;
   comments?: string;
   totalNetValue?: number; // Sum of items' totalNetValue

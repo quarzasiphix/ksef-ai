@@ -1,6 +1,6 @@
-
 import React from "react";
-import { NavLink, useLocation } from "react-router-dom";
+import { NavLink, useLocation, useNavigate } from "react-router-dom";
+import { useAuth } from "@/App";
 import { 
   Sidebar, 
   SidebarContent, 
@@ -174,8 +174,39 @@ const AppSidebar = () => {
             </SidebarMenu>
           </SidebarGroupContent>
         </SidebarGroup>
+        {/* User info and logout at the bottom */}
+        <UserMenuFooter />
       </SidebarContent>
     </Sidebar>
+  );
+};
+
+const UserMenuFooter = () => {
+  const { user, logout } = useAuth();
+  const navigate = useNavigate();
+  
+  if (!user) return null;
+  
+  const handleLogout = async () => {
+    try {
+      await logout();
+      navigate('/auth/login');
+    } catch (error) {
+      console.error('Logout error:', error);
+    }
+  };
+
+  return (
+    <div className="mt-8 border-t pt-4 flex flex-col items-start px-3 pb-4">
+      <span className="text-xs text-muted-foreground mb-2">Zalogowano jako:</span>
+      <span className="text-sm font-medium mb-2">{user.email}</span>
+      <button
+        className="text-xs text-red-500 hover:underline"
+        onClick={handleLogout}
+      >
+        Wyloguj się
+      </button>
+    </div>
   );
 };
 

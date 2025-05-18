@@ -11,12 +11,14 @@ interface InvoiceItemsFormProps {
   items: InvoiceItem[];
   documentType: InvoiceType;
   onItemsChange: (items: InvoiceItem[]) => void;
+  userId: string;
 }
 
 export const InvoiceItemsForm: React.FC<InvoiceItemsFormProps> = ({
   items,
   documentType,
-  onItemsChange
+  onItemsChange,
+  userId
 }) => {
   const [products, setProducts] = useState<Product[]>([]);
   const [productsLoading, setProductsLoading] = useState(true);
@@ -75,6 +77,7 @@ export const InvoiceItemsForm: React.FC<InvoiceItemsFormProps> = ({
             onAddItem={handleAddItem}
             documentType={documentType}
             refetchProducts={refetchProducts}
+            userId={userId}
           />
         )}
       </CardContent>

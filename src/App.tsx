@@ -2,9 +2,13 @@
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
-import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { BrowserRouter, Routes, Route } from "react-router-dom";
+import { QueryClient, QueryClientProvider, useQueryClient } from "@tanstack/react-query";
+import { BrowserRouter, Routes, Route, Navigate, Outlet } from "react-router-dom";
 import { ThemeProvider } from "./components/theme/ThemeProvider";
+import Login from "./pages/auth/Login";
+import Register from "./pages/auth/Register";
+import React, { createContext, useState, useEffect, useContext } from "react";
+import { supabase } from "@/integrations/supabase/client";
 
 import Layout from "./components/layout/Layout";
 import GlobalDataLoader from "./components/layout/GlobalDataLoader";
@@ -42,6 +46,82 @@ const queryClient = new QueryClient({
   },
 });
 
+// --- Auth Context ---
+type AuthContextType = { 
+  user: any; 
+  setUser: (u: any) => void;
+  logout: () => Promise<void>;
+};
+
+const AuthContext = createContext<AuthContextType>({ 
+  user: null, 
+  setUser: () => {},
+  logout: async () => {}
+});
+
+export const useAuth = () => useContext(AuthContext);
+
+const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+  const [user, setUser] = useState<any>(null);
+  const [loading, setLoading] = useState(true);
+  const queryClient = useQueryClient();
+
+  const handleAuthStateChange = async (_event: string, session: any) => {
+    if (session) {
+      setUser(session.user);
+      localStorage.setItem("sb_session", JSON.stringify(session));
+      // Invalidate all queries to force refetch with new user data
+      await queryClient.invalidateQueries();
+    } else {
+      setUser(null);
+      localStorage.removeItem("sb_session");
+      // Clear all queries when logging out
+      queryClient.clear();
+    }
+  };
+
+  const logout = async () => {
+    await supabase.auth.signOut();
+    // Clear all queries when logging out
+    queryClient.clear();
+  };
+
+  useEffect(() => {
+    // Always check Supabase for a valid session on mount
+    const checkSession = async () => {
+      const { data } = await supabase.auth.getSession();
+      await handleAuthStateChange('INITIAL_SESSION', data?.session || null);
+      setLoading(false);
+    };
+    
+    checkSession();
+
+    // Listen to auth state changes (login/logout/refresh)
+    if (supabase.auth.onAuthStateChange) {
+      const { data: listener } = supabase.auth.onAuthStateChange(handleAuthStateChange);
+      return () => {
+        listener?.subscription.unsubscribe();
+      };
+    }
+  }, [queryClient]);
+
+  if (loading) {
+    return <div className="flex items-center justify-center min-h-screen bg-neutral-900 text-white text-xl">Ładowanie...</div>;
+  }
+
+  return <AuthContext.Provider value={{ user, setUser, logout }}>{children}</AuthContext.Provider>;
+};
+
+const RequireAuth: React.FC<{ children?: React.ReactNode }> = ({ children }) => {
+  const { user } = useAuth();
+  // Don't redirect until AuthProvider loading is done
+  const [loading, setLoading] = useState(true);
+  useEffect(() => { setLoading(false); }, []);
+  if (loading) return null;
+  if (!user) return <Navigate to="/auth/login" replace />;
+  return <>{children ? children : <Outlet />}</>;
+};
+
 const App = () => (
   <ThemeProvider defaultTheme="dark">
     <QueryClientProvider client={queryClient}>
@@ -49,48 +129,44 @@ const App = () => (
         <Toaster />
         <Sonner position="top-center" offset={10} />
         <BrowserRouter>
-          <GlobalDataLoader /> {/* Add our global data loader */}
-          <Routes>
-            <Route path="/" element={<Layout />}>
-            {/* Main routes */}
-            <Route index element={<Dashboard />} />
-            
-            {/* Income routes (replaces Invoice list) */}
-            <Route path="income" element={<IncomeList />} />
-            
-            {/* Keep invoice detail/edit/create routes as they are */}
-            <Route path="invoices/new" element={<NewInvoice />} />
-            <Route path="invoices/edit/:id" element={<EditInvoice />} />
-            <Route path="invoices/:id" element={<InvoiceDetail />} />
-            
-            {/* Customer routes */}
-            <Route path="customers" element={<CustomerList />} />
-            <Route path="customers/new" element={<NewCustomer />} />
-            <Route path="customers/edit/:id" element={<EditCustomer />} />
-            <Route path="customers/:id" element={<CustomerDetail />} />
-            
-            {/* Product routes */}
-            <Route path="products" element={<ProductList />} />
-            <Route path="products/new" element={<NewProduct />} />
-            <Route path="products/edit/:id" element={<EditProduct />} />
-            <Route path="products/:id" element={<ProductDetail />} />
-            
-            {/* Settings routes */}
-            <Route path="settings" element={<BusinessProfiles />} />
-            <Route path="settings/business-profiles/new" element={<NewBusinessProfile />} />
-            <Route path="settings/business-profiles/:id" element={<EditBusinessProfile />} />
-            <Route path="settings/documents" element={<DocumentSettings />} />
-            
-            {/* Legacy route for backward compatibility */}
-            <Route path="invoices" element={<IncomeList />} />
-            
-            {/* Catch-all for any other routes */}
-            <Route path="*" element={<NotFound />} />
-          </Route>
-        </Routes>
-      </BrowserRouter>
-    </TooltipProvider>
-  </QueryClientProvider>
+          <AuthProvider>
+            <Routes>
+              <Route path="/auth/login" element={<Login />} />
+              <Route path="/auth/register" element={<Register />} />
+              <Route element={<RequireAuth />}>
+                <Route path="/" element={<Layout />}>
+                  {/* Main routes */}
+                  <Route index element={<Dashboard />} />
+                  {/* Income routes (replaces Invoice list) */}
+                  <Route path="invoices/new" element={<NewInvoice />} />
+                  <Route path="invoices/edit/:id" element={<EditInvoice />} />
+                  <Route path="invoices/:id" element={<InvoiceDetail />} />
+                  {/* Customer routes */}
+                  <Route path="customers" element={<CustomerList />} />
+                  <Route path="customers/new" element={<NewCustomer />} />
+                  <Route path="customers/edit/:id" element={<EditCustomer />} />
+                  <Route path="customers/:id" element={<CustomerDetail />} />
+                  {/* Product routes */}
+                  <Route path="products" element={<ProductList />} />
+                  <Route path="products/new" element={<NewProduct />} />
+                  <Route path="products/edit/:id" element={<EditProduct />} />
+                  <Route path="products/:id" element={<ProductDetail />} />
+                  {/* Settings routes */}
+                  <Route path="settings" element={<BusinessProfiles />} />
+                  <Route path="settings/business-profiles/new" element={<NewBusinessProfile />} />
+                  <Route path="settings/business-profiles/:id" element={<EditBusinessProfile />} />
+                  <Route path="settings/documents" element={<DocumentSettings />} />
+                  {/* Legacy route for backward compatibility */}
+                  <Route path="invoices" element={<IncomeList />} />
+                  {/* Catch-all for any other routes */}
+                  <Route path="*" element={<NotFound />} />
+                </Route>
+              </Route>
+            </Routes>
+          </AuthProvider>
+        </BrowserRouter>
+      </TooltipProvider>
+    </QueryClientProvider>
   </ThemeProvider>
 );
 

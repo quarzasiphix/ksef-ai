@@ -22,6 +22,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import { useAuth } from "@/App";
 
 // Helper function to translate invoice type to Polish
 const translateInvoiceType = (type: string): string => {
@@ -91,6 +92,16 @@ const InvoiceList = () => {
     }
     return [];
   }, [availableTypes, isMobile]);
+
+  const { user } = useAuth();
+  
+  if (!user) {
+    return (
+      <div className="text-center py-8">
+        Musisz być zalogowany, aby wyświetlić faktury.
+      </div>
+    );
+  }
   
   return (
     <div className="space-y-6 px-2">
