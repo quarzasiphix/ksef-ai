@@ -44,6 +44,13 @@ const NewInvoice: React.FC<{
   const today = new Date().toISOString().split('T')[0];
   
   // Setup form with default values
+  // Normalize paymentMethod to ensure it's a valid enum value
+  const validPaymentMethods = Object.values(PaymentMethod);
+  const normalizedPaymentMethod =
+    initialData?.paymentMethod && validPaymentMethods.includes(initialData.paymentMethod)
+      ? initialData.paymentMethod
+      : PaymentMethod.TRANSFER;
+
   const form = useForm<InvoiceFormValues>({
     resolver: zodResolver(invoiceFormSchema),
     defaultValues: {
@@ -51,7 +58,7 @@ const NewInvoice: React.FC<{
       issueDate: initialData?.issueDate || today,
       sellDate: initialData?.sellDate || today,
       dueDate: initialData?.dueDate || today,
-      paymentMethod: initialData?.paymentMethod || PaymentMethod.TRANSFER,
+      paymentMethod: normalizedPaymentMethod,
       comments: initialData?.comments || ""
     }
   });
