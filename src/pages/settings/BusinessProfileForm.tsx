@@ -257,8 +257,11 @@ const BusinessProfileForm = ({
             )}
           />
         </div>
-
-        <div className={`flex gap-4 ${isMobile ? 'flex-col' : 'justify-end'}`}>
+        
+        <div
+      className="fixed bottom-0 left-0 w-full z-[100] bg-background border-t p-3 py-4 mb-[13px] flex justify-end space-x-2 pointer-events-auto sm:static sm:bg-transparent sm:border-0 sm:p-0 sm:pt-4 sm:mb-0"
+      style={{ boxShadow: '0 -2px 8px rgba(0,0,0,0.04)', marginBottom: 0, paddingBottom: 12 }}
+    >
           <Button
             type="button"
             variant="outline"

@@ -22,7 +22,7 @@ const CustomerCard = ({ customer }: { customer: Customer }) => {
         <div className="flex justify-between items-center mb-2">
           <h3 className="font-bold text-base truncate">{customer.name}</h3>
           {customer.taxId && (
-            <Badge variant="outline" className="text-xs">NIP: {customer.taxId}</Badge>
+            <Badge variant="outline" className="text-white border-whitetext-xs">NIP: {customer.taxId}</Badge>
           )}
         </div>
         

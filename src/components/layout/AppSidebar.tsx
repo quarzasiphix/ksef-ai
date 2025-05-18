@@ -59,7 +59,7 @@ const AppSidebar = () => {
     setDragging(false);
   };
 
-  // Navigation items - update "Faktury" to "Przychód" and change the path
+  // Navigation items
   const navItems = [
     { title: "Dashboard", path: "/", icon: BarChart },
     { title: "Przychód", path: "/income", icon: CreditCard },
@@ -67,6 +67,13 @@ const AppSidebar = () => {
     { title: "Produkty", path: "/products", icon: Package },
     { title: "Ustawienia", path: "/settings", icon: Settings },
   ];
+  
+  // Handle navigation and close sidebar on mobile
+  const handleNavigation = () => {
+    if (isMobile) {
+      setOpenMobile(false);
+    }
+  };
 
   // Check if current path is active or a subpath
   const isActive = (path: string) => {
@@ -125,7 +132,7 @@ const AppSidebar = () => {
                       to={item.path}
                       end={item.path === "/"}
                       className={getNavClassName}
-                      onClick={() => setOpenMobile(false)}
+                      onClick={handleNavigation}
                     >
                       <item.icon className="h-5 w-5 mr-2" />
                       <span>{item.title}</span>
@@ -164,6 +171,7 @@ const AppSidebar = () => {
                       to={item.path}
                       end={item.path === "/"}
                       className={getNavClassName}
+                      onClick={handleNavigation}
                     >
                       <item.icon className={`h-5 w-5 ${open ? "mr-2" : ""}`} />
                       {open && <span>{item.title}</span>}

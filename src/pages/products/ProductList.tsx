@@ -24,7 +24,7 @@ const ProductCard = ({ product }: { product: Product }) => {
       <div className="bg-[#1A1F2C] text-white rounded-lg p-4 shadow-md hover:shadow-lg transition-all h-full">
         <div className="flex justify-between items-center mb-2">
           <h3 className="font-bold text-base truncate">{product.name}</h3>
-          <Badge variant="outline" className="text-xs">{product.unit}</Badge>
+          <Badge variant="outline" className="text-white border-white text-xs">{product.unit}</Badge>
         </div>
         
         <div className="space-y-3 text-sm">
