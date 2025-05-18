@@ -51,10 +51,28 @@ const CustomerCard = ({ customer }: { customer: Customer }) => {
   );
 };
 
+import { Loader2 } from "lucide-react";
+
 const CustomerList = () => {
-  const { customers: { data: customers, isLoading } } = useGlobalData();
+  const { customers: { data: customers, isLoading }, refreshAllData } = useGlobalData();
   const [searchTerm, setSearchTerm] = useState("");
-  
+  const [isUpdating, setIsUpdating] = useState(false);
+
+  // Expose this function for triggering a customer refresh from outside (edit/new)
+
+declare global {
+  interface Window {
+    triggerCustomersRefresh?: () => Promise<void>;
+  }
+}
+
+// Extend window type for triggerCustomersRefresh
+window.triggerCustomersRefresh = async () => {
+  setIsUpdating(true);
+  await refreshAllData();
+  setIsUpdating(false);
+};
+
   // Filter customers based on search term
   const filteredCustomers = customers.filter(
     (customer) =>
@@ -67,7 +85,7 @@ const CustomerList = () => {
     <div className="space-y-6">
       <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
         <div>
-          <h1 className="text-3xl font-bold">Klienci</h1>
+          <h1 className="text-3xl font-bold flex items-center gap-2">Klienci {isUpdating && <Loader2 className="animate-spin h-5 w-5 text-muted-foreground" />}</h1>
           <p className="text-muted-foreground">
             Zarządzaj bazą klientów
           </p>
