@@ -16,8 +16,14 @@ import ContractorCard, { ContractorData } from "@/components/invoices/detail/Con
 import { InvoicePdfTemplate } from '@/components/invoices/pdf/InvoicePdfTemplate';
 import TotalsSummary from "@/components/invoices/detail/TotalsSummary";
 import { CardTitle } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { useNavigate } from "react-router-dom";
 
-const InvoiceDetailComponent: React.FC = () => {
+interface InvoiceDetailProps {
+  type?: 'income' | 'expense';
+}
+
+const InvoiceDetailComponent: React.FC<InvoiceDetailProps> = ({ type }) => {
   const containerRef = useRef<HTMLDivElement>(null);
   const { id } = useParams<{ id: string }>();
   const [invoice, setInvoice] = useState<Invoice | null>(null);
@@ -27,11 +33,15 @@ const InvoiceDetailComponent: React.FC = () => {
   const [savedPdfUri, setSavedPdfUri] = useState<string | null>(null);
   const { businessProfiles, customers } = useGlobalData();
   const printRef = useRef<HTMLDivElement>(null);
+  const navigate = useNavigate();
 
   // Debug: Log savedPdfUri whenever it changes
   useEffect(() => {
     console.log('savedPdfUri changed (useEffect):', savedPdfUri);
   }, [savedPdfUri]);
+
+  // Determine transaction type (income/expense)
+  const transactionType = type === 'income' ? 'income' : 'expense';
 
   // Prepare data for ContractorCards
   let sellerCardData: ContractorData | undefined = undefined;
@@ -243,20 +253,7 @@ const InvoiceDetailComponent: React.FC = () => {
 
   return (
     <div ref={containerRef} className="flex-1 space-y-3 lg:space-y-4">
-      <InvoiceHeader 
-        id={invoice.id}
-        number={invoice.number}
-        type={invoice.type}
-        pdfLoading={pdfLoading}
-        handleGeneratePdf={generatePdf}
-        handleSharePdf={sharePdf}
-        canSharePdf={!!(savedPdfUri && savedPdfUri !== 'web_downloaded')}
-        // Add header id for sticky detection
-        // @ts-ignore
-        ref={undefined}
-      />
-      {/* Sticky mobile bar for actions */}
-      <MobileStickyInvoiceHeader
+      <Button
         invoiceId={invoice.id}
         invoiceNumber={invoice.number}
         invoiceType={invoice.type}

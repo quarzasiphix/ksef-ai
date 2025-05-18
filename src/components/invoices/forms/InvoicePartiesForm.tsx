@@ -4,10 +4,12 @@ import { FormLabel } from "@/components/ui/form";
 import { CardHeader, CardTitle, CardContent, Card } from "@/components/ui/card";
 import { CustomerSelector } from "@/components/invoices/selectors/CustomerSelector";
 import { BusinessProfileSelector } from "@/components/invoices/selectors/BusinessProfileSelector";
+import { TransactionType } from "@/types/common";
 
 interface InvoicePartiesFormProps {
   businessProfileId: string;
   customerId: string;
+  transactionType: TransactionType;
   onBusinessProfileChange: (id: string, name?: string) => void;
   onCustomerChange: (id: string, name?: string) => void;
 }
@@ -15,6 +17,7 @@ interface InvoicePartiesFormProps {
 export const InvoicePartiesForm: React.FC<InvoicePartiesFormProps> = ({
   businessProfileId,
   customerId,
+  transactionType,
   onBusinessProfileChange,
   onCustomerChange
 }) => {
@@ -24,21 +27,44 @@ export const InvoicePartiesForm: React.FC<InvoicePartiesFormProps> = ({
         <CardTitle className="text-lg">Kontrahenci</CardTitle>
       </CardHeader>
       <CardContent className="space-y-4">
-        <div>
-          <FormLabel>Profil biznesowy (sprzedawca)</FormLabel>
-          <BusinessProfileSelector
-            value={businessProfileId}
-            onChange={onBusinessProfileChange}
-          />
-        </div>
-        
-        <div>
-          <FormLabel>Klient (nabywca)</FormLabel>
-          <CustomerSelector
-            value={customerId}
-            onChange={onCustomerChange}
-          />
-        </div>
+        {transactionType === TransactionType.INCOME ? (
+          <>
+            <div>
+              <FormLabel>Profil biznesowy (sprzedawca)</FormLabel>
+              <BusinessProfileSelector
+                value={businessProfileId}
+                onChange={onBusinessProfileChange}
+              />
+            </div>
+            
+            <div>
+              <FormLabel>Klient (nabywca)</FormLabel>
+              <CustomerSelector
+                value={customerId}
+                onChange={onCustomerChange}
+              />
+            </div>
+          </>
+        ) : (
+          <>
+            <div>
+              <FormLabel>Dostawca (sprzedawca)</FormLabel>
+              <CustomerSelector
+                value={businessProfileId}
+                onChange={onBusinessProfileChange}
+                showBusinessProfiles={false}
+              />
+            </div>
+            
+            <div>
+              <FormLabel>Mój profil (nabywca)</FormLabel>
+              <BusinessProfileSelector
+                value={customerId}
+                onChange={onCustomerChange}
+              />
+            </div>
+          </>
+        )}
       </CardContent>
     </Card>
   );

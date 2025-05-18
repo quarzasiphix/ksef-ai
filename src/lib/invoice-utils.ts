@@ -1,5 +1,5 @@
 
-import { InvoiceItem } from "@/types";
+import { InvoiceItem, PaymentMethod } from "@/types";
 
 // Format number to Polish currency
 export const formatCurrency = (amount: number): string => {
@@ -89,9 +89,56 @@ export const generateInvoiceNumber = (
 // Convert ISO date string to Polish format (DD.MM.YYYY)
 export const formatPolishDate = (isoDateString: string): string => {
   const date = new Date(isoDateString);
-  const day = date.getDate().toString().padStart(2, "0");
-  const month = (date.getMonth() + 1).toString().padStart(2, "0");
-  const year = date.getFullYear();
-  
-  return `${day}.${month}.${year}`;
+  return date.toLocaleDateString('pl-PL', {
+    day: '2-digit',
+    month: '2-digit',
+    year: 'numeric',
+  });
+};
+
+// Get Polish translation for payment method
+export const getPolishPaymentMethod = (method: string): string => {
+  switch (method.toLowerCase()) {
+    case 'transfer':
+      return 'Przelew';
+    case 'cash':
+      return 'Gotówka';
+    case 'card':
+      return 'Karta';
+    case 'online':
+      return 'Płatność online';
+    case 'blik':
+      return 'BLIK';
+    default:
+      return method;
+  }
+};
+
+// Convert payment method from database format to UI format
+export const toPaymentMethodUi = (method: string): string => {
+  const lowerMethod = method.toLowerCase();
+  if (lowerMethod === 'przelew' || lowerMethod === 'transfer') {
+    return 'transfer';
+  } else if (lowerMethod === 'gotówka' || lowerMethod === 'cash') {
+    return 'cash';
+  } else if (lowerMethod === 'karta' || lowerMethod === 'card') {
+    return 'card';
+  } else if (lowerMethod === 'płatność online' || lowerMethod === 'online') {
+    return 'online';
+  } else if (lowerMethod === 'blik') {
+    return 'blik';
+  }
+  return method;
+};
+
+// Convert payment method from UI format to database format
+export const toPaymentMethodDb = (method: string): PaymentMethod => {
+  const lowerMethod = method.toLowerCase();
+  if (lowerMethod === 'transfer' || lowerMethod === 'przelew') {
+    return PaymentMethod.TRANSFER;
+  } else if (lowerMethod === 'cash' || lowerMethod === 'gotówka') {
+    return PaymentMethod.CASH;
+  }
+  // Default to TRANSFER if the method is not recognized
+  return PaymentMethod.TRANSFER;
 };

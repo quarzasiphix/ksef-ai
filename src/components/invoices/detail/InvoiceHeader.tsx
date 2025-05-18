@@ -1,6 +1,7 @@
 import React from "react";
-import { Link } from "react-router-dom";
+import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
+import type { ButtonProps } from "@/components/ui/button";
 import { ArrowLeft, Printer, FilePlus, FileDown, Pencil, SendHorizontal, Share2 } from "lucide-react";
 import { InvoiceType } from "@/types";
 import { useIsMobile } from "@/hooks/use-mobile";
@@ -10,6 +11,7 @@ interface InvoiceHeaderProps {
   id: string;
   number: string;
   type: InvoiceType;
+  transactionType?: 'income' | 'expense';
   pdfLoading: boolean;
   handleGeneratePdf: () => Promise<string | null>;
   handleSharePdf: () => Promise<void>;
@@ -41,14 +43,17 @@ export const InvoiceHeader: React.FC<InvoiceHeaderProps> = ({
   canSharePdf,
 }) => {
   const isMobile = useIsMobile();
+  const navigate = useNavigate();
   
   return (
     <div id="invoice-header" className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mb-4 sticky top-0 bg-background z-10 pb-2 pt-1">
       <div className="flex items-center gap-2">
-        <Button variant="outline" size="icon" asChild>
-          <Link to="/invoices">
-            <ArrowLeft className="h-4 w-4" />
-          </Link>
+        <Button 
+          variant="outline" 
+          size="sm"
+          onClick={() => navigate(transactionType === 'income' ? '/income' : '/expense')}
+        >
+          <ArrowLeft className="h-4 w-4" />
         </Button>
         <div>
           <h1 className="text-xl md:text-2xl font-bold">{number}</h1>

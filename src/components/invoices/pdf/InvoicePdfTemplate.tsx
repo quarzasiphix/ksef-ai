@@ -1,7 +1,7 @@
 import toWords from 'numbers-to-words-pl';
 import React from 'react';
-import { Invoice, InvoiceType, BusinessProfile, Customer, PaymentMethod, getPolishPaymentMethod, PaymentMethodDb, toPaymentMethodUi } from '@/types';
-import { calculateItemValues, calculateInvoiceTotals, formatCurrency as formatCurrencyUtil } from '@/lib/invoice-utils';
+import { Invoice, InvoiceType, BusinessProfile, Customer, PaymentMethod, PaymentMethodDb } from '@/types';
+import { calculateItemValues, calculateInvoiceTotals, formatCurrency as formatCurrencyUtil, getPolishPaymentMethod, toPaymentMethodUi } from '@/lib/invoice-utils';
 
 // Helper to check for transfer payment method robustly
 function isTransfer(paymentMethod: string | PaymentMethod | PaymentMethodDb): boolean {

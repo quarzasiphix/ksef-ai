@@ -1,9 +1,8 @@
-
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider, useQueryClient } from "@tanstack/react-query";
-import { BrowserRouter, Routes, Route, Navigate, Outlet } from "react-router-dom";
+import { BrowserRouter, Routes, Route, Navigate, Outlet, useSearchParams } from "react-router-dom";
 import { ThemeProvider } from "./components/theme/ThemeProvider";
 import Login from "./pages/auth/Login";
 import Register from "./pages/auth/Register";
@@ -31,6 +30,7 @@ import EditProduct from "./pages/products/EditProduct";
 import ProductDetail from "./pages/products/ProductDetail";
 import IncomeList from "./pages/income/IncomeList";
 import DocumentSettings from "./pages/settings/DocumentSettings";
+import ExpenseList from "./pages/expense/ExpenseList";
 
 // Export the query client for use in other files
 export const queryClient = new QueryClient({
@@ -163,7 +163,11 @@ const App = () => (
                   {/* Income routes (replaces Invoice list) */}
                   <Route path="invoices/new" element={<NewInvoice />} />
                   <Route path="invoices/edit/:id" element={<EditInvoice />} />
-                  <Route path="invoices/:id" element={<InvoiceDetail />} />
+                  <Route path="invoices/:id" element={
+                    <InvoiceDetail 
+                      type={new URLSearchParams(window.location.search).get('type') as 'income' | 'expense' | null}
+                    />
+                  } />
                   {/* Customer routes */}
                   <Route path="customers" element={<CustomerList />} />
                   <Route path="customers/new" element={<NewCustomer />} />
@@ -180,7 +184,8 @@ const App = () => (
                   <Route path="settings/business-profiles/:id" element={<EditBusinessProfile />} />
                   <Route path="settings/documents" element={<DocumentSettings />} />
                   {/* Legacy route for backward compatibility */}
-                  <Route path="invoices" element={<IncomeList />} />
+                  <Route path="income" element={<IncomeList />} />
+                  <Route path="expense" element={<ExpenseList />} />
                   {/* Catch-all for any other routes */}
                   <Route path="*" element={<NotFound />} />
                 </Route>

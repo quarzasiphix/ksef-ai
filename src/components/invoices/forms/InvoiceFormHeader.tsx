@@ -9,12 +9,14 @@ interface InvoiceFormHeaderProps {
   title: string;
   documentType: InvoiceType;
   isEditing: boolean;
+  className?: string;
 }
 
 export const InvoiceFormHeader: React.FC<InvoiceFormHeaderProps> = ({
   title,
   documentType,
-  isEditing
+  isEditing,
+  className = ''
 }) => {
   const navigate = useNavigate();
 
@@ -30,9 +32,9 @@ export const InvoiceFormHeader: React.FC<InvoiceFormHeaderProps> = ({
   };
 
   return (
-    <div className="flex items-center justify-between">
+    <div className={`flex items-center justify-between ${className}`.trim()}>
       <div className="flex items-center gap-2">
-        <Button variant="outline" size="icon" onClick={() => navigate(-1)}>
+        <Button variant="outline" size="icon" onClick={() => navigate(-1)} type="button">
           <ArrowLeft className="h-4 w-4" />
         </Button>
         <h1 className="text-xl font-bold">

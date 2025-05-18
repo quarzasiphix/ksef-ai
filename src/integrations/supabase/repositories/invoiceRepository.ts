@@ -1,7 +1,7 @@
 
 import { supabase } from "../client";
 import type { InvoiceItem, InvoiceType, PaymentMethod, PaymentMethodDb, Invoice } from "@/types";
-import { toPaymentMethodUi } from "@/types";
+import { toPaymentMethodUi } from "@/lib/invoice-utils";
 import { useAuth } from "@/App";
 
 export async function saveInvoice(invoice: Omit<Invoice, 'id'> & { id?: string }): Promise<Invoice> {

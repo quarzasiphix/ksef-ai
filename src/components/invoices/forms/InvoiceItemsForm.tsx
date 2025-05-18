@@ -1,15 +1,16 @@
-
 import React, { useState, useEffect } from "react";
 import { CardHeader, CardTitle, CardContent, Card } from "@/components/ui/card";
 import { EditableInvoiceItemsTable } from "@/components/invoices/EditableInvoiceItemsTable";
 import { calculateItemValues } from "@/lib/invoice-utils";
 import { InvoiceItem, InvoiceType, Product } from "@/types";
+import { TransactionType } from "@/types/common";
 import { getProducts } from "@/integrations/supabase/repositories/productRepository";
 import { toast } from "sonner";
 
 interface InvoiceItemsFormProps {
   items: InvoiceItem[];
   documentType: InvoiceType;
+  transactionType: TransactionType;
   onItemsChange: (items: InvoiceItem[]) => void;
   userId: string;
 }
@@ -17,6 +18,7 @@ interface InvoiceItemsFormProps {
 export const InvoiceItemsForm: React.FC<InvoiceItemsFormProps> = ({
   items,
   documentType,
+  transactionType,
   onItemsChange,
   userId
 }) => {

@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { toast } from "sonner";
@@ -70,8 +69,18 @@ const EditInvoice = () => {
     );
   }
 
+  const isExpense = invoice.invoiceType === 'expense';
+
   // Use the NewInvoice component in edit mode by passing the invoice data
-  return <NewInvoice initialData={invoice} />;
+  return (
+    <NewInvoice 
+      initialData={{
+        ...invoice,
+        buyer: isExpense ? invoice.seller : invoice.buyer,
+        seller: isExpense ? invoice.buyer : invoice.seller,
+      }} 
+    />
+  );
 };
 
 export default EditInvoice;

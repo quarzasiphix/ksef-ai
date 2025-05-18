@@ -5,8 +5,8 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import { formatPolishDate } from "@/lib/invoice-utils";
-import { InvoiceType, getPolishPaymentMethod } from "@/types";
+import { formatPolishDate, getPolishPaymentMethod } from "@/lib/invoice-utils";
+import { InvoiceType } from "@/types";
 
 interface InvoiceDetailsCardProps {
   paymentMethod: string; // Added payment method prop

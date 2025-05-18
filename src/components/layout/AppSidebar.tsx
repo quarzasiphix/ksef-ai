@@ -19,7 +19,8 @@ import {
   Settings, 
   Users,
   Package,
-  CreditCard
+  CreditCard,
+  ArrowDownRight
 } from "lucide-react";
 
 const AppSidebar = () => {
@@ -61,8 +62,9 @@ const AppSidebar = () => {
 
   // Navigation items
   const navItems = [
-    { title: "Dashboard", path: "/", icon: BarChart },
     { title: "Przychód", path: "/income", icon: CreditCard },
+    { title: "Wydatki", path: "/expense", icon: ArrowDownRight, addDivider: true },
+    { title: "Dashboard", path: "/", icon: BarChart },
     { title: "Klienci", path: "/customers", icon: Users },
     { title: "Produkty", path: "/products", icon: Package },
     { title: "Ustawienia", path: "/settings", icon: Settings },
@@ -143,6 +145,9 @@ const AppSidebar = () => {
             </SidebarMenu>
           </SidebarGroupContent>
         </SidebarGroup>
+        <div className="mt-auto">
+          <UserMenuFooter isOpen={true} />
+        </div>
       </div>
     );
   }
@@ -150,50 +155,64 @@ const AppSidebar = () => {
   // --- DESKTOP SIDEBAR ---
   return (
     <Sidebar 
-      className={`border-r ${!open ? "w-14" : "w-60"} hidden md:block`}
+      className={`border-r ${!open ? "w-14" : "w-60"} hidden md:flex flex-col`}
       collapsible="icon"
     >
-      <SidebarTrigger className="m-2 self-end" />
-      
-      <SidebarContent>
-        <div className={`mb-8 px-3 ${!open ? "hidden" : "block"}`}>
-          <h2 className="text-2xl font-bold text-invoice">AiFaktura</h2>
-          <p className="text-xs text-muted-foreground">System Faktur</p>
-        </div>
+      <div>
+        <SidebarTrigger className="m-2 self-end" />
         
-        <SidebarGroup>
-          <SidebarGroupContent>
-            <SidebarMenu>
-              {navItems.map((item) => (
-                <SidebarMenuItem key={item.path}>
-                  <SidebarMenuButton asChild>
-                    <NavLink
-                      to={item.path}
-                      end={item.path === "/"}
-                      className={getNavClassName}
-                      onClick={handleNavigation}
-                    >
-                      <item.icon className={`h-5 w-5 ${open ? "mr-2" : ""}`} />
-                      {open && <span>{item.title}</span>}
-                    </NavLink>
-                  </SidebarMenuButton>
-                </SidebarMenuItem>
-              ))}
-            </SidebarMenu>
-          </SidebarGroupContent>
-        </SidebarGroup>
-        {/* User info and logout at the bottom */}
-        <UserMenuFooter />
-      </SidebarContent>
+        <SidebarContent>
+          <div className={`mb-8 px-3 ${!open ? "hidden" : "block"}`}>
+            <h2 className="text-2xl font-bold text-invoice">AiFaktura</h2>
+            <p className="text-xs text-muted-foreground">System Faktur</p>
+          </div>
+          
+          <SidebarGroup>
+            <SidebarGroupContent>
+              <SidebarMenu>
+                {navItems.map((item, index) => (
+                  <React.Fragment key={item.path}>
+                    <SidebarMenuItem>
+                      <SidebarMenuButton asChild>
+                        <NavLink
+                          to={item.path}
+                          end={item.path === "/"}
+                          className={getNavClassName}
+                          onClick={handleNavigation}
+                        >
+                          <item.icon className={`h-5 w-5 ${open ? "mr-2" : ""}`} />
+                          {open && <span>{item.title}</span>}
+                        </NavLink>
+                      </SidebarMenuButton>
+                    </SidebarMenuItem>
+                    {item.addDivider && (
+                      <div className="border-t border-border my-1" />
+                    )}
+                  </React.Fragment>
+                ))}
+              </SidebarMenu>
+            </SidebarGroupContent>
+          </SidebarGroup>
+        </SidebarContent>
+      </div>
+      <div className="mt-auto">
+        <UserMenuFooter isOpen={open} />
+      </div>
     </Sidebar>
   );
 };
 
-const UserMenuFooter = () => {
+interface UserMenuFooterProps {
+  isOpen: boolean;
+}
+
+const UserMenuFooter = ({ isOpen }: UserMenuFooterProps) => {
   const { user, logout } = useAuth();
   const navigate = useNavigate();
   
   if (!user) return null;
+  
+  if (!isOpen) return null;
   
   const handleLogout = async () => {
     try {

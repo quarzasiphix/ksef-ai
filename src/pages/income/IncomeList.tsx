@@ -1,4 +1,3 @@
-
 import React, { useState, useMemo } from "react";
 import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
@@ -100,22 +99,22 @@ const IncomeList = () => {
             <DropdownMenuGroup>
               <DropdownMenuItem asChild>
                 <Link to="/invoices/new?type=sales">
-                  Faktura VAT
+                  <button>Faktura VAT</button>
                 </Link>
               </DropdownMenuItem>
               <DropdownMenuItem asChild>
                 <Link to="/invoices/new?type=receipt">
-                  Rachunek
+                  <button>Rachunek</button>
                 </Link>
               </DropdownMenuItem>
               <DropdownMenuItem asChild>
                 <Link to="/invoices/new?type=proforma">
-                  Faktura proforma
+                  <button>Faktura proforma</button>
                 </Link>
               </DropdownMenuItem>
               <DropdownMenuItem asChild>
                 <Link to="/invoices/new?type=correction">
-                  Faktura korygująca
+                  <button>Faktura korygująca</button>
                 </Link>
               </DropdownMenuItem>
             </DropdownMenuGroup>
