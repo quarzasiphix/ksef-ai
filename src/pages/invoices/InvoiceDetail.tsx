@@ -254,8 +254,6 @@ const InvoiceDetailComponent: React.FC = () => {
         // Add header id for sticky detection
         // @ts-ignore
         ref={undefined}
-        // Add id for DOM
-        {...{ id: undefined }}
       />
       {/* Sticky mobile bar for actions */}
       <MobileStickyInvoiceHeader

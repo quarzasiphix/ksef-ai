@@ -16,7 +16,7 @@ const Layout = () => {
         <AppSidebar />
         <div className="flex flex-1 flex-col">
           <Header />
-          <main className="flex-1 p-6 overflow-auto pb-20 md:pb-6">
+          <main className="flex-1 p-6 overflow-auto pb-[88px] md:pb-6 w-full max-w-full overflow-x-hidden">
             <Outlet />
           </main>
           <footer className="border-t p-4 text-sm text-muted-foreground text-center hidden md:block">

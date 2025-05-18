@@ -281,7 +281,7 @@ export const InvoicePdfTemplate: React.FC<InvoicePdfTemplateProps> = ({ invoice,
           <thead>
             <tr style={{ background: '#f3f4f6' }}>
               <th style={{ textAlign: 'left', padding: 6, border: '1px solid #e5e7eb' }}>Lp</th>
-              <th style={{ textAlign: 'left', padding: 6, border: '1px solid #e5e7eb' }}>Nazwa</th>
+              <th style={{ textAlign: 'left', padding: 6, border: '1px solid #e5e7eb' }}>Nazwa towaru / usługi</th>
               <th style={{ textAlign: 'right', padding: 6, border: '1px solid #e5e7eb' }}>Ilość</th>
               <th style={{ textAlign: 'right', padding: 6, border: '1px solid #e5e7eb' }}>Cena netto</th>
               <th style={{ textAlign: 'right', padding: 6, border: '1px solid #e5e7eb' }}>Wartość netto</th>
