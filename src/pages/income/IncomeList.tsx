@@ -98,22 +98,22 @@ const IncomeList = () => {
           <DropdownMenuContent align="end">
             <DropdownMenuGroup>
               <DropdownMenuItem asChild>
-                <Link to="/invoices/new?type=sales">
+                <Link to="/income/new?type=sales">
                   <button>Faktura VAT</button>
                 </Link>
               </DropdownMenuItem>
               <DropdownMenuItem asChild>
-                <Link to="/invoices/new?type=receipt">
+                <Link to="/income/new?type=receipt">
                   <button>Rachunek</button>
                 </Link>
               </DropdownMenuItem>
               <DropdownMenuItem asChild>
-                <Link to="/invoices/new?type=proforma">
+                <Link to="/income/new?type=proforma">
                   <button>Faktura proforma</button>
                 </Link>
               </DropdownMenuItem>
               <DropdownMenuItem asChild>
-                <Link to="/invoices/new?type=correction">
+                <Link to="/income/new?type=correction">
                   <button>Faktura korygująca</button>
                 </Link>
               </DropdownMenuItem>

@@ -15,6 +15,7 @@ interface MobileStickyInvoiceHeaderProps {
 }
 
 import { InvoiceType } from "@/types";
+import { useLocation } from "react-router-dom";
 
 const getInvoiceTypeTitle = (type: InvoiceType) => {
   switch (type) {
@@ -42,7 +43,14 @@ const MobileStickyInvoiceHeader: React.FC<MobileStickyInvoiceHeaderProps> = ({
 }) => {
   const isMobile = useIsMobile();
   const navigate = useNavigate();
+  const location = useLocation();
   const [showSticky, setShowSticky] = useState(false);
+  
+  // Determine the correct back URL based on current path
+  const getBackUrl = () => {
+    const isExpense = location.pathname.includes('/expenses') || location.pathname.includes('/expense');
+    return isExpense ? '/expenses' : '/incomes';
+  };
 
   useEffect(() => {
     if (!isMobile) return;
@@ -65,7 +73,7 @@ const MobileStickyInvoiceHeader: React.FC<MobileStickyInvoiceHeaderProps> = ({
     >
       {/* Left: Back, Number, Type */}
       <div className="flex items-center gap-2 min-w-0">
-        <Button variant="outline" size="icon" onClick={() => navigate(-1)}>
+        <Button variant="ghost" size="icon" onClick={() => navigate(getBackUrl())} className="p-2">
           <ArrowLeft className="h-4 w-4" />
         </Button>
         <div className="flex flex-col min-w-0">
@@ -75,13 +83,13 @@ const MobileStickyInvoiceHeader: React.FC<MobileStickyInvoiceHeaderProps> = ({
       </div>
       {/* Right: 4 Buttons */}
       <div className="flex items-center gap-1 ml-auto">
-        <Button variant="outline" size="icon" onClick={onEdit}>
+        <Button variant="ghost" size="icon" onClick={onEdit}>
           <Pencil className="h-4 w-4" />
         </Button>
-        <Button variant="outline" size="icon" onClick={onShare} disabled={pdfLoading}>
+        <Button variant="ghost" size="icon" onClick={onShare} disabled={pdfLoading}>
           <Share2 className="h-4 w-4" />
         </Button>
-        <Button variant="outline" size="icon" onClick={onDownload} disabled={pdfLoading}>
+        <Button variant="ghost" size="icon" onClick={onDownload} disabled={pdfLoading}>
           <FileDown className="h-4 w-4" />
         </Button>
       </div>

@@ -242,14 +242,18 @@ export const InvoicePdfTemplate: React.FC<InvoicePdfTemplateProps> = ({ invoice,
               <span style={{ fontSize: 11, color: '#6b7280' }}>Adres:</span>
               <span style={{ fontSize: 13, textAlign: 'right' }}>{businessProfile?.address || ''}</span>
             </div>
-            <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 3 }}>
-              <span style={{ fontSize: 11, color: '#6b7280' }}>Email:</span>
-              <span style={{ fontSize: 13, textAlign: 'right' }}>{businessProfile?.email || ''}</span>
-            </div>
-            <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-              <span style={{ fontSize: 11, color: '#6b7280' }}>Tel:</span>
-              <span style={{ fontSize: 13, textAlign: 'right' }}>{businessProfile?.phone || ''}</span>
-            </div>
+            {businessProfile?.email && (
+              <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 3 }}>
+                <span style={{ fontSize: 11, color: '#6b7280' }}>Email:</span>
+                <span style={{ fontSize: 13, textAlign: 'right' }}>{businessProfile.email}</span>
+              </div>
+            )}
+            {businessProfile?.phone && (
+              <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                <span style={{ fontSize: 11, color: '#6b7280' }}>Tel:</span>
+                <span style={{ fontSize: 13, textAlign: 'right' }}>{businessProfile.phone}</span>
+              </div>
+            )}
           </div>
           {/* Buyer */}
           <div style={{ padding: '12px 16px', backgroundColor: '#f9fafb', border: '1px solid #e5e7eb', borderRadius: '4px' }}>
@@ -258,22 +262,28 @@ export const InvoicePdfTemplate: React.FC<InvoicePdfTemplateProps> = ({ invoice,
               <span style={{ fontSize: 11, color: '#6b7280' }}>Nazwa:</span>
               <span style={{ fontSize: 13, textAlign: 'right' }}>{customer?.name || ''}</span>
             </div>
-            <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 3 }}>
-              <span style={{ fontSize: 11, color: '#6b7280' }}>NIP:</span>
-              <span style={{ fontSize: 13, textAlign: 'right' }}>{customer?.taxId || ''}</span>
-            </div>
+            {customer?.taxId && (
+              <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 3 }}>
+                <span style={{ fontSize: 11, color: '#6b7280' }}>NIP:</span>
+                <span style={{ fontSize: 13, textAlign: 'right' }}>{customer.taxId}</span>
+              </div>
+            )}
             <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 3 }}>
               <span style={{ fontSize: 11, color: '#6b7280' }}>Adres:</span>
               <span style={{ fontSize: 13, textAlign: 'right' }}>{customer?.address || ''}</span>
             </div>
-            <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 3 }}>
-              <span style={{ fontSize: 11, color: '#6b7280' }}>Email:</span>
-              <span style={{ fontSize: 13, textAlign: 'right' }}>{customer?.email || ''}</span>
-            </div>
-            <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-              <span style={{ fontSize: 11, color: '#6b7280' }}>Tel:</span>
-              <span style={{ fontSize: 13, textAlign: 'right' }}>{customer?.phone || ''}</span>
-            </div>
+            {customer?.email && (
+              <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 3 }}>
+                <span style={{ fontSize: 11, color: '#6b7280' }}>Email:</span>
+                <span style={{ fontSize: 13, textAlign: 'right' }}>{customer.email}</span>
+              </div>
+            )}
+            {customer?.phone && (
+              <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                <span style={{ fontSize: 11, color: '#6b7280' }}>Tel:</span>
+                <span style={{ fontSize: 13, textAlign: 'right' }}>{customer.phone}</span>
+              </div>
+            )}
           </div>
         </div>
 
@@ -286,8 +296,8 @@ export const InvoicePdfTemplate: React.FC<InvoicePdfTemplateProps> = ({ invoice,
               <th style={{ textAlign: 'right', padding: 6, border: '1px solid #e5e7eb' }}>Ilość</th>
               <th style={{ textAlign: 'right', padding: 6, border: '1px solid #e5e7eb' }}>Cena netto</th>
               <th style={{ textAlign: 'right', padding: 6, border: '1px solid #e5e7eb' }}>Wartość netto</th>
-              <th style={{ textAlign: 'right', padding: 6, border: '1px solid #e5e7eb' }}>VAT %</th>
-              <th style={{ textAlign: 'right', padding: 6, border: '1px solid #e5e7eb' }}>Kwota VAT</th>
+              {isReceipt ? null : <th style={{ textAlign: 'right', padding: 6, border: '1px solid #e5e7eb' }}>VAT %</th>}
+              {isReceipt ? null : <th style={{ textAlign: 'right', padding: 6, border: '1px solid #e5e7eb' }}>Kwota VAT</th>}
               <th style={{ textAlign: 'right', padding: 6, border: '1px solid #e5e7eb' }}>Wartość brutto</th>
             </tr>
           </thead>
@@ -299,8 +309,8 @@ export const InvoicePdfTemplate: React.FC<InvoicePdfTemplateProps> = ({ invoice,
                 <td style={{ padding: 6, border: '1px solid #e5e7eb', textAlign: 'right' }}>{item.quantity}</td>
                 <td style={{ padding: '4px 6px', border: '1px solid #e5e7eb', textAlign: 'right' }}>{formatCurrencyUtil(item.unitPrice)}</td>
                 <td style={{ padding: '4px 6px', border: '1px solid #e5e7eb', textAlign: 'right' }}>{formatCurrencyUtil(item.totalNetValue || 0)}</td>
-                <td style={{ padding: 6, border: '1px solid #e5e7eb', textAlign: 'right' }}>{item.vatRate}%</td>
-                <td style={{ padding: '4px 6px', border: '1px solid #e5e7eb', textAlign: 'right' }}>{formatCurrencyUtil(item.totalVatValue || 0)}</td>
+                {isReceipt ? null : <td style={{ padding: 6, border: '1px solid #e5e7eb', textAlign: 'right' }}>{item.vatRate}%</td>}
+                {isReceipt ? null : <td style={{ padding: '4px 6px', border: '1px solid #e5e7eb', textAlign: 'right' }}>{formatCurrencyUtil(item.totalVatValue || 0)}</td>}
                 <td style={{ padding: '4px 6px', border: '1px solid #e5e7eb', textAlign: 'right' }}>{formatCurrencyUtil(item.totalGrossValue || 0)}</td>
               </tr>
             ))}
@@ -310,30 +320,24 @@ export const InvoicePdfTemplate: React.FC<InvoicePdfTemplateProps> = ({ invoice,
         {/* Totals Section */}
         <div style={{ width: '100%', display: 'flex', justifyContent: 'flex-end', marginBottom: 16 }}>
           <div style={{ minWidth: 300 }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 13, marginBottom: 2 }}>
-              <span>Razem netto:</span>
-              <span>{formatCurrencyUtil(totalNetValue || 0)}</span>
-            </div>
-            <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 13, marginBottom: 2 }}>
-              <span>VAT:</span>
-              <span>{formatCurrencyUtil(totalVatValue || 0)}</span>
-            </div>
+            {!isReceipt && (
+              <>
+                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 13, marginBottom: 2 }}>
+                  <span>Razem netto:</span>
+                  <span>{formatCurrencyUtil(totalNetValue || 0)}</span>
+                </div>
+                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 13, marginBottom: 2 }}>
+                  <span>VAT:</span>
+                  <span>{formatCurrencyUtil(totalVatValue || 0)}</span>
+                </div>
+              </>
+            )}
             <div style={{ display: 'flex', justifyContent: 'space-between', fontWeight: 700, fontSize: 14, marginTop: 6 }}>
               <span>Razem brutto:</span>
               <span>{formatCurrencyUtil(totalGrossValue || 0)}</span>
             </div>
           </div>
         </div>
-
-        {/* Corrected Comments section */}
-        {invoice.comments && (
-          <div style={{ marginTop: '16px', padding: '0 16px' }}>
-            <div style={{ padding: '8px 12px', border: '1px solid #e0e0e0', borderRadius: '4px', background: '#f9f9f9' }}>
-              <div style={{ fontWeight: 600, fontSize: 14, marginBottom: 4, color: '#333' }}>Uwagi</div>
-              <div style={{ fontSize: 12, color: '#555', whiteSpace: 'pre-wrap' }}>{invoice.comments}</div>
-            </div>
-          </div>
-        )}
 
         {/* Amount in Words Section at the bottom */}
         <div style={{ marginTop: '32px', paddingTop: '20px', borderTop: '2px solid #dee2e6', textAlign: 'left' }}>
@@ -367,6 +371,16 @@ export const InvoicePdfTemplate: React.FC<InvoicePdfTemplateProps> = ({ invoice,
             </div>
           )}
         </div>
+
+        {/* Corrected Comments section */}
+        {invoice.comments && (
+        <div style={{ marginTop: '16px', padding: '16px 16px', borderTop: '2px solid #dee2e6'}}>
+          <div style={{ padding: '8px 12px', border: '1px solid #e0e0e0', borderRadius: '4px', background: '#f9f9f9' }}>
+            <div style={{ fontWeight: 600, fontSize: 14, marginBottom: 4, color: '#333' }}>Uwagi</div>
+            <div style={{ fontSize: 12, color: '#555', whiteSpace: 'pre-wrap' }}>{invoice.comments}</div>
+          </div>
+        </div>
+        )}
 
       </div>
     </div>

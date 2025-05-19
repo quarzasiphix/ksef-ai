@@ -11,7 +11,7 @@ const MobileNavigation = () => {
   // Main navigation items - Changed "Faktury" to "Przychód" and icon to CreditCard
   const mainNavItems = [
     { title: "Dashboard", path: "/", icon: BarChart },
-    { title: "Przychód", path: "/invoices", icon: CreditCard },
+    { title: "Przychód", path: "/income", icon: CreditCard },
     { title: "Ustawienia", path: "/settings", icon: Settings },
   ];
   

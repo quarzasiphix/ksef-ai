@@ -1,18 +1,122 @@
-
 import { supabase } from "../client";
 import type { InvoiceItem, InvoiceType, PaymentMethod, PaymentMethodDb, Invoice } from "@/types";
 import { toPaymentMethodUi } from "@/lib/invoice-utils";
 import { useAuth } from "@/App";
+import { TransactionType } from "@/types/common";
 
 export async function saveInvoice(invoice: Omit<Invoice, 'id'> & { id?: string }): Promise<Invoice> {
   // Validate required fields
   if (!invoice.user_id) {
     throw new Error("User ID is required");
   }
+  
+  // For expenses, we validate the customer instead of business profile
+  if (invoice.transactionType === TransactionType.EXPENSE) {
+    if (!invoice.customerId) {
+      throw new Error("Customer is required for expenses");
+    }
+    
+    try {
+      const { data: customer, error: customerError } = await supabase
+        .from('customers')
+        .select('id')
+        .eq('id', invoice.customerId)
+        .maybeSingle();
+        
+      if (customerError) {
+        console.error('Error fetching customer for expense:', customerError);
+        throw new Error(`Error validating customer: ${customerError.message}`);
+      }
+      
+      if (!customer) {
+        throw new Error(`Customer with ID ${invoice.customerId} does not exist`);
+      }
+    } catch (error) {
+      console.error('Customer validation error for expense:', error);
+      throw new Error(`Failed to validate customer: ${error instanceof Error ? error.message : 'Unknown error'}`);
+    }
+  } else {
+    // For income, validate business profile
+    if (!invoice.businessProfileId) {
+      throw new Error("Business profile is required for income");
+    }
+    
+    try {
+      const { data: businessProfile, error: profileError } = await supabase
+        .from('business_profiles')
+        .select('id')
+        .eq('id', invoice.businessProfileId)
+        .maybeSingle();
+        
+      if (profileError) {
+        console.error('Error fetching business profile:', profileError);
+        throw new Error(`Error validating business profile: ${profileError.message}`);
+      }
+      
+      if (!businessProfile) {
+        throw new Error(`Business profile with ID ${invoice.businessProfileId} does not exist`);
+      }
+    } catch (error) {
+      console.error('Business profile validation error:', error);
+      throw new Error(`Failed to validate business profile: ${error instanceof Error ? error.message : 'Unknown error'}`);
+    }
+  }
+  
+  // For non-expense invoices, validate customer if provided
+  if (invoice.customerId && invoice.transactionType !== TransactionType.EXPENSE) {
+    try {
+      const { data: customer, error: customerError } = await supabase
+        .from('customers')
+        .select('id')
+        .eq('id', invoice.customerId)
+        .maybeSingle();
+        
+      if (customerError) {
+        console.error('Error fetching customer:', customerError);
+        throw new Error(`Error validating customer: ${customerError.message}`);
+      }
+      
+      if (!customer) {
+        throw new Error(`Customer with ID ${invoice.customerId} does not exist`);
+      }
+    } catch (error) {
+      console.error('Customer validation error:', error);
+      throw new Error(`Failed to validate customer: ${error instanceof Error ? error.message : 'Unknown error'}`);
+    }
+  }
   // First, save the invoice
-  // Create a clean payload with all required fields
-  const invoicePayload = {
-    // Always include user_id first for clarity
+  // Define the database payload type
+  type InvoicePayload = {
+    user_id: string;
+    number: string;
+    type: string;
+    issue_date: string;
+    due_date: string;
+    sell_date: string;
+    business_profile_id: string;
+    customer_id: string | null;
+    payment_method: string;
+    is_paid: boolean;
+    comments: string | null;
+    total_net_value: number;
+    total_gross_value: number;
+    total_vat_value: number;
+    ksef_status: string;
+    ksef_reference_number: string | null;
+    transaction_type?: string;
+  };
+
+  // Ensure payment method is in the correct format for the database
+  const paymentMethod = (() => {
+    if (!invoice.paymentMethod) return 'transfer';
+    const method = invoice.paymentMethod.toLowerCase();
+    return (['transfer', 'cash', 'card', 'other'].includes(method) 
+      ? method 
+      : 'transfer') as PaymentMethodDb;
+  })();
+
+  // Create the base payload with required fields
+  const basePayload: Omit<InvoicePayload, 'transaction_type'> = {
     user_id: invoice.user_id,
     number: invoice.number,
     type: invoice.type,
@@ -20,16 +124,23 @@ export async function saveInvoice(invoice: Omit<Invoice, 'id'> & { id?: string }
     due_date: invoice.dueDate,
     sell_date: invoice.sellDate,
     business_profile_id: invoice.businessProfileId,
-    customer_id: invoice.customerId,
-    payment_method: invoice.paymentMethod, // Already in correct format
+    customer_id: invoice.customerId || null,
+    payment_method: paymentMethod,
     is_paid: invoice.isPaid,
     comments: invoice.comments || null,
-    total_net_value: invoice.totalNetValue || 0,
-    total_gross_value: invoice.totalGrossValue || 0,
-    total_vat_value: invoice.totalVatValue || 0,
+    total_net_value: invoice.totalNetValue,
+    total_gross_value: invoice.totalGrossValue,
+    total_vat_value: invoice.totalVatValue,
     ksef_status: invoice.ksef?.status || 'none',
-    ksef_reference_number: invoice.ksef?.referenceNumber || null,
-    // Other fields follow
+    ksef_reference_number: invoice.ksef?.referenceNumber || null
+  };
+
+  // Always include transaction_type, default to 'income' if not provided
+  const transactionType = (invoice.transactionType || TransactionType.INCOME).toLowerCase() as TransactionType;
+  
+  const invoicePayload: InvoicePayload = {
+    ...basePayload,
+    transaction_type: transactionType === 'income' ? 'income' : 'expense' // Ensure lowercase values
   };
 
   let invoiceId: string;
@@ -132,11 +243,15 @@ export async function getInvoice(id: string): Promise<Invoice> {
     throw invoiceError;
   }
 
-  // Fetch invoice items
+  // Fetch invoice items with product details if available
   const { data: itemsData, error: itemsError } = await supabase
     .from("invoice_items")
-    .select("*")
-    .eq("invoice_id", id);
+    .select(`
+      *,
+      products!left(name, unit, unit_price, vat_rate)
+    `)
+    .eq("invoice_id", id)
+    .order("created_at", { ascending: true });
 
   if (itemsError) {
     console.error("Error fetching invoice items:", itemsError);
@@ -146,46 +261,135 @@ export async function getInvoice(id: string): Promise<Invoice> {
   const items: InvoiceItem[] = itemsData.map(item => ({
     id: item.id,
     productId: item.product_id || undefined,
-    name: item.name,
+    name: item.name || item.products?.name,
     quantity: Number(item.quantity),
-    unitPrice: Number(item.unit_price),
-    vatRate: item.vat_rate,
-    unit: item.unit,
-    totalNetValue: Number(item.total_net_value),
-    totalGrossValue: Number(item.total_gross_value),
-    totalVatValue: Number(item.total_vat_value)
+    unitPrice: Number(item.unit_price) || 0,
+    vatRate: item.vat_rate || 0,
+    unit: item.unit || 'szt',
+    totalNetValue: Number(item.total_net_value) || 0,
+    totalGrossValue: Number(item.total_gross_value) || 0,
+    totalVatValue: Number(item.total_vat_value) || 0
   }));
 
-  // Type assertion for the invoice data to include joined tables
-  const invoiceDataWithRelations = invoiceData as any;
+  // Define the shape of the database response with joined tables
+  interface DatabaseInvoice {
+    id: string;
+    number: string;
+    type: string;
+    transaction_type?: string;
+    issue_date: string;
+    due_date: string;
+    sell_date: string;
+    business_profile_id: string;
+    customer_id: string;
+    payment_method: string;
+    is_paid: boolean;
+    comments: string | null;
+    total_net_value: number;
+    total_gross_value: number;
+    total_vat_value: number;
+    ksef_status: string | null;
+    ksef_reference_number: string | null;
+    user_id?: string;
+    business_profiles?: {
+      user_id: string;
+      name: string;
+    } | null;
+    customers?: {
+      name: string;
+    } | null;
+  }
 
+  // Safely cast the invoice data
+  const dbInvoice: DatabaseInvoice = {
+    ...invoiceData,
+    business_profiles: (invoiceData as any).business_profiles || null,
+    customers: (invoiceData as any).customers || null
+  };
   const invoice: Invoice = {
-    id: invoiceData.id,
-    number: invoiceData.number,
-    type: invoiceData.type as InvoiceType,
-    issueDate: invoiceData.issue_date,
-    dueDate: invoiceData.due_date,
-    sellDate: invoiceData.sell_date,
-    businessProfileId: invoiceData.business_profile_id,
-    customerId: invoiceData.customer_id,
+    id: dbInvoice.id,
+    number: dbInvoice.number,
+    type: dbInvoice.type as InvoiceType,
+    transactionType: (dbInvoice.transaction_type as TransactionType) || TransactionType.INCOME,
+    issueDate: dbInvoice.issue_date,
+    dueDate: dbInvoice.due_date,
+    sellDate: dbInvoice.sell_date,
+    businessProfileId: dbInvoice.business_profile_id,
+    customerId: dbInvoice.customer_id,
     items,
-    paymentMethod: invoiceData.payment_method as PaymentMethodDb,
-    isPaid: invoiceData.is_paid || false,
-    comments: invoiceData.comments || "",
-    totalNetValue: Number(invoiceData.total_net_value),
-    totalGrossValue: Number(invoiceData.total_gross_value),
-    totalVatValue: Number(invoiceData.total_vat_value),
+    paymentMethod: (['transfer', 'cash', 'card', 'other'].includes(dbInvoice.payment_method?.toLowerCase())
+      ? dbInvoice.payment_method.toLowerCase() 
+      : 'transfer') as PaymentMethodDb,
+    isPaid: dbInvoice.is_paid || false,
+    comments: dbInvoice.comments || "",
+    totalNetValue: Number(dbInvoice.total_net_value) || 0,
+    totalGrossValue: Number(dbInvoice.total_gross_value) || 0,
+    totalVatValue: Number(dbInvoice.total_vat_value) || 0,
     ksef: {
-      status: (invoiceData.ksef_status as 'pending' | 'sent' | 'error' | 'none') || 'none',
-      referenceNumber: invoiceData.ksef_reference_number || undefined
+      status: (dbInvoice.ksef_status as 'pending' | 'sent' | 'error' | 'none') || 'none',
+      referenceNumber: dbInvoice.ksef_reference_number || undefined
     },
-    // Get user_id from the business profile or use an empty string as fallback
-    user_id: invoiceDataWithRelations.business_profiles?.user_id || '',
-    businessName: invoiceDataWithRelations.business_profiles?.name || '',
-    customerName: invoiceDataWithRelations.customers?.name || ''
+    user_id: dbInvoice.user_id || dbInvoice.business_profiles?.user_id || '',
+    businessName: dbInvoice.business_profiles?.name || '',
+    customerName: dbInvoice.customers?.name || ''
   };
 
   return invoice;
+}
+
+interface DatabaseInvoiceItem {
+  id: string;
+  invoice_id: string;
+  product_id: string | null;
+  name: string | null;
+  quantity: number;
+  unit_price: number;
+  vat_rate: number;
+  unit: string;
+  total_net_value: number;
+  total_gross_value: number;
+  total_vat_value: number;
+  created_at: string;
+  updated_at: string;
+  products?: {
+    name: string;
+    unit: string;
+    unit_price: number;
+    vat_rate: number;
+  } | null;
+}
+
+interface DatabaseInvoice {
+  id: string;
+  number: string;
+  type: string;
+  transaction_type?: string;
+  issue_date: string;
+  due_date: string;
+  sell_date: string;
+  business_profile_id: string;
+  customer_id: string | null;
+  payment_method: string;
+  is_paid: boolean;
+  comments: string | null;
+  total_net_value: number;
+  total_gross_value: number;
+  total_vat_value: number;
+  ksef_status: string | null;
+  ksef_reference_number: string | null;
+  user_id: string;
+  created_at: string;
+  updated_at: string;
+  business_profiles: {
+    id: string;
+    name: string;
+    user_id: string;
+  } | null;
+  customers: {
+    id: string;
+    name: string;
+    user_id: string;
+  } | null;
 }
 
 export async function getInvoices(userId: string): Promise<Invoice[]> {
@@ -209,35 +413,44 @@ export async function getInvoices(userId: string): Promise<Invoice[]> {
     throw error;
   }
 
-  return data.map(item => {
-    // Type assertion to handle missing user_id in the database
-    const itemWithAny = item as any;
-    const businessProfilesWithAny = item.business_profiles as any;
+  if (!data) return [];
+
+  // Map the data to the Invoice interface, including transaction_type
+  return data.map((item) => {
+    const dbItem = item as unknown as DatabaseInvoice;
+    const paymentMethod = (() => {
+      const method = dbItem.payment_method?.toLowerCase();
+      return (['transfer', 'cash', 'card', 'other'].includes(method || '') 
+        ? method 
+        : 'transfer') as PaymentMethodDb;
+    })();
     
-    return {
-      id: item.id,
-      number: item.number,
-      type: item.type as InvoiceType,
-      issueDate: item.issue_date,
-      dueDate: item.due_date,
-      sellDate: item.sell_date,
-      businessProfileId: item.business_profile_id,
-      customerId: item.customer_id,
+    const invoice: Invoice = {
+      id: dbItem.id,
+      number: dbItem.number,
+      type: dbItem.type as InvoiceType,
+      transactionType: (dbItem.transaction_type?.toLowerCase() as TransactionType) || TransactionType.INCOME,
+      issueDate: dbItem.issue_date,
+      dueDate: dbItem.due_date,
+      sellDate: dbItem.sell_date,
+      businessProfileId: dbItem.business_profile_id,
+      customerId: dbItem.customer_id || '',
       items: [], // Items are loaded separately when needed
-      paymentMethod: item.payment_method as PaymentMethodDb,
-      isPaid: item.is_paid || false,
-      comments: item.comments || "",
-      totalNetValue: Number(item.total_net_value),
-      totalGrossValue: Number(item.total_gross_value),
-      totalVatValue: Number(item.total_vat_value),
+      paymentMethod,
+      isPaid: dbItem.is_paid || false,
+      comments: dbItem.comments || "",
+      totalNetValue: Number(dbItem.total_net_value) || 0,
+      totalGrossValue: Number(dbItem.total_gross_value) || 0,
+      totalVatValue: Number(dbItem.total_vat_value) || 0,
       ksef: {
-        status: (item.ksef_status as 'pending' | 'sent' | 'error' | 'none') || 'none',
-        referenceNumber: item.ksef_reference_number || null
+        status: (dbItem.ksef_status as 'pending' | 'sent' | 'error' | 'none') || 'none',
+        referenceNumber: dbItem.ksef_reference_number || null
       },
-      // Additional fields for display
-      businessName: item.business_profiles?.name,
-      customerName: item.customers?.name,
-      user_id: itemWithAny.user_id || businessProfilesWithAny?.user_id // Fallback to business profile user_id if invoice user_id is not set
-    } as Invoice;
+      user_id: dbItem.user_id,
+      businessName: dbItem.business_profiles?.name || '',
+      customerName: dbItem.customers?.name || ''
+    };
+    
+    return invoice;
   });
 }

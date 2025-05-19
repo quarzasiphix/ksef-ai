@@ -253,7 +253,21 @@ const InvoiceDetailComponent: React.FC<InvoiceDetailProps> = ({ type }) => {
 
   return (
     <div ref={containerRef} className="flex-1 space-y-3 lg:space-y-4">
-      <Button
+      <InvoiceHeader 
+        id={invoice.id}
+        number={invoice.number}
+        type={invoice.type}
+        pdfLoading={pdfLoading}
+        handleGeneratePdf={generatePdf}
+        handleSharePdf={sharePdf}
+        canSharePdf={!!(savedPdfUri && savedPdfUri !== 'web_downloaded')}
+        transactionType={invoice.transactionType}
+        // Add header id for sticky detection
+        // @ts-ignore
+        ref={undefined}
+      />
+      {/* Sticky mobile bar for actions */}
+      <MobileStickyInvoiceHeader
         invoiceId={invoice.id}
         invoiceNumber={invoice.number}
         invoiceType={invoice.type}

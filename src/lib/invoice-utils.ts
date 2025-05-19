@@ -1,5 +1,6 @@
 
 import { InvoiceItem, PaymentMethod } from "@/types";
+import { PaymentMethodDb } from "@/types/common";
 
 // Format number to Polish currency
 export const formatCurrency = (amount: number): string => {
@@ -96,49 +97,69 @@ export const formatPolishDate = (isoDateString: string): string => {
   });
 };
 
+// Payment method mappings
+const paymentMethodMappings = {
+  // UI/DB values (English) to Polish display
+  displayNames: {
+    'transfer': 'Przelew',
+    'przelew': 'Przelew',
+    'cash': 'Gotówka',
+    'gotówka': 'Gotówka',
+    'card': 'Karta',
+    'karta': 'Karta',
+    'online': 'Płatność online',
+    'płatność online': 'Płatność online',
+    'blik': 'BLIK'
+  },
+  
+  // UI/DB values (English) to database values
+  dbValues: {
+    'transfer': 'transfer',
+    'przelew': 'transfer',
+    'cash': 'cash',
+    'gotówka': 'cash',
+    'card': 'card',
+    'karta': 'card',
+    'online': 'online',
+    'płatność online': 'online',
+    'blik': 'blik'
+  },
+  
+  // Database values to UI values
+  uiValues: {
+    'transfer': 'transfer',
+    'cash': 'cash',
+    'card': 'card',
+    'online': 'online',
+    'blik': 'blik'
+  }
+};
+
 // Get Polish translation for payment method
-export const getPolishPaymentMethod = (method: string): string => {
-  switch (method.toLowerCase()) {
-    case 'transfer':
-      return 'Przelew';
-    case 'cash':
-      return 'Gotówka';
-    case 'card':
-      return 'Karta';
-    case 'online':
-      return 'Płatność online';
-    case 'blik':
-      return 'BLIK';
-    default:
-      return method;
-  }
+export const getPolishPaymentMethod = (method: string | PaymentMethod | undefined): string => {
+  if (!method) return 'Nie określono';
+  
+  const methodStr = typeof method === 'string' ? method.toLowerCase() : method;
+  return paymentMethodMappings.displayNames[methodStr] || String(method);
 };
 
-// Convert payment method from database format to UI format
-export const toPaymentMethodUi = (method: string): string => {
-  const lowerMethod = method.toLowerCase();
-  if (lowerMethod === 'przelew' || lowerMethod === 'transfer') {
-    return 'transfer';
-  } else if (lowerMethod === 'gotówka' || lowerMethod === 'cash') {
-    return 'cash';
-  } else if (lowerMethod === 'karta' || lowerMethod === 'card') {
-    return 'card';
-  } else if (lowerMethod === 'płatność online' || lowerMethod === 'online') {
-    return 'online';
-  } else if (lowerMethod === 'blik') {
-    return 'blik';
-  }
-  return method;
+// Convert any payment method format to UI format
+export const toPaymentMethodUi = (method: string | PaymentMethod): string => {
+  if (!method) return PaymentMethod.TRANSFER;
+  
+  const methodStr = typeof method === 'string' ? method.toLowerCase() : method;
+  return paymentMethodMappings.uiValues[methodStr] || PaymentMethod.TRANSFER;
 };
 
-// Convert payment method from UI format to database format
-export const toPaymentMethodDb = (method: string): PaymentMethod => {
-  const lowerMethod = method.toLowerCase();
-  if (lowerMethod === 'transfer' || lowerMethod === 'przelew') {
-    return PaymentMethod.TRANSFER;
-  } else if (lowerMethod === 'cash' || lowerMethod === 'gotówka') {
-    return PaymentMethod.CASH;
-  }
-  // Default to TRANSFER if the method is not recognized
-  return PaymentMethod.TRANSFER;
+// Convert any payment method format to database format
+export const toPaymentMethodDb = (method: string | PaymentMethod): PaymentMethodDb => {
+  if (!method) return 'transfer';
+  
+  const methodStr = typeof method === 'string' ? method.toLowerCase() : method;
+  const dbValue = paymentMethodMappings.dbValues[methodStr] || 'transfer';
+  
+  // Ensure we return a valid PaymentMethodDb value
+  return (['transfer', 'cash', 'card', 'other'].includes(dbValue) 
+    ? dbValue 
+    : 'transfer') as PaymentMethodDb;
 };

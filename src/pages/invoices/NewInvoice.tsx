@@ -20,12 +20,15 @@ import { Button } from "@/components/ui/button";
 
 // Create a basic invoice form schema
 const invoiceFormSchema = z.object({
-  number: z.string().min(1, "Numer dokumentu jest wymagany"),
-  issueDate: z.string(),
-  dueDate: z.string(),
+  number: z.string().min(1, "Numer faktury jest wymagany"),
+  issueDate: z.string().min(1, "Data wystawienia jest wymagana"),
+  dueDate: z.string().min(1, "Termin płatności jest wymagany"),
   sellDate: z.string(),
   paymentMethod: z.string().min(1, "Metoda płatności jest wymagana"),
-  comments: z.string().optional().default("")
+  comments: z.string().optional().default(""),
+  customerId: z.string().optional(),
+  businessProfileId: z.string().min(1, "Profil biznesowy jest wymagany"),
+  transactionType: z.nativeEnum(TransactionType).default(TransactionType.EXPENSE)
 });
 
 type InvoiceFormValues = z.infer<typeof invoiceFormSchema>;
@@ -41,11 +44,14 @@ const NewInvoice: React.FC<{
   const [transactionType, setTransactionType] = useState<TransactionType>(type);
   const [documentType, setDocumentType] = useState<InvoiceType>(InvoiceType.SALES);
   const [documentSettings, setDocumentSettings] = useState<any[]>([]);
+  const [documentSettingsLoaded, setDocumentSettingsLoaded] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [items, setItems] = useState<InvoiceItem[]>(initialData?.items || []);
   const [businessProfileId, setBusinessProfileId] = useState<string>(initialData?.businessProfileId || "");
   const [businessName, setBusinessName] = useState<string>(initialData?.businessName || "");
   const [customerId, setCustomerId] = useState<string>(initialData?.customerId || "");
+  const from = searchParams.get('from');
+  const hideTransactionButtons = from === 'income' || from === 'expense';
   const [customerName, setCustomerName] = useState<string>(initialData?.customerName || "");
   
   const today = new Date().toISOString().split('T')[0];
@@ -54,19 +60,21 @@ const NewInvoice: React.FC<{
   const handleBusinessProfileChange = (id: string, name?: string) => {
     setBusinessProfileId(id);
     setBusinessName(name || "");
+    form.setValue('businessProfileId', id, { shouldValidate: true });
   };
 
   // Handle customer change
   const handleCustomerChange = (id: string, name?: string) => {
     setCustomerId(id);
     setCustomerName(name || "");
+    form.setValue('customerId', id, { shouldValidate: true });
   };
   
   // Handle payment method change
   const handlePaymentMethodChange = (value: string) => {
     // Convert UI payment method to database format
-    const dbMethod = toPaymentMethodDb(value as PaymentMethod) as PaymentMethodDb;
-    setValue("paymentMethod", dbMethod);
+    const dbMethod = toPaymentMethodDb(value);
+    form.setValue("paymentMethod", dbMethod, { shouldValidate: true });
   };
 
   // Toggle transaction type
@@ -75,13 +83,20 @@ const NewInvoice: React.FC<{
       ? TransactionType.EXPENSE 
       : TransactionType.INCOME;
     setTransactionType(newType);
-    setValue('transactionType', newType);
+    form.setValue('transactionType', newType, { shouldValidate: true });
+    
+    // Reset customer when switching to expense type
+    if (newType === TransactionType.EXPENSE) {
+      setCustomerId('');
+      setCustomerName('');
+      form.setValue('customerId', '', { shouldValidate: true });
+    }
   };
 
   // Handle transaction type change
   const handleTransactionTypeChange = (type: TransactionType) => {
     setTransactionType(type);
-    setValue('transactionType', type);
+    form.setValue('transactionType', type, { shouldValidate: true });
   };
 
   // Setup form with default values
@@ -94,6 +109,7 @@ const NewInvoice: React.FC<{
 
   const form = useForm<InvoiceFormValues & { transactionType: TransactionType }>({
     resolver: zodResolver(invoiceFormSchema),
+    mode: 'onChange', // Validate on change
     defaultValues: {
       number: initialData?.number || generateInvoiceNumber(new Date(), 1),
       issueDate: initialData?.issueDate || today,
@@ -102,10 +118,23 @@ const NewInvoice: React.FC<{
       paymentMethod: normalizedPaymentMethod as unknown as PaymentMethod,
       comments: initialData?.comments || "",
       transactionType: type || TransactionType.INCOME,
+      customerId: initialData?.customerId || "",
+      businessProfileId: initialData?.businessProfileId || "",
     }
   });
+  
+  // Log form errors
+  useEffect(() => {
+    const subscription = form.watch((value, { name, type }) => {
+      if (form.formState.errors) {
+        console.log('Form errors:', form.formState.errors);
+      }
+    });
+    return () => subscription.unsubscribe();
+  }, [form.watch, form.formState.errors]);
 
-  const { setValue } = form;
+  // Remove this line as we'll use form.setValue directly
+  // to ensure form state is properly updated
 
   // Load document type settings from localStorage
   useEffect(() => {
@@ -116,53 +145,100 @@ const NewInvoice: React.FC<{
         setDocumentSettings(parsed);
       } catch (e) {
         console.error("Error parsing saved document settings:", e);
+      } finally {
+        setDocumentSettingsLoaded(true);
       }
+    } else {
+      setDocumentSettingsLoaded(true); // Also set to true if no settings are found
     }
   }, []);
 
   // Set document type from URL parameter or initialData
   useEffect(() => {
+    console.log('useEffect [initialData, searchParams] running');
+    console.log('initialData:', initialData);
+    console.log('searchParams:', searchParams.toString());
+
     if (initialData) {
       // If we're editing an existing invoice, use its type
+      console.log('Setting document type from initialData:', initialData.type);
       setDocumentType(initialData.type);
     } else {
       // If creating a new invoice, check URL parameter
       const typeFromUrl = searchParams.get("type");
       if (typeFromUrl && Object.values(InvoiceType).includes(typeFromUrl as InvoiceType)) {
-        setDocumentType(typeFromUrl as InvoiceType);
+        const newDocumentType = typeFromUrl as InvoiceType;
+        setDocumentType(newDocumentType);
+        // Set transaction type based on document type for new invoices
+        if (newDocumentType === InvoiceType.RECEIPT) {
+          setTransactionType(TransactionType.INCOME);
+        }
       }
     }
-  }, [initialData, searchParams]);
+  }, [initialData, searchParams, documentSettings]); // Added documentSettings here
 
   // Check if the selected document type is enabled in settings
   useEffect(() => {
+    console.log("NewInvoice - useEffect - checking document type enablement - START");
+    console.log("NewInvoice - useEffect - checking document type enablement - documentType:", documentType);
+    console.log("NewInvoice - useEffect - checking document type enablement - documentSettings:", documentSettings);
+
     if (documentSettings.length > 0) {
       const selectedTypeSetting = documentSettings.find(type => type.id === documentType);
+      console.log("NewInvoice - useEffect - checking document type enablement - selectedTypeSetting:", selectedTypeSetting);
+      console.log("NewInvoice - useEffect - checking document type enablement - selectedTypeSetting?.enabled:", selectedTypeSetting?.enabled);
+
       if (selectedTypeSetting && !selectedTypeSetting.enabled) {
-        // Redirect to income page if the document type is disabled
+        console.warn(`NewInvoice - useEffect - Document type ${documentType} is disabled. Navigating to /income.`);
         navigate("/income");
       }
+    } else {
+      console.warn('documentSettings is empty or not loaded. Cannot verify if document type is enabled.');
     }
+    console.log("NewInvoice - useEffect - checking document type enablement - END");
   }, [documentType, documentSettings, navigate]);
+
+  // Log documentType and documentSettings after they are updated
+  useEffect(() => {
+    console.log('documentType state after update:', documentType);
+    console.log('documentSettings state after update:', documentSettings);
+  }, [documentType, documentSettings]);
 
   // Form submission handler
   const onSubmit = async (data: InvoiceFormValues & { transactionType: TransactionType }) => {
+    console.log('Form submitted with data:', data);
+    
     // The form data already includes transactionType
     const formData = {
       ...data,
       transactionType: data.transactionType || transactionType
     };
+    
+    // Log current state for debugging
+    console.log('Current state:', {
+      businessProfileId,
+      customerId,
+      items,
+      formData
+    });
+    
     if (!businessProfileId) {
+      const errorMsg = 'Business profile not selected';
+      console.error(errorMsg);
       toast.error("Wybierz profil biznesowy");
       return;
     }
     
     if (!customerId) {
+      const errorMsg = 'Customer not selected';
+      console.error(errorMsg);
       toast.error("Wybierz klienta");
       return;
     }
     
     if (items.length === 0) {
+      const errorMsg = 'No items added to the invoice';
+      console.error(errorMsg);
       toast.error("Dodaj przynajmniej jedną pozycję do dokumentu");
       return;
     }
@@ -179,6 +255,11 @@ const NewInvoice: React.FC<{
       // Calculate totals
       const { totalNetValue, totalVatValue, totalGrossValue } = calculateInvoiceTotals(items);
       
+      // Convert payment method to database format if it's not already
+      const paymentMethod = (typeof data.paymentMethod === 'string' 
+        ? toPaymentMethodDb(data.paymentMethod)
+        : 'transfer') as PaymentMethodDb;
+      
       const invoice: Invoice = {
         id: initialData?.id || "",
         user_id: user.id, // Enforce RLS: always include user_id
@@ -191,7 +272,7 @@ const NewInvoice: React.FC<{
         businessProfileId: businessProfileId,
         customerId: customerId,
         items: items,
-        paymentMethod: data.paymentMethod ? toPaymentMethodDb(data.paymentMethod) : PaymentMethod.TRANSFER,
+        paymentMethod: paymentMethod,
         isPaid: initialData?.isPaid || false,
         comments: data.comments,
         totalNetValue,
@@ -231,6 +312,10 @@ const NewInvoice: React.FC<{
   const isEditing = !!initialData;
   const documentTitle = getDocumentTitle();
 
+  if (!documentSettingsLoaded) {
+    return <div className="text-center py-8">Ładowanie ustawień dokumentów...</div>;
+  }
+
   return (
     <div className="space-y-4">
       <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
@@ -241,13 +326,37 @@ const NewInvoice: React.FC<{
             isEditing={isEditing}
             className="mb-0"
           />
-          <div className="hidden md:flex items-center space-x-2">
+          {!hideTransactionButtons && (
+            <div className="hidden md:flex items-center space-x-2">
+              <Button
+                type="button"
+                variant={transactionType === TransactionType.INCOME ? 'default' : 'outline'}
+                size="sm"
+                onClick={() => handleTransactionTypeChange(TransactionType.INCOME)}
+                className="whitespace-nowrap"
+              >
+                Przychód
+              </Button>
+              <Button
+                type="button"
+                variant={transactionType === TransactionType.EXPENSE ? 'default' : 'outline'}
+                size="sm"
+                onClick={() => handleTransactionTypeChange(TransactionType.EXPENSE)}
+                className="whitespace-nowrap"
+              >
+                Wydatek
+              </Button>
+            </div>
+          )}
+        </div>
+        {!hideTransactionButtons && (
+          <div className="md:hidden flex space-x-2">
             <Button
               type="button"
               variant={transactionType === TransactionType.INCOME ? 'default' : 'outline'}
               size="sm"
               onClick={() => handleTransactionTypeChange(TransactionType.INCOME)}
-              className="whitespace-nowrap"
+              className="flex-1 md:flex-none"
             >
               Przychód
             </Button>
@@ -256,32 +365,12 @@ const NewInvoice: React.FC<{
               variant={transactionType === TransactionType.EXPENSE ? 'default' : 'outline'}
               size="sm"
               onClick={() => handleTransactionTypeChange(TransactionType.EXPENSE)}
-              className="whitespace-nowrap"
+              className="flex-1 md:flex-none"
             >
               Wydatek
             </Button>
           </div>
-        </div>
-        <div className="md:hidden flex space-x-2">
-          <Button
-            type="button"
-            variant={transactionType === TransactionType.INCOME ? 'default' : 'outline'}
-            size="sm"
-            onClick={() => handleTransactionTypeChange(TransactionType.INCOME)}
-            className="flex-1 md:flex-none"
-          >
-            Przychód
-          </Button>
-          <Button
-            type="button"
-            variant={transactionType === TransactionType.EXPENSE ? 'default' : 'outline'}
-            size="sm"
-            onClick={() => handleTransactionTypeChange(TransactionType.EXPENSE)}
-            className="flex-1 md:flex-none"
-          >
-            Wydatek
-          </Button>
-        </div>
+        )}
       </div>
       
 
@@ -312,35 +401,6 @@ const NewInvoice: React.FC<{
               onBusinessProfileChange={handleBusinessProfileChange}
               onCustomerChange={handleCustomerChange}
             />
-          </div>
-          
-          {/* Transaction Type */}
-          <div className="grid md:grid-cols-2 gap-4">
-            <label className="block text-sm font-medium text-gray-700">Typ transakcji</label>
-            <select 
-              className="block w-full pl-10 pr-10 py-2 text-base border-gray-300 focus:ring-blue-500 focus:border-blue-500 sm:text-sm rounded-md"
-              value={transactionType}
-              onChange={(e) => setTransactionType(e.target.value as TransactionType)}
-            >
-              <option value={TransactionType.INCOME}>Przychód</option>
-              <option value={TransactionType.EXPENSE}>Koszt</option>
-            </select>
-          </div>
-          <div className="flex justify-end space-x-4 mt-6">
-            <button
-              type="button"
-              className="px-4 py-2 border border-gray-300 rounded-md"
-              onClick={() => navigate(-1)}
-            >
-              Anuluj
-            </button>
-            <button
-              type="submit"
-              className="px-4 py-2 bg-blue-500 text-white rounded-md"
-              disabled={isLoading}
-            >
-              {isLoading ? 'Zapisywanie...' : 'Zapisz dokument'}
-            </button>
           </div>
         </form>
       </Form>

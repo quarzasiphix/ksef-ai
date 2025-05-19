@@ -1,5 +1,5 @@
 import React from "react";
-import { useNavigate } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import type { ButtonProps } from "@/components/ui/button";
 import { ArrowLeft, Printer, FilePlus, FileDown, Pencil, SendHorizontal, Share2 } from "lucide-react";
@@ -41,6 +41,7 @@ export const InvoiceHeader: React.FC<InvoiceHeaderProps> = ({
   handleGeneratePdf,
   handleSharePdf,
   canSharePdf,
+  transactionType
 }) => {
   const isMobile = useIsMobile();
   const navigate = useNavigate();

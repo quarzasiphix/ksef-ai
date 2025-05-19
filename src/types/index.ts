@@ -36,6 +36,8 @@ export interface Product {
   unit: string; // e.g., "szt.", "godz.", etc.
 }
 
+import type { TransactionType } from "./common";
+
 export enum InvoiceType {
   SALES = "sales", // Faktura sprzedaży
   RECEIPT = "receipt", // Rachunek
@@ -117,6 +119,7 @@ export interface Invoice {
   user_id: string; // Added for RLS
   number: string;
   type: InvoiceType;
+  transactionType: TransactionType; // 'income' or 'expense'
   issueDate: string; // ISO date string
   dueDate: string; // ISO date string
   sellDate: string; // ISO date string
@@ -126,9 +129,9 @@ export interface Invoice {
   paymentMethod: PaymentMethodDb; // Stored in database format
   isPaid: boolean;
   comments?: string;
-  totalNetValue?: number; // Sum of items' totalNetValue
-  totalGrossValue?: number; // Sum of items' totalGrossValue
-  totalVatValue?: number; // Sum of items' totalVatValue
+  totalNetValue: number; // Sum of items' totalNetValue
+  totalGrossValue: number; // Sum of items' totalGrossValue
+  totalVatValue: number; // Sum of items' totalVatValue
   ksef?: {
     status: 'pending' | 'sent' | 'error' | 'none';
     referenceNumber?: string;
@@ -136,6 +139,9 @@ export interface Invoice {
   // Additional display properties not stored in the database
   businessName?: string;
   customerName?: string;
+  // Bank account for transfer payments
+  bankAccountId?: string;
+  bankAccountNumber?: string;
 }
 
 // For Analytics Panel
