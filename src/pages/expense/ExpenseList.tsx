@@ -40,7 +40,7 @@ export default function ExpenseList() {
       <div className="flex justify-between items-center mb-6">
         <h1 className="text-2xl font-bold">Wydatki</h1>
         <Link
-          to="/invoices/new?from=expense"
+          to="/expense/new?type=sales"
           className="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600 transition-colors"
         >
           Nowy wydatek
@@ -51,7 +51,7 @@ export default function ExpenseList() {
         <div className="text-center py-12">
           <p className="text-gray-500 mb-4">Brak zarejestrowanych wydatków</p>
           <Link
-            to="/expense/new?type=sales"
+            to="/expense/new?type=expense"
             className="text-blue-500 hover:underline"
           >
             Dodaj swój pierwszy wydatek

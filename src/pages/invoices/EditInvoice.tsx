@@ -48,10 +48,8 @@ const EditInvoice = () => {
     return (
       <div className="space-y-6">
         <div className="flex items-center gap-2">
-          <Button variant="outline" size="icon" asChild>
-            <a href="/invoices">
-              <ArrowLeft className="h-4 w-4" />
-            </a>
+          <Button variant="outline" size="icon" onClick={() => navigate(invoice.transactionType === 'income' ? '/income' : '/expense')}>
+            <ArrowLeft className="h-4 w-4" />
           </Button>
           <h1 className="text-2xl font-bold">Błąd</h1>
         </div>
@@ -60,16 +58,16 @@ const EditInvoice = () => {
           <Button
             variant="outline"
             className="mt-4"
-            onClick={() => navigate("/invoices")}
+            onClick={() => navigate(invoice.transactionType === 'income' ? '/income' : '/expense')}
           >
-            Wróć do listy faktur
+            Wróć do listy dokumentów
           </Button>
         </div>
       </div>
     );
   }
 
-  const isExpense = invoice.invoiceType === 'expense';
+  const isExpense = invoice.transactionType === 'expense';
 
   // Use the NewInvoice component in edit mode by passing the invoice data
   return (

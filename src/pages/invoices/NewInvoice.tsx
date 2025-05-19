@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { useAuth } from "@/App";
-import { useSearchParams, useNavigate } from "react-router-dom";
+import { useSearchParams, useNavigate, useLocation } from "react-router-dom";
 import { Invoice, InvoiceType, InvoiceItem } from "@/types";
 import { TransactionType, PaymentMethod, PaymentMethodDb } from "@/types/common";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -41,6 +41,11 @@ const NewInvoice: React.FC<{
   const userId = user?.id || ''; // Add this line to get the user ID
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
+  const location = useLocation();
+  const isIncomeRoute = location.pathname === '/income/new';
+  const isExpenseRoute = location.pathname === '/expense/new';
+  const hideTransactionButtons = isIncomeRoute || isExpenseRoute;
+
   const [transactionType, setTransactionType] = useState<TransactionType>(type);
   const [documentType, setDocumentType] = useState<InvoiceType>(InvoiceType.SALES);
   const [documentSettings, setDocumentSettings] = useState<any[]>([]);
@@ -50,8 +55,6 @@ const NewInvoice: React.FC<{
   const [businessProfileId, setBusinessProfileId] = useState<string>(initialData?.businessProfileId || "");
   const [businessName, setBusinessName] = useState<string>(initialData?.businessName || "");
   const [customerId, setCustomerId] = useState<string>(initialData?.customerId || "");
-  const from = searchParams.get('from');
-  const hideTransactionButtons = from === 'income' || from === 'expense';
   const [customerName, setCustomerName] = useState<string>(initialData?.customerName || "");
   
   const today = new Date().toISOString().split('T')[0];
@@ -117,7 +120,7 @@ const NewInvoice: React.FC<{
       dueDate: initialData?.dueDate || today,
       paymentMethod: normalizedPaymentMethod as unknown as PaymentMethod,
       comments: initialData?.comments || "",
-      transactionType: type || TransactionType.INCOME,
+      transactionType: type || (isIncomeRoute ? TransactionType.INCOME : (isExpenseRoute ? TransactionType.EXPENSE : TransactionType.INCOME)),
       customerId: initialData?.customerId || "",
       businessProfileId: initialData?.businessProfileId || "",
     }

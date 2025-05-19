@@ -196,6 +196,8 @@ const App = () => (
                   <Route index element={<Dashboard />} />
                   {/* Income routes (replaces Invoice list) */}
                   <Route path="invoices/new" element={<NewInvoice />} />
+                <Route path="income/new" element={<NewInvoice />} />
+                <Route path="expense/new" element={<NewInvoice />} />
                   <Route path="invoices/edit/:id" element={<EditInvoice />} />
                   <Route path="invoices/:id" element={
                     <InvoiceDetail 
