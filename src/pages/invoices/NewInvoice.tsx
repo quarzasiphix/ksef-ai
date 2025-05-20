@@ -1,333 +1,223 @@
 import React, { useState, useEffect } from "react";
 import { useAuth } from "@/App";
 import { useSearchParams, useNavigate, useLocation } from "react-router-dom";
-import { Invoice, InvoiceType, InvoiceItem } from "@/types";
-import { TransactionType, PaymentMethod, PaymentMethodDb } from "@/types/common";
+import {
+  Invoice,
+  InvoiceType,
+  InvoiceItem,
+  VatType,
+  VatExemptionReason,
+} from "@/types";
+import { TransactionType, PaymentMethodDb } from "@/types/common";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
 import * as z from "zod";
 import { Form } from "@/components/ui/form";
 import { toast } from "sonner";
-import { calculateInvoiceTotals, generateInvoiceNumber, toPaymentMethodDb, toPaymentMethodUi } from "@/lib/invoice-utils";
+import {
+  calculateInvoiceTotals,
+  generateInvoiceNumber,
+  toPaymentMethodDb,
+  toPaymentMethodUi,
+} from "@/lib/invoice-utils";
 import { saveInvoice } from "@/integrations/supabase/repositories/invoiceRepository";
 import { InvoiceFormHeader } from "@/components/invoices/forms/InvoiceFormHeader";
 import { InvoiceBasicInfoForm } from "@/components/invoices/forms/InvoiceBasicInfoForm";
 import { InvoicePartiesForm } from "@/components/invoices/forms/InvoicePartiesForm";
 import { InvoiceItemsForm } from "@/components/invoices/forms/InvoiceItemsForm";
 import { InvoiceFormActions } from "@/components/invoices/forms/InvoiceFormActions";
-import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
 
-// Create a basic invoice form schema
+// Schema
 const invoiceFormSchema = z.object({
   number: z.string().min(1, "Numer faktury jest wymagany"),
   issueDate: z.string().min(1, "Data wystawienia jest wymagana"),
   dueDate: z.string().min(1, "Termin płatności jest wymagany"),
-  sellDate: z.string(),
+  sellDate: z.string().optional(),
   paymentMethod: z.string().min(1, "Metoda płatności jest wymagana"),
   comments: z.string().optional().default(""),
   customerId: z.string().optional(),
   businessProfileId: z.string().min(1, "Profil biznesowy jest wymagany"),
-  transactionType: z.nativeEnum(TransactionType).default(TransactionType.EXPENSE)
+  transactionType: z.nativeEnum(TransactionType).default(
+    TransactionType.EXPENSE
+  ),
+  fakturaBezVAT: z.boolean().optional().default(false),
+  vatExemptionReason: z.nativeEnum(VatExemptionReason).optional(),
 });
-
 type InvoiceFormValues = z.infer<typeof invoiceFormSchema>;
 
-const NewInvoice: React.FC<{
-  initialData?: Invoice;
-  type?: TransactionType;
-}> = ({ initialData, type = TransactionType.EXPENSE }) => {
+const NewInvoice: React.FC<{ initialData?: Invoice; type?: TransactionType }> = ({
+  initialData,
+  type = TransactionType.EXPENSE,
+}) => {
   const { user } = useAuth();
-  const userId = user?.id || ''; // Add this line to get the user ID
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
   const location = useLocation();
-  const isIncomeRoute = location.pathname === '/income/new';
-  const isExpenseRoute = location.pathname === '/expense/new';
+
+  const isIncomeRoute = location.pathname === "/income/new";
+  const isExpenseRoute = location.pathname === "/expense/new";
   const hideTransactionButtons = isIncomeRoute || isExpenseRoute;
 
-  const [transactionType, setTransactionType] = useState<TransactionType>(type);
-  const [documentType, setDocumentType] = useState<InvoiceType>(InvoiceType.SALES);
+  const [transactionType, setTransactionType] = useState<TransactionType>(
+    initialData?.transactionType || type
+  );
+  const [documentType, setDocumentType] = useState<InvoiceType>(
+    initialData?.type || InvoiceType.SALES
+  );
   const [documentSettings, setDocumentSettings] = useState<any[]>([]);
   const [documentSettingsLoaded, setDocumentSettingsLoaded] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [items, setItems] = useState<InvoiceItem[]>(initialData?.items || []);
-  const [businessProfileId, setBusinessProfileId] = useState<string>(initialData?.businessProfileId || "");
-  const [businessName, setBusinessName] = useState<string>(initialData?.businessName || "");
+  const [businessProfileId, setBusinessProfileId] = useState<string>(
+    initialData?.businessProfileId || ""
+  );
+  const [businessName, setBusinessName] = useState<string>(
+    initialData?.businessName || ""
+  );
   const [customerId, setCustomerId] = useState<string>(initialData?.customerId || "");
-  const [customerName, setCustomerName] = useState<string>(initialData?.customerName || "");
-  
-  const today = new Date().toISOString().split('T')[0];
+  const [customerName, setCustomerName] = useState<string>(
+    initialData?.customerName || ""
+  );
 
-  // Handle business profile change
-  const handleBusinessProfileChange = (id: string, name?: string) => {
-    setBusinessProfileId(id);
-    setBusinessName(name || "");
-    form.setValue('businessProfileId', id, { shouldValidate: true });
-  };
-
-  // Handle customer change
-  const handleCustomerChange = (id: string, name?: string) => {
-    setCustomerId(id);
-    setCustomerName(name || "");
-    form.setValue('customerId', id, { shouldValidate: true });
-  };
-  
-  // Handle payment method change
-  const handlePaymentMethodChange = (value: string) => {
-    // Convert UI payment method to database format
-    const dbMethod = toPaymentMethodDb(value);
-    form.setValue("paymentMethod", dbMethod, { shouldValidate: true });
-  };
-
-  // Toggle transaction type
-  const toggleTransactionType = () => {
-    const newType = transactionType === TransactionType.INCOME 
-      ? TransactionType.EXPENSE 
-      : TransactionType.INCOME;
-    setTransactionType(newType);
-    form.setValue('transactionType', newType, { shouldValidate: true });
-    
-    // Reset customer when switching to expense type
-    if (newType === TransactionType.EXPENSE) {
-      setCustomerId('');
-      setCustomerName('');
-      form.setValue('customerId', '', { shouldValidate: true });
-    }
-  };
-
-  // Handle transaction type change
-  const handleTransactionTypeChange = (type: TransactionType) => {
-    setTransactionType(type);
-    form.setValue('transactionType', type, { shouldValidate: true });
-  };
-
-  // Setup form with default values
-  // Normalize paymentMethod to ensure it's a valid enum value
-  const validPaymentMethods = Object.values(PaymentMethod);
-  // Convert payment method to UI format for the form
-  const normalizedPaymentMethod = initialData?.paymentMethod 
-    ? toPaymentMethodUi(initialData.paymentMethod as PaymentMethodDb)
-    : PaymentMethod.TRANSFER;
+  const today = new Date().toISOString().split("T")[0];
 
   const form = useForm<InvoiceFormValues & { transactionType: TransactionType }>({
     resolver: zodResolver(invoiceFormSchema),
-    mode: 'onChange', // Validate on change
+    mode: "onChange",
     defaultValues: {
-      number: initialData?.number || generateInvoiceNumber(new Date(), 1),
+      number:
+        initialData?.number || generateInvoiceNumber(new Date(), 1),
       issueDate: initialData?.issueDate || today,
       sellDate: initialData?.sellDate || today,
       dueDate: initialData?.dueDate || today,
-      paymentMethod: normalizedPaymentMethod as unknown as PaymentMethod,
+      paymentMethod: initialData?.paymentMethod
+        ? toPaymentMethodUi(initialData.paymentMethod as PaymentMethodDb)
+        : "TRANSFER",
       comments: initialData?.comments || "",
-      transactionType: type || (isIncomeRoute ? TransactionType.INCOME : (isExpenseRoute ? TransactionType.EXPENSE : TransactionType.INCOME)),
+      transactionType: initialData?.transactionType || type,
       customerId: initialData?.customerId || "",
       businessProfileId: initialData?.businessProfileId || "",
-    }
+      fakturaBezVAT: initialData?.fakturaBezVAT || false,
+      vatExemptionReason: initialData?.vatExemptionReason,
+    },
   });
-  
-  // Log form errors
-  useEffect(() => {
-    const subscription = form.watch((value, { name, type }) => {
-      if (form.formState.errors) {
-        console.log('Form errors:', form.formState.errors);
-      }
-    });
-    return () => subscription.unsubscribe();
-  }, [form.watch, form.formState.errors]);
 
-  // Remove this line as we'll use form.setValue directly
-  // to ensure form state is properly updated
-
-  // Load document type settings from localStorage
+  // Load settings
   useEffect(() => {
     const savedSettings = localStorage.getItem("documentTypeSettings");
     if (savedSettings) {
       try {
-        const parsed = JSON.parse(savedSettings);
-        setDocumentSettings(parsed);
-      } catch (e) {
-        console.error("Error parsing saved document settings:", e);
-      } finally {
-        setDocumentSettingsLoaded(true);
+        setDocumentSettings(JSON.parse(savedSettings));
+      } catch {
+        // ignore
       }
-    } else {
-      setDocumentSettingsLoaded(true); // Also set to true if no settings are found
     }
+    setDocumentSettingsLoaded(true);
   }, []);
 
-  // Set document type from URL parameter or initialData
+  // Redirect if type disabled
   useEffect(() => {
-    console.log('useEffect [initialData, searchParams] running');
-    console.log('initialData:', initialData);
-    console.log('searchParams:', searchParams.toString());
-
-    if (initialData) {
-      // If we're editing an existing invoice, use its type
-      console.log('Setting document type from initialData:', initialData.type);
-      setDocumentType(initialData.type);
-    } else {
-      // If creating a new invoice, check URL parameter
-      const typeFromUrl = searchParams.get("type");
-      if (typeFromUrl && Object.values(InvoiceType).includes(typeFromUrl as InvoiceType)) {
-        const newDocumentType = typeFromUrl as InvoiceType;
-        setDocumentType(newDocumentType);
-        // Set transaction type based on document type for new invoices
-        if (newDocumentType === InvoiceType.RECEIPT) {
-          setTransactionType(TransactionType.INCOME);
-        }
-      }
+    if (documentSettings.length) {
+      const setting = documentSettings.find((d) => d.id === documentType);
+      if (setting && !setting.enabled) navigate("/income");
     }
-  }, [initialData, searchParams, documentSettings]); // Added documentSettings here
-
-  // Check if the selected document type is enabled in settings
-  useEffect(() => {
-    console.log("NewInvoice - useEffect - checking document type enablement - START");
-    console.log("NewInvoice - useEffect - checking document type enablement - documentType:", documentType);
-    console.log("NewInvoice - useEffect - checking document type enablement - documentSettings:", documentSettings);
-
-    if (documentSettings.length > 0) {
-      const selectedTypeSetting = documentSettings.find(type => type.id === documentType);
-      console.log("NewInvoice - useEffect - checking document type enablement - selectedTypeSetting:", selectedTypeSetting);
-      console.log("NewInvoice - useEffect - checking document type enablement - selectedTypeSetting?.enabled:", selectedTypeSetting?.enabled);
-
-      if (selectedTypeSetting && !selectedTypeSetting.enabled) {
-        console.warn(`NewInvoice - useEffect - Document type ${documentType} is disabled. Navigating to /income.`);
-        navigate("/income");
-      }
-    } else {
-      console.warn('documentSettings is empty or not loaded. Cannot verify if document type is enabled.');
-    }
-    console.log("NewInvoice - useEffect - checking document type enablement - END");
   }, [documentType, documentSettings, navigate]);
 
-  // Log documentType and documentSettings after they are updated
-  useEffect(() => {
-    console.log('documentType state after update:', documentType);
-    console.log('documentSettings state after update:', documentSettings);
-  }, [documentType, documentSettings]);
-
-  // Form submission handler
+  // Submit handler
   const onSubmit = async (data: InvoiceFormValues & { transactionType: TransactionType }) => {
-    console.log('Form submitted with data:', data);
-    
-    // The form data already includes transactionType
-    const formData = {
-      ...data,
-      transactionType: data.transactionType || transactionType
-    };
-    
-    // Log current state for debugging
-    console.log('Current state:', {
-      businessProfileId,
-      customerId,
-      items,
-      formData
-    });
-    
-    if (!businessProfileId) {
-      const errorMsg = 'Business profile not selected';
-      console.error(errorMsg);
-      toast.error("Wybierz profil biznesowy");
-      return;
-    }
-    
-    if (!customerId) {
-      const errorMsg = 'Customer not selected';
-      console.error(errorMsg);
-      toast.error("Wybierz klienta");
-      return;
-    }
-    
-    if (items.length === 0) {
-      const errorMsg = 'No items added to the invoice';
-      console.error(errorMsg);
-      toast.error("Dodaj przynajmniej jedną pozycję do dokumentu");
-      return;
-    }
-    
+    if (!user?.id) return toast.error("Zaloguj się ponownie");
+    setIsLoading(true);
     try {
-      setIsLoading(true);
-      
-      // Ensure user is authenticated
-      if (!user?.id) {
-        toast.error("Brak informacji o użytkowniku. Zaloguj się ponownie.");
-        setIsLoading(false);
-        return;
-      }
-      // Calculate totals
-      const { totalNetValue, totalVatValue, totalGrossValue } = calculateInvoiceTotals(items);
-      
-      // Convert payment method to database format if it's not already
-      const paymentMethod = (typeof data.paymentMethod === 'string' 
-        ? toPaymentMethodDb(data.paymentMethod)
-        : 'transfer') as PaymentMethodDb;
-      
+      const updatedItems = items.map(item => ({
+        ...item,
+        vatRate: data.fakturaBezVAT ? VatType.ZW : (typeof item.vatRate === 'number' ? item.vatRate : 0),
+        totalVatValue: data.fakturaBezVAT ? 0 : item.unitPrice * item.quantity * (typeof item.vatRate === 'number' ? item.vatRate / 100 : 0),
+        totalGrossValue: item.unitPrice * item.quantity * (1 + (typeof item.vatRate === 'number' ? item.vatRate / 100 : 0))
+      }));
+      const totals = calculateInvoiceTotals(updatedItems);
+      const seller = {
+        id: businessProfileId,
+        name: businessName || '',
+        taxId: '',
+        address: '',
+        city: '',
+        postalCode: ''
+      };
+      const buyer = {
+        id: customerId,
+        name: customerName || '',
+        taxId: '',
+        address: '',
+        city: '',
+        postalCode: ''
+      };
       const invoice: Invoice = {
         id: initialData?.id || "",
-        user_id: user.id, // Enforce RLS: always include user_id
+        user_id: user.id,
         number: data.number,
-        type: documentType,
-        transactionType, // 'income' or 'expense'
+        date: data.issueDate,
+        dueDate: data.dueDate,
         issueDate: data.issueDate,
         sellDate: data.sellDate,
-        dueDate: data.dueDate,
-        businessProfileId: businessProfileId,
-        customerId: customerId,
-        items: items,
-        paymentMethod: paymentMethod,
+        type: documentType,
+        transactionType: data.transactionType,
+        seller,
+        buyer,
+        items: updatedItems,
+        totalAmount: totals.totalGrossValue,
+        paid: false,
         isPaid: initialData?.isPaid || false,
+        paymentMethod: toPaymentMethodDb(data.paymentMethod),
         comments: data.comments,
-        totalNetValue,
-        totalVatValue,
-        totalGrossValue,
+        totalNetValue: totals.totalNetValue,
+        totalVatValue: totals.totalVatValue,
+        totalGrossValue: totals.totalGrossValue,
         businessName,
-        customerName
+        customerName,
       };
-      
-      const savedInvoice = await saveInvoice(invoice);
-      
-      toast.success(initialData 
-        ? "Dokument został zaktualizowany" 
-        : "Dokument został utworzony"
-      );
-      
-      navigate(`/invoices/${savedInvoice.id}`);
-    } catch (error) {
-      console.error("Error saving invoice:", error);
-      toast.error("Wystąpił błąd podczas zapisywania dokumentu");
+      const saved = await saveInvoice(invoice);
+      toast.success(initialData ? "Zaktualizowano" : "Utworzono");
+      navigate(`/invoices/${saved.id}`);
+    } catch (err) {
+      console.error(err);
+      toast.error("Błąd podczas zapisu");
     } finally {
       setIsLoading(false);
     }
   };
 
-  // Get the document type title
   const getDocumentTitle = () => {
-    switch(documentType) {
-      case InvoiceType.SALES: return "Faktura VAT";
-      case InvoiceType.RECEIPT: return "Rachunek";
-      case InvoiceType.PROFORMA: return "Faktura proforma";
-      case InvoiceType.CORRECTION: return "Faktura korygująca";
-      default: return "Dokument";
+    switch (documentType) {
+      case InvoiceType.SALES:
+        return "Faktura VAT";
+      case InvoiceType.RECEIPT:
+        return "Rachunek";
+      case InvoiceType.PROFORMA:
+        return "Faktura proforma";
+      case InvoiceType.CORRECTION:
+        return "Faktura korygująca";
+      default:
+        return "Dokument";
     }
   };
-  
-  const isEditing = !!initialData;
-  const documentTitle = getDocumentTitle();
 
   if (!documentSettingsLoaded) {
-    return <div className="text-center py-8">Ładowanie ustawień dokumentów...</div>;
+    return <div className="text-center py-8">Ładowanie ustawień...</div>;
   }
+
+  const documentTitle = getDocumentTitle();
+  const isEditing = Boolean(initialData);
 
   return (
     <div className="space-y-4">
+      {/* Header */}
       <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
         <div className="flex items-center gap-4">
-          <InvoiceFormHeader 
-            title={documentTitle} 
+          <InvoiceFormHeader
+            title={documentTitle}
             documentType={documentType}
             isEditing={isEditing}
-            className="mb-0"
           />
           {!hideTransactionButtons && (
             <div className="hidden md:flex items-center space-x-2">
@@ -335,8 +225,7 @@ const NewInvoice: React.FC<{
                 type="button"
                 variant={transactionType === TransactionType.INCOME ? 'default' : 'outline'}
                 size="sm"
-                onClick={() => handleTransactionTypeChange(TransactionType.INCOME)}
-                className="whitespace-nowrap"
+                onClick={() => setTransactionType(TransactionType.INCOME)}
               >
                 Przychód
               </Button>
@@ -344,8 +233,7 @@ const NewInvoice: React.FC<{
                 type="button"
                 variant={transactionType === TransactionType.EXPENSE ? 'default' : 'outline'}
                 size="sm"
-                onClick={() => handleTransactionTypeChange(TransactionType.EXPENSE)}
-                className="whitespace-nowrap"
+                onClick={() => setTransactionType(TransactionType.EXPENSE)}
               >
                 Wydatek
               </Button>
@@ -358,8 +246,7 @@ const NewInvoice: React.FC<{
               type="button"
               variant={transactionType === TransactionType.INCOME ? 'default' : 'outline'}
               size="sm"
-              onClick={() => handleTransactionTypeChange(TransactionType.INCOME)}
-              className="flex-1 md:flex-none"
+              onClick={() => setTransactionType(TransactionType.INCOME)}
             >
               Przychód
             </Button>
@@ -367,44 +254,41 @@ const NewInvoice: React.FC<{
               type="button"
               variant={transactionType === TransactionType.EXPENSE ? 'default' : 'outline'}
               size="sm"
-              onClick={() => handleTransactionTypeChange(TransactionType.EXPENSE)}
-              className="flex-1 md:flex-none"
+              onClick={() => setTransactionType(TransactionType.EXPENSE)}
             >
               Wydatek
             </Button>
           </div>
         )}
       </div>
-      
-
-      <div className="space-y-4">
-        <InvoiceItemsForm 
-          items={items}
-          documentType={documentType}
-          transactionType={transactionType as any}
-          onItemsChange={setItems}
-          userId={userId}
-        />
-      </div>
+      {/* Items Form */}
+      <InvoiceItemsForm
+        items={items}
+        documentType={documentType}
+        transactionType={transactionType}
+        onItemsChange={setItems}
+        userId={user?.id || ''}
+        fakturaBezVAT={form.watch('fakturaBezVAT')}
+        vatExemptionReason={form.watch('vatExemptionReason')}
+      />
+      {/* Main Form */}
       <Form {...form}>
         <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
-
           <div className="grid md:grid-cols-2 gap-4">
-            {/* Basic Invoice Info Card */}
-            <InvoiceBasicInfoForm 
-              form={form} 
-              documentTitle={documentTitle} 
-            />
-            
-            {/* Parties Card */}
-            <InvoicePartiesForm 
+            <InvoiceBasicInfoForm form={form} documentTitle={documentTitle} />
+            <InvoicePartiesForm
               businessProfileId={businessProfileId}
               customerId={customerId}
               transactionType={transactionType}
-              onBusinessProfileChange={handleBusinessProfileChange}
-              onCustomerChange={handleCustomerChange}
+              onBusinessProfileChange={(id,name) => { setBusinessProfileId(id); setBusinessName(name||'') }}
+              onCustomerChange={(id,name) => { setCustomerId(id); setCustomerName(name||'') }}
             />
           </div>
+          <InvoiceFormActions
+            isLoading={isLoading}
+            isEditing={isEditing}
+            onSubmit={form.handleSubmit(onSubmit)}
+          />
         </form>
       </Form>
     </div>

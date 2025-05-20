@@ -13,6 +13,8 @@ interface InvoiceItemsFormProps {
   transactionType: TransactionType;
   onItemsChange: (items: InvoiceItem[]) => void;
   userId: string;
+  fakturaBezVAT?: boolean;
+  vatExemptionReason?: string;
 }
 
 export const InvoiceItemsForm: React.FC<InvoiceItemsFormProps> = ({
@@ -20,7 +22,9 @@ export const InvoiceItemsForm: React.FC<InvoiceItemsFormProps> = ({
   documentType,
   transactionType,
   onItemsChange,
-  userId
+  userId,
+  fakturaBezVAT,
+  vatExemptionReason
 }) => {
   const [products, setProducts] = useState<Product[]>([]);
   const [productsLoading, setProductsLoading] = useState(true);
@@ -80,6 +84,8 @@ export const InvoiceItemsForm: React.FC<InvoiceItemsFormProps> = ({
             documentType={documentType}
             refetchProducts={refetchProducts}
             userId={userId}
+            fakturaBezVAT={fakturaBezVAT}
+            vatExemptionReason={vatExemptionReason}
           />
         )}
       </CardContent>

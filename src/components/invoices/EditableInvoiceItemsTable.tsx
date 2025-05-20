@@ -1,6 +1,5 @@
-
 import React, { useState } from "react";
-import { InvoiceItem, InvoiceType, Product } from "@/types";
+import { InvoiceItem, InvoiceType, Product, VatType, VatExemptionReason } from "@/types";
 import { calculateItemValues } from "@/lib/invoice-utils";
 import { useMediaQuery } from "@/hooks/use-mobile";
 import { ProductSelector } from "./invoice-items/ProductSelector";
@@ -17,6 +16,8 @@ interface EditableInvoiceItemsTableProps {
   refetchProducts: () => Promise<void>;
   onProductSavedAndSync?: (product: Product) => void;
   userId: string;
+  fakturaBezVAT?: boolean;
+  vatExemptionReason?: VatExemptionReason | null;
 }
 
 export const EditableInvoiceItemsTable: React.FC<EditableInvoiceItemsTableProps> = ({
@@ -27,8 +28,10 @@ export const EditableInvoiceItemsTable: React.FC<EditableInvoiceItemsTableProps>
   documentType,
   products,
   refetchProducts,
-  onProductSavedAndSync, // NEW: instant UI update
-  userId
+  onProductSavedAndSync,
+  userId,
+  fakturaBezVAT,
+  vatExemptionReason
 }) => {
   const isReceipt = documentType === InvoiceType.RECEIPT;
   const isMobile = useMediaQuery("(max-width: 768px)");
@@ -96,6 +99,7 @@ export const EditableInvoiceItemsTable: React.FC<EditableInvoiceItemsTableProps>
       id: crypto.randomUUID(),
       productId: product.id,
       name: product.name,
+      description: product.description || '',
       quantity,
       unitPrice,
       vatRate,
@@ -121,6 +125,7 @@ export const EditableInvoiceItemsTable: React.FC<EditableInvoiceItemsTableProps>
       id: crypto.randomUUID(),
       productId: undefined,
       name: product.name,
+      description: product.description || '',
       quantity,
       unitPrice,
       vatRate,
@@ -156,6 +161,8 @@ export const EditableInvoiceItemsTable: React.FC<EditableInvoiceItemsTableProps>
           totalGrossValue={totalGrossValue}
           onRemoveItem={onRemoveItem}
           onUpdateItem={onUpdateItem}
+          fakturaBezVAT={fakturaBezVAT}
+          vatExemptionReason={vatExemptionReason}
         />
       ) : (
         <DesktopInvoiceItemsTable
@@ -167,6 +174,8 @@ export const EditableInvoiceItemsTable: React.FC<EditableInvoiceItemsTableProps>
           totalGrossValue={totalGrossValue}
           onRemoveItem={onRemoveItem}
           onUpdateItem={onUpdateItem}
+          fakturaBezVAT={fakturaBezVAT}
+          vatExemptionReason={vatExemptionReason}
         />
       )}
       <div className="pt-4">

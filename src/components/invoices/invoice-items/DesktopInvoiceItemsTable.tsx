@@ -13,6 +13,8 @@ interface DesktopInvoiceItemsTableProps {
   totalGrossValue: number;
   onRemoveItem: (id: string) => void;
   onUpdateItem: (id: string, updates: Partial<InvoiceItem>) => void;
+  fakturaBezVAT?: boolean;
+  vatExemptionReason?: VatExemptionReason | null;
 }
 
 export const DesktopInvoiceItemsTable: React.FC<DesktopInvoiceItemsTableProps> = ({
@@ -23,7 +25,9 @@ export const DesktopInvoiceItemsTable: React.FC<DesktopInvoiceItemsTableProps> =
   totalVatValue,
   totalGrossValue,
   onRemoveItem,
-  onUpdateItem
+  onUpdateItem,
+  fakturaBezVAT,
+  vatExemptionReason
 }) => {
   return (
     <div className="overflow-x-auto border rounded-md">
@@ -56,6 +60,8 @@ export const DesktopInvoiceItemsTable: React.FC<DesktopInvoiceItemsTableProps> =
               documentType={documentType}
               onRemoveItem={onRemoveItem}
               onUpdateItem={onUpdateItem}
+              fakturaBezVAT={fakturaBezVAT}
+              vatExemptionReason={vatExemptionReason}
             />
           ))}
           

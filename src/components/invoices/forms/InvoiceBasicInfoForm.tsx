@@ -4,10 +4,11 @@ import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { CardHeader, CardTitle, CardContent, Card } from "@/components/ui/card";
 import { UseFormReturn } from "react-hook-form";
-import { PaymentMethod } from "@/types";
+import { PaymentMethod, VatExemptionReason } from "@/types";
+import { Checkbox } from "@/components/ui/checkbox";
 
 interface InvoiceBasicInfoFormProps {
-  form: UseFormReturn<any>;
+  form: UseFormReturn<any, any>;
   documentTitle: string;
 }
 
@@ -78,6 +79,50 @@ export const InvoiceBasicInfoForm: React.FC<InvoiceBasicInfoFormProps> = ({
             )}
           />
         </div>
+        
+        <FormField
+          control={form.control}
+          name="fakturaBezVAT"
+          render={({ field }) => (
+            <FormItem className="flex items-center space-x-2">
+              <FormControl>
+                <Checkbox
+                  checked={field.value}
+                  onCheckedChange={field.onChange}
+                />
+              </FormControl>
+              <FormLabel>Faktura bez VAT</FormLabel>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
+
+        {form.watch("fakturaBezVAT") && (
+          <FormField
+            control={form.control}
+            name="vatExemptionReason"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>Powód zwolnienia z VAT</FormLabel>
+                <Select onValueChange={field.onChange} value={field.value}>
+                  <FormControl>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Wybierz powód zwolnienia" />
+                    </SelectTrigger>
+                  </FormControl>
+                  <SelectContent>
+                    {Object.entries(VatExemptionReason).map(([key, value]) => (
+                      <SelectItem key={value} value={value}>
+                        {key.replace(/_/g, ' ').toLowerCase()}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+        )}
         
         <FormField
           control={form.control}

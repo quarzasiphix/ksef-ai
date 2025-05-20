@@ -114,6 +114,36 @@ export interface InvoiceItem {
   totalVatValue?: number; // Calculated: totalNetValue * (vatRate/100)
 }
 
+export enum VatExemptionReason {
+  // Zwolnienie podmiotowe (limit 200 tys. zł) – art. 113 ust. 1 ustawy o VAT
+  ART_113_UST_1 = '113_1',
+  // Zwolnienie przedmiotowe (rodzaj działalności) – art. 43 ust. 1 ustawy o VAT
+  ART_43_UST_1 = '43_1',
+  // Eksport towarów – art. 41 ust. 4 ustawy o VAT
+  ART_41_UST_4 = '41_4',
+  // Wewnątrzwspólnotowa dostawa towarów – art. 42 ustawy o VAT
+  ART_42 = '42',
+  // Usługi zagraniczne (reverse charge) – art. 28b ustawy o VAT
+  ART_28B = '28b',
+  // Odwrotne obciążenie – art. 17 ust. 1 pkt 7 i 8 ustawy o VAT
+  ART_17 = '17',
+  // Inna podstawa prawna (wpisz ręcznie)
+  OTHER = 'other',
+}
+
+export enum VatType {
+  // 0%
+  RATE_0 = 0,
+  // 5%
+  RATE_5 = 5,
+  // 8%
+  RATE_8 = 8,
+  // 23%
+  RATE_23 = 23,
+  // Zwolniony z VAT
+  ZW = 6,
+}
+
 export interface Invoice {
   id: string;
   user_id: string; // Added for RLS

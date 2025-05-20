@@ -1,12 +1,12 @@
-
 import React from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { X } from "lucide-react";
-import { InvoiceItem, InvoiceType } from "@/types";
+import { InvoiceItem, InvoiceType, VatType } from "@/types";
 import { formatCurrency, calculateItemValues } from "@/lib/invoice-utils";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { ProductEditDialog } from "../ProductEditDialog";
+import { Checkbox } from "@/components/ui/checkbox";
 
 interface InvoiceItemRowProps {
   item: InvoiceItem;
@@ -15,6 +15,8 @@ interface InvoiceItemRowProps {
   documentType: InvoiceType;
   onRemoveItem: (id: string) => void;
   onUpdateItem: (id: string, updates: Partial<InvoiceItem>) => void;
+  fakturaBezVAT?: boolean;
+  vatExemptionReason?: string | null;
 }
 
 export const InvoiceItemRow: React.FC<InvoiceItemRowProps> = ({
@@ -23,7 +25,9 @@ export const InvoiceItemRow: React.FC<InvoiceItemRowProps> = ({
   isReceipt,
   documentType,
   onRemoveItem,
-  onUpdateItem
+  onUpdateItem,
+  fakturaBezVAT,
+  vatExemptionReason
 }) => {
   const handleQuantityChange = (value: string) => {
     const quantity = Number(value);
@@ -49,10 +53,25 @@ export const InvoiceItemRow: React.FC<InvoiceItemRowProps> = ({
     onUpdateItem(item.id, updated);
   };
 
+  const handleZwolnionyZVATChange = (checked: boolean) => {
+    const vatRate = checked ? VatType.ZW : item.vatRate;
+    const updated = calculateItemValues({ ...item, vatRate });
+    onUpdateItem(item.id, updated);
+  };
+  
   return (
     <tr key={item.id} className="border-b">
       <td className="px-2 py-2 text-left">{index + 1}</td>
-      <td className="px-2 py-2 text-left">{item.name}</td>
+      <td className="px-2 py-2 text-left">
+        {item.name}
+        {documentType !== InvoiceType.RECEIPT && fakturaBezVAT !== undefined && (
+          <Checkbox
+            checked={fakturaBezVAT || (typeof item.vatRate === 'string' ? item.vatRate === VatType.ZW : item.vatRate === VatType.ZW)}
+            onCheckedChange={(checked) => handleZwolnionyZVATChange(checked)}
+            className="ml-2"
+          />
+        )}
+      </td>
       <td className="px-2 py-2 text-right">
         <Input
           type="number"
@@ -79,7 +98,7 @@ export const InvoiceItemRow: React.FC<InvoiceItemRowProps> = ({
         <>
           <td className="px-2 py-2 text-right">
             <Select 
-              value={item.vatRate.toString()} 
+              value={typeof item.vatRate === 'number' ? item.vatRate.toString() : item.vatRate} 
               onValueChange={handleVatRateChange}
             >
               <SelectTrigger className="h-7 w-20">
@@ -116,7 +135,7 @@ export const InvoiceItemRow: React.FC<InvoiceItemRowProps> = ({
                     ...item,
                     name: product.name,
                     unitPrice: product.unitPrice,
-                    vatRate: product.vatRate,
+                    vatRate: typeof product.vatRate === 'string' ? Number(product.vatRate) : product.vatRate,
                     unit: product.unit
                   })
                 });
