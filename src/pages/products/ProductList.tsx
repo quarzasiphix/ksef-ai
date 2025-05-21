@@ -35,12 +35,12 @@ const ProductCard = ({ product }: { product: Product }) => {
           
           <div className="flex items-center gap-2 text-gray-300">
             <Percent className="h-3.5 w-3.5" />
-            <span>VAT: {product.vatRate}%</span>
+            <span>VAT: {product.vatRate === -1 ? 'Zw' : `${product.vatRate}%`}</span>
           </div>
           
           <div className="pt-2 border-t border-gray-700 mt-1">
             <span className="font-bold text-lg">
-              {formatCurrency(product.unitPrice * (1 + product.vatRate / 100))}
+              {formatCurrency(product.vatRate === -1 ? product.unitPrice : product.unitPrice * (1 + product.vatRate / 100))}
             </span>
             <span className="text-xs text-gray-400 ml-1">brutto</span>
           </div>

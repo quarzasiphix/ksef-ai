@@ -32,7 +32,7 @@ export interface Product {
   user_id: string; // Added for RLS
   name: string;
   unitPrice: number; // Netto price
-  vatRate: number; // VAT percentage, e.g., 23
+  vatRate: number; // VAT percentage, e.g., 23 or -1 for VAT-exempt
   unit: string; // e.g., "szt.", "godz.", etc.
 }
 
@@ -141,37 +141,56 @@ export enum VatType {
   // 23%
   RATE_23 = 23,
   // Zwolniony z VAT
-  ZW = 6,
+  ZW = -1,
+}
+
+export interface KsefInfo {
+  status: 'pending' | 'sent' | 'error' | 'none';
+  referenceNumber?: string | null;
+}
+
+export type InvoiceStatus = 'draft' | 'sent' | 'paid' | 'overdue';
+
+export interface Company {
+  id?: string;
+  name: string;
+  taxId: string;
+  address: string;
+  city: string;
+  postalCode: string;
 }
 
 export interface Invoice {
   id: string;
-  user_id: string; // Added for RLS
+  user_id: string;
   number: string;
   type: InvoiceType;
-  transactionType: TransactionType; // 'income' or 'expense'
-  issueDate: string; // ISO date string
-  dueDate: string; // ISO date string
-  sellDate: string; // ISO date string
+  transactionType: TransactionType;
+  issueDate: string;
+  dueDate: string;
+  sellDate: string;
+  date: string;
   businessProfileId: string;
   customerId: string;
   items: InvoiceItem[];
-  paymentMethod: PaymentMethodDb; // Stored in database format
+  paymentMethod: PaymentMethodDb;
   isPaid: boolean;
+  paid: boolean;
+  status: InvoiceStatus;
   comments?: string;
-  totalNetValue: number; // Sum of items' totalNetValue
-  totalGrossValue: number; // Sum of items' totalGrossValue
-  totalVatValue: number; // Sum of items' totalVatValue
-  ksef?: {
-    status: 'pending' | 'sent' | 'error' | 'none';
-    referenceNumber?: string;
-  };
-  // Additional display properties not stored in the database
+  totalNetValue: number;
+  totalGrossValue: number;
+  totalVatValue: number;
+  totalAmount: number;
+  ksef?: KsefInfo;
+  seller: Company;
+  buyer: Company;
   businessName?: string;
   customerName?: string;
-  // Bank account for transfer payments
   bankAccountId?: string;
   bankAccountNumber?: string;
+  created_at?: string;
+  updated_at?: string;
 }
 
 // For Analytics Panel

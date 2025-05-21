@@ -38,7 +38,7 @@ const VAT_RATES = [
   { label: "8%", value: 8 },
   { label: "5%", value: 5 },
   { label: "0%", value: 0 },
-  { label: "Zwolniony", value: 0 },
+  { label: "Zwolniony", value: -1 },
 ];
 
 const UNITS = ["szt.", "godz.", "usł.", "kg", "m", "m²", "m³", "l", "komplet"];

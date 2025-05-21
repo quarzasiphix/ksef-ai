@@ -35,7 +35,11 @@ export const ProductEditDialog: React.FC<ProductEditDialogProps> = ({
   const [open, setOpen] = useState(false);
   const [name, setName] = useState(initialProduct?.name || "");
   const [unitPrice, setUnitPrice] = useState(initialProduct?.unitPrice?.toString() || "");
-  const [vatRate, setVatRate] = useState(initialProduct?.vatRate?.toString() || isReceipt ? "0" : "23");
+  // Initialize vatRate, converting -1 (ZW) to "zw" for the select input
+  const initialVatRate = initialProduct?.vatRate !== undefined 
+    ? (initialProduct.vatRate === -1 ? "zw" : initialProduct.vatRate.toString())
+    : (isReceipt ? "0" : "23");
+  const [vatRate, setVatRate] = useState(initialVatRate);
   const [unit, setUnit] = useState(initialProduct?.unit || "szt.");
   const [isLoading, setIsLoading] = useState(false);
   
@@ -67,7 +71,7 @@ export const ProductEditDialog: React.FC<ProductEditDialogProps> = ({
         id: initialProduct?.id || "",
         name,
         unitPrice: Number(unitPrice),
-        vatRate: Number(vatRate),
+        vatRate: vatRate === "zw" ? -1 : Number(vatRate), // Convert "zw" to -1 for VAT-exempt
         unit,
         user_id: userId
       };
@@ -85,7 +89,7 @@ export const ProductEditDialog: React.FC<ProductEditDialogProps> = ({
           id: crypto.randomUUID(), // Temporary ID
           name,
           unitPrice: Number(unitPrice),
-          vatRate: Number(vatRate),
+          vatRate: vatRate === "zw" ? -1 : Number(vatRate), // Convert "zw" to -1 for VAT-exempt
           unit,
           user_id: ""
         });

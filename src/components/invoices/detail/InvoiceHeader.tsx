@@ -41,7 +41,7 @@ export const InvoiceHeader: React.FC<InvoiceHeaderProps> = ({
   handleGeneratePdf,
   handleSharePdf,
   canSharePdf,
-  transactionType
+  transactionType = 'income' // Default to 'income' for backward compatibility
 }) => {
   const isMobile = useIsMobile();
   const navigate = useNavigate();

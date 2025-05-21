@@ -82,6 +82,45 @@ export const InvoiceBasicInfoForm: React.FC<InvoiceBasicInfoFormProps> = ({
         
         <FormField
           control={form.control}
+          name="paymentMethod"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel>Metoda płatności</FormLabel>
+              <Select onValueChange={field.onChange} value={field.value}>
+                <FormControl>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Wybierz metodę płatności" />
+                  </SelectTrigger>
+                </FormControl>
+                <SelectContent>
+                  {Object.values(PaymentMethod).map((method) => (
+                    <SelectItem key={method} value={method}>
+                      {method.charAt(0).toUpperCase() + method.slice(1)}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
+        
+        <FormField
+          control={form.control}
+          name="comments"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel>Uwagi</FormLabel>
+              <FormControl>
+                <Input placeholder="Opcjonalne uwagi do dokumentu" {...field} />
+              </FormControl>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
+
+<FormField
+          control={form.control}
           name="fakturaBezVAT"
           render={({ field }) => (
             <FormItem className="flex items-center space-x-2">
@@ -123,45 +162,7 @@ export const InvoiceBasicInfoForm: React.FC<InvoiceBasicInfoFormProps> = ({
             )}
           />
         )}
-        
-        <FormField
-          control={form.control}
-          name="paymentMethod"
-          render={({ field }) => (
-            <FormItem>
-              <FormLabel>Metoda płatności</FormLabel>
-              <Select onValueChange={field.onChange} value={field.value}>
-                <FormControl>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Wybierz metodę płatności" />
-                  </SelectTrigger>
-                </FormControl>
-                <SelectContent>
-                  {Object.values(PaymentMethod).map((method) => (
-                    <SelectItem key={method} value={method}>
-                      {method.charAt(0).toUpperCase() + method.slice(1)}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-              <FormMessage />
-            </FormItem>
-          )}
-        />
-        
-        <FormField
-          control={form.control}
-          name="comments"
-          render={({ field }) => (
-            <FormItem>
-              <FormLabel>Uwagi</FormLabel>
-              <FormControl>
-                <Input placeholder="Opcjonalne uwagi do dokumentu" {...field} />
-              </FormControl>
-              <FormMessage />
-            </FormItem>
-          )}
-        />
+
       </CardContent>
     </Card>
   );

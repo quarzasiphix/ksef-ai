@@ -31,6 +31,8 @@ import ProductDetail from "./pages/products/ProductDetail";
 import IncomeList from "./pages/income/IncomeList";
 import DocumentSettings from "./pages/settings/DocumentSettings";
 import ExpenseList from "./pages/expense/ExpenseList";
+import IncomeDetail from "./pages/income/[id]";
+import ExpenseDetail from "./pages/expense/[id]";
 
 // Export the query client for use in other files
 export const queryClient = new QueryClient({
@@ -194,17 +196,19 @@ const App = () => (
                 <Route path="/" element={<Layout />}>
                   {/* Main routes */}
                   <Route index element={<Dashboard />} />
-                  {/* Income routes (replaces Invoice list) */}
+                  {/* Invoice routes */}
                   <Route path="invoices/new" element={<NewInvoice />} />
-                  <Route path="/invoices/:id" element={<InvoiceDetail />} />
-                  <Route path="/invoices/new" element={<NewInvoice />} />
+                  
+                  {/* Income routes */}
+                  <Route path="/income/:id" element={<InvoiceDetail type="income" />} />
                   <Route path="/income/:id/edit" element={<NewInvoice type={TransactionType.INCOME} />} />
+                  
+                  {/* Expense routes */}
+                  <Route path="/expense/:id" element={<InvoiceDetail type="expense" />} />
                   <Route path="/expense/:id/edit" element={<NewInvoice type={TransactionType.EXPENSE} />} />
-                  <Route path="invoices/:id" element={
-                    <InvoiceDetail 
-                      type={new URLSearchParams(window.location.search).get('type') as 'income' | 'expense' | null}
-                    />
-                  } />
+                  
+                  {/* Legacy routes for backward compatibility */}
+                  <Route path="/invoices/:id" element={<InvoiceDetail type="income" />} />
                   {/* Customer routes */}
                   <Route path="customers" element={<CustomerList />} />
                   <Route path="customers/new" element={<NewCustomer />} />
@@ -220,7 +224,10 @@ const App = () => (
                   <Route path="settings/business-profiles/new" element={<NewBusinessProfile />} />
                   <Route path="settings/business-profiles/:id" element={<EditBusinessProfile />} />
                   <Route path="settings/documents" element={<DocumentSettings />} />
-                  {/* Legacy route for backward compatibility */}
+                  {/* New invoice routes */}
+                  <Route path="income/new" element={<NewInvoice type={TransactionType.INCOME} />} />
+                  <Route path="expense/new" element={<NewInvoice type={TransactionType.EXPENSE} />} />
+                  {/* Legacy routes for backward compatibility */}
                   <Route path="income" element={<IncomeList />} />
                   <Route path="expense" element={<ExpenseList />} />
                   {/* Catch-all for any other routes */}

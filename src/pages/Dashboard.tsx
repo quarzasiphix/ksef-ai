@@ -204,7 +204,7 @@ const Dashboard = () => {
         <div className="flex justify-between items-center">
           <h2 className="text-xl font-bold">Ostatnie faktury</h2>
           <Button variant="outline" asChild size="sm">
-            <Link to="/invoices">Zobacz wszystkie</Link>
+            <Link to="/income">Zobacz wszystkie</Link>
           </Button>
         </div>
         

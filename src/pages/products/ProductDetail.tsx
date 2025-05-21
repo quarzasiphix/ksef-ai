@@ -7,21 +7,23 @@ import { Product } from "@/types";
 import { getProducts } from "@/integrations/supabase/repositories/productRepository";
 import ProductForm from "@/components/products/ProductForm";
 import { toast } from "sonner";
+import { useAuth } from "@/App";
 
 const ProductDetail = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
+  const { user } = useAuth();
   const [product, setProduct] = useState<Product | null>(null);
   const [loading, setLoading] = useState(true);
   const [isEditOpen, setIsEditOpen] = useState(false);
   
   useEffect(() => {
     const fetchProduct = async () => {
-      if (!id) return;
+      if (!id || !user?.id) return;
       
       setLoading(true);
       try {
-        const products = await getProducts();
+        const products = await getProducts(user.id);
         const foundProduct = products.find(p => p.id === id) || null;
         setProduct(foundProduct);
       } catch (error) {
@@ -33,7 +35,7 @@ const ProductDetail = () => {
     };
     
     fetchProduct();
-  }, [id]);
+  }, [id, user?.id]);
   
   const handleEditClose = () => {
     setIsEditOpen(false);

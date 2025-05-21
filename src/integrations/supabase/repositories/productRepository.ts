@@ -1,24 +1,27 @@
 
 import { supabase } from "../client";
-import type { Product } from "@/types";
+import type { Product, VatType } from "@/types";
 
-export async function getProducts(): Promise<Product[]> {
+export async function getProducts(userId: string): Promise<Product[]> {
   const { data, error } = await supabase
     .from("products")
-    .select("*")
+    .select("id, name, unit_price, vat_rate, unit, user_id")
+    .eq("user_id", userId)
     .order("name");
 
   if (error) {
     console.error("Error fetching products:", error);
-    throw error;
+    return [];
   }
 
-  return data.map(item => ({
+  return (data || []).map(item => ({
     id: item.id,
     name: item.name,
+    description: item.description,
     unitPrice: Number(item.unit_price),
     vatRate: item.vat_rate,
-    unit: item.unit
+    unit: item.unit,
+    user_id: item.user_id
   }));
 }
 

@@ -1,13 +1,8 @@
 import React, { useState, useEffect } from "react";
 import { useAuth } from "@/App";
 import { useSearchParams, useNavigate, useLocation } from "react-router-dom";
-import {
-  Invoice,
-  InvoiceType,
-  InvoiceItem,
-  VatType,
-  VatExemptionReason,
-} from "@/types";
+import { useQueryClient } from "@tanstack/react-query";
+import { Invoice, InvoiceType, InvoiceItem, VatType, VatExemptionReason, Company } from "@/types";
 import { TransactionType, PaymentMethodDb } from "@/types/common";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
@@ -54,10 +49,11 @@ const NewInvoice: React.FC<{ initialData?: Invoice; type?: TransactionType }> = 
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
   const location = useLocation();
+  const queryClient = useQueryClient();
 
   const isIncomeRoute = location.pathname === "/income/new";
   const isExpenseRoute = location.pathname === "/expense/new";
-  const hideTransactionButtons = isIncomeRoute || isExpenseRoute;
+  const hideTransactionButtons = isIncomeRoute || isExpenseRoute || location.pathname === "/invoices/new";
 
   const [transactionType, setTransactionType] = useState<TransactionType>(
     initialData?.transactionType || type
@@ -69,17 +65,13 @@ const NewInvoice: React.FC<{ initialData?: Invoice; type?: TransactionType }> = 
   const [documentSettingsLoaded, setDocumentSettingsLoaded] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [items, setItems] = useState<InvoiceItem[]>(initialData?.items || []);
-  const [businessProfileId, setBusinessProfileId] = useState<string>(
-    initialData?.businessProfileId || ""
-  );
   const [businessName, setBusinessName] = useState<string>(
     initialData?.businessName || ""
   );
-  const [customerId, setCustomerId] = useState<string>(initialData?.customerId || "");
   const [customerName, setCustomerName] = useState<string>(
     initialData?.customerName || ""
   );
-
+  
   const today = new Date().toISOString().split("T")[0];
 
   const form = useForm<InvoiceFormValues & { transactionType: TransactionType }>({
@@ -102,6 +94,10 @@ const NewInvoice: React.FC<{ initialData?: Invoice; type?: TransactionType }> = 
       vatExemptionReason: initialData?.vatExemptionReason,
     },
   });
+  
+  // Get form values
+  const businessProfileId = form.watch('businessProfileId');
+  const customerId = form.watch('customerId');
 
   // Load settings
   useEffect(() => {
@@ -125,63 +121,126 @@ const NewInvoice: React.FC<{ initialData?: Invoice; type?: TransactionType }> = 
   }, [documentType, documentSettings, navigate]);
 
   // Submit handler
-  const onSubmit = async (data: InvoiceFormValues & { transactionType: TransactionType }) => {
-    if (!user?.id) return toast.error("Zaloguj się ponownie");
-    setIsLoading(true);
+  const onSubmit = async (formData: InvoiceFormValues) => {
+    console.log('onSubmit called with formData:', formData);
+    
+    if (!user) {
+      const error = "Nie jesteś zalogowany";
+      console.error(error);
+      toast.error(error);
+      return;
+    }
+
+    if (items.length === 0) {
+      const error = "Dodaj co najmniej jedną pozycję do faktury";
+      console.error(error);
+      toast.error(error);
+      return;
+    }
+
     try {
-      const updatedItems = items.map(item => ({
-        ...item,
-        vatRate: data.fakturaBezVAT ? VatType.ZW : (typeof item.vatRate === 'number' ? item.vatRate : 0),
-        totalVatValue: data.fakturaBezVAT ? 0 : item.unitPrice * item.quantity * (typeof item.vatRate === 'number' ? item.vatRate / 100 : 0),
-        totalGrossValue: item.unitPrice * item.quantity * (1 + (typeof item.vatRate === 'number' ? item.vatRate / 100 : 0))
-      }));
-      const totals = calculateInvoiceTotals(updatedItems);
-      const seller = {
-        id: businessProfileId,
+      console.log('Starting form submission...');
+      setIsLoading(true);
+      
+      // Calculate invoice totals
+      const calculatedItems = items.map(item => {
+        const quantity = Number(item.quantity) || 0;
+        const unitPrice = Number(item.unitPrice) || 0;
+        const vatRate = Number(item.vatRate) || 0;
+        
+        const totalNetValue = quantity * unitPrice;
+        const totalVatValue = documentType === InvoiceType.RECEIPT 
+          ? 0 
+          : (totalNetValue * vatRate) / 100;
+        const totalGrossValue = documentType === InvoiceType.RECEIPT
+          ? totalNetValue
+          : totalNetValue * (1 + vatRate / 100);
+          
+        return {
+          ...item,
+          totalNetValue: Number(totalNetValue.toFixed(2)),
+          totalVatValue: Number(totalVatValue.toFixed(2)),
+          totalGrossValue: Number(totalGrossValue.toFixed(2))
+        };
+      });
+      
+      const totalNetValue = Number(calculatedItems
+        .reduce((sum, item) => sum + (item.totalNetValue || 0), 0)
+        .toFixed(2));
+      const totalVatValue = Number(calculatedItems
+        .reduce((sum, item) => sum + (item.totalVatValue || 0), 0)
+        .toFixed(2));
+      const totalGrossValue = Number(calculatedItems
+        .reduce((sum, item) => sum + (item.totalGrossValue || 0), 0)
+        .toFixed(2));
+      
+      // Create seller and buyer objects
+      const seller: Company = {
         name: businessName || '',
         taxId: '',
         address: '',
         city: '',
         postalCode: ''
       };
-      const buyer = {
-        id: customerId,
+
+      const buyer: Company = {
         name: customerName || '',
         taxId: '',
         address: '',
         city: '',
         postalCode: ''
       };
-      const invoice: Invoice = {
-        id: initialData?.id || "",
-        user_id: user.id,
-        number: data.number,
-        date: data.issueDate,
-        dueDate: data.dueDate,
-        issueDate: data.issueDate,
-        sellDate: data.sellDate,
+
+      // Create the invoice data
+      const invoiceData: Omit<Invoice, 'id' | 'created_at' | 'updated_at'> = {
+        ...formData,
+        number: formData.number.trim(),
         type: documentType,
-        transactionType: data.transactionType,
+        transactionType,
+        items: calculatedItems,
+        paymentMethod: toPaymentMethodDb(formData.paymentMethod as any),
+        totalNetValue,
+        totalVatValue,
+        totalGrossValue,
+        totalAmount: totalGrossValue,
+        user_id: user.id,
+        businessProfileId: formData.businessProfileId,
+        customerId: formData.customerId || '',
+        isPaid: false,
+        paid: false,
+        status: 'draft',
+        issueDate: formData.issueDate,
+        dueDate: formData.dueDate,
+        sellDate: formData.sellDate || formData.issueDate,
+        date: formData.issueDate,
         seller,
         buyer,
-        items: updatedItems,
-        totalAmount: totals.totalGrossValue,
-        paid: false,
-        isPaid: initialData?.isPaid || false,
-        paymentMethod: toPaymentMethodDb(data.paymentMethod),
-        comments: data.comments,
-        totalNetValue: totals.totalNetValue,
-        totalVatValue: totals.totalVatValue,
-        totalGrossValue: totals.totalGrossValue,
-        businessName,
-        customerName,
+        comments: formData.comments || '',
+        businessName: businessName || '',
+        customerName: customerName || ''
       };
-      const saved = await saveInvoice(invoice);
-      toast.success(initialData ? "Zaktualizowano" : "Utworzono");
-      navigate(`/invoices/${saved.id}`);
-    } catch (err) {
-      console.error(err);
-      toast.error("Błąd podczas zapisu");
+
+      console.log('Saving invoice:', invoiceData);
+      
+      // Save the invoice
+      const savedInvoice = await saveInvoice(invoiceData as any);
+      
+      // Invalidate the invoices query to refresh the list
+      await queryClient.invalidateQueries({ queryKey: ['invoices'] });
+      
+      toast.success("Dokument został zapisany pomyślnie");
+      
+      // Determine the correct redirect path based on the transaction type
+      const redirectPath = transactionType === TransactionType.EXPENSE 
+        ? `/expense/${savedInvoice.id}`
+        : `/income/${savedInvoice.id}`;
+      
+      // Redirect to the invoice detail page
+      navigate(redirectPath, { replace: true });
+      
+    } catch (error) {
+      console.error("Error saving invoice:", error);
+      toast.error(`Wystąpił błąd podczas zapisywania dokumentu: ${error instanceof Error ? error.message : 'Nieznany błąd'}`);
     } finally {
       setIsLoading(false);
     }
@@ -209,85 +268,163 @@ const NewInvoice: React.FC<{ initialData?: Invoice; type?: TransactionType }> = 
   const documentTitle = getDocumentTitle();
   const isEditing = Boolean(initialData);
 
+  // Handle form submission
+  const handleFormSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    console.log('Form submission started');
+    
+    // Manually trigger form validation
+    const isValid = await form.trigger();
+    console.log('Form validation result:', isValid);
+    
+    if (!isValid) {
+      console.error('Form validation failed');
+      const errors = form.formState.errors;
+      console.error('Form errors:', errors);
+      
+      // Show first error to user
+      const firstError = Object.values(errors)[0];
+      if (firstError?.message) {
+        toast.error(firstError.message as string);
+      } else {
+        toast.error('Proszę wypełnić wszystkie wymagane pola');
+      }
+      return;
+    }
+    
+    try {
+      setIsLoading(true);
+      const formValues = form.getValues();
+      console.log('Form is valid, submitting with values:', formValues);
+      
+      // Ensure business profile is set
+      if (!formValues.businessProfileId) {
+        toast.error('Proszę wybrać profil biznesowy');
+        return;
+      }
+      
+      // Call the original onSubmit with form values
+      await onSubmit(formValues);
+    } catch (error) {
+      console.error('Error during form submission:', error);
+      toast.error(`Błąd podczas zapisywania: ${error instanceof Error ? error.message : 'Nieznany błąd'}`);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+  
+  // Handle business profile change
+  const handleBusinessProfileChange = (id: string, name?: string) => {
+    form.setValue('businessProfileId', id, { shouldValidate: true });
+    if (name) {
+      setBusinessName(name);
+    }
+  };
+  
+  // Handle customer change
+  const handleCustomerChange = (id: string, name?: string) => {
+    form.setValue('customerId', id, { shouldValidate: true });
+    if (name) {
+      setCustomerName(name);
+    }
+  };
+  
+  // No debug code in production
+
   return (
     <div className="space-y-4">
-      {/* Header */}
-      <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
-        <div className="flex items-center gap-4">
-          <InvoiceFormHeader
-            title={documentTitle}
-            documentType={documentType}
-            isEditing={isEditing}
-          />
-          {!hideTransactionButtons && (
-            <div className="hidden md:flex items-center space-x-2">
-              <Button
-                type="button"
-                variant={transactionType === TransactionType.INCOME ? 'default' : 'outline'}
-                size="sm"
-                onClick={() => setTransactionType(TransactionType.INCOME)}
-              >
-                Przychód
-              </Button>
-              <Button
-                type="button"
-                variant={transactionType === TransactionType.EXPENSE ? 'default' : 'outline'}
-                size="sm"
-                onClick={() => setTransactionType(TransactionType.EXPENSE)}
-              >
-                Wydatek
-              </Button>
-            </div>
-          )}
-        </div>
-        {!hideTransactionButtons && (
-          <div className="md:hidden flex space-x-2">
-            <Button
-              type="button"
-              variant={transactionType === TransactionType.INCOME ? 'default' : 'outline'}
-              size="sm"
-              onClick={() => setTransactionType(TransactionType.INCOME)}
-            >
-              Przychód
-            </Button>
-            <Button
-              type="button"
-              variant={transactionType === TransactionType.EXPENSE ? 'default' : 'outline'}
-              size="sm"
-              onClick={() => setTransactionType(TransactionType.EXPENSE)}
-            >
-              Wydatek
-            </Button>
-          </div>
-        )}
-      </div>
-      {/* Items Form */}
-      <InvoiceItemsForm
-        items={items}
-        documentType={documentType}
-        transactionType={transactionType}
-        onItemsChange={setItems}
-        userId={user?.id || ''}
-        fakturaBezVAT={form.watch('fakturaBezVAT')}
-        vatExemptionReason={form.watch('vatExemptionReason')}
-      />
-      {/* Main Form */}
       <Form {...form}>
-        <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
-          <div className="grid md:grid-cols-2 gap-4">
-            <InvoiceBasicInfoForm form={form} documentTitle={documentTitle} />
-            <InvoicePartiesForm
+        <form 
+          onSubmit={(e) => {
+            console.log('Form submit event triggered');
+            handleFormSubmit(e);
+          }} 
+          className="space-y-4"
+        >
+          {/* Header */}
+          <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+            <div className="flex items-center gap-4">
+              <InvoiceFormHeader
+                title={documentTitle}
+                documentType={documentType}
+                isEditing={isEditing}
+              />
+              {!hideTransactionButtons && (
+                <div className="hidden md:flex items-center space-x-2">
+                  <Button
+                    type="button"
+                    variant={transactionType === TransactionType.INCOME ? 'default' : 'outline'}
+                    size="sm"
+                    onClick={() => setTransactionType(TransactionType.INCOME)}
+                  >
+                    Przychód
+                  </Button>
+                  <Button
+                    type="button"
+                    variant={transactionType === TransactionType.EXPENSE ? 'default' : 'outline'}
+                    size="sm"
+                    onClick={() => setTransactionType(TransactionType.EXPENSE)}
+                  >
+                    Wydatek
+                  </Button>
+                </div>
+              )}
+            </div>
+            {/* Transaction Type Toggle - Mobile */}
+            {!hideTransactionButtons && (
+              <div className="md:hidden flex space-x-2">
+                <Button
+                  type="button"
+                  variant={transactionType === TransactionType.INCOME ? 'default' : 'outline'}
+                  size="sm"
+                  onClick={() => setTransactionType(TransactionType.INCOME)}
+                >
+                  Przychód
+                </Button>
+                <Button
+                  type="button"
+                  variant={transactionType === TransactionType.EXPENSE ? 'default' : 'outline'}
+                  size="sm"
+                  onClick={() => setTransactionType(TransactionType.EXPENSE)}
+                >
+                  Wydatek
+                </Button>
+              </div>
+            )}
+          </div>
+
+          {/* Form sections */}
+          <div className="space-y-6">
+            <InvoiceBasicInfoForm 
+              form={form}
+              documentTitle={documentTitle}
+            />
+            
+            <InvoicePartiesForm 
+              transactionType={transactionType}
               businessProfileId={businessProfileId}
               customerId={customerId}
+              onBusinessProfileChange={handleBusinessProfileChange}
+              onCustomerChange={handleCustomerChange}
+            />
+            
+            <InvoiceItemsForm 
+              items={items}
+              documentType={documentType}
               transactionType={transactionType}
-              onBusinessProfileChange={(id,name) => { setBusinessProfileId(id); setBusinessName(name||'') }}
-              onCustomerChange={(id,name) => { setCustomerId(id); setCustomerName(name||'') }}
+              onItemsChange={setItems}
+              userId={user?.id || ''}
+              fakturaBezVAT={form.watch('fakturaBezVAT')}
+              vatExemptionReason={form.watch('vatExemptionReason')}
             />
           </div>
-          <InvoiceFormActions
-            isLoading={isLoading}
-            isEditing={isEditing}
-            onSubmit={form.handleSubmit(onSubmit)}
+
+          {/* Form actions */}
+          <InvoiceFormActions 
+            isLoading={isLoading} 
+            isEditing={isEditing} 
+            onSubmit={handleFormSubmit}
+            transactionType={transactionType}
           />
         </form>
       </Form>

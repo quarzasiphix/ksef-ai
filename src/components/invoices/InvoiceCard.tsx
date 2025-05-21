@@ -59,8 +59,14 @@ const InvoiceCard: React.FC<InvoiceCardProps> = ({ invoice }) => {
   // Check if document type is a receipt (rachunek) - hide VAT info
   const isReceipt = invoice.type === InvoiceType.RECEIPT;
 
+  // Determine the correct route based on transaction type (income/expense)
+  const getInvoiceRoute = () => {
+    const basePath = invoice.transactionType === 'expense' ? '/expense' : '/income';
+    return `${basePath}/${invoice.id}`;
+  };
+
   return (
-    <Link to={`/invoices/${invoice.id}`} className="block no-underline">
+    <Link to={getInvoiceRoute()} className="block no-underline">
       <div className={`${getCardColorClass()} text-white rounded-lg p-3 shadow-md hover:shadow-lg transition-all h-full`}>
         <div className="flex justify-between items-center mb-2">
           <h3 className="font-bold text-sm">{invoice.number}</h3>

@@ -49,9 +49,12 @@ const IncomeList = () => {
     return Array.from(typeMap.keys());
   }, [invoices]);
   
-  // Filter invoices based on search term and document type
+  // Filter invoices based on search term, document type, and transaction type (income only)
   const filteredInvoices = invoices.filter(
     (invoice) => {
+      // Only show income transactions
+      if (invoice.transactionType !== 'income') return false;
+      
       const matchesSearch = 
         invoice.number.toLowerCase().includes(searchTerm.toLowerCase()) ||
         (invoice.customerName || "").toLowerCase().includes(searchTerm.toLowerCase());
@@ -99,22 +102,22 @@ const IncomeList = () => {
             <DropdownMenuGroup>
               <DropdownMenuItem asChild>
                 <Link to="/income/new?type=sales">
-                  <button>Faktura VAT</button>
+                  Faktura VAT
                 </Link>
               </DropdownMenuItem>
               <DropdownMenuItem asChild>
                 <Link to="/income/new?type=receipt">
-                  <button>Rachunek</button>
+                  Rachunek
                 </Link>
               </DropdownMenuItem>
               <DropdownMenuItem asChild>
                 <Link to="/income/new?type=proforma">
-                  <button>Faktura proforma</button>
+                  Faktura proforma
                 </Link>
               </DropdownMenuItem>
               <DropdownMenuItem asChild>
                 <Link to="/income/new?type=correction">
-                  <button>Faktura korygująca</button>
+                  Faktura korygująca
                 </Link>
               </DropdownMenuItem>
             </DropdownMenuGroup>

@@ -21,14 +21,14 @@ interface InvoiceItemsCardProps {
 import { calculateItemValues } from "@/lib/invoice-utils";
 
 export const InvoiceItemsCard: React.FC<InvoiceItemsCardProps> = ({
-  items,
-  totalNetValue,
-  totalVatValue,
-  totalGrossValue,
-  type,
+  items = [],
+  totalNetValue = 0,
+  totalVatValue = 0,
+  totalGrossValue = 0,
+  type = InvoiceType.SALES,
 }) => {
   // Always recalculate item values defensively
-  const safeItems = items.map(calculateItemValues);
+  const safeItems = Array.isArray(items) ? items.map(calculateItemValues) : [];
   const isMobile = useIsMobile();
   const isReceipt = type === InvoiceType.RECEIPT;
 
@@ -56,7 +56,7 @@ export const InvoiceItemsCard: React.FC<InvoiceItemsCardProps> = ({
             {!isReceipt && (
               <div className="flex items-center justify-between">
                 <p className="text-muted-foreground">VAT:</p>
-                <p>{item.vatRate}%</p>
+                <p>{item.vatRate === -1 ? 'zw' : `${item.vatRate}%`}</p>
               </div>
             )}
             <div className="flex items-center justify-between">
@@ -106,7 +106,7 @@ export const InvoiceItemsCard: React.FC<InvoiceItemsCardProps> = ({
                 <td>{item.unit}</td>
                 <td>{formatCurrency(item.unitPrice)}</td>
                 <td className="netto-value">{formatCurrency(item.totalNetValue || 0)}</td>
-                {!isReceipt && <td>{item.vatRate}%</td>}
+                {!isReceipt && <td>{item.vatRate === -1 ? 'zw' : `${item.vatRate}%`}</td>}
                 {!isReceipt && <td>{formatCurrency(item.totalVatValue || 0)}</td>}
                 <td>{formatCurrency(item.totalGrossValue || 0)}</td>
               </tr>

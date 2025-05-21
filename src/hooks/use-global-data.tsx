@@ -44,8 +44,12 @@ export function useGlobalData() {
   });
 
   const productsQuery = useQuery({
-    queryKey: QUERY_KEYS.products,
-    queryFn: getProducts,
+    queryKey: [...QUERY_KEYS.products, user?.id],
+    queryFn: () => {
+      if (!user?.id) return Promise.resolve([]);
+      return getProducts(user.id);
+    },
+    enabled: !!user?.id,
     staleTime: 1000 * 60 * 5, // 5 minutes
   });
 

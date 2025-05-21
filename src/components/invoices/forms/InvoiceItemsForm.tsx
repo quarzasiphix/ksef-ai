@@ -33,7 +33,7 @@ export const InvoiceItemsForm: React.FC<InvoiceItemsFormProps> = ({
   const refetchProducts = async () => {
     setProductsLoading(true);
     try {
-      const productData = await getProducts();
+      const productData = await getProducts(userId);
       setProducts(productData);
     } catch (error) {
       console.error("Error loading products:", error);

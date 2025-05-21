@@ -64,11 +64,11 @@ export interface InvoiceItem {
 export interface Product {
   id: string;
   name: string;
-  description: string;
+  description?: string;
   unitPrice: number;
-  vatType: VatType;
-  vatRate: number;
+  vatRate: number; // VAT rate as number (e.g., 23, 8, 5, 0) or -1 for VAT-exempt
   unit: string;
+  user_id: string;
 }
 
 export enum VatType {

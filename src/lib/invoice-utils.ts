@@ -20,18 +20,29 @@ export const formatNumber = (
 
 // Calculate net, VAT, and gross values for an invoice item
 export const calculateItemValues = (item: InvoiceItem): InvoiceItem => {
-  // Clamp VAT rate to [0, 100] and ensure it's a number
-  let vatRate = Number.isFinite(item.vatRate) ? Math.max(0, Math.min(100, item.vatRate)) : 0;
+  // Convert vatRate to number if it's a VatType enum value
+  const vatRateValue = typeof item.vatRate === 'number' ? item.vatRate : Number(item.vatRate);
+  
+  // Handle VAT-exempt items (vatRate = -1 or VatType.ZW)
+  const isVatExempt = vatRateValue === -1 || vatRateValue === -1; // VatType.ZW is -1
+  
+  // For VAT-exempt items, treat as 0% VAT for calculation purposes
+  const vatRate = isVatExempt ? 0 : (Number.isFinite(vatRateValue) ? Math.max(0, Math.min(100, vatRateValue)) : 0);
+  
   // Defensive: Clamp quantity and unitPrice to at least 0
-  let quantity = Number.isFinite(item.quantity) && item.quantity > 0 ? item.quantity : 0;
-  let unitPrice = Number.isFinite(item.unitPrice) && item.unitPrice >= 0 ? item.unitPrice : 0;
+  const quantity = Number.isFinite(item.quantity) && item.quantity > 0 ? item.quantity : 0;
+  const unitPrice = Number.isFinite(item.unitPrice) && item.unitPrice >= 0 ? item.unitPrice : 0;
 
   const totalNetValue = unitPrice * quantity;
-  let totalVatValue = totalNetValue * (vatRate / 100);
+  
+  // For VAT-exempt items, totalVatValue should be 0
+  let totalVatValue = isVatExempt ? 0 : totalNetValue * (vatRate / 100);
 
   // Defensive: Prevent negative or NaN VAT value
   if (!Number.isFinite(totalVatValue) || totalVatValue < 0) totalVatValue = 0;
-  let totalGrossValue = totalNetValue + totalVatValue;
+  
+  // For VAT-exempt items, gross value equals net value
+  let totalGrossValue = isVatExempt ? totalNetValue : totalNetValue + totalVatValue;
   if (!Number.isFinite(totalGrossValue) || totalGrossValue < 0) totalGrossValue = 0;
 
   return {

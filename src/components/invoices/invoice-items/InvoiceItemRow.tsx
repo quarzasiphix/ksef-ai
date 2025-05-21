@@ -2,7 +2,7 @@ import React from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { X } from "lucide-react";
-import { InvoiceItem, InvoiceType, VatType } from "@/types";
+import { InvoiceItem, InvoiceType, VatType, Product } from "@/types";
 import { formatCurrency, calculateItemValues } from "@/lib/invoice-utils";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { ProductEditDialog } from "../ProductEditDialog";
@@ -47,14 +47,15 @@ export const InvoiceItemRow: React.FC<InvoiceItemRowProps> = ({
 
   const handleVatRateChange = (value: string) => {
     const vatRate = Number(value);
-    if (isNaN(vatRate) || vatRate < 0) return;
+    if (isNaN(vatRate)) return;
     
     const updated = calculateItemValues({ ...item, vatRate });
     onUpdateItem(item.id, updated);
   };
 
-  const handleZwolnionyZVATChange = (checked: boolean) => {
-    const vatRate = checked ? VatType.ZW : item.vatRate;
+  const handleZwolnionyZVATChange = (checked: boolean | string) => {
+    const isChecked = typeof checked === 'string' ? checked === 'true' : checked;
+    const vatRate = isChecked ? VatType.ZW : 23; // Default to 23% if not exempt
     const updated = calculateItemValues({ ...item, vatRate });
     onUpdateItem(item.id, updated);
   };
@@ -64,9 +65,9 @@ export const InvoiceItemRow: React.FC<InvoiceItemRowProps> = ({
       <td className="px-2 py-2 text-left">{index + 1}</td>
       <td className="px-2 py-2 text-left">
         {item.name}
-        {documentType !== InvoiceType.RECEIPT && fakturaBezVAT !== undefined && (
+        {documentType !== InvoiceType.RECEIPT && (
           <Checkbox
-            checked={fakturaBezVAT || (typeof item.vatRate === 'string' ? item.vatRate === VatType.ZW : item.vatRate === VatType.ZW)}
+            checked={item.vatRate === -1 || item.vatRate === VatType.ZW}
             onCheckedChange={(checked) => handleZwolnionyZVATChange(checked)}
             className="ml-2"
           />
@@ -109,6 +110,7 @@ export const InvoiceItemRow: React.FC<InvoiceItemRowProps> = ({
                 <SelectItem value="8">8%</SelectItem>
                 <SelectItem value="5">5%</SelectItem>
                 <SelectItem value="0">0%</SelectItem>
+                <SelectItem value="-1">Zw (zwolniony)</SelectItem>
               </SelectContent>
             </Select>
           </td>
@@ -129,13 +131,14 @@ export const InvoiceItemRow: React.FC<InvoiceItemRowProps> = ({
                 unit: item.unit
               }}
               documentType={documentType}
-              onProductSaved={(product) => {
+              onProductSaved={(product: Product) => {
+                const vatRate = typeof product.vatRate === 'number' ? product.vatRate : Number(product.vatRate);
                 onUpdateItem(item.id, {
                   ...calculateItemValues({
                     ...item,
                     name: product.name,
                     unitPrice: product.unitPrice,
-                    vatRate: typeof product.vatRate === 'string' ? Number(product.vatRate) : product.vatRate,
+                    vatRate: vatRate,
                     unit: product.unit
                   })
                 });
