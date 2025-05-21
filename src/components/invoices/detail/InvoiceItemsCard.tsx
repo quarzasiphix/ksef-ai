@@ -82,19 +82,30 @@ export const InvoiceItemsCard: React.FC<InvoiceItemsCardProps> = ({
   // Desktop view for invoice items
   const renderDesktopItems = () => {
     return (
-      <div className="invoice-table-container overflow-x-auto">
-        <table className="invoice-table w-full">
+      <div className="w-full">
+        <table className="w-full text-sm">
+          <colgroup>
+            <col className="w-12" />
+            <col className="min-w-[200px]" />
+            <col className="w-24 text-right" />
+            <col className="w-24 text-right" />
+            <col className="w-28 text-right" />
+            <col className="w-28 text-right" />
+            {!isReceipt && <col className="w-24 text-center" />}
+            {!isReceipt && <col className="w-28 text-right" />}
+            <col className="w-32 text-right" />
+          </colgroup>
           <thead>
             <tr>
-              <th>Lp.</th>
-              <th>Nazwa</th>
-              <th>Ilość</th>
-              <th>Jednostka</th>
-              <th>Cena netto</th>
-              <th>Wartość netto</th>
-              {!isReceipt && <th>Stawka VAT</th>}
-              {!isReceipt && <th>Kwota VAT</th>}
-              <th>Wartość brutto</th>
+              <th className="text-left">Lp.</th>
+              <th className="text-left">Nazwa</th>
+              <th className="text-right">Ilość</th>
+              <th className="text-right">Jednostka</th>
+              <th className="text-right">Cena netto</th>
+              <th className="text-right">Wartość netto</th>
+              {!isReceipt && <th className="text-center">Stawka VAT</th>}
+              {!isReceipt && <th className="text-right">Kwota VAT</th>}
+              <th className="text-right">Wartość brutto</th>
             </tr>
           </thead>
           <tbody>
@@ -102,22 +113,23 @@ export const InvoiceItemsCard: React.FC<InvoiceItemsCardProps> = ({
               <tr key={item.id}>
                 <td>{index + 1}</td>
                 <td>{item.name}</td>
-                <td>{item.quantity}</td>
-                <td>{item.unit}</td>
-                <td>{formatCurrency(item.unitPrice)}</td>
-                <td className="netto-value">{formatCurrency(item.totalNetValue || 0)}</td>
-                {!isReceipt && <td>{item.vatRate === -1 ? 'zw' : `${item.vatRate}%`}</td>}
-                {!isReceipt && <td>{formatCurrency(item.totalVatValue || 0)}</td>}
-                <td>{formatCurrency(item.totalGrossValue || 0)}</td>
+                <td className="text-right">{item.quantity}</td>
+                <td className="text-right">{item.unit}</td>
+                <td className="text-right">{formatCurrency(item.unitPrice)}</td>
+                <td className="text-right">{formatCurrency(item.totalNetValue || 0)}</td>
+                {!isReceipt && <td className="text-center">{item.vatRate === -1 ? 'zw' : `${item.vatRate}%`}</td>}
+                {!isReceipt && <td className="text-right">{formatCurrency(item.totalVatValue || 0)}</td>}
+                <td className="text-right">{formatCurrency(item.totalGrossValue || 0)}</td>
               </tr>
             ))}
           </tbody>
           <tfoot>
-            <tr className="font-bold">
-              <td colSpan={isReceipt ? 5 : 7} className="text-right">Razem:</td>
-              <td>{formatCurrency(totalNetValue || 0)}</td>
-              {!isReceipt && <td>{formatCurrency(totalVatValue || 0)}</td>}
-              <td>{formatCurrency(totalGrossValue || 0)}</td>
+            <tr className="font-bold border-t">
+              <td colSpan={isReceipt ? 4 : 5} className="text-right pr-4">Razem:</td>
+              <td className="text-right pr-2">{formatCurrency(totalNetValue || 0)}</td>
+              {!isReceipt && <td></td>}
+              {!isReceipt && <td className="text-right pr-2">{formatCurrency(totalVatValue || 0)}</td>}
+              <td className="text-right pr-2">{formatCurrency(totalGrossValue || 0)}</td>
             </tr>
           </tfoot>
         </table>
@@ -148,20 +160,17 @@ export const InvoiceItemsCard: React.FC<InvoiceItemsCardProps> = ({
   };
   
   return (
-    <Card className="overflow-hidden">
-      <CardHeader className="py-3">
-        <CardTitle className="text-lg">Pozycje na dokumencie</CardTitle>
-      </CardHeader>
-      <CardContent className={isMobile ? "px-3 py-2" : "px-0 py-2 sm:px-3"}>
-        {isMobile ? (
-          <>
-            {renderMobileItems()}
-            {renderMobileSummary()}
-          </>
-        ) : (
-          renderDesktopItems()
-        )}
-      </CardContent>
-    </Card>
+    <div className="w-full">
+      {isMobile ? (
+        <div>
+          {renderMobileItems()}
+          {renderMobileSummary()}
+        </div>
+      ) : (
+        <div className="w-full overflow-x-auto">
+          {renderDesktopItems()}
+        </div>
+      )}
+    </div>
   );
 };
