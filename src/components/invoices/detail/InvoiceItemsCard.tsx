@@ -1,14 +1,35 @@
-import React from "react";
-import {
-  Card,
-  CardContent,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
+import React, { useMemo } from "react";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { InvoiceItem, InvoiceType } from "@/types";
-import { formatCurrency } from "@/lib/invoice-utils";
+import { calculateItemValues, formatCurrency } from "@/lib/invoice-utils";
 import { useIsMobile } from "@/hooks/use-mobile";
 import "./invoiceDetail.css";
+
+// Define valid VAT rates as numbers to avoid VatType enum issues
+const VALID_VAT_RATES = [0, 5, 8, 23, -1] as const;
+const VAT_EXEMPT = -1;
+
+// Create a new type that ensures all required fields are present and properly typed
+type ProcessedInvoiceItem = {
+  id: string;
+  productId?: string;
+  name: string;
+  quantity: number;
+  unitPrice: number;
+  vatRate: number; // Always use number type
+  unit: string;
+  totalNetValue: number;
+  totalVatValue: number;
+  totalGrossValue: number;
+  [key: string]: any; // Allow additional properties
+};
+
+// Helper function to safely convert vatRate to number
+const toNumberVatRate = (rate: unknown): number => {
+  if (typeof rate === 'number') return rate;
+  const num = Number(rate);
+  return isNaN(num) ? 23 : num; // Default to 23% if invalid
+};
 
 interface InvoiceItemsCardProps {
   items: InvoiceItem[];
@@ -18,8 +39,6 @@ interface InvoiceItemsCardProps {
   type: InvoiceType;
 }
 
-import { calculateItemValues } from "@/lib/invoice-utils";
-
 export const InvoiceItemsCard: React.FC<InvoiceItemsCardProps> = ({
   items = [],
   totalNetValue = 0,
@@ -27,13 +46,90 @@ export const InvoiceItemsCard: React.FC<InvoiceItemsCardProps> = ({
   totalGrossValue = 0,
   type = InvoiceType.SALES,
 }) => {
-  // Always recalculate item values defensively
-  const safeItems = Array.isArray(items) ? items.map(calculateItemValues) : [];
+  // Process and validate invoice items
+  const safeItems = React.useMemo<ProcessedInvoiceItem[]>(() => {
+    if (process.env.NODE_ENV === 'development') {
+      console.log('Raw items received in InvoiceItemsCard:', items);
+    }
+
+    // Ensure items is an array
+    if (!Array.isArray(items)) {
+      if (process.env.NODE_ENV === 'development') {
+        console.warn('Items is not an array:', items);
+      }
+      return [];
+    }
+
+    // Process each item to ensure all required fields are present and properly calculated
+    return items.reduce<ProcessedInvoiceItem[]>((acc, item) => {
+      try {
+        // Skip invalid items
+        if (!item || typeof item !== 'object') {
+          console.warn('Skipping invalid item (not an object):', item);
+          return acc;
+        }
+
+        const vatRate = toNumberVatRate(item.vatRate);
+
+        // Process each item to ensure it has all required fields
+        const processedItem: ProcessedInvoiceItem = {
+          id: item.id || `item-${Math.random().toString(36).substr(2, 9)}`,
+          name: item.name || 'Produkt bez nazwy',
+          quantity: Number(item.quantity) || 0,
+          unitPrice: Number(item.unitPrice) || 0,
+          vatRate: vatRate,
+          unit: item.unit || 'szt.',
+          productId: item.productId,
+          totalNetValue: 0,
+          totalVatValue: 0,
+          totalGrossValue: 0,
+          ...item // Spread to preserve any additional properties
+        };
+
+        // Calculate values using the utility function
+        const calculated = calculateItemValues({
+          ...processedItem,
+          description: processedItem.name // Add required description field
+        });
+
+        // Update the processed item with calculated values
+        processedItem.totalNetValue = calculated.totalNetValue;
+        processedItem.totalVatValue = calculated.totalVatValue;
+        processedItem.totalGrossValue = calculated.totalGrossValue;
+
+        return [...acc, calculated as ProcessedInvoiceItem];
+      } catch (error) {
+        console.error('Error processing invoice item:', error, 'Item:', item);
+        return acc;
+      }
+    }, []);
+  }, [items]);
+  
   const isMobile = useIsMobile();
   const isReceipt = type === InvoiceType.RECEIPT;
+  
+  // Debug logging
+  if (process.env.NODE_ENV === 'development') {
+    console.log('Items in InvoiceItemsCard:', {
+      rawItems: items,
+      safeItems,
+      type,
+      isReceipt,
+      hasItems: items && items.length > 0,
+      hasSafeItems: safeItems.length > 0
+    });
+  }
 
   // Mobile view for invoice items
   const renderMobileItems = () => {
+    if (safeItems.length === 0) {
+      return (
+        <div className="text-muted-foreground text-center py-4">
+          <p>Brak pozycji do wyświetlenia</p>
+        </div>
+      );
+    }
+    
     return safeItems.map((item, index) => (
       <Card key={item.id} className="mb-3">
         <CardContent className="p-3">
@@ -55,8 +151,9 @@ export const InvoiceItemsCard: React.FC<InvoiceItemsCardProps> = ({
             </div>
             {!isReceipt && (
               <div className="flex items-center justify-between">
-                <p className="text-muted-foreground">VAT:</p>
-                <p>{item.vatRate === -1 ? 'zw' : `${item.vatRate}%`}</p>
+                <span className="text-xs text-muted-foreground">
+                  {item.vatRate === VAT_EXEMPT ? 'zw.' : `${item.vatRate}%`}
+                </span>
               </div>
             )}
             <div className="flex items-center justify-between">
@@ -81,6 +178,14 @@ export const InvoiceItemsCard: React.FC<InvoiceItemsCardProps> = ({
 
   // Desktop view for invoice items
   const renderDesktopItems = () => {
+    if (!safeItems || safeItems.length === 0) {
+      return (
+        <div className="text-muted-foreground text-center py-4">
+          <p>Brak pozycji na fakturze</p>
+        </div>
+      );
+    }
+    
     return (
       <div className="w-full">
         <table className="w-full text-sm">
@@ -164,7 +269,7 @@ export const InvoiceItemsCard: React.FC<InvoiceItemsCardProps> = ({
       {isMobile ? (
         <div>
           {renderMobileItems()}
-          {renderMobileSummary()}
+          {safeItems.length > 0 && renderMobileSummary()}
         </div>
       ) : (
         <div className="w-full overflow-x-auto">

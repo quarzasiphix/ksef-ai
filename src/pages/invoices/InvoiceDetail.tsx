@@ -270,6 +270,8 @@ const InvoiceDetail: React.FC<InvoiceDetailProps> = ({ type }) => {
   };
 
 
+
+
   // Prepare data for ContractorCards
   const sellerProfile = businessProfiles.data.find(bp => bp.id === selectedInvoice.businessProfileId);
   const buyerProfile = customers.data.find(c => c.id === selectedInvoice.customerId);
@@ -348,8 +350,8 @@ const InvoiceDetail: React.FC<InvoiceDetailProps> = ({ type }) => {
         transactionType={selectedInvoice.transactionType}
       />
       <div className="space-y-8">
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          <div className="lg:col-span-2 space-y-6">
+        <div className="grid grid-cols-1 xl:grid-cols-3 gap-6">
+          <div className="xl:col-span-2 space-y-6">
             <div className="bg-card p-6 rounded-lg border">
               <CardTitle className="text-lg mb-4">Szczegóły dokumentu</CardTitle>
               <InvoiceDetailsCard
@@ -368,23 +370,40 @@ const InvoiceDetail: React.FC<InvoiceDetailProps> = ({ type }) => {
 
             <div className="bg-card p-6 rounded-lg border">
               <CardTitle className="text-lg mb-4">Pozycje na dokumencie</CardTitle>
-              <InvoiceItemsCard
-                items={selectedInvoice.items || []}
-                totalNetValue={selectedInvoice.totalNetValue || 0}
-                totalVatValue={selectedInvoice.totalVatValue || 0}
-                totalGrossValue={selectedInvoice.totalGrossValue || 0}
-                type={selectedInvoice.type}
-              />
+              {selectedInvoice.items && selectedInvoice.items.length > 0 ? (
+                <InvoiceItemsCard
+                  items={selectedInvoice.items}
+                  totalNetValue={selectedInvoice.totalNetValue || 0}
+                  totalVatValue={selectedInvoice.totalVatValue || 0}
+                  totalGrossValue={selectedInvoice.totalGrossValue || 0}
+                  type={selectedInvoice.type}
+                />
+              ) : (
+                <div className="text-muted-foreground text-center py-8">
+                  <p>Brak pozycji na fakturze</p>
+                </div>
+              )}
             </div>
           </div>
 
-          <div className="lg:col-span-1">
+          <div className="xl:block hidden">
             <div className="bg-card p-6 rounded-lg border">
               <CardTitle className="text-lg mb-4">Dane Kontrahentów</CardTitle>
               <div className="space-y-6">
                 <ContractorCard title="Sprzedawca" contractor={sellerCardData} />
                 <ContractorCard title="Nabywca" contractor={buyerCardData} />
               </div>
+            </div>
+          </div>
+        </div>
+        
+        {/* Mobile and tablet view for Contractor Cards */}
+        <div className="xl:hidden">
+          <div className="bg-card p-6 rounded-lg border">
+            <CardTitle className="text-lg mb-4">Dane Kontrahentów</CardTitle>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <ContractorCard title="Sprzedawca" contractor={sellerCardData} />
+              <ContractorCard title="Nabywca" contractor={buyerCardData} />
             </div>
           </div>
         </div>

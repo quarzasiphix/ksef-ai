@@ -20,11 +20,18 @@ export const formatNumber = (
 
 // Calculate net, VAT, and gross values for an invoice item
 export const calculateItemValues = (item: InvoiceItem): InvoiceItem => {
-  // Convert vatRate to number if it's a VatType enum value
-  const vatRateValue = typeof item.vatRate === 'number' ? item.vatRate : Number(item.vatRate);
+  // Safely convert vatRate to number
+  let vatRateValue: number;
+  if (typeof item.vatRate === 'number') {
+    vatRateValue = item.vatRate;
+  } else if (typeof item.vatRate === 'string') {
+    vatRateValue = parseFloat(item.vatRate) || 0;
+  } else {
+    vatRateValue = Number(item.vatRate) || 0;
+  }
   
   // Handle VAT-exempt items (vatRate = -1 or VatType.ZW)
-  const isVatExempt = vatRateValue === -1 || vatRateValue === -1; // VatType.ZW is -1
+  const isVatExempt = vatRateValue === -1;
   
   // For VAT-exempt items, treat as 0% VAT for calculation purposes
   const vatRate = isVatExempt ? 0 : (Number.isFinite(vatRateValue) ? Math.max(0, Math.min(100, vatRateValue)) : 0);

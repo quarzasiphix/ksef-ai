@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useState, useEffect } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import type { ButtonProps } from "@/components/ui/button";
@@ -45,9 +45,24 @@ export const InvoiceHeader: React.FC<InvoiceHeaderProps> = ({
 }) => {
   const isMobile = useIsMobile();
   const navigate = useNavigate();
-  
+  const [isSticky, setIsSticky] = useState(false);
+
+  useEffect(() => {
+    const handleScroll = () => {
+      setIsSticky(window.scrollY > 0);
+    };
+    window.addEventListener('scroll', handleScroll);
+    return () => {
+      window.removeEventListener('scroll', handleScroll);
+    };
+  }, []);
+
   return (
-    <div id="invoice-header" className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mb-4 sticky top-0 bg-background z-10 pb-2 pt-1">
+    <div 
+      id="invoice-header" 
+      className={`flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mb-4 
+        ${isSticky ? 'sticky top-0 bg-background z-10 pb-2 pt-1' : ''}`}
+    >
       <div className="flex items-center gap-2">
         <Button 
           variant="outline" 

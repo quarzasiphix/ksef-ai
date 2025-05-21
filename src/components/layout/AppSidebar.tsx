@@ -1,8 +1,7 @@
-import React from "react";
+import React, { useEffect } from "react";
 import { NavLink, useLocation, useNavigate } from "react-router-dom";
 import { useAuth } from "@/App";
-import { 
-  Sidebar, 
+import { Sidebar, 
   SidebarContent, 
   SidebarTrigger, 
   SidebarMenu, 
@@ -13,6 +12,7 @@ import {
   SidebarGroupLabel,
   useSidebar
 } from "@/components/ui/sidebar";
+import { cn } from "@/lib/utils";
 import { 
   BarChart, 
   FileText, 
@@ -24,9 +24,101 @@ import {
 } from "lucide-react";
 
 const AppSidebar = () => {
-  const { open, openMobile, setOpenMobile } = useSidebar();
+  const { open, openMobile, setOpenMobile, setOpen } = useSidebar();
   const location = useLocation();
   const pathname = location.pathname;
+
+  const prevWidthRef = React.useRef<number>(window.innerWidth);
+  const isManualToggle = React.useRef(false);
+
+  // Handle responsive behavior
+  useEffect(() => {
+    const currentWidth = window.innerWidth;
+    
+    // Only auto-collapse/expand on initial load if not manually toggled
+    if (!isManualToggle.current) {
+      if (currentWidth < 1400) {
+        setOpen(false);
+      } else {
+        setOpen(true);
+      }
+    }
+
+    const handleResize = () => {
+      const newWidth = window.innerWidth;
+      const wasAbove1400 = prevWidthRef.current >= 1400;
+      const isNowBelow1400 = newWidth < 1400;
+      
+      // Only auto-collapse/expand when crossing the 1400px threshold
+      if (wasAbove1400 && isNowBelow1400) {
+        if (!isManualToggle.current) {
+          setOpen(false);
+        }
+      } else if (!wasAbove1400 && !isNowBelow1400) {
+        if (!isManualToggle.current) {
+          setOpen(true);
+        }
+      }
+      
+      prevWidthRef.current = newWidth;
+    };
+
+    // Create debounced resize handler
+    const debouncedResize = debounce(handleResize, 100);
+    
+    // Add event listeners
+    window.addEventListener('resize', debouncedResize);
+    
+    // Clean up
+    return () => {
+      debouncedResize.cancel();
+      window.removeEventListener('resize', debouncedResize);
+    };
+  }, [setOpen]);
+  
+  // Handle manual toggle
+  const handleToggle = (e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    isManualToggle.current = true;
+    setOpen(prevOpen => !prevOpen);
+    
+    // Reset the manual toggle flag after a short delay to allow for future responsive behavior
+    // This ensures that if the user resizes the window later, the sidebar will respond
+    setTimeout(() => {
+      isManualToggle.current = false;
+    }, 100);
+  };
+
+  // Enhanced debounce helper function with cancel method
+  function debounce<T extends (...args: any[]) => void>(
+    func: T,
+    wait: number
+  ) {
+    let timeout: NodeJS.Timeout | null = null;
+    
+    const debounced = (...args: Parameters<T>) => {
+      const later = () => {
+        timeout = null;
+        func(...args);
+      };
+      
+      if (timeout !== null) {
+        clearTimeout(timeout);
+      }
+      
+      timeout = setTimeout(later, wait);
+    };
+    
+    debounced.cancel = () => {
+      if (timeout !== null) {
+        clearTimeout(timeout);
+        timeout = null;
+      }
+    };
+    
+    return debounced;
+  }
 
   // --- DRAG STATE FOR MOBILE SIDEBAR ---
   const [dragX, setDragX] = React.useState(0);
@@ -102,19 +194,11 @@ const AppSidebar = () => {
     return (
       <div
         ref={sidebarRef}
+        className="fixed top-0 left-0 h-full w-[280px] bg-background z-50 shadow-lg overflow-hidden"
         style={{
-          position: 'fixed',
-          top: 0,
-          left: 0,
-          height: '100%',
-          width: '75vw',
-          maxWidth: 320,
-          background: 'var(--background, #181a20)',
-          zIndex: 1000,
-          boxShadow: '2px 0 8px rgba(0,0,0,0.15)',
-          transform: `translateX(${dragX}px)`,
-          transition: dragging ? 'none' : 'transform 0.25s cubic-bezier(.4,0,.2,1)',
-          display: openMobile ? 'block' : 'none',
+          transform: openMobile ? `translateX(${Math.min(0, dragX)}px)` : 'translateX(-100%)',
+          transition: dragging ? 'none' : 'transform 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
+          display: 'block',
         }}
         onTouchStart={handleTouchStart}
         onTouchMove={handleTouchMove}
@@ -154,23 +238,25 @@ const AppSidebar = () => {
 
   // --- DESKTOP SIDEBAR ---
   return (
-    <Sidebar 
-      className={`border-r ${!open ? "w-14" : "w-60"} hidden md:flex flex-col`}
-      collapsible="icon"
-    >
-      <div>
-        <SidebarTrigger className="m-2 self-end" />
-        
+    <div className="h-full">
+      <Sidebar
+        className={cn(
+          "h-full bg-background border-r transition-all duration-300 ease-in-out flex flex-col overflow-hidden group/sidebar",
+          "w-64"
+        )}
+        collapsible="icon"
+      >
+      <div className="flex-1 overflow-y-auto overflow-x-hidden">
+        <SidebarTrigger className="m-2 self-end" onClick={handleToggle} />
         <SidebarContent>
           <div className={`mb-8 px-3 ${!open ? "hidden" : "block"}`}>
             <h2 className="text-2xl font-bold text-invoice">AiFaktura</h2>
             <p className="text-xs text-muted-foreground">System Faktur</p>
           </div>
-          
           <SidebarGroup>
             <SidebarGroupContent>
               <SidebarMenu>
-                {navItems.map((item, index) => (
+                {navItems.map((item) => (
                   <React.Fragment key={item.path}>
                     <SidebarMenuItem>
                       <SidebarMenuButton asChild>
@@ -195,10 +281,11 @@ const AppSidebar = () => {
           </SidebarGroup>
         </SidebarContent>
       </div>
-      <div className="mt-auto">
-        <UserMenuFooter isOpen={open} />
-      </div>
-    </Sidebar>
+        <div className="mt-auto border-t border-border">
+          <UserMenuFooter isOpen={open} />
+        </div>
+      </Sidebar>
+    </div>
   );
 };
 
