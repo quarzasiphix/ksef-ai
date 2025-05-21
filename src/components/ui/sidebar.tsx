@@ -65,6 +65,27 @@ const SidebarProvider = React.forwardRef<
     },
     ref
   ) => {
+    // Add transition class to html element when sidebar is toggling
+    React.useEffect(() => {
+      const html = document.documentElement;
+      html.classList.add('sidebar-transition');
+      
+      // Remove the class after transition ends
+      const handleTransitionEnd = () => {
+        setTimeout(() => {
+          html.classList.remove('sidebar-transition');
+        }, 100); // Small delay to ensure smooth transition
+      };
+      
+      // Add transition end event listener
+      html.addEventListener('transitionend', handleTransitionEnd);
+      
+      return () => {
+        // Cleanup
+        html.removeEventListener('transitionend', handleTransitionEnd);
+        html.classList.remove('sidebar-transition');
+      };
+    }, []);
     const isMobile = useIsMobile()
     const [openMobile, setOpenMobile] = React.useState(false)
 
@@ -89,9 +110,24 @@ const SidebarProvider = React.forwardRef<
 
     // Helper to toggle the sidebar.
     const toggleSidebar = React.useCallback(() => {
+      // Add transition class when toggling
+      const html = document.documentElement;
+      html.classList.add('sidebar-transition');
+      
+      // Remove the class after transition ends
+      const handleTransitionEnd = () => {
+        setTimeout(() => {
+          html.classList.remove('sidebar-transition');
+        }, 100);
+      };
+      
+      // Add transition end event listener
+      html.addEventListener('transitionend', handleTransitionEnd, { once: true });
+      
+      // Toggle the sidebar
       return isMobile
         ? setOpenMobile((open) => !open)
-        : setOpen((open) => !open)
+        : setOpen((open) => !open);
     }, [isMobile, setOpen, setOpenMobile])
 
     // Adds a keyboard shortcut to toggle the sidebar.
@@ -139,7 +175,7 @@ const SidebarProvider = React.forwardRef<
               } as React.CSSProperties
             }
             className={cn(
-              "group/sidebar-wrapper flex min-h-svh w-full has-[[data-variant=inset]]:bg-sidebar",
+              "group/sidebar-wrapper flex min-h-svh w-full has-[[data-variant=inset]]:bg-sidebar overflow-x-hidden",
               className
             )}
             ref={ref}
@@ -213,11 +249,15 @@ const Sidebar = React.forwardRef<
     return (
       <div
         ref={ref}
-        className="group peer hidden md:block text-sidebar-foreground"
+        className="group peer hidden md:block text-sidebar-foreground overflow-hidden"
         data-state={state}
         data-collapsible={state === "collapsed" ? collapsible : ""}
         data-variant={variant}
         data-side={side}
+        style={{
+          transition: 'all 0.2s ease-in-out',
+          willChange: 'width, transform',
+        }}
       >
         {/* This is what handles the sidebar gap on desktop */}
         <div
@@ -242,11 +282,19 @@ const Sidebar = React.forwardRef<
               : "group-data-[collapsible=icon]:w-[--sidebar-width-icon] group-data-[side=left]:border-r group-data-[side=right]:border-l",
             className
           )}
+          style={{
+            overflow: 'hidden',
+            willChange: 'transform, width',
+            backfaceVisibility: 'hidden',
+            WebkitBackfaceVisibility: 'hidden',
+            WebkitTransform: 'translateZ(0)',
+            transform: 'translateZ(0)',
+          }}
           {...props}
         >
           <div
             data-sidebar="sidebar"
-            className="flex h-full w-full flex-col bg-sidebar group-data-[variant=floating]:rounded-lg group-data-[variant=floating]:border group-data-[variant=floating]:border-sidebar-border group-data-[variant=floating]:shadow"
+            className="flex h-full w-full flex-col bg-sidebar group-data-[variant=floating]:rounded-lg group-data-[variant=floating]:border group-data-[variant=floating]:border-sidebar-border group-data-[variant=floating]:shadow overflow-hidden"
           >
             {children}
           </div>

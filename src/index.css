@@ -3,6 +3,17 @@
 @tailwind components;
 @tailwind utilities;
 
+/* Prevent horizontal scrollbar during sidebar transitions */
+html.sidebar-transition {
+  overflow-x: hidden;
+  width: 100%;
+}
+
+html.sidebar-transition body {
+  overflow-x: hidden;
+  width: 100%;
+}
+
 @layer base {
   :root {
     --background: 0 0% 100%;
