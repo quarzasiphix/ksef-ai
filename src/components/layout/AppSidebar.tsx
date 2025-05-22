@@ -84,13 +84,16 @@ const AppSidebar = () => {
       <div className="flex flex-col h-[calc(100vh-4rem)]">
         <div className="flex-1 overflow-y-auto scrollbar-none">
           <SidebarContent>
-            <SidebarMenu className="space-y-1">
+            <SidebarMenu className="space-y-0.5">
               <SidebarMenuButton asChild>
                 <NavLink to="/" end isExpanded={state === "expanded"}>
                   <SidebarMenuItem className="h-full p-0">
                     <div className="flex items-center h-full">
-                      <LayoutDashboard className="h-4 w-4" />
-                      {state === "expanded" && <span className="ml-2">Dashboard</span>}
+                      <LayoutDashboard className={cn(
+                        "h-4 w-4",
+                        state === "expanded" && "text-white"
+                      )} />
+                      {state === "expanded" && <span className="ml-2 text-white">Dashboard</span>}
                     </div>
                   </SidebarMenuItem>
                 </NavLink>
@@ -100,8 +103,11 @@ const AppSidebar = () => {
                 <NavLink to="/income" isExpanded={state === "expanded"}>
                   <SidebarMenuItem className="h-full p-0">
                     <div className="flex items-center h-full">
-                      <Receipt className="h-4 w-4" />
-                      {state === "expanded" && <span className="ml-2">Przychody</span>}
+                      <Receipt className={cn(
+                        "h-4 w-4",
+                        state === "expanded" && "text-white"
+                      )} />
+                      {state === "expanded" && <span className="ml-2 text-white">Przychody</span>}
                     </div>
                   </SidebarMenuItem>
                 </NavLink>
@@ -111,8 +117,11 @@ const AppSidebar = () => {
                 <NavLink to="/expense" isExpanded={state === "expanded"}>
                   <SidebarMenuItem className="h-full p-0">
                     <div className="flex items-center h-full">
-                      <Receipt className="h-4 w-4" />
-                      {state === "expanded" && <span className="ml-2">Wydatki</span>}
+                      <Receipt className={cn(
+                        "h-4 w-4",
+                        state === "expanded" && "text-white"
+                      )} />
+                      {state === "expanded" && <span className="ml-2 text-white">Wydatki</span>}
                     </div>
                   </SidebarMenuItem>
                 </NavLink>
@@ -122,8 +131,11 @@ const AppSidebar = () => {
                 <NavLink to="/customers" isExpanded={state === "expanded"}>
                   <SidebarMenuItem className="h-full p-0">
                     <div className="flex items-center h-full">
-                      <Users className="h-4 w-4" />
-                      {state === "expanded" && <span className="ml-2">Kontrahenci</span>}
+                      <Users className={cn(
+                        "h-4 w-4",
+                        state === "expanded" && "text-white"
+                      )} />
+                      {state === "expanded" && <span className="ml-2 text-white">Kontrahenci</span>}
                     </div>
                   </SidebarMenuItem>
                 </NavLink>
@@ -133,8 +145,11 @@ const AppSidebar = () => {
                 <NavLink to="/products" isExpanded={state === "expanded"}>
                   <SidebarMenuItem className="h-full p-0">
                     <div className="flex items-center h-full">
-                      <Package className="h-4 w-4" />
-                      {state === "expanded" && <span className="ml-2">Produkty</span>}
+                      <Package className={cn(
+                        "h-4 w-4",
+                        state === "expanded" && "text-white"
+                      )} />
+                      {state === "expanded" && <span className="ml-2 text-white">Produkty</span>}
                     </div>
                   </SidebarMenuItem>
                 </NavLink>
@@ -144,8 +159,11 @@ const AppSidebar = () => {
                 <NavLink to="/settings" isExpanded={state === "expanded"}>
                   <SidebarMenuItem className="h-full p-0">
                     <div className="flex items-center h-full">
-                      <Settings className="h-4 w-4" />
-                      {state === "expanded" && <span className="ml-2">Ustawienia</span>}
+                      <Settings className={cn(
+                        "h-4 w-4",
+                        state === "expanded" && "text-white"
+                      )} />
+                      {state === "expanded" && <span className="ml-2 text-white">Ustawienia</span>}
                     </div>
                   </SidebarMenuItem>
                 </NavLink>
@@ -207,9 +225,9 @@ const NavLink = ({
   return (
     <div
       className={cn(
-        "flex items-center h-10 rounded-md transition-colors",
+        "flex items-center h-9 rounded-md transition-colors cursor-pointer",
         isActive
-          ? "bg-primary text-primary-foreground"
+          ? "bg-primary text-white"
           : "hover:bg-muted"
       )}
       onClick={() => navigate(to)}
