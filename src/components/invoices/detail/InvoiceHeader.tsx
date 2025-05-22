@@ -41,7 +41,7 @@ export const InvoiceHeader: React.FC<InvoiceHeaderProps> = ({
   handleGeneratePdf,
   handleSharePdf,
   canSharePdf,
-  transactionType = 'income' // Default to 'income' for backward compatibility
+  transactionType = 'income'
 }) => {
   const isMobile = useIsMobile();
   const navigate = useNavigate();
@@ -87,16 +87,18 @@ export const InvoiceHeader: React.FC<InvoiceHeaderProps> = ({
           <FilePlus className="h-3.5 w-3.5" />
           <span className="hidden sm:inline">Duplikat</span>
         </Button>
-        <Button 
-          variant="outline" 
-          className="flex items-center gap-1 text-xs" 
-          size={isMobile ? "sm" : "sm"}
-          onClick={handleGeneratePdf}
-          disabled={pdfLoading}
-        >
-          <FileDown className="h-3.5 w-3.5" />
-          <span className="hidden sm:inline">PDF</span>
-        </Button>
+        {!isMobile && (
+          <Button 
+            variant="outline" 
+            className="flex items-center gap-1 text-xs" 
+            size={isMobile ? "sm" : "sm"}
+            onClick={handleGeneratePdf}
+            disabled={pdfLoading}
+          >
+            <FileDown className="h-3.5 w-3.5" />
+            <span className="hidden sm:inline">PDF</span>
+          </Button>
+        )}
         {(canSharePdf || Capacitor.getPlatform() === 'android' || isMobile) && (
           <Button 
             variant="outline" 
@@ -109,6 +111,7 @@ export const InvoiceHeader: React.FC<InvoiceHeaderProps> = ({
             <span className="hidden sm:inline">Udostępnij</span>
           </Button>
         )}
+
         <Button variant="outline" className="flex items-center gap-1 text-xs" size={isMobile ? "sm" : "sm"} asChild>
           <Link to={transactionType === 'income' ? `/income/${id}/edit` : `/expense/${id}/edit`}>
             <Pencil className="h-3.5 w-3.5" />

@@ -5,52 +5,60 @@ import html2canvas from 'html2canvas';
 import { Capacitor } from '@capacitor/core';
 import { Filesystem, Directory, Encoding } from '@capacitor/filesystem';
 import { Share } from '@capacitor/share';
-import { Invoice, InvoiceType } from "@/types";
-import { useGlobalData } from "@/hooks/use-global-data";
+import { Invoice, InvoiceType, BusinessProfile, Customer } from "@/types";
+import { useQuery } from "@tanstack/react-query";
+import { getInvoice } from "@/integrations/supabase/repositories/invoiceRepository";
+import { getBusinessProfileById } from "@/integrations/supabase/repositories/businessProfileRepository";
+import { getCustomerById } from "@/integrations/supabase/repositories/customerRepository";
 import { InvoiceHeader } from "@/components/invoices/detail/InvoiceHeader";
 import { InvoiceDetailsCard } from "@/components/invoices/detail/InvoiceDetailsCard";
 import { InvoiceItemsCard } from "@/components/invoices/detail/InvoiceItemsCard";
-import ContractorCard, { ContractorData } from "@/components/invoices/detail/ContractorCard";
+import ContractorCard from "@/components/invoices/detail/ContractorCard";
 import { InvoicePdfTemplate } from '@/components/invoices/pdf/InvoicePdfTemplate';
 import TotalsSummary from "@/components/invoices/detail/TotalsSummary";
 import { CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { ArrowLeft, Pencil, Plus } from "lucide-react";
+import { generateElementPdf, getInvoiceFileName } from '@/lib/pdf-utils';
 
 interface InvoiceDetailProps {
   type: 'income' | 'expense';
 }
 
 const InvoiceDetail: React.FC<InvoiceDetailProps> = ({ type }) => {
-  // All hooks must be called unconditionally at the top level
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const containerRef = useRef<HTMLDivElement>(null);
   const printRef = useRef<HTMLDivElement>(null);
-  
-  // State hooks - all state declarations at the top
+
+  // State hooks
   const [pdfLoading, setPdfLoading] = useState(false);
   const [canSharePdf, setCanSharePdf] = useState(false);
-  const [savedPdfUri, setSavedPdfUri] = useState<string | null>(null);
   const [isStickyVisible, setIsStickyVisible] = useState(false);
-  
-  // Data hooks
-  const { invoices, businessProfiles, customers } = useGlobalData();
-  
-  // Memoized values - calculate these first
-  const selectedInvoice = React.useMemo(() => {
-    if (!id || !invoices.data) return null;
-    return invoices.data.find(invoice => 
-      invoice.id === id && 
-      (type === 'income' ? invoice.transactionType === 'income' : invoice.transactionType === 'expense')
-    ) || null;
-  }, [id, invoices.data, type]);
 
-  // Derived state - use useMemo to prevent unnecessary recalculations
-  const { isLoading, error } = React.useMemo(() => ({
-    isLoading: invoices.isLoading || businessProfiles.isLoading || customers.isLoading,
-    error: invoices.error || businessProfiles.error || customers.error
-  }), [invoices, businessProfiles, customers]);
+  // Fetch the invoice (with items) directly
+  const { data: selectedInvoice, isLoading: isLoadingInvoice, error: invoiceError } = useQuery({
+    queryKey: ['invoice', id],
+    queryFn: () => getInvoice(id!),
+    enabled: !!id
+  });
+
+  // Fetch the full business profile for the seller
+  const { data: sellerProfile, isLoading: isLoadingSeller, error: sellerError } = useQuery({
+    queryKey: ['businessProfile', selectedInvoice?.businessProfileId],
+    queryFn: () => getBusinessProfileById(selectedInvoice!.businessProfileId),
+    enabled: !!selectedInvoice?.businessProfileId,
+  });
+
+  // Fetch the full customer profile for the buyer
+  const { data: buyerCustomer, isLoading: isLoadingBuyer, error: buyerError } = useQuery({
+    queryKey: ['customer', selectedInvoice?.customerId],
+    queryFn: () => getCustomerById(selectedInvoice!.customerId!),
+    enabled: !!selectedInvoice?.customerId,
+  });
+
+  const isLoading = isLoadingInvoice || isLoadingSeller || isLoadingBuyer;
+  const error = invoiceError || sellerError || buyerError;
 
   // PDF sharing capability check
   useEffect(() => {
@@ -63,21 +71,18 @@ const InvoiceDetail: React.FC<InvoiceDetailProps> = ({ type }) => {
   useEffect(() => {
     const header = document.querySelector('header');
     if (!header) return;
-    
     const headerHeight = header.offsetHeight;
-    
     const handleScroll = () => {
       if (containerRef.current) {
         const scrollPosition = window.scrollY;
         setIsStickyVisible(scrollPosition > headerHeight + 10);
       }
     };
-
     window.addEventListener('scroll', handleScroll, { passive: true });
     handleScroll(); // Initial check
     return () => window.removeEventListener('scroll', handleScroll);
   }, []);
-  
+
   // Back button handler for mobile
   useEffect(() => {
     const handleBackButton = (e: BeforeUnloadEvent) => {
@@ -86,37 +91,14 @@ const InvoiceDetail: React.FC<InvoiceDetailProps> = ({ type }) => {
         navigate(-1);
       }
     };
-
     window.addEventListener('beforeunload', handleBackButton);
     return () => window.removeEventListener('beforeunload', handleBackButton);
   }, [navigate]);
-
-  // Debug effect - only in development
-  useEffect(() => {
-    if (process.env.NODE_ENV === 'development') {
-      if (selectedInvoice) {
-        console.log('Selected Invoice:', selectedInvoice);
-        console.log('All Invoices:', invoices.data);
-      }
-      console.log('Loading States:', { 
-        invoices: invoices.isLoading, 
-        businessProfiles: businessProfiles.isLoading, 
-        customers: customers.isLoading 
-      });
-      console.log('Errors:', { 
-        invoices: invoices.error, 
-        businessProfiles: businessProfiles.error, 
-        customers: customers.error 
-      });
-    }
-  }, [selectedInvoice, invoices, businessProfiles, customers]);
 
   // Early returns after all hooks
   if (!id) {
     return <div className="p-4">Brak ID faktury</div>;
   }
-  
-  // Handle loading state
   if (isLoading) {
     return (
       <div className="flex flex-col items-center justify-center min-h-[50vh] space-y-4">
@@ -125,8 +107,6 @@ const InvoiceDetail: React.FC<InvoiceDetailProps> = ({ type }) => {
       </div>
     );
   }
-
-  // Handle errors from any of the data sources
   if (error) {
     console.error('Error loading invoice data:', error);
     return (
@@ -147,168 +127,88 @@ const InvoiceDetail: React.FC<InvoiceDetailProps> = ({ type }) => {
       </div>
     );
   }
-
-  // Handle missing invoice
   if (!selectedInvoice) {
-    const hasInvoices = invoices.data && invoices.data.length > 0;
-    const invoiceTypeText = type === 'income' ? 'przychodowa' : 'kosztowa';
-    
-    return (
-      <div className="flex flex-col items-center justify-center min-h-[50vh] p-6 text-center">
-        <div className="max-w-md w-full bg-card p-6 rounded-lg border">
-          <h2 className="text-xl font-semibold mb-3">
-            {hasInvoices ? 'Nie znaleziono faktury' : 'Brak faktur'}
-          </h2>
-          <p className="text-muted-foreground mb-6">
-            {hasInvoices 
-              ? `Faktura ${invoiceTypeText} o podanym ID nie istnieje lub nie masz do niej dostępu.`
-              : `Nie znaleziono żadnych faktur ${invoiceTypeText} w systemie.`}
-          </p>
-          <div className="flex flex-col sm:flex-row gap-3 justify-center">
-            <Button 
-              variant="outline" 
-              onClick={() => navigate(type === 'income' ? '/income' : '/expense')}
-              className="flex-1 sm:flex-none"
-            >
-              <ArrowLeft className="mr-2 h-4 w-4" />
-              Wróć do listy {type === 'income' ? 'przychodów' : 'kosztów'}
-            </Button>
-            <Button 
-              onClick={() => navigate(`/${type}/new`)}
-              className="flex-1 sm:flex-none"
-            >
-              <Plus className="mr-2 h-4 w-4" />
-              Dodaj nową fakturę
-            </Button>
-          </div>
+    return <div className="flex flex-col items-center justify-center min-h-[50vh] p-6 text-center">
+      <div className="max-w-md w-full bg-card p-6 rounded-lg border">
+        <h2 className="text-xl font-semibold mb-3">Nie znaleziono faktury</h2>
+        <p className="text-muted-foreground mb-6">Faktura o podanym ID nie istnieje lub nie masz do niej dostępu.</p>
+        <div className="flex flex-col sm:flex-row gap-3 justify-center">
+          <Button 
+            variant="outline" 
+            onClick={() => navigate(type === 'income' ? '/income' : '/expense')}
+            className="flex-1 sm:flex-none"
+          >
+            <ArrowLeft className="mr-2 h-4 w-4" />
+            Wróć do listy {type === 'income' ? 'przychodów' : 'kosztów'}
+          </Button>
+          <Button 
+            onClick={() => navigate(`/${type}/new`)}
+            className="flex-1 sm:flex-none"
+          >
+            <Plus className="mr-2 h-4 w-4" />
+            Dodaj nową fakturę
+          </Button>
         </div>
       </div>
-    );
+    </div>;
   }
 
-  // Handle missing business profiles - moved after all hooks
-  if (!businessProfiles?.data?.length) {
-    return <div>Błąd: Brak danych profilu firmy.</div>;
-  }
+  // Prepare seller and buyer data for contractor cards
+  // Use data from the newly fetched sellerProfile and buyerCustomer
+  const sellerCardData = sellerProfile ? {
+    name: selectedInvoice.businessName || sellerProfile.name, // Prioritize name from invoice if exists
+    ...sellerProfile,
+    bankAccount: sellerProfile.bankAccount ?? '',
+  } : {
+    name: selectedInvoice.businessName || 'Brak danych sprzedawcy',
+  } as any; // Cast as any for minimal data case
 
-  // Handle missing customers - moved after all hooks
-  if (!customers?.data?.length) {
-    return <div>Błąd: Brak danych klienta.</div>;
-  }
+  const buyerCardData = buyerCustomer ? {
+    name: selectedInvoice.customerName || buyerCustomer.name, // Prioritize name from invoice if exists
+    ...buyerCustomer,
+  } : {
+    name: selectedInvoice.customerName || 'Brak danych nabywcy',
+  } as any; // Cast as any for minimal data case
 
-  const generatePdf = async (): Promise<string | null> => {
+  const handleGeneratePdf = async (): Promise<string | null> => {
+    if (!printRef.current) return null;
+    
+    setPdfLoading(true);
     try {
-      setPdfLoading(true);
-      const canvas = await html2canvas(printRef.current!, {
-        scale: 2,
-        logging: false,
-        useCORS: true,
-        onclone: (clonedDoc) => {
-          const clonedPrintRef = clonedDoc.querySelector('#print-template');
-          if (clonedPrintRef) {
-            (clonedPrintRef as HTMLElement).style.display = 'block';
-          }
-        }
-      });
-
-      const imgData = canvas.toDataURL('image/png');
-      const doc = new jsPDF('p', 'mm', 'a4');
-      const imgProps = doc.getImageProperties(imgData);
-      const pdfWidth = doc.internal.pageSize.getWidth();
-      const pdfHeight = (imgProps.height * pdfWidth) / imgProps.width;
-
-      doc.addImage(imgData, 'PNG', 0, 0, pdfWidth, pdfHeight);
-
-      const pdfBlob = new Blob([doc.output('blob')], { type: 'application/pdf' });
-      const pdfUri = await Filesystem.writeFile({
-        path: 'faktura.pdf',
-        data: pdfBlob,
-        directory: Directory.Cache,
-        encoding: Encoding.UTF8
-      });
-
-      setSavedPdfUri(pdfUri.uri);
-      setCanSharePdf(true);
-      return pdfUri.uri;
-    } catch (err) {
-      console.error('Error generating PDF:', err);
+      const fileName = getInvoiceFileName(selectedInvoice);
+      const success = await generateElementPdf(printRef.current, { filename: fileName });
+      return success ? fileName : null;
+    } catch (error) {
+      console.error('Error generating PDF:', error);
       return null;
     } finally {
       setPdfLoading(false);
     }
   };
 
-  const handleSharePdf = async () => {
-    if (!savedPdfUri) return;
-
+  const handleSharePdf = async (): Promise<void> => {
+    if (!printRef.current) return;
+    
+    setPdfLoading(true);
     try {
-      await Share.share({
-        url: savedPdfUri,
-        title: 'Podziel się fakturą'
-      });
-    } catch (err) {
-      console.error('Error sharing PDF:', err);
-    }
-  };
-
-  const handleGeneratePdf = async (): Promise<string> => {
-    const uri = await generatePdf();
-    if (uri) {
+      const fileName = getInvoiceFileName(selectedInvoice);
+      
       if (Capacitor.isNativePlatform()) {
-        // On native platforms, show share sheet directly
-        await handleSharePdf();
+        // For mobile platforms, generate PDF and share
+        const success = await generateElementPdf(printRef.current, { filename: fileName });
+        if (success) {
+          // The PDF will be automatically shared on mobile platforms
+          // No need to do anything else as the PDF is already in RAM
+        }
       } else {
-        // On web, show success message
-        alert('PDF został wygenerowany i zapisany w pamięci podręcznej.');
+        // For desktop, just download
+        await handleGeneratePdf();
       }
-      return uri;
-    } else {
-      const errorMsg = 'Wystąpił błąd podczas generowania pliku PDF.';
-      alert(errorMsg);
-      throw new Error(errorMsg);
+    } catch (error) {
+      console.error('Error sharing PDF:', error);
+    } finally {
+      setPdfLoading(false);
     }
-  };
-
-
-
-
-  // Prepare data for ContractorCards
-  const sellerProfile = businessProfiles.data.find(bp => bp.id === selectedInvoice.businessProfileId);
-  const buyerProfile = customers.data.find(c => c.id === selectedInvoice.customerId);
-
-  const sellerCardData: ContractorData = sellerProfile ? {
-    name: sellerProfile.name || selectedInvoice.businessName || 'Brak danych sprzedawcy',
-    nip: sellerProfile.taxId,
-    street: sellerProfile.address, 
-    postalCode: sellerProfile.postalCode,
-    city: sellerProfile.city,
-    email: sellerProfile.email || undefined,
-    phone: sellerProfile.phone || undefined,
-    bankAccount: sellerProfile.bankAccount || undefined,
-  } : { 
-    name: selectedInvoice.businessName || 'Brak danych sprzedawcy',
-  };
-
-  const buyerCardData: ContractorData = buyerProfile ? {
-    name: buyerProfile.name || selectedInvoice.customerName || 'Brak danych kupującego',
-    nip: buyerProfile.taxId,
-    street: buyerProfile.address,
-    postalCode: buyerProfile.postalCode,
-    city: buyerProfile.city,
-    email: buyerProfile.email || undefined,
-    phone: buyerProfile.phone || undefined,
-  } : {
-    name: selectedInvoice.customerName || 'Brak danych kupującego',
-  };
-
-  // Function to get the correct back URL based on the invoice type
-  const getBackUrl = () => {
-    return type === 'income' ? '/income' : '/expense';
-  };
-
-  // Function to get the correct edit URL based on the invoice type
-  const getEditUrl = () => {
-    return `/${type}/${id}/edit`;
   };
 
   return (
@@ -319,18 +219,17 @@ const InvoiceDetail: React.FC<InvoiceDetailProps> = ({ type }) => {
           <Button
             variant="ghost"
             size="sm"
-            onClick={() => navigate(getBackUrl())}
+            onClick={() => navigate(-1)}
             className="flex items-center gap-2"
           >
             <ArrowLeft className="h-4 w-4" />
             <span className="hidden sm:inline">Wróć</span>
           </Button>
-          
           <div className="flex items-center gap-2">
             <Button
               variant="outline"
               size="sm"
-              onClick={() => navigate(getEditUrl())}
+              onClick={() => navigate(`/${type}/${selectedInvoice.id}/edit`)}
               className="flex items-center gap-2"
             >
               <Pencil className="h-4 w-4" />
@@ -361,27 +260,15 @@ const InvoiceDetail: React.FC<InvoiceDetailProps> = ({ type }) => {
                 sellDate={selectedInvoice.sellDate}
                 paymentMethod={selectedInvoice.paymentMethod}
                 isPaid={selectedInvoice.isPaid || false}
-                ksef={selectedInvoice.ksef}
+                ksef={selectedInvoice.ksef ?? undefined}
                 comments={selectedInvoice.comments}
                 type={selectedInvoice.type}
                 bankAccount={sellerCardData?.bankAccount}
               />
             </div>
-
             <div className="bg-card p-6 rounded-lg border">
               <CardTitle className="text-lg mb-4">Pozycje na dokumencie</CardTitle>
-              <div className="mb-4">
-                <pre className="text-xs bg-muted p-2 rounded overflow-auto max-h-32">
-                  {JSON.stringify({
-                    hasItems: !!selectedInvoice.items,
-                    itemsCount: Array.isArray(selectedInvoice.items) ? selectedInvoice.items.length : 'not an array',
-                    itemsType: typeof selectedInvoice.items,
-                    itemsSample: Array.isArray(selectedInvoice.items) && selectedInvoice.items.length > 0 
-                      ? selectedInvoice.items[0] 
-                      : 'no items'
-                  }, null, 2)}
-                </pre>
-              </div>
+
               <InvoiceItemsCard
                 items={Array.isArray(selectedInvoice.items) ? selectedInvoice.items : []}
                 totalNetValue={selectedInvoice.totalNetValue || 0}
@@ -391,7 +278,6 @@ const InvoiceDetail: React.FC<InvoiceDetailProps> = ({ type }) => {
               />
             </div>
           </div>
-
           <div className="xl:block hidden">
             <div className="bg-card p-6 rounded-lg border">
               <CardTitle className="text-lg mb-4">Dane Kontrahentów</CardTitle>
@@ -402,7 +288,6 @@ const InvoiceDetail: React.FC<InvoiceDetailProps> = ({ type }) => {
             </div>
           </div>
         </div>
-        
         {/* Mobile and tablet view for Contractor Cards */}
         <div className="xl:hidden">
           <div className="bg-card p-6 rounded-lg border">
@@ -413,7 +298,6 @@ const InvoiceDetail: React.FC<InvoiceDetailProps> = ({ type }) => {
             </div>
           </div>
         </div>
-
         <div className="bg-card p-6 rounded-lg border">
           <TotalsSummary
             totalNetValue={selectedInvoice.totalNetValue || 0}
@@ -439,8 +323,23 @@ const InvoiceDetail: React.FC<InvoiceDetailProps> = ({ type }) => {
       >
         <InvoicePdfTemplate
           invoice={selectedInvoice}
-          businessProfile={businessProfiles.data.find(bp => bp.id === selectedInvoice.businessProfileId)}
-          customer={customers.data.find(c => c.id === selectedInvoice.customerId)}
+          businessProfile={sellerProfile || {
+            id: selectedInvoice.businessProfileId,
+            name: selectedInvoice.businessName || '',
+            taxId: '',
+            address: '',
+            postalCode: '',
+            city: '',
+            user_id: selectedInvoice.user_id
+          }}
+          customer={buyerCustomer || {
+            id: selectedInvoice.customerId || '',
+            name: selectedInvoice.customerName || '',
+            address: '',
+            postalCode: '',
+            city: '',
+            user_id: selectedInvoice.user_id
+          }}
         />
       </div>
     </div>

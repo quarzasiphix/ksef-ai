@@ -29,6 +29,36 @@ const formatCurrency = (value: number) => {
   }).format(value);
 };
 
+// Format amount in words with proper handling of grosze
+const formatAmountInWords = (amount: number) => {
+  const zlote = Math.floor(amount);
+  const grosze = Math.round((amount - zlote) * 100);
+  
+  let result = toWords(zlote);
+  
+  // Handle złoty forms
+  if (zlote === 1) {
+    result += ' złoty';
+  } else if (zlote % 10 >= 2 && zlote % 10 <= 4 && (zlote % 100 < 10 || zlote % 100 >= 20)) {
+    result += ' złote';
+  } else {
+    result += ' złotych';
+  }
+
+  // Handle grosze
+  if (grosze > 0) {
+    if (grosze === 1) {
+      result += ` ${toWords(grosze)} grosz`;
+    } else if (grosze % 10 >= 2 && grosze % 10 <= 4 && (grosze % 100 < 10 || grosze % 100 >= 20)) {
+      result += ` ${toWords(grosze)} grosze`;
+    } else {
+      result += ` ${toWords(grosze)} groszy`;
+    }
+  }
+  
+  return result;
+};
+
 export function formatPolishDate(date: Date | string | null | undefined) {
   if (!date) return "—";
   try {
@@ -86,16 +116,15 @@ const SCALE = calculateScale();
 
 const pdfStyles: Record<string, React.CSSProperties> = {
   container: {
-    width: '794px', // A4 width at 96dpi
-    minHeight: '1123px', // A4 height at 96dpi
-    margin: '0 auto',
+    width: '100%',
+    minHeight: '100%',
+    margin: 0,
     padding: '40px 32px',
     fontFamily: 'Arial, sans-serif',
     color: '#1a1a1a',
     fontSize: '16px',
     boxSizing: 'border-box',
     backgroundColor: 'white',
-    border: '2px dashed #e5e7eb', // For debugging, remove this later
     pageBreakInside: 'avoid',
     overflow: 'visible',
   },
@@ -188,9 +217,21 @@ export const InvoicePdfTemplate: React.FC<InvoicePdfTemplateProps> = ({ invoice,
   const itemsWithValues = invoice.items.map(calculateItemValues);
   const { totalNetValue, totalVatValue, totalGrossValue } = calculateInvoiceTotals(invoice.items);
 
+  // Format address with postal code and city
+  const formatAddress = (address: string, postalCode: string, city: string) => {
+    return `${address}, ${postalCode} ${city}`;
+  };
+
   return (
-    <div style={{ background: '#fff', margin: 0, padding: 0, width: '794px', height: '1123px', boxSizing: 'border-box' }}>
-      <div style={{ ...pdfStyles.container, width: '100%', height: '100%', boxSizing: 'border-box' }}>
+    <div style={{ 
+      width: '100%', 
+      height: '100%', 
+      margin: 0, 
+      padding: 0, 
+      boxSizing: 'border-box',
+      backgroundColor: 'white'
+    }}>
+      <div style={{ ...pdfStyles.container }}>
         {/* Header & Details Row */}
         <div style={{
           width: '100%',
@@ -238,9 +279,21 @@ export const InvoicePdfTemplate: React.FC<InvoicePdfTemplateProps> = ({ invoice,
               <span style={{ fontSize: 11, color: '#6b7280' }}>NIP:</span>
               <span style={{ fontSize: 13, textAlign: 'right' }}>{businessProfile?.taxId || ''}</span>
             </div>
+            {businessProfile?.regon && (
+              <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 3 }}>
+                <span style={{ fontSize: 11, color: '#6b7280' }}>REGON:</span>
+                <span style={{ fontSize: 13, textAlign: 'right' }}>{businessProfile.regon}</span>
+              </div>
+            )}
             <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 3 }}>
               <span style={{ fontSize: 11, color: '#6b7280' }}>Adres:</span>
-              <span style={{ fontSize: 13, textAlign: 'right' }}>{businessProfile?.address || ''}</span>
+              <span style={{ fontSize: 13, textAlign: 'right' }}>
+                {formatAddress(
+                  businessProfile?.address || '',
+                  businessProfile?.postalCode || '',
+                  businessProfile?.city || ''
+                )}
+              </span>
             </div>
             {businessProfile?.email && (
               <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 3 }}>
@@ -270,7 +323,13 @@ export const InvoicePdfTemplate: React.FC<InvoicePdfTemplateProps> = ({ invoice,
             )}
             <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 3 }}>
               <span style={{ fontSize: 11, color: '#6b7280' }}>Adres:</span>
-              <span style={{ fontSize: 13, textAlign: 'right' }}>{customer?.address || ''}</span>
+              <span style={{ fontSize: 13, textAlign: 'right' }}>
+                {formatAddress(
+                  customer?.address || '',
+                  customer?.postalCode || '',
+                  customer?.city || ''
+                )}
+              </span>
             </div>
             {customer?.email && (
               <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 3 }}>
@@ -345,7 +404,7 @@ export const InvoicePdfTemplate: React.FC<InvoicePdfTemplateProps> = ({ invoice,
             Do zapłaty: <span style={{ color: '#2c2930' }}>{formatCurrency(invoice.totalGrossValue || 0)}</span>
           </div>
           <div style={{ fontSize: '15px', color: '#495057', fontStyle: 'italic' }}>
-            Słownie: {toWords(invoice.totalGrossValue || 0)}, złoty.
+            Słownie: {formatAmountInWords(invoice.totalGrossValue || 0)}
           </div>
 
           {/* Payment Method and Bank Account */}

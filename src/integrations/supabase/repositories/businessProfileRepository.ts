@@ -1,4 +1,3 @@
-
 import { supabase } from "../client";
 import type { BusinessProfile } from "@/types";
 import { queryClient } from "@/App";
@@ -75,6 +74,48 @@ export async function getDefaultBusinessProfile(): Promise<BusinessProfile | nul
   if (!data.user_id) {
     console.error('Business profile found without user_id:', data.id);
     throw new Error('Invalid business profile: missing user_id');
+  }
+
+  return {
+    id: data.id,
+    name: data.name,
+    taxId: data.tax_id,
+    address: data.address,
+    postalCode: data.postal_code,
+    city: data.city,
+    regon: data.regon || undefined,
+    bankAccount: data.bank_account || undefined,
+    email: data.email || undefined,
+    phone: data.phone || undefined,
+    logo: data.logo || undefined,
+    isDefault: data.is_default || false,
+    user_id: data.user_id
+  };
+}
+
+export async function getBusinessProfileById(id: string): Promise<BusinessProfile | null> {
+  const { data, error } = await supabase
+    .from("business_profiles")
+    .select("*")
+    .eq("id", id)
+    .single<BusinessProfileRow>();
+
+  if (error) {
+    if (error.code === "PGRST116") { // No rows returned
+      return null;
+    }
+    console.error("Error fetching business profile by ID:", error);
+    throw error;
+  }
+
+  if (!data) return null; 
+  
+  // We can assume data.user_id exists because of RLS policies in a real app
+  // But adding a check here for type safety / robustness
+  if (!data.user_id) {
+      console.error('Business profile found without user_id:', data.id);
+      // Depending on requirements, you might throw an error or return null
+      throw new Error('Invalid business profile: missing user_id');
   }
 
   return {

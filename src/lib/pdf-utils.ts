@@ -1,104 +1,103 @@
-
 import generatePdf from 'react-to-pdf';
 import { Invoice } from '@/types';
 import { formatPolishDate, formatCurrency } from '@/lib/invoice-utils';
+import { Capacitor } from '@capacitor/core';
+import { Share } from '@capacitor/share';
+import { Filesystem, Directory } from '@capacitor/filesystem';
+import html2canvas from 'html2canvas';
+
+interface PdfOptions {
+  filename?: string;
+  [key: string]: any;
+}
 
 // Options for PDF generation
 const defaultOptions = {
   filename: 'faktura.pdf',
   page: {
-    margin: 20,
+    margin: 0,
     format: 'a4',
+    orientation: 'portrait',
   },
   canvas: {
-    mimeType: 'image/png' as 'image/png', // Type assertion to ensure correct literal type
-    qualityRatio: 1
-  }
-};
-
-// Check if we're running in React Native
-const isReactNative = () => {
-  try {
-    // Check for the existence of navigator.product
-    return typeof navigator !== 'undefined' && navigator.product === 'ReactNative';
-  } catch (e) {
-    return false;
+    mimeType: 'image/jpeg' as 'image/jpeg',
+    qualityRatio: 1,
+    scale: 2,
+    useCORS: true,
+    logging: false,
   }
 };
 
 // Generate PDF from an element
 export const generateElementPdf = async (
   element: HTMLElement, 
-  options = {}
+  options: PdfOptions = {}
 ) => {
   try {
-    if (isReactNative()) {
-      // For React Native, we need to use a different approach
-      return await generatePdfForReactNative(element, options);
+    if (Capacitor.isNativePlatform()) {
+      // For mobile platforms, generate PDF and share
+      const htmlContent = element.outerHTML;
+      const fileName = options.filename || defaultOptions.filename;
+      
+      // Convert HTML to PDF using html2canvas with better quality settings
+      const canvas = await html2canvas(element, {
+        scale: 2,
+        useCORS: true,
+        logging: false,
+        backgroundColor: '#ffffff',
+        width: element.offsetWidth,
+        height: element.offsetHeight,
+      });
+      const imgData = canvas.toDataURL('image/jpeg', 1.0);
+      
+      // Share the PDF
+      await Share.share({
+        title: fileName,
+        text: 'Udostępniam dokument',
+        files: [imgData],
+        dialogTitle: 'Udostępnij dokument'
+      });
+      
+      return true;
     } else {
       // Web browser implementation
-      await generatePdf(
-        () => element, 
-        { ...defaultOptions, ...options }
+      const canvas = await html2canvas(element, {
+        scale: 2,
+        useCORS: true,
+        logging: false,
+        backgroundColor: '#ffffff',
+        width: element.offsetWidth,
+        height: element.offsetHeight,
+      });
+
+      // Create a new jsPDF instance
+      const { jsPDF } = await import('jspdf');
+      const pdf = new jsPDF({
+        orientation: 'portrait',
+        unit: 'px',
+        format: 'a4'
+      });
+
+      // Calculate dimensions to fit the page
+      const imgWidth = pdf.internal.pageSize.getWidth();
+      const imgHeight = (canvas.height * imgWidth) / canvas.width;
+
+      // Add the image to the PDF
+      pdf.addImage(
+        canvas.toDataURL('image/jpeg', 1.0),
+        'JPEG',
+        0,
+        0,
+        imgWidth,
+        imgHeight
       );
+
+      // Save the PDF
+      pdf.save(options.filename || defaultOptions.filename);
       return true;
     }
   } catch (error) {
     console.error('Error generating PDF:', error);
-    return false;
-  }
-};
-
-// React Native specific PDF generation
-async function generatePdfForReactNative(element: HTMLElement, options: any) {
-  try {
-    // Import the necessary modules only in React Native environment
-    const { PermissionsAndroid, Platform } = require('react-native');
-    const RNHTMLtoPDF = require('react-native-html-to-pdf');
-    const FileViewer = require('react-native-file-viewer');
-    const RNFS = require('react-native-fs');
-    
-    // Request write permissions on Android
-    if (Platform.OS === 'android') {
-      const granted = await PermissionsAndroid.request(
-        PermissionsAndroid.PERMISSIONS.WRITE_EXTERNAL_STORAGE,
-        {
-          title: 'Uprawnienia zapisu',
-          message: 'Aplikacja potrzebuje dostępu do pamięci urządzenia, aby zapisać plik PDF.',
-          buttonNeutral: 'Zapytaj później',
-          buttonNegative: 'Anuluj',
-          buttonPositive: 'OK',
-        },
-      );
-      
-      if (granted !== PermissionsAndroid.RESULTS.GRANTED) {
-        console.log('Brak uprawnień do zapisu pliku');
-        return false;
-      }
-    }
-    
-    // Get HTML content from the element
-    const htmlContent = element.outerHTML;
-    
-    // Generate PDF
-    const fileName = options.filename || defaultOptions.filename;
-    const filePath = `${RNFS.DocumentDirectoryPath}/${fileName}`;
-    
-    const result = await RNHTMLtoPDF.convert({
-      html: htmlContent,
-      fileName: fileName.replace('.pdf', ''),
-      directory: 'Documents',
-    });
-    
-    // Open the generated PDF
-    if (result.filePath) {
-      await FileViewer.open(result.filePath);
-      return true;
-    }
-    
-    return false;
-  } catch (error) {
-    console.error('Error generating PDF in React Native:', error);
     return false;
   }
 };

@@ -1,4 +1,3 @@
-
 import { supabase } from "../client";
 import type { Customer } from "@/types";
 
@@ -92,4 +91,35 @@ export async function saveCustomer(customer: Customer): Promise<Customer> {
       user_id: data.user_id // Include user_id in the response
     };
   }
+}
+
+export async function getCustomerById(id: string): Promise<Customer | null> {
+  const { data, error } = await supabase
+    .from("customers")
+    .select("*")
+    .eq("id", id)
+    .single();
+
+  if (error) {
+    if (error.code === "PGRST116") { // No rows returned
+      return null;
+    }
+    console.error("Error fetching customer by ID:", error);
+    throw error;
+  }
+
+  if (!data) return null;
+
+  // The Customer type now includes user_id, so direct mapping should work
+  return {
+    id: data.id,
+    name: data.name,
+    taxId: data.tax_id || undefined,
+    address: data.address,
+    postalCode: data.postal_code,
+    city: data.city,
+    email: data.email || undefined,
+    phone: data.phone || undefined,
+    user_id: data.user_id // user_id should be directly on the data object
+  } as Customer; // Cast to Customer type
 }
