@@ -69,21 +69,43 @@ const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => 
   const [loading, setLoading] = useState(true);
   const queryClient = useQueryClient();
 
-  const handleAuthStateChange = async (_event: string, session: any) => {
-    console.log("AuthProvider - handleAuthStateChange - event:", _event, "session:", session); // Add this
-    if (session) {
-      setUser(session.user);
+  const handleAuthStateChange = React.useCallback(async (_event: string, session: any) => {
+    console.log("AuthProvider - handleAuthStateChange - event:", _event, "session:", session);
+    
+    // Only update state if it's actually different
+    const currentUser = user;
+    const newUser = session?.user || null;
+    
+    // Check if user state actually changed
+    const userChanged = JSON.stringify(currentUser) !== JSON.stringify(newUser);
+    
+    if (!userChanged) {
+      console.log("AuthProvider - User state unchanged, skipping update");
+      return;
+    }
+
+    if (newUser) {
+      console.log("AuthProvider - Setting new user");
+      setUser(newUser);
       localStorage.setItem("sb_session", JSON.stringify(session));
       // Invalidate all queries to force refetch with new user data
       await queryClient.invalidateQueries();
     } else {
+      console.log("AuthProvider - Removing user");
       setUser(null);
       localStorage.removeItem("sb_session");
       // Clear all queries when logging out
       queryClient.clear();
     }
-    console.log("AuthProvider - handleAuthStateChange - END"); // Add this
-  };
+    
+    // Only set loading to false after the initial check
+    if (loading) {
+      console.log("AuthProvider - Initial load complete");
+      setLoading(false);
+    }
+    
+    console.log("AuthProvider - handleAuthStateChange - END");
+  }, [user, loading, queryClient]);
 
   const logout = async () => {
     console.log("AuthProvider - logout - START"); // Add this
@@ -117,30 +139,55 @@ const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => 
   };
 
   useEffect(() => {
-    console.log("AuthProvider - useEffect - START"); // Add this
+    console.log("AuthProvider - useEffect - START");
+    
     // Always check Supabase for a valid session on mount
     const checkSession = async () => {
-      console.log("AuthProvider - useEffect - checkSession - START"); // Add this
-      const { data } = await supabase.auth.getSession();
-      console.log("AuthProvider - useEffect - checkSession - after getSession, data:", data); // Add this
-      await handleAuthStateChange('INITIAL_SESSION', data?.session || null);
-      setLoading(false);
-      console.log("AuthProvider - useEffect - checkSession - END, loading:", false); // Add this
+      console.log("AuthProvider - useEffect - checkSession - START");
+      try {
+        const { data, error } = await supabase.auth.getSession();
+        
+        if (error) {
+          console.error("Error getting session:", error);
+          setLoading(false);
+          return;
+        }
+        
+        console.log("AuthProvider - useEffect - checkSession - after getSession, data:", data);
+        
+        // Only update state if we have a session
+        if (data?.session) {
+          await handleAuthStateChange('INITIAL_SESSION', data.session);
+        } else {
+          // No session, ensure we're in a clean state
+          setUser(null);
+          localStorage.removeItem("sb_session");
+          setLoading(false);
+        }
+      } catch (error) {
+        console.error("Error in checkSession:", error);
+        setLoading(false);
+      }
     };
 
     checkSession();
 
     // Listen to auth state changes (login/logout/refresh)
     if (supabase.auth.onAuthStateChange) {
-      console.log("AuthProvider - useEffect - setting up auth state listener"); // Add this
-      const { data: listener } = supabase.auth.onAuthStateChange(handleAuthStateChange);
+      console.log("AuthProvider - useEffect - setting up auth state listener");
+      const { data: { subscription } } = supabase.auth.onAuthStateChange(
+        (event, session) => {
+          console.log("Auth state changed:", event);
+          handleAuthStateChange(event, session);
+        }
+      );
+      
       return () => {
-        console.log("AuthProvider - useEffect - cleaning up auth state listener"); // Add this
-        listener?.subscription.unsubscribe();
+        console.log("AuthProvider - useEffect - cleaning up auth state listener");
+        subscription?.unsubscribe();
       };
     }
-    console.log("AuthProvider - useEffect - END"); // Add this
-  }, []);
+  }, [handleAuthStateChange]);
 
   console.log("AuthProvider - rendering - loading:", loading, "user:", user); // Add this
   if (loading) {

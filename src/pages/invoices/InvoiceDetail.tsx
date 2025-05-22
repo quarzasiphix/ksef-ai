@@ -370,19 +370,25 @@ const InvoiceDetail: React.FC<InvoiceDetailProps> = ({ type }) => {
 
             <div className="bg-card p-6 rounded-lg border">
               <CardTitle className="text-lg mb-4">Pozycje na dokumencie</CardTitle>
-              {selectedInvoice.items && selectedInvoice.items.length > 0 ? (
-                <InvoiceItemsCard
-                  items={selectedInvoice.items}
-                  totalNetValue={selectedInvoice.totalNetValue || 0}
-                  totalVatValue={selectedInvoice.totalVatValue || 0}
-                  totalGrossValue={selectedInvoice.totalGrossValue || 0}
-                  type={selectedInvoice.type}
-                />
-              ) : (
-                <div className="text-muted-foreground text-center py-8">
-                  <p>Brak pozycji na fakturze</p>
-                </div>
-              )}
+              <div className="mb-4">
+                <pre className="text-xs bg-muted p-2 rounded overflow-auto max-h-32">
+                  {JSON.stringify({
+                    hasItems: !!selectedInvoice.items,
+                    itemsCount: Array.isArray(selectedInvoice.items) ? selectedInvoice.items.length : 'not an array',
+                    itemsType: typeof selectedInvoice.items,
+                    itemsSample: Array.isArray(selectedInvoice.items) && selectedInvoice.items.length > 0 
+                      ? selectedInvoice.items[0] 
+                      : 'no items'
+                  }, null, 2)}
+                </pre>
+              </div>
+              <InvoiceItemsCard
+                items={Array.isArray(selectedInvoice.items) ? selectedInvoice.items : []}
+                totalNetValue={selectedInvoice.totalNetValue || 0}
+                totalVatValue={selectedInvoice.totalVatValue || 0}
+                totalGrossValue={selectedInvoice.totalGrossValue || 0}
+                type={selectedInvoice.type}
+              />
             </div>
           </div>
 

@@ -48,35 +48,49 @@ export const InvoiceItemsCard: React.FC<InvoiceItemsCardProps> = ({
 }) => {
   // Process and validate invoice items
   const safeItems = React.useMemo<ProcessedInvoiceItem[]>(() => {
-    if (process.env.NODE_ENV === 'development') {
-      console.log('Raw items received in InvoiceItemsCard:', items);
-    }
-
+    console.log('=== DEBUG: Raw items received in InvoiceItemsCard ===');
+    console.log('Items type:', typeof items);
+    console.log('Items value:', items);
+    
     // Ensure items is an array
     if (!Array.isArray(items)) {
-      if (process.env.NODE_ENV === 'development') {
-        console.warn('Items is not an array:', items);
+      console.warn('Items is not an array, converting to array');
+      if (items && typeof items === 'object' && !Array.isArray(items)) {
+        // If it's an object but not an array, try to convert it to an array
+        return [items].filter(Boolean).map(processSingleItem);
       }
       return [];
     }
 
-    // Process each item to ensure all required fields are present and properly calculated
-    return items.reduce<ProcessedInvoiceItem[]>((acc, item) => {
+    if (items.length === 0) {
+      console.log('Items array is empty');
+      return [];
+    }
+
+    console.log('Processing items:', items);
+    return items.filter(Boolean).map(processSingleItem);
+    
+    // Helper function to process a single item
+    function processSingleItem(item: any): ProcessedInvoiceItem {
       try {
+        console.log('Processing item:', item);
+        
         // Skip invalid items
         if (!item || typeof item !== 'object') {
           console.warn('Skipping invalid item (not an object):', item);
-          return acc;
+          return createDefaultItem();
         }
 
         const vatRate = toNumberVatRate(item.vatRate);
-
+        const quantity = Number(item.quantity) || 0;
+        const unitPrice = Number(item.unitPrice) || 0;
+        
         // Process each item to ensure it has all required fields
         const processedItem: ProcessedInvoiceItem = {
           id: item.id || `item-${Math.random().toString(36).substr(2, 9)}`,
-          name: item.name || 'Produkt bez nazwy',
-          quantity: Number(item.quantity) || 0,
-          unitPrice: Number(item.unitPrice) || 0,
+          name: item.name || item.description || 'Produkt bez nazwy',
+          quantity: quantity,
+          unitPrice: unitPrice,
           vatRate: vatRate,
           unit: item.unit || 'szt.',
           productId: item.productId,
@@ -86,23 +100,55 @@ export const InvoiceItemsCard: React.FC<InvoiceItemsCardProps> = ({
           ...item // Spread to preserve any additional properties
         };
 
-        // Calculate values using the utility function
-        const calculated = calculateItemValues({
-          ...processedItem,
-          description: processedItem.name // Add required description field
-        });
+        console.log('Processed item before calculation:', processedItem);
 
-        // Update the processed item with calculated values
-        processedItem.totalNetValue = calculated.totalNetValue;
-        processedItem.totalVatValue = calculated.totalVatValue;
-        processedItem.totalGrossValue = calculated.totalGrossValue;
+        try {
+          // Calculate values using the utility function
+          const calculated = calculateItemValues({
+            ...processedItem,
+            description: processedItem.name // Add required description field
+          });
 
-        return [...acc, calculated as ProcessedInvoiceItem];
+          // Update the processed item with calculated values
+          processedItem.totalNetValue = calculated.totalNetValue;
+          processedItem.totalVatValue = calculated.totalVatValue;
+          processedItem.totalGrossValue = calculated.totalGrossValue;
+          
+          console.log('After calculation:', processedItem);
+        } catch (calcError) {
+          console.error('Error in calculateItemValues:', calcError);
+          // Fallback calculation if the utility function fails
+          const netValue = quantity * unitPrice;
+          const vatValue = vatRate === -1 ? 0 : netValue * (vatRate / 100);
+          
+          processedItem.totalNetValue = netValue;
+          processedItem.totalVatValue = vatValue;
+          processedItem.totalGrossValue = netValue + vatValue;
+          
+          console.log('Used fallback calculation:', processedItem);
+        }
+
+        return processedItem;
       } catch (error) {
         console.error('Error processing invoice item:', error, 'Item:', item);
-        return acc;
+        return createDefaultItem();
       }
-    }, []);
+    }
+    
+    // Helper function to create a default item when processing fails
+    function createDefaultItem(): ProcessedInvoiceItem {
+      return {
+        id: `item-${Math.random().toString(36).substr(2, 9)}`,
+        name: 'Nieprawidłowa pozycja',
+        quantity: 0,
+        unitPrice: 0,
+        vatRate: 0,
+        unit: 'szt.',
+        totalNetValue: 0,
+        totalVatValue: 0,
+        totalGrossValue: 0
+      };
+    }
   }, [items]);
   
   const isMobile = useIsMobile();
