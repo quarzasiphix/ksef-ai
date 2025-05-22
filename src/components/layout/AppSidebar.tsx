@@ -1,4 +1,4 @@
-import React, { useEffect } from "react";
+import React, { useEffect, useCallback } from "react";
 import { NavLink, useLocation, useNavigate } from "react-router-dom";
 import { useAuth } from "@/App";
 import { Sidebar, 
@@ -33,15 +33,50 @@ const AppSidebar = () => {
   const [dragging, setDragging] = React.useState(false);
   const dragStartX = React.useRef(0);
   const sidebarRef = React.useRef<HTMLDivElement>(null);
+  const { state, setState } = useSidebar();
+  const lastWidth = React.useRef(window.innerWidth);
+  const isInitialMount = React.useRef(true);
+  const isManualToggle = React.useRef(false);
 
-  // Handle mobile detection
+  // Handle resize events
+  const handleResize = useCallback(() => {
+    const currentWidth = window.innerWidth;
+    const previousWidth = lastWidth.current;
+    
+    // Only trigger if width crosses the 1400px threshold and it's not the initial mount
+    // and it's not a manual toggle
+    if (!isInitialMount.current && !isManualToggle.current) {
+      if (previousWidth >= 1400 && currentWidth < 1400) {
+        setState("collapsed");
+      } else if (previousWidth < 1400 && currentWidth >= 1400) {
+        setState("expanded");
+      }
+    }
+    
+    // Update last width
+    lastWidth.current = currentWidth;
+    
+    // Update mobile state
+    setIsMobile(currentWidth < 768);
+  }, [setState]);
+
+  // Add resize listener
   useEffect(() => {
-    const handleResize = () => {
-      setIsMobile(window.innerWidth < 768);
-    };
     window.addEventListener('resize', handleResize);
+    // Set initial mount to false after first render
+    isInitialMount.current = false;
     return () => window.removeEventListener('resize', handleResize);
-  }, []);
+  }, [handleResize]);
+
+  // Handle manual toggle
+  const handleToggle = useCallback(() => {
+    isManualToggle.current = true;
+    setState(state === "expanded" ? "collapsed" : "expanded");
+    // Reset manual toggle flag after a short delay
+    setTimeout(() => {
+      isManualToggle.current = false;
+    }, 100);
+  }, [setState, state]);
 
   // Touch event handlers for mobile
   const handleTouchStart = (e: React.TouchEvent) => {
@@ -102,7 +137,7 @@ const AppSidebar = () => {
 
   const SidebarContent = () => (
     <>
-      <div className="flex-shrink-0 mb-8 px-3 pt-4">
+      <div className={cn("flex-shrink-0 mb-8 px-3 pt-4", state === "collapsed" && "hidden")}>
         <h2 className="text-2xl font-bold text-invoice">AiFaktura</h2>
         <p className="text-xs text-muted-foreground">System Faktur</p>
       </div>
@@ -117,11 +152,14 @@ const AppSidebar = () => {
                       <NavLink
                         to={item.path}
                         end={item.path === "/"}
-                        className={getNavClassName}
+                        className={cn(
+                          getNavClassName,
+                          state === "collapsed" && "justify-center px-2"
+                        )}
                         onClick={handleNavigation}
                       >
-                        <item.icon className="h-5 w-5 mr-2" />
-                        <span>{item.title}</span>
+                        <item.icon className={cn("h-5 w-5", state === "expanded" && "mr-2")} />
+                        {state === "expanded" && <span>{item.title}</span>}
                       </NavLink>
                     </SidebarMenuButton>
                   </SidebarMenuItem>
@@ -135,7 +173,7 @@ const AppSidebar = () => {
         </SidebarGroup>
       </div>
       <div className="flex-shrink-0 border-t border-border mt-auto">
-        <UserMenuFooter isOpen={true} />
+        <UserMenuFooter isOpen={state === "expanded"} />
       </div>
     </>
   );
@@ -162,15 +200,17 @@ const AppSidebar = () => {
         // Desktop Sidebar
         <Sidebar
           className={cn(
-            "h-full bg-muted/50 border-r transition-all duration-300 ease-in-out flex flex-col group/sidebar",
-            "w-64"
+            "h-screen bg-muted/50 border-r transition-all duration-300 ease-in-out flex flex-col group/sidebar"
           )}
+          size={state === "expanded" ? "default" : "icon"}
         >
           <div className="flex flex-col h-full">
             <div className="flex-shrink-0">
-              <SidebarTrigger className="m-2 self-end" />
+              <SidebarTrigger className="m-2 self-end" onClick={handleToggle} />
             </div>
-            <SidebarContent />
+            <div className="flex-1 overflow-y-auto scrollbar-none">
+              <SidebarContent />
+            </div>
           </div>
         </Sidebar>
       )}

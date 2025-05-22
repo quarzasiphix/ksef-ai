@@ -14,12 +14,12 @@ const Layout = () => {
     <SidebarProvider defaultState="expanded">
       <div className="flex min-h-screen w-full bg-background">
         {/* Sidebar */}
-        <div className="hidden md:block h-screen">
+        <div className="hidden md:block fixed top-0 left-0 h-screen">
           <AppSidebar />
         </div>
         
         {/* Main Content */}
-        <div className="flex-1 flex flex-col min-w-0">
+        <div className="flex-1 flex flex-col min-w-0 md:ml-64">
           <Header />
           <main className="flex-1 p-4 md:p-6 overflow-auto w-full max-w-full">
             <div className="max-w-7xl mx-auto w-full">
