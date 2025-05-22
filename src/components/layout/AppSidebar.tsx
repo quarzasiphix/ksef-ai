@@ -144,22 +144,31 @@ const AppSidebar = () => {
       <div className="flex-1 overflow-y-auto overflow-x-hidden">
         <SidebarGroup>
           <SidebarGroupContent>
-            <SidebarMenu>
+            <SidebarMenu className="flex flex-col space-y-1">
               {navItems.map((item) => (
                 <React.Fragment key={item.path}>
-                  <SidebarMenuItem>
-                    <SidebarMenuButton asChild>
+                  <SidebarMenuItem className="flex items-center">
+                    <SidebarMenuButton asChild className="w-full">
                       <NavLink
                         to={item.path}
                         end={item.path === "/"}
                         className={cn(
                           getNavClassName,
-                          state === "collapsed" && "justify-center px-2"
+                          state === "collapsed" && "justify-center px-2",
+                          "h-10 w-full"
                         )}
                         onClick={handleNavigation}
                       >
-                        <item.icon className={cn("h-5 w-5", state === "expanded" && "mr-2")} />
-                        {state === "expanded" && <span>{item.title}</span>}
+                        <div className={cn(
+                          "flex items-center w-full",
+                          state === "expanded" ? "flex-row" : "flex-col justify-center"
+                        )}>
+                          <item.icon className={cn(
+                            "h-5 w-5",
+                            state === "expanded" && "mr-2"
+                          )} />
+                          {state === "expanded" && <span>{item.title}</span>}
+                        </div>
                       </NavLink>
                     </SidebarMenuButton>
                   </SidebarMenuItem>

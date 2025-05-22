@@ -33,6 +33,7 @@ import DocumentSettings from "./pages/settings/DocumentSettings";
 import ExpenseList from "./pages/expense/ExpenseList";
 import IncomeDetail from "./pages/income/[id]";
 import ExpenseDetail from "./pages/expense/[id]";
+import { SidebarProvider } from "@/components/ui/sidebar";
 
 // Export the query client for use in other files
 export const queryClient = new QueryClient({
@@ -236,52 +237,54 @@ const App = () => (
         <Sonner position="top-center" offset={10} />
         <BrowserRouter>
           <AuthProvider>
-            <Routes>
-              <Route path="/auth/login" element={<Login />} />
-              <Route path="/auth/register" element={<Register />} />
-              <Route element={<RequireAuth />}>
-                <Route path="/" element={<Layout />}>
-                  {/* Main routes */}
-                  <Route index element={<Dashboard />} />
-                  {/* Invoice routes */}
-                  <Route path="invoices/new" element={<NewInvoice />} />
-                  
-                  {/* Income routes */}
-                  <Route path="/income/:id" element={<InvoiceDetail type="income" />} />
-                  <Route path="/income/:id/edit" element={<NewInvoice type={TransactionType.INCOME} />} />
-                  
-                  {/* Expense routes */}
-                  <Route path="/expense/:id" element={<InvoiceDetail type="expense" />} />
-                  <Route path="/expense/:id/edit" element={<NewInvoice type={TransactionType.EXPENSE} />} />
-                  
-                  {/* Legacy routes for backward compatibility */}
-                  <Route path="/invoices/:id" element={<InvoiceDetail type="income" />} />
-                  {/* Customer routes */}
-                  <Route path="customers" element={<CustomerList />} />
-                  <Route path="customers/new" element={<NewCustomer />} />
-                  <Route path="customers/edit/:id" element={<EditCustomer />} />
-                  <Route path="customers/:id" element={<CustomerDetail />} />
-                  {/* Product routes */}
-                  <Route path="products" element={<ProductList />} />
-                  <Route path="products/new" element={<NewProduct />} />
-                  <Route path="products/edit/:id" element={<EditProduct />} />
-                  <Route path="products/:id" element={<ProductDetail />} />
-                  {/* Settings routes */}
-                  <Route path="settings" element={<BusinessProfiles />} />
-                  <Route path="settings/business-profiles/new" element={<NewBusinessProfile />} />
-                  <Route path="settings/business-profiles/:id" element={<EditBusinessProfile />} />
-                  <Route path="settings/documents" element={<DocumentSettings />} />
-                  {/* New invoice routes */}
-                  <Route path="income/new" element={<NewInvoice type={TransactionType.INCOME} />} />
-                  <Route path="expense/new" element={<NewInvoice type={TransactionType.EXPENSE} />} />
-                  {/* Legacy routes for backward compatibility */}
-                  <Route path="income" element={<IncomeList />} />
-                  <Route path="expense" element={<ExpenseList />} />
-                  {/* Catch-all for any other routes */}
-                  <Route path="*" element={<NotFound />} />
+            <SidebarProvider defaultState="expanded">
+              <Routes>
+                <Route path="/auth/login" element={<Login />} />
+                <Route path="/auth/register" element={<Register />} />
+                <Route element={<RequireAuth />}>
+                  <Route path="/" element={<Layout />}>
+                    {/* Main routes */}
+                    <Route index element={<Dashboard />} />
+                    {/* Invoice routes */}
+                    <Route path="invoices/new" element={<NewInvoice />} />
+                    
+                    {/* Income routes */}
+                    <Route path="/income/:id" element={<InvoiceDetail type="income" />} />
+                    <Route path="/income/:id/edit" element={<NewInvoice type={TransactionType.INCOME} />} />
+                    
+                    {/* Expense routes */}
+                    <Route path="/expense/:id" element={<InvoiceDetail type="expense" />} />
+                    <Route path="/expense/:id/edit" element={<NewInvoice type={TransactionType.EXPENSE} />} />
+                    
+                    {/* Legacy routes for backward compatibility */}
+                    <Route path="/invoices/:id" element={<InvoiceDetail type="income" />} />
+                    {/* Customer routes */}
+                    <Route path="customers" element={<CustomerList />} />
+                    <Route path="customers/new" element={<NewCustomer />} />
+                    <Route path="customers/edit/:id" element={<EditCustomer />} />
+                    <Route path="customers/:id" element={<CustomerDetail />} />
+                    {/* Product routes */}
+                    <Route path="products" element={<ProductList />} />
+                    <Route path="products/new" element={<NewProduct />} />
+                    <Route path="products/edit/:id" element={<EditProduct />} />
+                    <Route path="products/:id" element={<ProductDetail />} />
+                    {/* Settings routes */}
+                    <Route path="settings" element={<BusinessProfiles />} />
+                    <Route path="settings/business-profiles/new" element={<NewBusinessProfile />} />
+                    <Route path="settings/business-profiles/:id" element={<EditBusinessProfile />} />
+                    <Route path="settings/documents" element={<DocumentSettings />} />
+                    {/* New invoice routes */}
+                    <Route path="income/new" element={<NewInvoice type={TransactionType.INCOME} />} />
+                    <Route path="expense/new" element={<NewInvoice type={TransactionType.EXPENSE} />} />
+                    {/* Legacy routes for backward compatibility */}
+                    <Route path="income" element={<IncomeList />} />
+                    <Route path="expense" element={<ExpenseList />} />
+                    {/* Catch-all for any other routes */}
+                    <Route path="*" element={<NotFound />} />
+                  </Route>
                 </Route>
-              </Route>
-            </Routes>
+              </Routes>
+            </SidebarProvider>
           </AuthProvider>
         </BrowserRouter>
       </TooltipProvider>
