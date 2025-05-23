@@ -1,4 +1,3 @@
-
 import { InvoiceItem, PaymentMethod } from "@/types";
 import { PaymentMethodDb } from "@/types/common";
 
@@ -35,8 +34,8 @@ export const calculateItemValues = (item: Partial<InvoiceItem> & { name?: string
   // Handle VAT-exempt items (vatRate = -1 or VatType.ZW)
   const isVatExempt = vatRateValue === -1;
   
-  // For VAT-exempt items, treat as 0% VAT for calculation purposes
-  const vatRate = isVatExempt ? 0 : (Number.isFinite(vatRateValue) ? Math.max(0, Math.min(100, vatRateValue)) : 0);
+  // For VAT-exempt items or negative rates, treat as 0% VAT for calculation purposes
+  const vatRate = isVatExempt || vatRateValue <= 0 ? 0 : (Number.isFinite(vatRateValue) ? Math.min(100, vatRateValue) : 0);
   
   // Defensive: Clamp quantity and unitPrice to at least 0
   const quantity = Number.isFinite(item.quantity) && item.quantity > 0 ? item.quantity : 0;
@@ -44,20 +43,20 @@ export const calculateItemValues = (item: Partial<InvoiceItem> & { name?: string
 
   const totalNetValue = unitPrice * quantity;
   
-  // For VAT-exempt items, totalVatValue should be 0
-  let totalVatValue = isVatExempt ? 0 : totalNetValue * (vatRate / 100);
+  // For VAT-exempt items or negative rates, totalVatValue should be 0
+  let totalVatValue = isVatExempt || vatRateValue <= 0 ? 0 : totalNetValue * (vatRate / 100);
 
   // Defensive: Prevent negative or NaN VAT value
   if (!Number.isFinite(totalVatValue) || totalVatValue < 0) totalVatValue = 0;
   
-  // For VAT-exempt items, gross value equals net value
-  let totalGrossValue = isVatExempt ? totalNetValue : totalNetValue + totalVatValue;
+  // For VAT-exempt items or negative rates, gross value equals net value
+  let totalGrossValue = isVatExempt || vatRateValue <= 0 ? totalNetValue : totalNetValue + totalVatValue;
   if (!Number.isFinite(totalGrossValue) || totalGrossValue < 0) totalGrossValue = 0;
 
   return {
     ...item,
     description, // Ensure description is always set
-    vatRate: vatRateValue, // Ensure the corrected VAT rate is used
+    vatRate: vatRateValue, // Keep original vatRate value for display
     quantity,
     unitPrice,
     totalNetValue,

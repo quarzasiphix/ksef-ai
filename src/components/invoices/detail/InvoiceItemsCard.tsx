@@ -81,7 +81,20 @@ export const InvoiceItemsCard: React.FC<InvoiceItemsCardProps> = ({
           return createDefaultItem();
         }
     
-        const vatRate = toNumberVatRate(item.vatRate);
+        // Handle VAT rate conversion
+        let vatRate: number;
+        if (typeof item.vatRate === 'number') {
+          vatRate = item.vatRate;
+        } else if (typeof item.vatRate === 'string') {
+          vatRate = parseFloat(item.vatRate) || 0;
+        } else {
+          vatRate = Number(item.vatRate) || 0;
+        }
+        
+        // If VAT rate is -1 (zw), set it to 0 for calculations
+        const isVatExempt = vatRate === -1;
+        const calculationVatRate = isVatExempt ? 0 : vatRate;
+        
         const quantity = Number(item.quantity) || 0;
         const unitPrice = Number(item.unitPrice) || 0;
         const name = item.name || item.description || 'Produkt bez nazwy';
@@ -93,7 +106,7 @@ export const InvoiceItemsCard: React.FC<InvoiceItemsCardProps> = ({
           description: item.description || name, // Ensure description is set
           quantity: quantity,
           unitPrice: unitPrice,
-          vatRate: vatRate,
+          vatRate: vatRate, // Keep original vatRate for display
           unit: item.unit || 'szt.',
           productId: item.productId,
           totalNetValue: 0,
@@ -106,7 +119,10 @@ export const InvoiceItemsCard: React.FC<InvoiceItemsCardProps> = ({
     
         try {
           // Calculate values using the utility function
-          const calculated = calculateItemValues(processedItem);
+          const calculated = calculateItemValues({
+            ...processedItem,
+            vatRate: calculationVatRate // Use 0 for VAT-exempt items
+          });
     
           // Update the processed item with calculated values
           return {
@@ -120,7 +136,8 @@ export const InvoiceItemsCard: React.FC<InvoiceItemsCardProps> = ({
           console.error('Error in calculateItemValues:', calcError);
           // Fallback calculation if the utility function fails
           const netValue = quantity * unitPrice;
-          const vatValue = vatRate === -1 ? 0 : netValue * (vatRate / 100);
+          // For VAT-exempt items, totalVatValue should be 0
+          const vatValue = isVatExempt ? 0 : netValue * (calculationVatRate / 100);
           
           return {
             ...processedItem,
@@ -245,7 +262,7 @@ export const InvoiceItemsCard: React.FC<InvoiceItemsCardProps> = ({
     
     return (
       <div className="w-full">
-        <table className="w-full text-sm">
+        <table className="w-full text-sm border-collapse">
           <colgroup>
             <col className="w-12" />
             <col className="min-w-[200px]" />
@@ -258,40 +275,40 @@ export const InvoiceItemsCard: React.FC<InvoiceItemsCardProps> = ({
             <col className="w-32 text-right" />
           </colgroup>
           <thead>
-            <tr>
-              <th className="text-left">Lp.</th>
-              <th className="text-left">Nazwa</th>
-              <th className="text-right">Ilość</th>
-              <th className="text-right">Jednostka</th>
-              <th className="text-right">Cena netto</th>
-              <th className="text-right">Wartość netto</th>
-              {!isReceipt && <th className="text-center">Stawka VAT</th>}
-              {!isReceipt && <th className="text-right">Kwota VAT</th>}
-              <th className="text-right">Wartość brutto</th>
+            <tr className="bg-muted/50">
+              <th className="px-3 py-2 text-left text-xs font-medium border-b">Lp.</th>
+              <th className="px-3 py-2 text-left text-xs font-medium border-b">Nazwa</th>
+              <th className="px-3 py-2 text-right text-xs font-medium border-b">Ilość</th>
+              <th className="px-3 py-2 text-right text-xs font-medium border-b">Jednostka</th>
+              <th className="px-3 py-2 text-right text-xs font-medium border-b">Cena netto</th>
+              <th className="px-3 py-2 text-right text-xs font-medium border-b">Wartość netto</th>
+              {!isReceipt && <th className="px-3 py-2 text-center text-xs font-medium border-b">Stawka VAT</th>}
+              {!isReceipt && <th className="px-3 py-2 text-right text-xs font-medium border-b">Kwota VAT</th>}
+              <th className="px-3 py-2 text-right text-xs font-medium border-b">Wartość brutto</th>
             </tr>
           </thead>
           <tbody>
             {safeItems.map((item, index) => (
-              <tr key={item.id}>
-                <td>{index + 1}</td>
-                <td>{item.name}</td>
-                <td className="text-right">{item.quantity}</td>
-                <td className="text-right">{item.unit}</td>
-                <td className="text-right">{formatCurrency(item.unitPrice)}</td>
-                <td className="text-right">{formatCurrency(item.totalNetValue || 0)}</td>
-                {!isReceipt && <td className="text-center">{item.vatRate === -1 ? 'zw' : `${item.vatRate}%`}</td>}
-                {!isReceipt && <td className="text-right">{formatCurrency(item.totalVatValue || 0)}</td>}
-                <td className="text-right">{formatCurrency(item.totalGrossValue || 0)}</td>
+              <tr key={item.id} className="border-b hover:bg-muted/30">
+                <td className="px-3 py-2">{index + 1}</td>
+                <td className="px-3 py-2">{item.name}</td>
+                <td className="px-3 py-2 text-right">{item.quantity}</td>
+                <td className="px-3 py-2 text-right">{item.unit}</td>
+                <td className="px-3 py-2 text-right">{formatCurrency(item.unitPrice)}</td>
+                <td className="px-3 py-2 text-right">{formatCurrency(item.totalNetValue || 0)}</td>
+                {!isReceipt && <td className="px-3 py-2 text-center">{item.vatRate === -1 ? 'zw' : `${item.vatRate}%`}</td>}
+                {!isReceipt && <td className="px-3 py-2 text-right">{formatCurrency(item.totalVatValue || 0)}</td>}
+                <td className="px-3 py-2 text-right">{formatCurrency(item.totalGrossValue || 0)}</td>
               </tr>
             ))}
           </tbody>
           <tfoot>
-            <tr className="font-bold border-t">
-              <td colSpan={isReceipt ? 4 : 5} className="text-right pr-4">Razem:</td>
-              <td className="text-right pr-2">{formatCurrency(totalNetValue || 0)}</td>
+            <tr className="font-bold border-t-2">
+              <td colSpan={isReceipt ? 4 : 5} className="px-3 py-2 text-right">Razem:</td>
+              <td className="px-3 py-2 text-right">{formatCurrency(totalNetValue || 0)}</td>
               {!isReceipt && <td></td>}
-              {!isReceipt && <td className="text-right pr-2">{formatCurrency(totalVatValue || 0)}</td>}
-              <td className="text-right pr-2">{formatCurrency(totalGrossValue || 0)}</td>
+              {!isReceipt && <td className="px-3 py-2 text-right">{formatCurrency(safeItems.reduce((sum, item) => sum + (item.vatRate === -1 ? 0 : item.totalVatValue || 0), 0))}</td>}
+              <td className="px-3 py-2 text-right">{formatCurrency(safeItems.reduce((sum, item) => sum + (item.vatRate === -1 ? item.totalNetValue : item.totalGrossValue || 0), 0))}</td>
             </tr>
           </tfoot>
         </table>
@@ -328,15 +345,13 @@ export const InvoiceItemsCard: React.FC<InvoiceItemsCardProps> = ({
       </CardHeader>
       <CardContent>
         {isMobile ? (
-          <>
-            {console.log('Rendering mobile items')}
+          <div>
             {renderMobileItems()}
-          </>
+          </div>
         ) : (
-          <>
-            {console.log('Rendering desktop items')}
+          <div>
             {renderDesktopItems()}
-          </>
+          </div>
         )}
       </CardContent>
     </Card>

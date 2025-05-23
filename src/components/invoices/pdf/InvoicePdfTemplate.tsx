@@ -368,7 +368,7 @@ export const InvoicePdfTemplate: React.FC<InvoicePdfTemplateProps> = ({ invoice,
                 <td style={{ padding: 6, border: '1px solid #e5e7eb', textAlign: 'right' }}>{item.quantity}</td>
                 <td style={{ padding: '4px 6px', border: '1px solid #e5e7eb', textAlign: 'right' }}>{formatCurrencyUtil(item.unitPrice)}</td>
                 <td style={{ padding: '4px 6px', border: '1px solid #e5e7eb', textAlign: 'right' }}>{formatCurrencyUtil(item.totalNetValue || 0)}</td>
-                {isReceipt ? null : <td style={{ padding: 6, border: '1px solid #e5e7eb', textAlign: 'right' }}>{item.vatRate}%</td>}
+                {isReceipt ? null : <td style={{ padding: 6, border: '1px solid #e5e7eb', textAlign: 'right' }}>{item.vatRate === -1 ? 'zw' : `${item.vatRate}%`}</td>}
                 {isReceipt ? null : <td style={{ padding: '4px 6px', border: '1px solid #e5e7eb', textAlign: 'right' }}>{formatCurrencyUtil(item.totalVatValue || 0)}</td>}
                 <td style={{ padding: '4px 6px', border: '1px solid #e5e7eb', textAlign: 'right' }}>{formatCurrencyUtil(item.totalGrossValue || 0)}</td>
               </tr>
