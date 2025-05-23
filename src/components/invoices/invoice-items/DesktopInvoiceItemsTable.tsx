@@ -1,6 +1,5 @@
-
 import React from "react";
-import { InvoiceItem, InvoiceType } from "@/types";
+import { InvoiceItem, InvoiceType, VatExemptionReason } from "@/types";
 import { InvoiceItemRow } from "./InvoiceItemRow";
 import { InvoiceItemsTableFooter } from "./InvoiceItemsTableFooter";
 
@@ -33,7 +32,7 @@ export const DesktopInvoiceItemsTable: React.FC<DesktopInvoiceItemsTableProps> =
     <div className="overflow-x-auto border rounded-md">
       <table className="w-full min-w-full border-collapse">
         <thead>
-          <tr className="bg-muted text-slate-600">
+          <tr className="bg-muted text-foreground">
             <th className="px-2 py-2 text-left text-xs font-medium w-10">Lp.</th>
             <th className="px-2 py-2 text-left text-xs font-medium">Nazwa</th>
             <th className="px-2 py-2 text-right text-xs font-medium w-20">Ilość</th>
