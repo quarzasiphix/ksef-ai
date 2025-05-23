@@ -22,6 +22,7 @@ interface InvoiceDetailsCardProps {
   comments?: string;
   type: InvoiceType;
   bankAccount?: string; // Added bank account prop
+  vat: boolean; // Add vat prop
 }
 
 export const InvoiceDetailsCard: React.FC<InvoiceDetailsCardProps> = ({
@@ -35,9 +36,12 @@ export const InvoiceDetailsCard: React.FC<InvoiceDetailsCardProps> = ({
   comments,
   type,
   bankAccount,
+  vat, // Destructure vat prop
 }) => {
   const isReceipt = type === InvoiceType.RECEIPT;
   
+  console.log('InvoiceDetailsCard - Received VAT prop:', vat);
+
   return (
     <Card>
       <CardHeader className="py-2.5 px-3 sm:py-3 sm:px-4">
@@ -81,6 +85,21 @@ export const InvoiceDetailsCard: React.FC<InvoiceDetailsCardProps> = ({
             {isPaid ? "Zapłacono" : "Oczekuje"}
           </span>
         </div>
+        {/* Display VAT Status */}
+        {!isReceipt && (
+           <div>
+             <p className="font-medium text-muted-foreground">Status VAT</p>
+             <span
+               className={`inline-flex items-center rounded-full px-1.5 py-0.5 text-[10px] sm:text-xs font-medium ${
+                 vat
+                   ? "bg-green-100 text-green-800" // Assuming green for taxable
+                   : "bg-gray-100 text-gray-800" // Assuming gray for exempt
+               }`}
+             >
+               {vat ? "Opodatkowana" : "Zwolniona z VAT"}
+             </span>
+           </div>
+         )}
         {!isReceipt && (
           <div>
             <p className="font-medium text-muted-foreground">Status KSeF</p>
@@ -101,17 +120,12 @@ export const InvoiceDetailsCard: React.FC<InvoiceDetailsCardProps> = ({
             </span>
           </div>
         )}
-        {!isReceipt && ksef?.referenceNumber && (
-          // For a 4-column grid, col-span-2 makes it take half the width. 
-          // If you want it full width: md:col-span-4
-          // If you want it to take 3/4 width: md:col-span-3
+        {ksef?.referenceNumber && !isReceipt && (
           <div className="col-span-2 md:col-span-2">
             <p className="font-medium text-muted-foreground">Nr referencyjny KSeF</p>
             <p className="font-semibold" style={{ overflowWrap: 'break-word', wordBreak: 'break-all' }}>{ksef.referenceNumber}</p>
           </div>
         )}
-        {/* For a 4-column grid, col-span-2 makes it take half the width. */}
-        {/* If you want it full width: md:col-span-4 */}
         <div className="col-span-2 md:col-span-4">
           <p className="font-medium text-muted-foreground">Uwagi</p>
           <p className="text-[11px] sm:text-xs" style={{ overflowWrap: 'break-word', wordBreak: 'break-all' }}>{comments || "Brak uwag"}</p>

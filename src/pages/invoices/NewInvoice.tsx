@@ -108,14 +108,32 @@ const NewInvoice: React.FC<{ initialData?: Invoice; type?: TransactionType }> = 
       transactionType: initialData?.transactionType || type,
       customerId: initialData?.customerId || "",
       businessProfileId: initialData?.businessProfileId || "",
-      fakturaBezVAT: initialData?.fakturaBezVAT || false,
+      fakturaBezVAT: initialData?.vat === false,
       vatExemptionReason: initialData?.vatExemptionReason,
     },
   });
   
+  console.log('NewInvoice - Initial Data VAT:', initialData?.vat);
+  console.log('NewInvoice - Initial Data VAT Exemption Reason:', initialData?.vatExemptionReason);
+  console.log('NewInvoice - Form Default FakturaBezVAT:', initialData?.vat === false);
+
   // Get form values
   const businessProfileId = form.watch('businessProfileId');
   const customerId = form.watch('customerId');
+
+  // Watch for fakturaBezVAT changes
+  const fakturaBezVAT = form.watch('fakturaBezVAT');
+
+  // Update all items to 'zw' when fakturaBezVAT is checked
+  useEffect(() => {
+    if (fakturaBezVAT) {
+      const updatedItems = items.map(item => ({
+        ...item,
+        vatRate: -1 // Set to 'zw'
+      }));
+      setItems(updatedItems);
+    }
+  }, [fakturaBezVAT]);
 
   // Load settings
   useEffect(() => {
@@ -137,6 +155,40 @@ const NewInvoice: React.FC<{ initialData?: Invoice; type?: TransactionType }> = 
       if (setting && !setting.enabled) navigate("/income");
     }
   }, [documentType, documentSettings, navigate]);
+
+  // Update items and form when initialData changes
+  useEffect(() => {
+    if (initialData) {
+      console.log('NewInvoice useEffect - initialData changed:', initialData);
+      console.log('NewInvoice useEffect - initialData.vat:', initialData.vat);
+      console.log('NewInvoice useEffect - initialData.vatExemptionReason:', initialData.vatExemptionReason);
+      
+      setItems(initialData.items || []); // Ensure items are updated when initialData changes
+
+      // Explicitly reset form values based on initialData
+      form.reset({
+        ...form.getValues(), // Keep current form values not from initialData
+        number: initialData.number,
+        issueDate: initialData.issueDate,
+        sellDate: initialData.sellDate,
+        dueDate: initialData.dueDate,
+        paymentMethod: initialData.paymentMethod ? toPaymentMethodUi(initialData.paymentMethod as PaymentMethodDb) : "TRANSFER",
+        comments: initialData.comments || "",
+        transactionType: initialData.transactionType || type,
+        customerId: initialData.customerId || "",
+        businessProfileId: initialData.businessProfileId || "",
+        fakturaBezVAT: initialData.vat === false, // Explicitly set checkbox
+        vatExemptionReason: initialData.vatExemptionReason, // Explicitly set reason
+      });
+    }
+  }, [initialData, type, form]); // Depend on initialData, type, and form instance
+
+  // Log items when they change
+  useEffect(() => {
+    console.log('Items state updated:', items);
+    console.log('Form fakturaBezVAT value:', form.getValues().fakturaBezVAT);
+    console.log('Form vatExemptionReason value:', form.getValues().vatExemptionReason);
+  }, [items, form.getValues().fakturaBezVAT, form.getValues().vatExemptionReason]); // Depend on items and form values
 
   // --- EARLY RETURN after all hooks ---
   if (!documentSettingsLoaded) {
@@ -239,13 +291,11 @@ const NewInvoice: React.FC<{ initialData?: Invoice; type?: TransactionType }> = 
         date: formData.issueDate,
         seller,
         buyer,
-        comments: formData.fakturaBezVAT && formData.vatExemptionReason 
-          ? `${formData.comments || ''}\n\nPowód zwolnienia z VAT: ${formData.vatExemptionReason}`.trim()
-          : formData.comments || '',
+        comments: formData.comments || '',
         businessName: businessName || '',
         customerName: customerName || '',
         vat: !formData.fakturaBezVAT,
-        vatExemptionReason: formData.vatExemptionReason || undefined
+        vatExemptionReason: formData.fakturaBezVAT ? formData.vatExemptionReason : undefined
       };
 
       console.log('Saving invoice:', invoiceData);
@@ -422,6 +472,10 @@ const NewInvoice: React.FC<{ initialData?: Invoice; type?: TransactionType }> = 
               documentTitle={documentTitle}
             />
             
+            {/* Log values being passed to InvoiceBasicInfoForm */}
+            {console.log('NewInvoice - Passing to InvoiceBasicInfoForm - fakturaBezVAT:', form.watch('fakturaBezVAT'))}
+            {console.log('NewInvoice - Passing to InvoiceBasicInfoForm - vatExemptionReason:', form.watch('vatExemptionReason'))}
+
             <InvoicePartiesForm 
               transactionType={transactionType}
               businessProfileId={businessProfileId}

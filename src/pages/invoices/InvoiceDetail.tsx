@@ -44,6 +44,8 @@ const InvoiceDetail: React.FC<InvoiceDetailProps> = ({ type }) => {
     enabled: !!id
   });
 
+  console.log('InvoiceDetail - Fetched selectedInvoice.vat:', selectedInvoice?.vat);
+
   // Fetch the full business profile for the seller
   const { data: sellerProfile, isLoading: isLoadingSeller, error: sellerError } = useQuery({
     queryKey: ['businessProfile', selectedInvoice?.businessProfileId],
@@ -272,6 +274,7 @@ const InvoiceDetail: React.FC<InvoiceDetailProps> = ({ type }) => {
                 comments={selectedInvoice.comments}
                 type={selectedInvoice.type}
                 bankAccount={sellerCardData?.bankAccount}
+                vat={selectedInvoice.vat}
               />
             </div>
             <div className="bg-card p-6 rounded-lg border">

@@ -433,12 +433,20 @@ export const InvoicePdfTemplate: React.FC<InvoicePdfTemplateProps> = ({ invoice,
 
         {/* Corrected Comments section */}
         {invoice.comments && (
-        <div style={{ marginTop: '16px', padding: '16px 16px', borderTop: '2px solid #dee2e6'}}>
-          <div style={{ padding: '8px 12px', border: '1px solid #e0e0e0', borderRadius: '4px', background: '#f9f9f9' }}>
-            <div style={{ fontWeight: 600, fontSize: 14, marginBottom: 4, color: '#333' }}>Uwagi</div>
-            <div style={{ fontSize: 12, color: '#555', whiteSpace: 'pre-wrap' }}>{invoice.comments}</div>
+          <div style={{ marginTop: '16px', padding: '16px 16px', borderTop: '2px solid #dee2e6'}}>
+            <div style={{ padding: '8px 12px', border: '1px solid #e0e0e0', borderRadius: '4px', background: '#f9f9f9' }}>
+              <div style={{ fontWeight: 600, fontSize: 14, marginBottom: 4, color: '#333' }}>Uwagi</div>
+              <div style={{ fontSize: 12, color: '#555', whiteSpace: 'pre-wrap' }}>{invoice.comments}</div>
+            </div>
           </div>
-        </div>
+        )}
+
+        {/* Display VAT Exemption Reason if applicable */}
+        {invoice.vat === false && invoice.vatExemptionReason && (
+          <div style={{ marginTop: 5, fontSize: 10 }}>
+            <div style={{ fontWeight: 'bold' }}>Powód zwolnienia z VAT:</div>
+            <div style={{ fontSize: 10 }}>{invoice.vatExemptionReason}</div>
+          </div>
         )}
 
       </div>

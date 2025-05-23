@@ -104,6 +104,8 @@ export async function saveInvoice(invoice: Omit<Invoice, 'id'> & { id?: string }
     ksef_status: string;
     ksef_reference_number: string | null;
     transaction_type?: string;
+    vat: boolean;
+    vat_exemption_reason?: string;
   };
 
   // Ensure payment method is in the correct format for the database
@@ -132,7 +134,9 @@ export async function saveInvoice(invoice: Omit<Invoice, 'id'> & { id?: string }
     total_gross_value: invoice.totalGrossValue,
     total_vat_value: invoice.totalVatValue,
     ksef_status: invoice.ksef?.status || 'none',
-    ksef_reference_number: invoice.ksef?.referenceNumber || null
+    ksef_reference_number: invoice.ksef?.referenceNumber || null,
+    vat: invoice.vat,
+    vat_exemption_reason: invoice.vatExemptionReason
   };
 
   // Always include transaction_type, default to 'income' if not provided
@@ -231,7 +235,28 @@ export async function getInvoice(id: string): Promise<Invoice> {
   const { data: invoiceData, error: invoiceError } = await supabase
     .from("invoices")
     .select(`
-      *,
+      id,
+      number,
+      type,
+      transaction_type,
+      issue_date,
+      due_date,
+      sell_date,
+      business_profile_id,
+      customer_id,
+      payment_method,
+      is_paid,
+      comments,
+      total_net_value,
+      total_gross_value,
+      total_vat_value,
+      ksef_status,
+      ksef_reference_number,
+      user_id,
+      created_at,
+      updated_at,
+      vat,
+      vat_exemption_reason,
       business_profiles(name),
       customers(name)
     `)
@@ -298,13 +323,17 @@ export async function getInvoice(id: string): Promise<Invoice> {
     customers?: {
       name: string;
     } | null;
+    vat: boolean;
+    vat_exemption_reason: string | null;
   }
 
   // Safely cast the invoice data
   const dbInvoice: DatabaseInvoice = {
     ...invoiceData,
     business_profiles: (invoiceData as any).business_profiles || null,
-    customers: (invoiceData as any).customers || null
+    customers: (invoiceData as any).customers || null,
+    vat: invoiceData.vat || true,
+    vat_exemption_reason: invoiceData.vat_exemption_reason as string | null
   };
   const invoice: Invoice = {
     id: dbInvoice.id,
@@ -331,7 +360,9 @@ export async function getInvoice(id: string): Promise<Invoice> {
     },
     user_id: dbInvoice.user_id || dbInvoice.business_profiles?.user_id || '',
     businessName: dbInvoice.business_profiles?.name || '',
-    customerName: dbInvoice.customers?.name || ''
+    customerName: dbInvoice.customers?.name || '',
+    vat: dbInvoice.vat || true,
+    vatExemptionReason: dbInvoice.vat_exemption_reason as VatExemptionReason || undefined
   };
 
   return invoice;
@@ -380,6 +411,8 @@ interface DatabaseInvoice {
   user_id: string;
   created_at: string;
   updated_at: string;
+  vat: boolean;
+  vat_exemption_reason: string | null;
   business_profiles: {
     id: string;
     name: string;
@@ -448,7 +481,9 @@ export async function getInvoices(userId: string): Promise<Invoice[]> {
       },
       user_id: dbItem.user_id,
       businessName: dbItem.business_profiles?.name || '',
-      customerName: dbItem.customers?.name || ''
+      customerName: dbItem.customers?.name || '',
+      vat: dbItem.vat || true,
+      vatExemptionReason: dbItem.vat_exemption_reason as VatExemptionReason || undefined
     };
     
     return invoice;
