@@ -1,5 +1,5 @@
-import React, { useState, useMemo } from "react";
-import { Link } from "react-router-dom";
+import React, { useState, useMemo, useRef, useEffect } from "react";
+import { Link, useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -10,7 +10,7 @@ import {
 } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Invoice, InvoiceType } from "@/types";
-import { Plus, Search, Filter } from "lucide-react";
+import { Plus, Search, Filter, Trash2 } from "lucide-react";
 import InvoiceCard from "@/components/invoices/InvoiceCard";
 import { useGlobalData } from "@/hooks/use-global-data";
 import {
@@ -28,11 +28,18 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { toast } from "sonner";
+import { deleteInvoice } from "@/integrations/supabase/repositories/invoiceRepository";
+import { useQueryClient } from "@tanstack/react-query";
 
 const IncomeList = () => {
   const { invoices: { data: invoices, isLoading } } = useGlobalData();
   const [searchTerm, setSearchTerm] = useState("");
   const [activeTab, setActiveTab] = useState<string>("all");
+  const [contextMenu, setContextMenu] = useState<{visible: boolean, x: number, y: number, invoiceId: string | null}>({visible: false, x: 0, y: 0, invoiceId: null});
+  const menuRef = useRef<HTMLDivElement>(null);
+  const navigate = useNavigate();
+  const queryClient = useQueryClient();
 
   // Get only document types that exist in the data
   const availableTypes = useMemo(() => {
@@ -48,6 +55,43 @@ const IncomeList = () => {
     
     return Array.from(typeMap.keys());
   }, [invoices]);
+
+  const handleDeleteInvoice = async (invoiceId: string) => {
+    try {
+      await deleteInvoice(invoiceId);
+      await queryClient.invalidateQueries({ queryKey: ['invoices'] });
+      toast.success("Dokument został usunięty");
+      setContextMenu({...contextMenu, visible: false});
+    } catch (error) {
+      console.error("Error deleting invoice:", error);
+      toast.error("Wystąpił błąd podczas usuwania dokumentu");
+    }
+  };
+
+  // Close menu when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (menuRef.current && !menuRef.current.contains(event.target as Node)) {
+        setContextMenu({...contextMenu, visible: false});
+      }
+    };
+
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, [contextMenu]);
+
+  const handleContextMenu = (e: React.MouseEvent, invoiceId: string) => {
+    e.preventDefault();
+    // Use the click position directly
+    setContextMenu({
+      visible: true,
+      x: e.clientX,
+      y: e.clientY,
+      invoiceId
+    });
+  };
   
   // Filter invoices based on search term, document type, and transaction type (income only)
   const filteredInvoices = invoices.filter(
@@ -83,7 +127,7 @@ const IncomeList = () => {
   };
   
   return (
-    <div className="space-y-6 pb-20 md:pb-6">
+    <div className="space-y-6 pb-20 md:pb-6 relative">
       <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
         <div>
           <h1 className="text-3xl font-bold">Przychód</h1>
@@ -170,12 +214,42 @@ const IncomeList = () => {
           ) : (
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
               {filteredInvoices.map(invoice => (
-                <InvoiceCard key={invoice.id} invoice={invoice} />
+                <div 
+                  key={invoice.id} 
+                  className="relative"
+                  onContextMenu={(e) => handleContextMenu(e, invoice.id)}
+                  onClick={() => navigate(`/income/${invoice.id}`)}
+                >
+                  <InvoiceCard invoice={invoice} />
+                </div>
               ))}
+              
+              {/* Invoice Grid */}
             </div>
           )}
         </CardContent>
       </Card>
+      
+      {/* Context Menu - Rendered at the root level */}
+      {contextMenu.visible && (
+        <div 
+          ref={menuRef}
+          className="fixed bg-white shadow-lg rounded-md border border-gray-200 z-50 py-1 w-48"
+          style={{
+            left: `${contextMenu.x}px`,
+            top: `${contextMenu.y}px`,
+          }}
+          onClick={(e) => e.stopPropagation()}
+        >
+          <button
+            className="w-full text-left px-4 py-2 text-sm text-red-600 hover:bg-gray-100 flex items-center"
+            onClick={() => contextMenu.invoiceId && handleDeleteInvoice(contextMenu.invoiceId)}
+          >
+            <Trash2 className="mr-2 h-4 w-4" />
+            Usuń dokument
+          </button>
+        </div>
+      )}
     </div>
   );
 };

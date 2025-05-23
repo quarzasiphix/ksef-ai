@@ -192,6 +192,7 @@ export interface Invoice {
   updated_at?: string;
   vat: boolean;
   vatExemptionReason?: VatExemptionReason;
+  fakturaBezVAT?: boolean;
 }
 
 // For Analytics Panel

@@ -489,3 +489,27 @@ export async function getInvoices(userId: string): Promise<Invoice[]> {
     return invoice;
   });
 }
+
+export async function deleteInvoice(id: string): Promise<void> {
+  // First delete all invoice items
+  const { error: itemsError } = await supabase
+    .from("invoice_items")
+    .delete()
+    .eq("invoice_id", id);
+
+  if (itemsError) {
+    console.error("Error deleting invoice items:", itemsError);
+    throw new Error(`Error deleting invoice items: ${itemsError.message}`);
+  }
+
+  // Then delete the invoice
+  const { error: invoiceError } = await supabase
+    .from("invoices")
+    .delete()
+    .eq("id", id);
+
+  if (invoiceError) {
+    console.error("Error deleting invoice:", invoiceError);
+    throw new Error(`Error deleting invoice: ${invoiceError.message}`);
+  }
+}
