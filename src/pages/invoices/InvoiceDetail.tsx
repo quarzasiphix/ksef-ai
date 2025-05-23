@@ -6,10 +6,12 @@ import { Capacitor } from '@capacitor/core';
 import { Filesystem, Directory, Encoding } from '@capacitor/filesystem';
 import { Share } from '@capacitor/share';
 import { Invoice, InvoiceType, BusinessProfile, Customer, KsefInfo } from "@/types";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { getInvoice } from "@/integrations/supabase/repositories/invoiceRepository";
+import { updateInvoicePaymentStatus } from "@/integrations/supabase/repositories/invoiceRepository";
 import { getBusinessProfileById } from "@/integrations/supabase/repositories/businessProfileRepository";
 import { getCustomerById } from "@/integrations/supabase/repositories/customerRepository";
+import { useToast } from "@/components/ui/use-toast";
 import { InvoiceHeader } from "@/components/invoices/detail/InvoiceHeader";
 import { InvoiceDetailsCard } from "@/components/invoices/detail/InvoiceDetailsCard";
 import { InvoiceItemsCard } from "@/components/invoices/detail/InvoiceItemsCard";
@@ -32,9 +34,11 @@ interface InvoiceDetailProps {
 const InvoiceDetail: React.FC<InvoiceDetailProps> = ({ type }) => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
+  const { toast } = useToast();
   const containerRef = useRef<HTMLDivElement>(null);
   const printRef = useRef<HTMLDivElement>(null);
   const isMobile = useIsMobile();
+  const queryClient = useQueryClient();
 
   // State hooks
   const [pdfLoading, setPdfLoading] = useState(false);
@@ -202,6 +206,32 @@ const InvoiceDetail: React.FC<InvoiceDetailProps> = ({ type }) => {
     }
   };
 
+  // Handle marking invoice as paid
+  const handleMarkAsPaid = async () => {
+    if (!id || !selectedInvoice) return;
+    
+    try {
+      await updateInvoicePaymentStatus(id, true);
+      
+      // Update the local state immediately for a better UX
+      const updatedInvoice = { ...selectedInvoice, isPaid: true };
+      queryClient.setQueryData(['invoice', id], updatedInvoice);
+      
+      toast({
+        title: "Sukces",
+        description: "Status faktury został zaktualizowany na 'Zapłacono'.",
+        variant: "default",
+      });
+    } catch (error) {
+      console.error('Error updating payment status:', error);
+      toast({
+        title: "Błąd",
+        description: "Nie udało się zaktualizować statusu płatności. Spróbuj ponownie.",
+        variant: "destructive",
+      });
+    }
+  };
+
   // Calculate totals using the utility function
   const calculatedTotals = selectedInvoice ? calculateInvoiceTotals(selectedInvoice.items) : {
     totalNetValue: 0,
@@ -229,7 +259,19 @@ const InvoiceDetail: React.FC<InvoiceDetailProps> = ({ type }) => {
         <div className="grid grid-cols-1 xl:grid-cols-3 gap-6">
           <div className="xl:col-span-2 space-y-6">
             <div className="bg-card p-6 rounded-lg border">
-              <CardTitle className="text-lg mb-4">Szczegóły dokumentu</CardTitle>
+              <div className="flex justify-between items-center mb-4">
+                <CardTitle className="text-lg">Szczegóły dokumentu</CardTitle>
+                {!selectedInvoice.isPaid && (
+                  <Button 
+                    variant="outline" 
+                    size="sm"
+                    onClick={handleMarkAsPaid}
+                    className="ml-auto"
+                  >
+                    Oznacz jako zapłacone
+                  </Button>
+                )}
+              </div>
               <InvoiceDetailsCard
                 number={selectedInvoice.number}
                 issueDate={selectedInvoice.issueDate}
@@ -245,7 +287,6 @@ const InvoiceDetail: React.FC<InvoiceDetailProps> = ({ type }) => {
               />
             </div>
             <div className="bg-card p-6 rounded-lg border">
-              <CardTitle className="text-lg mb-4">Pozycje na dokumencie</CardTitle>
 
               <InvoiceItemsCard
                 items={Array.isArray(selectedInvoice.items) ? selectedInvoice.items : []}

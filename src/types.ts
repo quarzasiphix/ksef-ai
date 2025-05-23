@@ -3,18 +3,25 @@ export enum TransactionType {
   EXPENSE = 'expense'
 }
 
+export type KsefStatus = 'sent' | 'error' | 'pending' | 'none';
+
+export interface KsefInfo {
+  status: KsefStatus;
+  referenceNumber?: string;
+}
+
 export interface Invoice {
   id: string;
   number: string;
-  date: string;
+  date?: string;
   dueDate: string;
   issueDate: string;
   sellDate: string;
-  seller: Company;
-  buyer: Company;
+  seller?: Company;
+  buyer?: Company;
   items: InvoiceItem[];
-  totalAmount: number;
-  paid: boolean;
+  totalAmount?: number;
+  paid?: boolean;
   isPaid?: boolean;
   paymentMethod: PaymentMethod | string;
   type: InvoiceType;
@@ -35,6 +42,8 @@ export interface Invoice {
   user_id?: string;
   fakturaBezVAT?: boolean;
   vatExemptionReason?: VatExemptionReason;
+  vat?: boolean;
+  ksef?: KsefInfo;
 }
 
 export interface Company {
