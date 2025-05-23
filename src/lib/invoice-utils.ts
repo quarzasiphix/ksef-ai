@@ -18,8 +18,10 @@ export const formatNumber = (
   return num.toFixed(decimalPlaces);
 };
 
-// Calculate net, VAT, and gross values for an invoice item
-export const calculateItemValues = (item: InvoiceItem): InvoiceItem => {
+export const calculateItemValues = (item: Partial<InvoiceItem> & { name?: string }): InvoiceItem => {
+  // Ensure we have a description, defaulting to name if not provided
+  const description = item.description || item.name || '';
+
   // Safely convert vatRate to number
   let vatRateValue: number;
   if (typeof item.vatRate === 'number') {
@@ -54,13 +56,14 @@ export const calculateItemValues = (item: InvoiceItem): InvoiceItem => {
 
   return {
     ...item,
-    vatRate, // Ensure the corrected VAT rate is used
+    description, // Ensure description is always set
+    vatRate: vatRateValue, // Ensure the corrected VAT rate is used
     quantity,
     unitPrice,
     totalNetValue,
     totalVatValue,
     totalGrossValue,
-  };
+  } as InvoiceItem;
 };
 
 // Calculate totals for all invoice items

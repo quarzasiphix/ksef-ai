@@ -34,6 +34,7 @@ import ExpenseList from "./pages/expense/ExpenseList";
 import IncomeDetail from "./pages/income/[id]";
 import ExpenseDetail from "./pages/expense/[id]";
 import { SidebarProvider } from "@/components/ui/sidebar";
+import EditInvoice from "./pages/invoices/EditInvoice";
 
 // Export the query client for use in other files
 export const queryClient = new QueryClient({
@@ -250,11 +251,11 @@ const App = () => (
                     
                     {/* Income routes */}
                     <Route path="/income/:id" element={<InvoiceDetail type="income" />} />
-                    <Route path="/income/:id/edit" element={<NewInvoice type={TransactionType.INCOME} />} />
+                    <Route path="/income/:id/edit" element={<EditInvoice />} />
                     
                     {/* Expense routes */}
                     <Route path="/expense/:id" element={<InvoiceDetail type="expense" />} />
-                    <Route path="/expense/:id/edit" element={<NewInvoice type={TransactionType.EXPENSE} />} />
+                    <Route path="/expense/:id/edit" element={<EditInvoice />} />
                     
                     {/* Legacy routes for backward compatibility */}
                     <Route path="/invoices/:id" element={<InvoiceDetail type="income" />} />

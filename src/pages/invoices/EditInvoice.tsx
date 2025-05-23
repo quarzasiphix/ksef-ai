@@ -23,7 +23,10 @@ const EditInvoice = () => {
       }
 
       try {
+        console.log('Fetching invoice with ID:', id);
         const invoiceData = await getInvoice(id);
+        console.log('Fetched invoice data:', invoiceData);
+        console.log('Invoice items:', invoiceData.items);
         setInvoice(invoiceData);
       } catch (error) {
         console.error("Error fetching invoice:", error);
@@ -45,10 +48,11 @@ const EditInvoice = () => {
   }
 
   if (error || !invoice) {
+    console.error('Error loading invoice:', error);
     return (
       <div className="space-y-6">
         <div className="flex items-center gap-2">
-          <Button variant="outline" size="icon" onClick={() => navigate(invoice.transactionType === 'income' ? '/income' : '/expense')}>
+          <Button variant="outline" size="icon" onClick={() => navigate(invoice?.transactionType === 'income' ? '/income' : '/expense')}>
             <ArrowLeft className="h-4 w-4" />
           </Button>
           <h1 className="text-2xl font-bold">Błąd</h1>
@@ -58,7 +62,7 @@ const EditInvoice = () => {
           <Button
             variant="outline"
             className="mt-4"
-            onClick={() => navigate(invoice.transactionType === 'income' ? '/income' : '/expense')}
+            onClick={() => navigate(invoice?.transactionType === 'income' ? '/income' : '/expense')}
           >
             Wróć do listy dokumentów
           </Button>
@@ -69,14 +73,46 @@ const EditInvoice = () => {
 
   const isExpense = invoice.transactionType === 'expense';
 
-  // Use the NewInvoice component in edit mode by passing the invoice data
+  // Transform the invoice data to ensure it matches the expected structure
+  const transformInvoiceData = (invoice: Invoice) => {
+    console.log('Transforming invoice data:', invoice);
+    const transformed = {
+      ...invoice,
+      // Ensure items have all required fields with proper defaults
+      items: (invoice.items || []).map((item, idx) => {
+        console.log('Processing item:', item);
+        const transformedItem = {
+          ...item,
+          id: item.id || `${invoice.id}-item-${idx}`,
+          description: item.description || item.name || '',
+          quantity: Number(item.quantity) || 0,
+          unitPrice: Number(item.unitPrice) || 0,
+          vatRate: item.vatRate !== undefined ? Number(item.vatRate) : 23,
+          unit: item.unit || 'szt.',
+          totalNetValue: item.totalNetValue !== undefined ? Number(item.totalNetValue) : 0,
+          totalVatValue: item.totalVatValue !== undefined ? Number(item.totalVatValue) : 0,
+          totalGrossValue: item.totalGrossValue !== undefined ? Number(item.totalGrossValue) : 0,
+          name: item.name || item.description || '',
+          productId: item.productId || undefined,
+        };
+        console.log('Transformed item:', transformedItem);
+        return transformedItem;
+      }),
+      buyer: isExpense ? invoice.seller : invoice.buyer,
+      seller: isExpense ? invoice.buyer : invoice.seller,
+    };
+    console.log('Final transformed data:', transformed);
+    return transformed;
+  };
+
+  // Use the NewInvoice component in edit mode with transformed data
+  const transformedData = transformInvoiceData(invoice);
+  console.log('Passing to NewInvoice:', transformedData);
+  
   return (
     <NewInvoice 
-      initialData={{
-        ...invoice,
-        buyer: isExpense ? invoice.seller : invoice.buyer,
-        seller: isExpense ? invoice.buyer : invoice.seller,
-      }} 
+      initialData={transformedData} 
+      type={invoice.transactionType as any}
     />
   );
 };

@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import { useAuth } from "@/App";
 import { useSearchParams, useNavigate, useLocation } from "react-router-dom";
 import { useQueryClient } from "@tanstack/react-query";
@@ -45,6 +45,7 @@ const NewInvoice: React.FC<{ initialData?: Invoice; type?: TransactionType }> = 
   initialData,
   type = TransactionType.EXPENSE,
 }) => {
+  // All hooks at the top, always called in the same order
   const { user } = useAuth();
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
@@ -64,7 +65,24 @@ const NewInvoice: React.FC<{ initialData?: Invoice; type?: TransactionType }> = 
   const [documentSettings, setDocumentSettings] = useState<any[]>([]);
   const [documentSettingsLoaded, setDocumentSettingsLoaded] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
-  const [items, setItems] = useState<InvoiceItem[]>(initialData?.items || []);
+  const [items, setItems] = useState<InvoiceItem[]>(() => {
+    console.log('Initializing items state with:', initialData?.items);
+    return initialData?.items || [];
+  });
+
+  // Update items when initialData changes
+  useEffect(() => {
+    if (initialData?.items) {
+      console.log('Updating items from initialData:', initialData.items);
+      setItems(initialData.items);
+    }
+  }, [initialData]);
+
+  // Log items when they change
+  useEffect(() => {
+    console.log('Items state updated:', items);
+  }, [items]);
+
   const [businessName, setBusinessName] = useState<string>(
     initialData?.businessName || ""
   );
@@ -120,9 +138,15 @@ const NewInvoice: React.FC<{ initialData?: Invoice; type?: TransactionType }> = 
     }
   }, [documentType, documentSettings, navigate]);
 
+  // --- EARLY RETURN after all hooks ---
+  if (!documentSettingsLoaded) {
+    return <div className="text-center py-8">Ładowanie ustawień...</div>;
+  }
+
   // Submit handler
   const onSubmit = async (formData: InvoiceFormValues) => {
     console.log('onSubmit called with formData:', formData);
+    console.log('Current items state:', items);
     
     if (!user) {
       const error = "Nie jesteś zalogowany";
@@ -261,10 +285,6 @@ const NewInvoice: React.FC<{ initialData?: Invoice; type?: TransactionType }> = 
     }
   };
 
-  if (!documentSettingsLoaded) {
-    return <div className="text-center py-8">Ładowanie ustawień...</div>;
-  }
-
   const documentTitle = getDocumentTitle();
   const isEditing = Boolean(initialData);
 
@@ -328,8 +348,6 @@ const NewInvoice: React.FC<{ initialData?: Invoice; type?: TransactionType }> = 
       setCustomerName(name);
     }
   };
-  
-  // No debug code in production
 
   return (
     <div className="space-y-4">
@@ -408,15 +426,20 @@ const NewInvoice: React.FC<{ initialData?: Invoice; type?: TransactionType }> = 
               onCustomerChange={handleCustomerChange}
             />
             
-            <InvoiceItemsForm 
-              items={items}
-              documentType={documentType}
-              transactionType={transactionType}
-              onItemsChange={setItems}
-              userId={user?.id || ''}
-              fakturaBezVAT={form.watch('fakturaBezVAT')}
-              vatExemptionReason={form.watch('vatExemptionReason')}
-            />
+            <div>
+              <div style={{ display: 'none' }}>
+                Debug Info - Items: {JSON.stringify(items, null, 2)}
+              </div>
+              <InvoiceItemsForm 
+                items={items}
+                documentType={documentType}
+                transactionType={transactionType}
+                onItemsChange={setItems}
+                userId={user?.id || ''}
+                fakturaBezVAT={form.watch('fakturaBezVAT')}
+                vatExemptionReason={form.watch('vatExemptionReason')}
+              />
+            </div>
           </div>
 
           {/* Form actions */}

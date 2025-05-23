@@ -80,15 +80,17 @@ export const InvoiceItemsCard: React.FC<InvoiceItemsCardProps> = ({
           console.warn('Skipping invalid item (not an object):', item);
           return createDefaultItem();
         }
-
+    
         const vatRate = toNumberVatRate(item.vatRate);
         const quantity = Number(item.quantity) || 0;
         const unitPrice = Number(item.unitPrice) || 0;
+        const name = item.name || item.description || 'Produkt bez nazwy';
         
         // Process each item to ensure it has all required fields
         const processedItem: ProcessedInvoiceItem = {
           id: item.id || `item-${Math.random().toString(36).substr(2, 9)}`,
-          name: item.name || item.description || 'Produkt bez nazwy',
+          name: name,
+          description: item.description || name, // Ensure description is set
           quantity: quantity,
           unitPrice: unitPrice,
           vatRate: vatRate,
@@ -99,47 +101,45 @@ export const InvoiceItemsCard: React.FC<InvoiceItemsCardProps> = ({
           totalGrossValue: 0,
           ...item // Spread to preserve any additional properties
         };
-
+    
         console.log('Processed item before calculation:', processedItem);
-
+    
         try {
           // Calculate values using the utility function
-          const calculated = calculateItemValues({
-            ...processedItem,
-            description: processedItem.name // Add required description field
-          });
-
+          const calculated = calculateItemValues(processedItem);
+    
           // Update the processed item with calculated values
-          processedItem.totalNetValue = calculated.totalNetValue;
-          processedItem.totalVatValue = calculated.totalVatValue;
-          processedItem.totalGrossValue = calculated.totalGrossValue;
+          return {
+            ...processedItem,
+            totalNetValue: calculated.totalNetValue,
+            totalVatValue: calculated.totalVatValue,
+            totalGrossValue: calculated.totalGrossValue
+          };
           
-          console.log('After calculation:', processedItem);
         } catch (calcError) {
           console.error('Error in calculateItemValues:', calcError);
           // Fallback calculation if the utility function fails
           const netValue = quantity * unitPrice;
           const vatValue = vatRate === -1 ? 0 : netValue * (vatRate / 100);
           
-          processedItem.totalNetValue = netValue;
-          processedItem.totalVatValue = vatValue;
-          processedItem.totalGrossValue = netValue + vatValue;
-          
-          console.log('Used fallback calculation:', processedItem);
+          return {
+            ...processedItem,
+            totalNetValue: netValue,
+            totalVatValue: vatValue,
+            totalGrossValue: netValue + vatValue
+          };
         }
-
-        return processedItem;
       } catch (error) {
         console.error('Error processing invoice item:', error, 'Item:', item);
         return createDefaultItem();
       }
     }
     
-    // Helper function to create a default item when processing fails
     function createDefaultItem(): ProcessedInvoiceItem {
       return {
         id: `item-${Math.random().toString(36).substr(2, 9)}`,
         name: 'Nieprawidłowa pozycja',
+        description: 'Nieprawidłowa pozycja',
         quantity: 0,
         unitPrice: 0,
         vatRate: 0,
@@ -151,8 +151,17 @@ export const InvoiceItemsCard: React.FC<InvoiceItemsCardProps> = ({
     }
   }, [items]);
   
+  // Debug logging
+  console.log('=== DEBUG: InvoiceItemsCard ===');
+  console.log('Raw items prop:', items);
+  console.log('Safe items after processing:', safeItems);
+  console.log('Type of items:', typeof items, 'Is array:', Array.isArray(items));
+  console.log('Items length:', Array.isArray(items) ? items.length : 'not an array');
+  
   const isMobile = useIsMobile();
   const isReceipt = type === InvoiceType.RECEIPT;
+  
+  console.log('Rendering InvoiceItemsCard - isMobile:', isMobile, 'isReceipt:', isReceipt);
   
   // Debug logging
   if (process.env.NODE_ENV === 'development') {
@@ -168,7 +177,9 @@ export const InvoiceItemsCard: React.FC<InvoiceItemsCardProps> = ({
 
   // Mobile view for invoice items
   const renderMobileItems = () => {
+    console.log('Rendering mobile items. Safe items count:', safeItems.length);
     if (safeItems.length === 0) {
+      console.log('No safe items to render. Raw items:', items);
       return (
         <div className="text-muted-foreground text-center py-4">
           <p>Brak pozycji do wyświetlenia</p>
@@ -311,17 +322,23 @@ export const InvoiceItemsCard: React.FC<InvoiceItemsCardProps> = ({
   };
   
   return (
-    <div className="w-full">
-      {isMobile ? (
-        <div>
-          {renderMobileItems()}
-          {safeItems.length > 0 && renderMobileSummary()}
-        </div>
-      ) : (
-        <div className="w-full overflow-x-auto">
-          {renderDesktopItems()}
-        </div>
-      )}
-    </div>
+    <Card className="mb-6">
+      <CardHeader className="pb-2">
+        <CardTitle>Pozycje faktury</CardTitle>
+      </CardHeader>
+      <CardContent>
+        {isMobile ? (
+          <>
+            {console.log('Rendering mobile items')}
+            {renderMobileItems()}
+          </>
+        ) : (
+          <>
+            {console.log('Rendering desktop items')}
+            {renderDesktopItems()}
+          </>
+        )}
+      </CardContent>
+    </Card>
   );
 };
