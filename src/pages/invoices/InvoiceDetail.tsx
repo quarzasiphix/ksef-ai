@@ -20,6 +20,7 @@ import { CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { ArrowLeft, Pencil, Plus } from "lucide-react";
 import { generateElementPdf, getInvoiceFileName } from '@/lib/pdf-utils';
+import { calculateInvoiceTotals } from '@/lib/invoice-utils';
 
 interface InvoiceDetailProps {
   type: 'income' | 'expense';
@@ -211,6 +212,13 @@ const InvoiceDetail: React.FC<InvoiceDetailProps> = ({ type }) => {
     }
   };
 
+  // Calculate totals using the utility function
+  const calculatedTotals = selectedInvoice ? calculateInvoiceTotals(selectedInvoice.items) : {
+    totalNetValue: 0,
+    totalVatValue: 0,
+    totalGrossValue: 0
+  };
+
   return (
     <div ref={containerRef} className="flex-1 space-y-3 lg:space-y-4 relative pt-16 md:pt-0">
       {/* Sticky header - only shown when scrolled past main header */}
@@ -271,9 +279,9 @@ const InvoiceDetail: React.FC<InvoiceDetailProps> = ({ type }) => {
 
               <InvoiceItemsCard
                 items={Array.isArray(selectedInvoice.items) ? selectedInvoice.items : []}
-                totalNetValue={selectedInvoice.totalNetValue || 0}
-                totalVatValue={selectedInvoice.totalVatValue || 0}
-                totalGrossValue={selectedInvoice.totalGrossValue || 0}
+                totalNetValue={calculatedTotals.totalNetValue}
+                totalVatValue={calculatedTotals.totalVatValue}
+                totalGrossValue={calculatedTotals.totalGrossValue}
                 type={selectedInvoice.type}
               />
             </div>
@@ -300,9 +308,9 @@ const InvoiceDetail: React.FC<InvoiceDetailProps> = ({ type }) => {
         </div>
         <div className="bg-card p-6 rounded-lg border">
           <TotalsSummary
-            totalNetValue={selectedInvoice.totalNetValue || 0}
-            totalVatValue={selectedInvoice.totalVatValue || 0}
-            totalGrossValue={selectedInvoice.totalGrossValue || 0}
+            totalNetValue={calculatedTotals.totalNetValue}
+            totalVatValue={calculatedTotals.totalVatValue}
+            totalGrossValue={calculatedTotals.totalGrossValue}
             type={selectedInvoice.type}
           />
         </div>

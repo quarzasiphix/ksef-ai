@@ -100,6 +100,8 @@ const EditInvoice = () => {
       }),
       buyer: isExpense ? invoice.seller : invoice.buyer,
       seller: isExpense ? invoice.buyer : invoice.seller,
+      fakturaBezVAT: invoice.vat === false, // Convert vat boolean to fakturaBezVAT
+      vatExemptionReason: invoice.vatExemptionReason, // Pass through the VAT exemption reason
     };
     console.log('Final transformed data:', transformed);
     return transformed;

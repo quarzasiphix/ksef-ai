@@ -401,10 +401,10 @@ export const InvoicePdfTemplate: React.FC<InvoicePdfTemplateProps> = ({ invoice,
         {/* Amount in Words Section at the bottom */}
         <div style={{ marginTop: '32px', paddingTop: '20px', borderTop: '2px solid #dee2e6', textAlign: 'left' }}>
           <div style={{ fontSize: '20px', color: '#212529', marginBottom: '8px', fontWeight: 700 }}>
-            Do zapłaty: <span style={{ color: '#2c2930' }}>{formatCurrency(invoice.totalGrossValue || 0)}</span>
+            Do zapłaty: <span style={{ color: '#2c2930' }}>{formatCurrency(totalGrossValue)}</span>
           </div>
           <div style={{ fontSize: '15px', color: '#495057', fontStyle: 'italic' }}>
-            Słownie: {formatAmountInWords(invoice.totalGrossValue || 0)}
+            Słownie: {formatAmountInWords(totalGrossValue)}
           </div>
 
           {/* Payment Method and Bank Account */}

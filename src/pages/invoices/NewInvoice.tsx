@@ -239,9 +239,13 @@ const NewInvoice: React.FC<{ initialData?: Invoice; type?: TransactionType }> = 
         date: formData.issueDate,
         seller,
         buyer,
-        comments: formData.comments || '',
+        comments: formData.fakturaBezVAT && formData.vatExemptionReason 
+          ? `${formData.comments || ''}\n\nPowód zwolnienia z VAT: ${formData.vatExemptionReason}`.trim()
+          : formData.comments || '',
         businessName: businessName || '',
-        customerName: customerName || ''
+        customerName: customerName || '',
+        vat: !formData.fakturaBezVAT,
+        vatExemptionReason: formData.vatExemptionReason || undefined
       };
 
       console.log('Saving invoice:', invoiceData);

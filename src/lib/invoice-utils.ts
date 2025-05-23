@@ -77,12 +77,12 @@ export const calculateInvoiceTotals = (items: InvoiceItem[]) => {
   );
   
   const totalVatValue = itemsWithValues.reduce(
-    (sum, item) => sum + (item.totalVatValue || 0), 
+    (sum, item) => sum + (item.vatRate === -1 ? 0 : (item.totalVatValue || 0)), 
     0
   );
   
   const totalGrossValue = itemsWithValues.reduce(
-    (sum, item) => sum + (item.totalGrossValue || 0), 
+    (sum, item) => sum + (item.vatRate === -1 ? item.totalNetValue : (item.totalGrossValue || 0)), 
     0
   );
 

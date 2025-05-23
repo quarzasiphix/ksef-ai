@@ -1,4 +1,3 @@
-
 export interface BusinessProfile {
   id: string;
   user_id: string; // Added for RLS
@@ -191,6 +190,8 @@ export interface Invoice {
   bankAccountNumber?: string;
   created_at?: string;
   updated_at?: string;
+  vat?: boolean; // Whether VAT is applicable
+  vatExemptionReason?: VatExemptionReason; // Reason for VAT exemption if applicable
 }
 
 // For Analytics Panel

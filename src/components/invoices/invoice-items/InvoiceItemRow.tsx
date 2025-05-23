@@ -46,12 +46,20 @@ export const InvoiceItemRow: React.FC<InvoiceItemRowProps> = ({
   };
 
   const handleVatRateChange = (value: string) => {
-    const vatRate = Number(value);
+    const vatRate = value === 'zw' ? -1 : Number(value);
     if (isNaN(vatRate)) return;
     
     const updated = calculateItemValues({ ...item, vatRate });
     onUpdateItem(item.id, updated);
   };
+
+  // Ensure VAT-exempt items are handled correctly on initial load
+  React.useEffect(() => {
+    if (item.vatRate === -1) {
+      const updated = calculateItemValues({ ...item, vatRate: -1 });
+      onUpdateItem(item.id, updated);
+    }
+  }, [item.id]);
 
   const handleZwolnionyZVATChange = (checked: boolean | string) => {
     const isChecked = typeof checked === 'string' ? checked === 'true' : checked;
@@ -65,13 +73,6 @@ export const InvoiceItemRow: React.FC<InvoiceItemRowProps> = ({
       <td className="px-2 py-2 text-left">{index + 1}</td>
       <td className="px-2 py-2 text-left">
         {item.name}
-        {documentType !== InvoiceType.RECEIPT && (
-          <Checkbox
-            checked={item.vatRate === -1 || item.vatRate === VatType.ZW}
-            onCheckedChange={(checked) => handleZwolnionyZVATChange(checked)}
-            className="ml-2"
-          />
-        )}
       </td>
       <td className="px-2 py-2 text-right">
         <Input
@@ -99,7 +100,7 @@ export const InvoiceItemRow: React.FC<InvoiceItemRowProps> = ({
         <>
           <td className="px-2 py-2 text-right">
             <Select 
-              value={typeof item.vatRate === 'number' ? item.vatRate.toString() : item.vatRate} 
+              value={item.vatRate === -1 ? 'zw' : item.vatRate.toString()} 
               onValueChange={handleVatRateChange}
             >
               <SelectTrigger className="h-7 w-20">
@@ -110,7 +111,7 @@ export const InvoiceItemRow: React.FC<InvoiceItemRowProps> = ({
                 <SelectItem value="8">8%</SelectItem>
                 <SelectItem value="5">5%</SelectItem>
                 <SelectItem value="0">0%</SelectItem>
-                <SelectItem value="-1">Zw (zwolniony)</SelectItem>
+                <SelectItem value="zw">zw</SelectItem>
               </SelectContent>
             </Select>
           </td>
