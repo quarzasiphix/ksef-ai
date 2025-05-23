@@ -34,8 +34,9 @@ export const calculateItemValues = (item: Partial<InvoiceItem> & { name?: string
   // Handle VAT-exempt items (vatRate = -1 or VatType.ZW)
   const isVatExempt = vatRateValue === -1;
   
-  // For VAT-exempt items or negative rates, treat as 0% VAT for calculation purposes
-  const vatRate = isVatExempt || vatRateValue <= 0 ? 0 : (Number.isFinite(vatRateValue) ? Math.min(100, vatRateValue) : 0);
+  // For VAT-exempt items, treat as 0% VAT for calculation purposes
+  // For other cases, ensure the rate is between 0 and 100
+  const vatRate = isVatExempt ? 0 : Math.max(0, Math.min(100, Number.isFinite(vatRateValue) ? vatRateValue : 0));
   
   // Defensive: Clamp quantity and unitPrice to at least 0
   const quantity = Number.isFinite(item.quantity) && item.quantity > 0 ? item.quantity : 0;
@@ -43,15 +44,16 @@ export const calculateItemValues = (item: Partial<InvoiceItem> & { name?: string
 
   const totalNetValue = unitPrice * quantity;
   
-  // For VAT-exempt items or negative rates, totalVatValue should be 0
-  let totalVatValue = isVatExempt || vatRateValue <= 0 ? 0 : totalNetValue * (vatRate / 100);
-
-  // Defensive: Prevent negative or NaN VAT value
-  if (!Number.isFinite(totalVatValue) || totalVatValue < 0) totalVatValue = 0;
+  // Calculate VAT value based on the rate (0 for VAT-exempt items)
+  let totalVatValue = isVatExempt ? 0 : totalNetValue * (vatRate / 100);
   
-  // For VAT-exempt items or negative rates, gross value equals net value
-  let totalGrossValue = isVatExempt || vatRateValue <= 0 ? totalNetValue : totalNetValue + totalVatValue;
-  if (!Number.isFinite(totalGrossValue) || totalGrossValue < 0) totalGrossValue = 0;
+  // Ensure we don't have negative or invalid VAT values
+  totalVatValue = Math.max(0, Number.isFinite(totalVatValue) ? totalVatValue : 0);
+  
+  // Calculate gross value (net + VAT, or just net for VAT-exempt items)
+  // For VAT-exempt items, gross value should equal net value
+  let totalGrossValue = totalNetValue + (isVatExempt ? 0 : totalVatValue);
+  totalGrossValue = Math.max(0, Number.isFinite(totalGrossValue) ? totalGrossValue : 0);
 
   return {
     ...item,
@@ -82,7 +84,14 @@ export const calculateInvoiceTotals = (items: InvoiceItem[]) => {
   );
   
   const totalGrossValue = itemsWithValues.reduce(
-    (sum, item) => sum + (item.vatRate === -1 ? item.totalNetValue : (item.totalGrossValue || 0)), 
+    (sum, item) => {
+      // For VAT-exempt items, gross value equals net value
+      // For other items, use the calculated gross value
+      const itemGrossValue = item.vatRate === -1 
+        ? item.totalNetValue 
+        : (item.totalGrossValue || 0);
+      return sum + (Number.isFinite(itemGrossValue) ? itemGrossValue : 0);
+    }, 
     0
   );
 

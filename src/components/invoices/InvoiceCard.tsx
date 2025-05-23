@@ -99,10 +99,18 @@ const InvoiceCard: React.FC<InvoiceCardProps> = ({ invoice }) => {
           <div className="pt-1.5 border-t border-gray-700 mt-1">
             <div className="flex justify-between">
               {!isReceipt && invoice.totalVatValue !== undefined && (
-                <span className="text-xs text-gray-300">VAT: {formatCurrency(invoice.totalVatValue)}</span>
+                <span className="text-xs text-gray-300">
+                  VAT: {formatCurrency(invoice.totalVatValue >= 0 ? invoice.totalVatValue : 0)}
+                </span>
               )}
               <span className="font-bold text-base">
-                {formatCurrency(invoice.totalGrossValue || invoice.totalAmount || 0)}
+                {formatCurrency(
+                  // If VAT is 0 or less, use net value
+                  // Otherwise use gross value if it's valid
+                  invoice.totalVatValue <= 0 
+                    ? (invoice.totalNetValue || invoice.totalAmount || 0)
+                    : (invoice.totalGrossValue || invoice.totalAmount || 0)
+                )}
               </span>
             </div>
           </div>
