@@ -265,20 +265,20 @@ export const InvoiceItemsCard: React.FC<InvoiceItemsCardProps> = ({
         <table className="w-full text-sm border-collapse">
           <colgroup>
             <col className="w-12" />
-            <col className="min-w-[200px]" />
-            <col className="w-24 text-right" />
-            <col className="w-24 text-right" />
-            <col className="w-28 text-right" />
-            <col className="w-28 text-right" />
-            {!isReceipt && <col className="w-24 text-center" />}
-            {!isReceipt && <col className="w-28 text-right" />}
-            <col className="w-32 text-right" />
+            <col className="w-1/4" />
+            <col className="w-16" />
+            <col className="w-16" />
+            <col className="w-20" />
+            <col className="w-20" />
+            {!isReceipt && <col className="w-16" />}
+            {!isReceipt && <col className="w-20" />}
+            <col className="w-20" />
           </colgroup>
           <thead>
             <tr className="bg-muted/50">
-              <th className="px-3 py-2 text-left text-xs font-medium border-b">Lp.</th>
-              <th className="px-3 py-2 text-left text-xs font-medium border-b">Nazwa</th>
-              <th className="px-3 py-2 text-right text-xs font-medium border-b">Ilość</th>
+              <th className="px-3 py-2 text-left text-xs font-medium border-b w-12">Lp.</th>
+              <th className="px-3 py-2 text-left text-xs font-medium border-b w-1/4">Nazwa</th>
+              <th className="px-3 py-2 text-right text-xs font-medium border-b w-16">Ilość</th>
               <th className="px-3 py-2 text-right text-xs font-medium border-b">Jednostka</th>
               <th className="px-3 py-2 text-right text-xs font-medium border-b">Cena netto</th>
               <th className="px-3 py-2 text-right text-xs font-medium border-b">Wartość netto</th>

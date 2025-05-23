@@ -238,7 +238,7 @@ const App = () => (
         <Sonner position="top-center" offset={10} />
         <BrowserRouter>
           <AuthProvider>
-            <SidebarProvider defaultState="expanded">
+            <SidebarProvider>
               <Routes>
                 <Route path="/auth/login" element={<Login />} />
                 <Route path="/auth/register" element={<Register />} />

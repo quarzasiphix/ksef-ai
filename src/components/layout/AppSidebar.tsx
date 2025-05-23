@@ -33,6 +33,10 @@ const AppSidebar = () => {
   const handleToggle = useCallback(() => {
     isManualToggle.current = true;
     setState(state === "expanded" ? "collapsed" : "expanded");
+    // Reset the manual toggle flag after a short delay
+    setTimeout(() => {
+      isManualToggle.current = false;
+    }, 100);
   }, [state, setState]);
 
   useEffect(() => {
@@ -42,10 +46,17 @@ const AppSidebar = () => {
       }
     };
 
-    window.addEventListener("resize", handleResize);
+    // Set initial state
     handleResize();
 
-    return () => window.removeEventListener("resize", handleResize);
+    // Add resize listener
+    window.addEventListener("resize", handleResize);
+
+    // Cleanup
+    return () => {
+      window.removeEventListener("resize", handleResize);
+      isManualToggle.current = false;
+    };
   }, [setState]);
 
   const handleLogout = async () => {

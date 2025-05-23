@@ -5,7 +5,7 @@ import html2canvas from 'html2canvas';
 import { Capacitor } from '@capacitor/core';
 import { Filesystem, Directory, Encoding } from '@capacitor/filesystem';
 import { Share } from '@capacitor/share';
-import { Invoice, InvoiceType, BusinessProfile, Customer } from "@/types";
+import { Invoice, InvoiceType, BusinessProfile, Customer, KsefInfo } from "@/types";
 import { useQuery } from "@tanstack/react-query";
 import { getInvoice } from "@/integrations/supabase/repositories/invoiceRepository";
 import { getBusinessProfileById } from "@/integrations/supabase/repositories/businessProfileRepository";
@@ -18,9 +18,12 @@ import { InvoicePdfTemplate } from '@/components/invoices/pdf/InvoicePdfTemplate
 import TotalsSummary from "@/components/invoices/detail/TotalsSummary";
 import { CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { ArrowLeft, Pencil, Plus } from "lucide-react";
+import { ArrowLeft, Pencil, Plus, Printer, FilePlus, FileDown, Share2 } from "lucide-react";
 import { generateElementPdf, getInvoiceFileName } from '@/lib/pdf-utils';
 import { calculateInvoiceTotals } from '@/lib/invoice-utils';
+import { useIsMobile } from "@/hooks/use-mobile";
+import { cn } from "@/lib/utils";
+import { formatCurrency } from "@/lib/invoice-utils";
 
 interface InvoiceDetailProps {
   type: 'income' | 'expense';
@@ -31,6 +34,7 @@ const InvoiceDetail: React.FC<InvoiceDetailProps> = ({ type }) => {
   const navigate = useNavigate();
   const containerRef = useRef<HTMLDivElement>(null);
   const printRef = useRef<HTMLDivElement>(null);
+  const isMobile = useIsMobile();
 
   // State hooks
   const [pdfLoading, setPdfLoading] = useState(false);
@@ -44,7 +48,7 @@ const InvoiceDetail: React.FC<InvoiceDetailProps> = ({ type }) => {
     enabled: !!id
   });
 
-  console.log('InvoiceDetail - Fetched selectedInvoice.vat:', selectedInvoice?.vat);
+  console.log('InvoiceDetail - Fetched selectedInvoice.vat:', selectedInvoice?.vat as any);
 
   // Fetch the full business profile for the seller
   const { data: sellerProfile, isLoading: isLoadingSeller, error: sellerError } = useQuery({
@@ -68,22 +72,6 @@ const InvoiceDetail: React.FC<InvoiceDetailProps> = ({ type }) => {
     if (Capacitor.isNativePlatform() || (navigator as any).share) {
       setCanSharePdf(true);
     }
-  }, []);
-
-  // Scroll handler for sticky header
-  useEffect(() => {
-    const header = document.querySelector('header');
-    if (!header) return;
-    const headerHeight = header.offsetHeight;
-    const handleScroll = () => {
-      if (containerRef.current) {
-        const scrollPosition = window.scrollY;
-        setIsStickyVisible(scrollPosition > headerHeight + 10);
-      }
-    };
-    window.addEventListener('scroll', handleScroll, { passive: true });
-    handleScroll(); // Initial check
-    return () => window.removeEventListener('scroll', handleScroll);
   }, []);
 
   // Back button handler for mobile
@@ -223,41 +211,20 @@ const InvoiceDetail: React.FC<InvoiceDetailProps> = ({ type }) => {
 
   return (
     <div ref={containerRef} className="flex-1 space-y-3 lg:space-y-4 relative pt-16 md:pt-0">
-      {/* Sticky header - only shown when scrolled past main header */}
-      <div className={`fixed top-0 left-0 right-0 z-50 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/95 border-b transition-all duration-200 transform ${isStickyVisible ? 'translate-y-0' : '-translate-y-full'}`}>
-        <div className="container mx-auto px-4 flex items-center justify-between">
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={() => navigate(-1)}
-            className="flex items-center gap-2"
-          >
-            <ArrowLeft className="h-4 w-4" />
-            <span className="hidden sm:inline">Wróć</span>
-          </Button>
-          <div className="flex items-center gap-2">
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => navigate(`/${type}/${selectedInvoice.id}/edit`)}
-              className="flex items-center gap-2"
-            >
-              <Pencil className="h-4 w-4" />
-              <span className="hidden sm:inline">Edytuj</span>
-            </Button>
-          </div>
-        </div>
-      </div>
-      <InvoiceHeader 
-        id={selectedInvoice.id}
-        number={selectedInvoice.number}
-        type={selectedInvoice.type}
-        pdfLoading={pdfLoading}
-        handleGeneratePdf={handleGeneratePdf}
-        handleSharePdf={handleSharePdf}
-        canSharePdf={canSharePdf}
-        transactionType={selectedInvoice.transactionType}
-      />
+      {/* Original Static header content */}
+      {selectedInvoice && (
+        <InvoiceHeader 
+          id={selectedInvoice.id}
+          number={selectedInvoice.number}
+          type={selectedInvoice.type}
+          pdfLoading={pdfLoading}
+          handleGeneratePdf={handleGeneratePdf}
+          handleSharePdf={handleSharePdf}
+          canSharePdf={canSharePdf}
+          transactionType={selectedInvoice.transactionType}
+        />
+      )}
+
       <div className="space-y-8">
         <div className="grid grid-cols-1 xl:grid-cols-3 gap-6">
           <div className="xl:col-span-2 space-y-6">
@@ -270,7 +237,7 @@ const InvoiceDetail: React.FC<InvoiceDetailProps> = ({ type }) => {
                 sellDate={selectedInvoice.sellDate}
                 paymentMethod={selectedInvoice.paymentMethod}
                 isPaid={selectedInvoice.isPaid || false}
-                ksef={selectedInvoice.ksef ?? undefined}
+                ksef={selectedInvoice.ksef}
                 comments={selectedInvoice.comments}
                 type={selectedInvoice.type}
                 bankAccount={sellerCardData?.bankAccount}

@@ -190,8 +190,8 @@ export interface Invoice {
   bankAccountNumber?: string;
   created_at?: string;
   updated_at?: string;
-  vat: boolean; // Whether VAT is applicable (required field)
-  vatExemptionReason?: VatExemptionReason; // Reason for VAT exemption if applicable
+  vat: boolean;
+  vatExemptionReason?: VatExemptionReason;
 }
 
 // For Analytics Panel

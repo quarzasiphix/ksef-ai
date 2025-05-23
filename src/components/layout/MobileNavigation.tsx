@@ -1,4 +1,3 @@
-
 import React, { useState } from "react";
 import { NavLink, useLocation, useNavigate } from "react-router-dom";
 import { BarChart, FileText, Settings, Menu, Users, Package, CreditCard } from "lucide-react";
@@ -31,8 +30,12 @@ const MobileNavigation = () => {
   };
 
   const location = useLocation();
-  const hideNav = location.pathname.startsWith('/invoices/edit') || 
-                  location.pathname.includes('/invoices/new');
+  // Hide navigation on invoice new/edit pages
+  const hideNav = location.pathname.startsWith('/invoices/new') || 
+                  location.pathname.startsWith('/income/new') || 
+                  location.pathname.startsWith('/expense/new') ||
+                  location.pathname.startsWith('/income/edit/') ||
+                  location.pathname.startsWith('/expense/edit/');
 
   if (hideNav) return null;
 
