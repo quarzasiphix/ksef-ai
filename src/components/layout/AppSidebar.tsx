@@ -4,22 +4,22 @@ import { useAuth } from "@/App";
 import { useSidebar } from "@/components/ui/sidebar";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
-import { 
-  LayoutDashboard, 
-  Receipt, 
-  Users, 
-  Package, 
+import {
+  LayoutDashboard,
+  Receipt,
+  Users,
+  Package,
   Settings,
   ChevronLeft,
   ChevronRight,
   LogOut
 } from "lucide-react";
-import { 
-  Sidebar, 
-  SidebarContent, 
-  SidebarHeader, 
-  SidebarMenu, 
-  SidebarMenuButton, 
+import {
+  Sidebar,
+  SidebarContent,
+  SidebarHeader,
+  SidebarMenu,
+  SidebarMenuButton,
   SidebarMenuItem
 } from "@/components/ui/sidebar";
 
@@ -96,88 +96,112 @@ const AppSidebar = () => {
         <div className="flex-1 overflow-y-auto scrollbar-none">
           <SidebarContent>
             <SidebarMenu className="space-y-0.5">
-              <SidebarMenuButton asChild>
-                <NavLink to="/" end isExpanded={state === "expanded"}>
-                  <SidebarMenuItem className="h-full p-0">
-                    <div className="flex items-center h-full w-full">
-                      <LayoutDashboard className={cn(
+              <SidebarMenuButton asChild tooltip={state === 'collapsed' ? 'Dashboard' : undefined}>
+                 <Button
+                  variant="ghost"
+                  className={cn(
+                    "flex w-full items-center rounded-md text-sm font-medium transition-colors",
+                    location.pathname === "/" ? "bg-accent text-accent-foreground" : "text-muted-foreground hover:bg-accent hover:text-accent-foreground",
+                  )}
+                  onClick={() => navigate("/")}
+                  style={{ display: 'flex', alignItems: 'center', width: '100%', padding: '0.35rem 0.5rem', justifyContent: state === 'expanded' ? 'flex-start' : 'center' }}
+                >
+                        <LayoutDashboard className={cn(
                         "h-4 w-4",
                         state === "expanded" && "text-white"
                       )} />
                       {state === "expanded" && <span className="ml-2 text-white">Dashboard</span>}
-                    </div>
-                  </SidebarMenuItem>
-                </NavLink>
+                  </Button>
               </SidebarMenuButton>
 
-              <SidebarMenuButton asChild>
-                <NavLink to="/income" isExpanded={state === "expanded"}>
-                  <SidebarMenuItem className="h-full p-0">
-                    <div className="flex items-center h-full w-full">
-                      <Receipt className={cn(
+              <SidebarMenuButton asChild  tooltip={state === 'collapsed' ? 'Przychody' : undefined}>
+              <Button
+                  variant="ghost"
+                  className={cn(
+                    "flex w-full items-center rounded-md text-sm font-medium transition-colors",
+                    location.pathname === "/income" ? "bg-accent text-accent-foreground" : "text-muted-foreground hover:bg-accent hover:text-accent-foreground",
+                  )}
+                  onClick={() => navigate("/income")}
+                  style={{ display: 'flex', alignItems: 'center', width: '100%', padding: '0.35rem 0.5rem', justifyContent: state === 'expanded' ? 'flex-start' : 'center' }}
+                >
+                        <Receipt className={cn(
                         "h-4 w-4",
                         state === "expanded" && "text-white"
                       )} />
                       {state === "expanded" && <span className="ml-2 text-white">Przychody</span>}
-                    </div>
-                  </SidebarMenuItem>
-                </NavLink>
+                  </Button>
               </SidebarMenuButton>
 
-              <SidebarMenuButton asChild>
-                <NavLink to="/expense" isExpanded={state === "expanded"}>
-                  <SidebarMenuItem className="h-full p-0">
-                    <div className="flex items-center h-full w-full">
+              <SidebarMenuButton asChild  tooltip={state === 'collapsed' ? 'Wydatki' : undefined}>
+              <Button
+                  variant="ghost"
+                  className={cn(
+                    "flex w-full items-center rounded-md text-sm font-medium transition-colors",
+                    location.pathname === "/expense" ? "bg-accent text-accent-foreground" : "text-muted-foreground hover:bg-accent hover:text-accent-foreground",
+                  )}
+                  onClick={() => navigate("/expense")}
+                  style={{ display: 'flex', alignItems: 'center', width: '100%', padding: '0.35rem 0.5rem', justifyContent: state === 'expanded' ? 'flex-start' : 'center' }}
+                >
                       <Receipt className={cn(
                         "h-4 w-4",
                         state === "expanded" && "text-white"
                       )} />
                       {state === "expanded" && <span className="ml-2 text-white">Wydatki</span>}
-                    </div>
-                  </SidebarMenuItem>
-                </NavLink>
+                  </Button>
               </SidebarMenuButton>
 
-              <SidebarMenuButton asChild>
-                <NavLink to="/customers" isExpanded={state === "expanded"}>
-                  <SidebarMenuItem className="h-full p-0">
-                    <div className="flex items-center h-full w-full">
+              <SidebarMenuButton asChild  tooltip={state === 'collapsed' ? 'Kontrahenci' : undefined}>
+              <Button
+                  variant="ghost"
+                  className={cn(
+                    "flex w-full items-center rounded-md text-sm font-medium transition-colors",
+                    location.pathname === "/customers" ? "bg-accent text-accent-foreground" : "text-muted-foreground hover:bg-accent hover:text-accent-foreground",
+                  )}
+                  onClick={() => navigate("/customers")}
+                  style={{ display: 'flex', alignItems: 'center', width: '100%', padding: '0.35rem 0.5rem', justifyContent: state === 'expanded' ? 'flex-start' : 'center' }}
+                >
                       <Users className={cn(
                         "h-4 w-4",
                         state === "expanded" && "text-white"
                       )} />
                       {state === "expanded" && <span className="ml-2 text-white">Kontrahenci</span>}
-                    </div>
-                  </SidebarMenuItem>
-                </NavLink>
+                  </Button>
               </SidebarMenuButton>
 
-              <SidebarMenuButton asChild>
-                <NavLink to="/products" isExpanded={state === "expanded"}>
-                  <SidebarMenuItem className="h-full p-0">
-                    <div className="flex items-center h-full w-full">
-                      <Package className={cn(
+              <SidebarMenuButton asChild  tooltip={state === 'collapsed' ? 'Produkty' : undefined}>
+              <Button
+                  variant="ghost"
+                  className={cn(
+                    "flex w-full items-center rounded-md text-sm font-medium transition-colors",
+                    location.pathname === "/products" ? "bg-accent text-accent-foreground" : "text-muted-foreground hover:bg-accent hover:text-accent-foreground",
+                  )}
+                  onClick={() => navigate("/products")}
+                  style={{ display: 'flex', alignItems: 'center', width: '100%', padding: '0.35rem 0.5rem', justifyContent: state === 'expanded' ? 'flex-start' : 'center' }}
+                >
+                       <Package className={cn(
                         "h-4 w-4",
                         state === "expanded" && "text-white"
                       )} />
                       {state === "expanded" && <span className="ml-2 text-white">Produkty</span>}
-                    </div>
-                  </SidebarMenuItem>
-                </NavLink>
+                  </Button>
               </SidebarMenuButton>
 
-              <SidebarMenuButton asChild>
-                <NavLink to="/settings" isExpanded={state === "expanded"}>
-                  <SidebarMenuItem className="h-full p-0">
-                    <div className="flex items-center h-full w-full">
+              <SidebarMenuButton asChild  tooltip={state === 'collapsed' ? 'Ustawienia' : undefined}>
+              <Button
+                  variant="ghost"
+                  className={cn(
+                    "flex w-full items-center rounded-md text-sm font-medium transition-colors",
+                    location.pathname === "/settings" ? "bg-accent text-accent-foreground" : "text-muted-foreground hover:bg-accent hover:text-accent-foreground",
+                  )}
+                  onClick={() => navigate("/settings")}
+                  style={{ display: 'flex', alignItems: 'center', width: '100%', padding: '0.35rem 0.5rem', justifyContent: state === 'expanded' ? 'flex-start' : 'center' }}
+                >
                       <Settings className={cn(
                         "h-4 w-4",
                         state === "expanded" && "text-white"
                       )} />
                       {state === "expanded" && <span className="ml-2 text-white">Ustawienia</span>}
-                    </div>
-                  </SidebarMenuItem>
-                </NavLink>
+                  </Button>
               </SidebarMenuButton>
             </SidebarMenu>
           </SidebarContent>
@@ -218,41 +242,5 @@ const AppSidebar = () => {
   );
 };
 
-const NavLink = ({ 
-  to, 
-  children, 
-  end = false,
-  isExpanded 
-}: { 
-  to: string; 
-  children: React.ReactNode; 
-  end?: boolean;
-  isExpanded: boolean;
-}) => {
-  const location = useLocation();
-  const navigate = useNavigate();
-  const isActive = end ? location.pathname === to : location.pathname.startsWith(to);
-
-  return (
-    <div
-      className={cn(
-        "flex items-center h-9 rounded-md transition-colors cursor-pointer",
-        isActive
-          ? "bg-primary text-white"
-          : "hover:bg-muted"
-      )}
-      onClick={() => navigate(to)}
-    >
-      <div 
-        className={cn(
-          "flex items-center w-full h-full",
-          isExpanded ? "px-3" : "px-1 justify-center"
-        )}
-      >
-        {children}
-      </div>
-    </div>
-  );
-};
 
 export default AppSidebar;
