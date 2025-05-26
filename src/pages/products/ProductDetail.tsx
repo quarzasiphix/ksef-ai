@@ -3,7 +3,7 @@ import { useParams, useNavigate, Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { ArrowLeft, Edit, Trash } from "lucide-react";
 import { Product } from "@/types";
-import { getProducts } from "@/integrations/supabase/repositories/productRepository";
+import { getProducts, deleteProduct } from "@/integrations/supabase/repositories/productRepository";
 import ProductForm from "@/components/products/ProductForm";
 import { toast } from "sonner";
 import { useAuth } from "@/App";
@@ -11,15 +11,28 @@ import { getInvoices } from "@/integrations/supabase/repositories/invoiceReposit
 import { Invoice } from "@/types";
 import InvoiceCard from "@/components/invoices/InvoiceCard";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+import { useQueryClient } from "@tanstack/react-query";
 
 const ProductDetail = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const { user } = useAuth();
+  const queryClient = useQueryClient();
   const [product, setProduct] = useState<Product | null>(null);
   const [productInvoices, setProductInvoices] = useState<Invoice[]>([]);
   const [loading, setLoading] = useState(true);
   const [isEditOpen, setIsEditOpen] = useState(false);
+  const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
   
   useEffect(() => {
     const fetchData = async () => {
@@ -59,6 +72,36 @@ const ProductDetail = () => {
     setIsEditOpen(false);
     toast.success('Produkt został zaktualizowany');
   };
+
+  const handleDelete = async () => {
+    if (!product) return;
+    
+    try {
+      // Double check if product is used in any invoices
+      const invoices = await getInvoices(user?.id || '');
+      const isUsed = invoices.some(inv => 
+        inv.items.some(item => item.productId === product.id)
+      );
+
+      if (isUsed) {
+        toast.error("Nie można usunąć produktu, który jest używany w fakturach");
+        setIsDeleteDialogOpen(false);
+        return;
+      }
+
+      await deleteProduct(product.id);
+      toast.success("Produkt został usunięty");
+      // Update the products cache
+      queryClient.setQueryData(["products"], (old: Product[] = []) => 
+        old.filter(p => p.id !== product.id)
+      );
+      navigate("/products");
+    } catch (error) {
+      console.error("Error deleting product:", error);
+      toast.error("Wystąpił błąd podczas usuwania produktu");
+      setIsDeleteDialogOpen(false);
+    }
+  };
   
   if (loading) {
     return (
@@ -88,7 +131,7 @@ const ProductDetail = () => {
   }
   
   return (
-    <div>
+    <div className="pb-20">
       <div className="flex items-center gap-2 mb-6">
         <Button variant="outline" size="icon" onClick={() => navigate("/products")}>
           <ArrowLeft className="h-4 w-4" />
@@ -121,6 +164,14 @@ const ProductDetail = () => {
         </div>
         
         <div className="border-t p-4 flex justify-end gap-2">
+          <Button 
+            variant="destructive" 
+            onClick={() => setIsDeleteDialogOpen(true)}
+            className="flex items-center gap-2"
+          >
+            <Trash className="h-4 w-4" />
+            Usuń
+          </Button>
           <Button variant="outline" onClick={() => setIsEditOpen(true)} className="flex items-center gap-2">
             <Edit className="h-4 w-4" />
             Edytuj
@@ -155,6 +206,29 @@ const ProductDetail = () => {
           onSuccess={handleEditSuccess}
         />
       )}
+
+      <AlertDialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>
+              {productInvoices.length > 0 ? "Nie można usunąć produktu" : "Czy na pewno chcesz usunąć ten produkt?"}
+            </AlertDialogTitle>
+            <AlertDialogDescription>
+              {productInvoices.length > 0 
+                ? "Ten produkt jest używany w istniejących fakturach i nie może zostać usunięty. Najpierw usuń lub edytuj faktury zawierające ten produkt."
+                : "Tej operacji nie można cofnąć. Produkt zostanie trwale usunięty."}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Zamknij</AlertDialogCancel>
+            {productInvoices.length === 0 && (
+              <AlertDialogAction onClick={handleDelete} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+                Usuń
+              </AlertDialogAction>
+            )}
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 };

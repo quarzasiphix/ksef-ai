@@ -1,4 +1,3 @@
-
 import { supabase } from "../client";
 import type { Product, VatType } from "@/types";
 
@@ -75,5 +74,33 @@ export async function saveProduct(product: Product): Promise<Product> {
       vatRate: data.vat_rate,
       unit: data.unit
     };
+  }
+}
+
+export async function deleteProduct(id: string): Promise<void> {
+  // First check if the product is used in any invoice items
+  const { data: invoiceItems, error: checkError } = await supabase
+    .from("invoice_items")
+    .select("id")
+    .eq("product_id", id);
+
+  if (checkError) {
+    console.error("Error checking product usage:", checkError);
+    throw checkError;
+  }
+
+  if (invoiceItems && invoiceItems.length > 0) {
+    throw new Error("Product is used in invoices and cannot be deleted");
+  }
+
+  // If no invoice items found, proceed with deletion
+  const { error } = await supabase
+    .from("products")
+    .delete()
+    .eq("id", id);
+
+  if (error) {
+    console.error("Error deleting product:", error);
+    throw error;
   }
 }

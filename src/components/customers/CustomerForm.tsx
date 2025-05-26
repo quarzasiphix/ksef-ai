@@ -101,20 +101,8 @@ const CustomerForm = ({
             onSubmit={form.handleSubmit(onSubmit)}
             className="space-y-4 pt-2"
           >
-            <FormField
-              control={form.control}
-              name="name"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Nazwa</FormLabel>
-                  <FormControl>
-                    <Input placeholder="Nazwa firmy lub imię i nazwisko" {...field} />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-            <FormField
+
+<FormField
               control={form.control}
               name="taxId"
               render={({ field }) => (
@@ -177,6 +165,21 @@ const CustomerForm = ({
                 </FormItem>
               )}
             />
+            
+            <FormField
+              control={form.control}
+              name="name"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Nazwa</FormLabel>
+                  <FormControl>
+                    <Input placeholder="Nazwa firmy lub imię i nazwisko" {...field} />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+
             <FormField
               control={form.control}
               name="address"

@@ -5,14 +5,19 @@ import { useAuth } from "@/App";
 import { TransactionType } from "@/types/common";
 
 export async function saveInvoice(invoice: Omit<Invoice, 'id'> & { id?: string }): Promise<Invoice> {
+  console.log('saveInvoice called with invoice:', invoice);
+  
   // Validate required fields
   if (!invoice.user_id) {
+    console.error('User ID is missing');
     throw new Error("User ID is required");
   }
   
   // For expenses, we validate the customer instead of business profile
   if (invoice.transactionType === TransactionType.EXPENSE) {
+    console.log('Validating expense invoice customer:', invoice.customerId);
     if (!invoice.customerId) {
+      console.error('Customer ID is missing for expense');
       throw new Error("Customer is required for expenses");
     }
     
@@ -29,6 +34,7 @@ export async function saveInvoice(invoice: Omit<Invoice, 'id'> & { id?: string }
       }
       
       if (!customer) {
+        console.error('Customer not found:', invoice.customerId);
         throw new Error(`Customer with ID ${invoice.customerId} does not exist`);
       }
     } catch (error) {
@@ -37,7 +43,9 @@ export async function saveInvoice(invoice: Omit<Invoice, 'id'> & { id?: string }
     }
   } else {
     // For income, validate business profile
+    console.log('Validating income invoice business profile:', invoice.businessProfileId);
     if (!invoice.businessProfileId) {
+      console.error('Business profile ID is missing for income');
       throw new Error("Business profile is required for income");
     }
     
@@ -54,6 +62,7 @@ export async function saveInvoice(invoice: Omit<Invoice, 'id'> & { id?: string }
       }
       
       if (!businessProfile) {
+        console.error('Business profile not found:', invoice.businessProfileId);
         throw new Error(`Business profile with ID ${invoice.businessProfileId} does not exist`);
       }
     } catch (error) {
@@ -139,6 +148,8 @@ export async function saveInvoice(invoice: Omit<Invoice, 'id'> & { id?: string }
     vat_exemption_reason: invoice.vatExemptionReason
   };
 
+  console.log('Prepared invoice payload:', basePayload);
+
   // Always include transaction_type, default to 'income' if not provided
   const transactionType = (invoice.transactionType || TransactionType.INCOME).toLowerCase() as TransactionType;
   
@@ -147,9 +158,12 @@ export async function saveInvoice(invoice: Omit<Invoice, 'id'> & { id?: string }
     transaction_type: transactionType === 'income' ? 'income' : 'expense' // Ensure lowercase values
   };
 
+  console.log('Final invoice payload:', invoicePayload);
+
   let invoiceId: string;
 
   if (invoice.id) {
+    console.log('Updating existing invoice:', invoice.id);
     // Update existing invoice
     const { data, error } = await supabase
       .from("invoices")
@@ -176,6 +190,7 @@ export async function saveInvoice(invoice: Omit<Invoice, 'id'> & { id?: string }
       throw deleteError;
     }
   } else {
+    console.log('Creating new invoice');
     // Insert new invoice
     const { data, error } = await supabase
       .from("invoices")
@@ -188,6 +203,7 @@ export async function saveInvoice(invoice: Omit<Invoice, 'id'> & { id?: string }
       throw error;
     }
 
+    console.log('New invoice created:', data);
     invoiceId = data.id;
   }
 
@@ -444,7 +460,8 @@ export async function getInvoices(userId: string): Promise<Invoice[]> {
     .select(`
       *,
       business_profiles!inner(*),
-      customers!inner(*)
+      customers!inner(*),
+      invoice_items(*)
     `)
     .eq('user_id', userId)
     .order("issue_date", { ascending: false });
@@ -476,7 +493,18 @@ export async function getInvoices(userId: string): Promise<Invoice[]> {
       sellDate: dbItem.sell_date,
       businessProfileId: dbItem.business_profile_id,
       customerId: dbItem.customer_id || '',
-      items: [], // Items are loaded separately when needed
+      items: (dbItem.invoice_items || []).map(item => ({
+        id: item.id,
+        productId: item.product_id || undefined,
+        name: item.name || '',
+        quantity: Number(item.quantity),
+        unitPrice: Number(item.unit_price),
+        vatRate: Number(item.vat_rate),
+        unit: item.unit || 'szt',
+        totalNetValue: Number(item.total_net_value),
+        totalGrossValue: Number(item.total_gross_value),
+        totalVatValue: Number(item.total_vat_value)
+      })),
       paymentMethod,
       isPaid: dbItem.is_paid || false,
       comments: dbItem.comments || "",

@@ -59,28 +59,34 @@ const MobileNavigation = () => {
           <span className="text-xs mt-1">Menu</span>
         </SheetTrigger>
         <SheetContent side="right" className="w-[250px] pt-10">
-          <div className="flex flex-col space-y-3 pt-4">
-            {sideMenuItems.map((item) => (
-              <NavLink
-                key={item.path}
-                to={item.path}
-                className={({ isActive }) => 
-                  cn("flex items-center gap-3 px-4 py-2 rounded-md", 
-                     isActive ? "bg-primary/10 text-primary" : "text-foreground hover:bg-accent")
-                }
-              >
-                <item.icon className="h-5 w-5" />
-                <span>{item.title}</span>
-              </NavLink>
-            ))}
-            
-            <div className="mt-4 px-4 py-2">
-              <div className="flex items-center justify-between">
-                <span className="text-sm font-medium">Motyw</span>
-                <ThemeToggle size="sm" />
+          <div className="flex flex-col h-full">
+            <div className="flex-1">
+              <div className="flex flex-col space-y-3 pt-4">
+                {sideMenuItems.map((item) => (
+                  <NavLink
+                    key={item.path}
+                    to={item.path}
+                    className={({ isActive }) => 
+                      cn("flex items-center gap-3 px-4 py-2 rounded-md", 
+                         isActive ? "bg-primary/10 text-primary" : "text-foreground hover:bg-accent")
+                    }
+                  >
+                    <item.icon className="h-5 w-5" />
+                    <span>{item.title}</span>
+                  </NavLink>
+                ))}
+                
+                <div className="mt-4 px-4 py-2">
+                  <div className="flex items-center justify-between">
+                    <span className="text-sm font-medium">Motyw</span>
+                    <ThemeToggle size="sm" />
+                  </div>
+                </div>
               </div>
             </div>
-            <UserMenuFooter />
+            <div className="mt-auto">
+              <UserMenuFooter />
+            </div>
           </div>
         </SheetContent>
       </Sheet>

@@ -250,6 +250,7 @@ const NewInvoice: React.ForwardRefExoticComponent<
         
         // Calculate invoice totals
         const calculatedItems = items.map(item => {
+          console.log('Processing item:', item);
           const quantity = Number(item.quantity) || 0;
           const unitPrice = Number(item.unitPrice) || 0;
           // Handle VAT rate conversion
@@ -269,14 +270,19 @@ const NewInvoice: React.ForwardRefExoticComponent<
             ? totalNetValue
             : totalNetValue * (1 + vatRate / 100);
           
-          return {
+          const calculatedItem = {
             ...item,
             vatRate,
             totalNetValue: Number(totalNetValue.toFixed(2)),
             totalVatValue: Number(totalVatValue.toFixed(2)),
             totalGrossValue: Number(totalGrossValue.toFixed(2))
           };
+          
+          console.log('Calculated item:', calculatedItem);
+          return calculatedItem;
         });
+        
+        console.log('All calculated items:', calculatedItems);
         
         const totalNetValue = Number(calculatedItems
           .reduce((sum, item) => sum + (item.totalNetValue || 0), 0)
@@ -336,13 +342,17 @@ const NewInvoice: React.ForwardRefExoticComponent<
           vatExemptionReason: formData.fakturaBezVAT ? formData.vatExemptionReason : undefined
         } as any;
 
-        console.log('Saving invoice:', invoiceData);
+        console.log('Saving invoice with data:', invoiceData);
         
         if (initialData && onSave) {
           await onSave(invoiceData);
         } else {
-          await saveInvoice(invoiceData);
+          const savedInvoice = await saveInvoice(invoiceData);
+          console.log('Invoice saved successfully:', savedInvoice);
           await queryClient.invalidateQueries({ queryKey: ['invoices'] });
+          // Navigate to the correct details page based on transaction type
+          const basePath = savedInvoice.transactionType === TransactionType.INCOME ? '/income' : '/expense';
+          navigate(`${basePath}/${savedInvoice.id}`);
         }
         
         setIsLoading(false);
@@ -376,6 +386,11 @@ const NewInvoice: React.ForwardRefExoticComponent<
       e.preventDefault();
       console.log('Form submission started');
       
+      // Log current form state
+      console.log('Current form state:', form.getValues());
+      console.log('Form errors:', form.formState.errors);
+      console.log('Current items:', items);
+      
       // Manually trigger form validation
       const isValid = await form.trigger();
       console.log('Form validation result:', isValid);
@@ -399,10 +414,17 @@ const NewInvoice: React.ForwardRefExoticComponent<
         setIsLoading(true);
         const formValues = form.getValues();
         console.log('Form is valid, submitting with values:', formValues);
+        console.log('Items to be saved:', items);
         
         // Ensure business profile is set
         if (!formValues.businessProfileId) {
           toast.error('Proszę wybrać profil biznesowy');
+          return;
+        }
+        
+        // Ensure we have items
+        if (items.length === 0) {
+          toast.error('Dodaj co najmniej jedną pozycję do faktury');
           return;
         }
         

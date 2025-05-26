@@ -66,34 +66,34 @@ const AppSidebar = () => {
 
   return (
     <Sidebar className={cn(
-      "h-screen border-r bg-muted/50 transition-all duration-300",
+      "h-screen border-r bg-muted/50 transition-all duration-300 relative",
       state === "expanded" ? "w-64" : "w-16"
     )}>
-      <SidebarHeader className="flex items-center justify-between p-4">
-        <div className="flex items-center gap-2">
-          <div className="h-8 w-8 rounded-full bg-primary/10 flex items-center justify-center">
-            <span className="text-lg font-semibold">K</span>
+      <div className="flex flex-col h-full">
+        <SidebarHeader className="flex items-center justify-between p-4">
+          <div className="flex items-center gap-2">
+            <div className="h-8 w-8 rounded-full bg-primary/10 flex items-center justify-center">
+              <span className="text-lg font-semibold">K</span>
+            </div>
+            {state === "expanded" && (
+              <span className="text-lg font-semibold">KSEF AI</span>
+            )}
           </div>
-          {state === "expanded" && (
-            <span className="text-lg font-semibold">KSEF AI</span>
-          )}
-        </div>
-        <Button
-          variant="ghost"
-          size="icon"
-          onClick={handleToggle}
-          className="h-8 w-8"
-        >
-          {state === "expanded" ? (
-            <ChevronLeft className="h-4 w-4" />
-          ) : (
-            <ChevronRight className="h-4 w-4" />
-          )}
-        </Button>
-      </SidebarHeader>
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={handleToggle}
+            className="h-8 w-8"
+          >
+            {state === "expanded" ? (
+              <ChevronLeft className="h-4 w-4" />
+            ) : (
+              <ChevronRight className="h-4 w-4" />
+            )}
+          </Button>
+        </SidebarHeader>
 
-      <div className="flex flex-col h-[calc(100vh-4rem)]">
-        <div className="flex-1 overflow-y-auto scrollbar-none">
+        <div className="flex-1 overflow-y-auto scrollbar-none pb-16">
           <SidebarContent>
             <SidebarMenu className="space-y-0.5">
               <SidebarMenuButton asChild tooltip={state === 'collapsed' ? 'Dashboard' : undefined}>
@@ -132,11 +132,11 @@ const AppSidebar = () => {
                 >
                         <Receipt
                         className={cn(
-                        "h-4 w-4 transition-colors",
-                        location.pathname === "/income" ? "text-accent-foreground" : "text-white"
-                      )} />
-                      {state === "expanded" && <span className="ml-2 text-white">Przychody</span>}
-                  </Button>
+                          "h-4 w-4 transition-colors",
+                          location.pathname === "/income" ? "text-accent-foreground" : "text-white"
+                        )} />
+                        {state === "expanded" && <span className="ml-2 text-white">Przychody</span>}
+                    </Button>
               </SidebarMenuButton>
 
               <SidebarMenuButton asChild  tooltip={state === 'collapsed' ? 'Wydatki' : undefined}>
@@ -238,8 +238,8 @@ const AppSidebar = () => {
           </SidebarContent>
         </div>
 
-        {/* User info section - now sticky to bottom */}
-        <div className="mt-auto border-t p-4">
+        {/* User info section - fixed at bottom */}
+        <div className="absolute bottom-0 left-0 right-0 border-t bg-muted/50 p-4">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
               <div className="h-8 w-8 rounded-full bg-primary/10 flex items-center justify-center">
