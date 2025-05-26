@@ -22,6 +22,8 @@ import { InvoicePartiesForm } from "@/components/invoices/forms/InvoicePartiesFo
 import { InvoiceItemsForm } from "@/components/invoices/forms/InvoiceItemsForm";
 import { InvoiceFormActions } from "@/components/invoices/forms/InvoiceFormActions";
 import { Button } from "@/components/ui/button";
+import { useSidebar } from "@/components/ui/sidebar";
+import { cn } from "@/lib/utils";
 
 // Schema
 const invoiceFormSchema = z.object({
@@ -43,6 +45,8 @@ const NewInvoice: React.FC<{ initialData?: Invoice; type?: TransactionType }> = 
   initialData,
   type = TransactionType.EXPENSE,
 }) => {
+  const { state } = useSidebar()
+
   // All hooks at the top, always called in the same order
   const { user } = useAuth();
   const [searchParams] = useSearchParams();
@@ -510,13 +514,17 @@ const NewInvoice: React.FC<{ initialData?: Invoice; type?: TransactionType }> = 
             </div>
           </div>
 
-          {/* Form actions */}
-          <InvoiceFormActions 
-            isLoading={isLoading} 
-            isEditing={isEditing} 
-            onSubmit={handleFormSubmit}
-            transactionType={transactionType}
-          />
+          {/* Sticky form actions */}
+          <div className="fixed bottom-0 left-0 right-0 bg-background border-t z-50 md:border-none lg:max-h-12">
+            <div className={cn("container py-2 lg:py-2", state === "expanded" ? "md:ml-64" : "md:ml-16")}>
+              <InvoiceFormActions
+                isLoading={isLoading}
+                isEditing={isEditing}
+                onSubmit={handleFormSubmit}
+                transactionType={transactionType}
+              />
+            </div>
+          </div>
         </form>
       </Form>
     </div>

@@ -18,6 +18,9 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
+import { useSidebar } from "@/components/ui/sidebar";
+import { cn } from "@/lib/utils";
+import { InvoiceFormActions } from "@/components/invoices/forms/InvoiceFormActions";
 
 const EditInvoice = () => {
   const { id } = useParams<{ id: string }>();
@@ -26,6 +29,7 @@ const EditInvoice = () => {
   const [invoice, setInvoice] = useState<Invoice | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const { state } = useSidebar();
 
   useEffect(() => {
     const fetchInvoice = async () => {
@@ -170,10 +174,21 @@ const EditInvoice = () => {
           </AlertDialogContent>
         </AlertDialog>
       </div>
-      <NewInvoice 
-        initialData={transformedData} 
+      <NewInvoice
+        initialData={transformedData}
         type={invoice.transactionType as any}
       />
+      {/* Sticky form actions */}
+      <div className="fixed bottom-0 left-0 right-0 bg-background border-t z-50 md:border-none lg:max-h-12">
+        <div className={cn("container py-2 lg:py-2", state === "expanded" ? "md:ml-64" : "md:ml-16")}>
+          <InvoiceFormActions
+            isLoading={loading}
+            isEditing={true}
+            onSubmit={() => alert('onSubmit')}
+            transactionType={invoice.transactionType}
+          />
+        </div>
+      </div>
     </div>
   );
 };
