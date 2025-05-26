@@ -30,6 +30,7 @@ const invoiceFormSchema = z.object({
   dueDate: z.string().min(1, "Termin płatności jest wymagany"),
   sellDate: z.string().optional(),
   paymentMethod: z.string().min(1, "Metoda płatności jest wymagana"),
+  isPaid: z.boolean().optional().default(false),
   comments: z.string().optional().default(""),
   customerId: z.string().optional(),
   businessProfileId: z.string().min(1, "Profil biznesowy jest wymagany"),

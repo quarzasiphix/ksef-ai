@@ -1,121 +1,8 @@
 import { supabase } from "../client";
-import type { InvoiceItem, InvoiceType, PaymentMethod, Invoice, VatExemptionReason, VatType } from "@/types";
+import type { InvoiceItem, InvoiceType, PaymentMethod, PaymentMethodDb, Invoice } from "@/types";
 import { toPaymentMethodUi } from "@/lib/invoice-utils";
 import { useAuth } from "@/App";
 import { TransactionType } from "@/types/common";
-
-// Define types for database responses
-interface DatabaseInvoiceItemResponse {
-  id: string;
-  invoice_id: string;
-  product_id: string | null;
-  name: string | null;
-  description: string | null;
-  quantity: number;
-  unit_price: number;
-  vat_rate: number;
-  unit: string;
-  total_net_value: number;
-  total_gross_value: number;
-  total_vat_value: number;
-  created_at: string;
-  updated_at: string;
-}
-
-interface DatabaseInvoiceResponse {
-  id: string;
-  number: string;
-  type: string;
-  transaction_type: string;
-  issue_date: string;
-  due_date: string;
-  sell_date: string;
-  business_profile_id: string;
-  customer_id: string | null;
-  payment_method: string;
-  is_paid: boolean;
-  comments: string | null;
-  total_net_value: number;
-  total_gross_value: number;
-  total_vat_value: number;
-  ksef_status: string | null;
-  ksef_reference_number: string | null;
-  user_id: string;
-  created_at: string;
-  updated_at: string;
-  vat: boolean;
-  vat_exemption_reason: string | null;
-  business_profiles: {
-    id: string;
-    name: string;
-  } | null;
-  customers: {
-    id: string;
-    name: string;
-  } | null;
-}
-
-type PaymentMethodDb = 'cash' | 'transfer' | 'card' | 'other';
-
-interface DatabaseInvoiceItem {
-  id: string;
-  invoice_id: string;
-  product_id: string | null;
-  name: string | null;
-  description: string | null;
-  quantity: number;
-  unit_price: number;
-  vat_rate: number;
-  vat_type?: VatType;
-  vat_exemption_reason?: VatExemptionReason;
-  unit: string;
-  total_net_value: number;
-  total_gross_value: number;
-  total_vat_value: number;
-  created_at: string;
-  updated_at: string;
-  products?: {
-    name: string;
-    unit: string;
-    unit_price: number;
-    vat_rate: number;
-  } | null;
-}
-
-interface DatabaseInvoice {
-  id: string;
-  number: string;
-  type: string;
-  transaction_type: string;
-  issue_date: string;
-  due_date: string;
-  sell_date: string;
-  business_profile_id: string;
-  customer_id: string | null;
-  payment_method: string;
-  is_paid: boolean;
-  comments: string | null;
-  total_net_value: number;
-  total_gross_value: number;
-  total_vat_value: number;
-  ksef_status: string | null;
-  ksef_reference_number: string | null;
-  user_id: string;
-  created_at: string;
-  updated_at: string;
-  vat: boolean;
-  vat_exemption_reason: string | null;
-  business_profiles: {
-    id: string;
-    name: string;
-    user_id: string;
-  } | null;
-  customers: {
-    id: string;
-    name: string;
-    user_id: string;
-  } | null;
-}
 
 export async function saveInvoice(invoice: Omit<Invoice, 'id'> & { id?: string }): Promise<Invoice> {
   // Validate required fields
@@ -311,14 +198,13 @@ export async function saveInvoice(invoice: Omit<Invoice, 'id'> & { id?: string }
       user_id: invoice.user_id, // Include user_id for RLS
       product_id: item.productId || null,
       name: item.name,
-      description: item.description || '',
       quantity: item.quantity,
       unit_price: item.unitPrice,
       vat_rate: item.vatRate,
-      unit: item.unit || 'szt',
+      unit: item.unit,
       total_net_value: item.totalNetValue || item.unitPrice * item.quantity,
-      total_gross_value: item.totalGrossValue || (item.unitPrice * item.quantity) * (1 + (item.vatRate || 0) / 100),
-      total_vat_value: item.totalVatValue || (item.unitPrice * item.quantity) * ((item.vatRate || 0) / 100)
+      total_gross_value: item.totalGrossValue || (item.unitPrice * item.quantity) * (1 + item.vatRate / 100),
+      total_vat_value: item.totalVatValue || (item.unitPrice * item.quantity) * (item.vatRate / 100)
     }));
 
     console.log('Saving invoice items with payload:', itemsPayload);
@@ -340,377 +226,290 @@ export async function saveInvoice(invoice: Omit<Invoice, 'id'> & { id?: string }
     }
   }
 
-  // Return the saved invoice
+  // Fetch the complete invoice with items
   return getInvoice(invoiceId);
 }
 
 export async function getInvoice(id: string): Promise<Invoice> {
+  // Fetch invoice
+  const { data: invoiceData, error: invoiceError } = await supabase
+    .from("invoices")
+    .select(`
+      id,
+      number,
+      type,
+      transaction_type,
+      issue_date,
+      due_date,
+      sell_date,
+      business_profile_id,
+      customer_id,
+      payment_method,
+      is_paid,
+      comments,
+      total_net_value,
+      total_gross_value,
+      total_vat_value,
+      ksef_status,
+      ksef_reference_number,
+      user_id,
+      created_at,
+      updated_at,
+      vat,
+      vat_exemption_reason,
+      business_profiles(name),
+      customers(name)
+    `)
+    .eq("id", id)
+    .single();
+
+  if (invoiceError) {
+    console.error("Error fetching invoice:", invoiceError);
+    throw invoiceError;
+  }
+
+  // Fetch invoice items with product details if available
+  const { data: itemsData, error: itemsError } = await supabase
+    .from("invoice_items")
+    .select(`
+      *,
+      products!left(name, unit, unit_price, vat_rate)
+    `)
+    .eq("invoice_id", id)
+    .order("created_at", { ascending: true });
+
+  if (itemsError) {
+    console.error("Error fetching invoice items:", itemsError);
+    throw itemsError;
+  }
+
+  const items: InvoiceItem[] = itemsData.map(item => ({
+    id: item.id,
+    productId: item.product_id || undefined,
+    name: item.name || item.products?.name,
+    quantity: Number(item.quantity),
+    unitPrice: Number(item.unit_price) || 0,
+    vatRate: item.vat_rate || 0,
+    unit: item.unit || 'szt',
+    totalNetValue: Number(item.total_net_value) || 0,
+    totalGrossValue: Number(item.total_gross_value) || 0,
+    totalVatValue: Number(item.total_vat_value) || 0
+  }));
+
+  // Define the shape of the database response with joined tables
+  interface DatabaseInvoice {
+    id: string;
+    number: string;
+    type: string;
+    transaction_type?: string;
+    issue_date: string;
+    due_date: string;
+    sell_date: string;
+    business_profile_id: string;
+    customer_id: string;
+    payment_method: string;
+    is_paid: boolean;
+    comments: string | null;
+    total_net_value: number;
+    total_gross_value: number;
+    total_vat_value: number;
+    ksef_status: string | null;
+    ksef_reference_number: string | null;
+    user_id?: string;
+    business_profiles?: {
+      user_id: string;
+      name: string;
+    } | null;
+    customers?: {
+      name: string;
+    } | null;
+    vat: boolean;
+    vat_exemption_reason: string | null;
+  }
+
+  // Safely cast the invoice data
+  const dbInvoice: DatabaseInvoice = {
+    ...invoiceData,
+    business_profiles: (invoiceData as any).business_profiles || null,
+    customers: (invoiceData as any).customers || null,
+    vat: invoiceData.vat || true,
+    vat_exemption_reason: invoiceData.vat_exemption_reason as string | null
+  };
+  const invoice: Invoice = {
+    id: dbInvoice.id,
+    number: dbInvoice.number,
+    type: dbInvoice.type as InvoiceType,
+    transactionType: (dbInvoice.transaction_type as TransactionType) || TransactionType.INCOME,
+    issueDate: dbInvoice.issue_date,
+    dueDate: dbInvoice.due_date,
+    sellDate: dbInvoice.sell_date,
+    businessProfileId: dbInvoice.business_profile_id,
+    customerId: dbInvoice.customer_id,
+    items,
+    paymentMethod: (['transfer', 'cash', 'card', 'other'].includes(dbInvoice.payment_method?.toLowerCase())
+      ? dbInvoice.payment_method.toLowerCase() 
+      : 'transfer') as PaymentMethodDb,
+    isPaid: dbInvoice.is_paid || false,
+    comments: dbInvoice.comments || "",
+    totalNetValue: Number(dbInvoice.total_net_value) || 0,
+    totalGrossValue: Number(dbInvoice.total_gross_value) || 0,
+    totalVatValue: Number(dbInvoice.total_vat_value) || 0,
+    ksef: {
+      status: (dbInvoice.ksef_status as 'pending' | 'sent' | 'error' | 'none') || 'none',
+      referenceNumber: dbInvoice.ksef_reference_number || undefined
+    },
+    user_id: dbInvoice.user_id || dbInvoice.business_profiles?.user_id || '',
+    businessName: dbInvoice.business_profiles?.name || '',
+    customerName: dbInvoice.customers?.name || '',
+    vat: dbInvoice.vat || true,
+    vatExemptionReason: dbInvoice.vat_exemption_reason as VatExemptionReason || undefined
+  };
+
+  return invoice;
+}
+
+interface DatabaseInvoiceItem {
+  id: string;
+  invoice_id: string;
+  product_id: string | null;
+  name: string | null;
+  quantity: number;
+  unit_price: number;
+  vat_rate: number;
+  unit: string;
+  total_net_value: number;
+  total_gross_value: number;
+  total_vat_value: number;
+  created_at: string;
+  updated_at: string;
+  products?: {
+    name: string;
+    unit: string;
+    unit_price: number;
+    vat_rate: number;
+  } | null;
+}
+
+interface DatabaseInvoice {
+  id: string;
+  number: string;
+  type: string;
+  transaction_type?: string;
+  issue_date: string;
+  due_date: string;
+  sell_date: string;
+  business_profile_id: string;
+  customer_id: string | null;
+  payment_method: string;
+  is_paid: boolean;
+  comments: string | null;
+  total_net_value: number;
+  total_gross_value: number;
+  total_vat_value: number;
+  ksef_status: string | null;
+  ksef_reference_number: string | null;
+  user_id: string;
+  created_at: string;
+  updated_at: string;
+  vat: boolean;
+  vat_exemption_reason: string | null;
+  business_profiles: {
+    id: string;
+    name: string;
+    user_id: string;
+  } | null;
+  customers: {
+    id: string;
+    name: string;
+    user_id: string;
+  } | null;
+}
+
+export async function getInvoices(userId: string): Promise<Invoice[]> {
+  if (!userId) {
+    console.error("No user ID provided to getInvoices");
+    return [];
+  }
+
   const { data, error } = await supabase
-    .from('invoices')
+    .from("invoices")
     .select(`
       *,
       business_profiles!inner(*),
-      customers!left(*)
+      customers!inner(*)
     `)
-    .eq('id', id)
-    .single();
+    .eq('user_id', userId)
+    .order("issue_date", { ascending: false });
 
   if (error) {
-    console.error('Error fetching invoice:', error);
-    throw new Error(`Error fetching invoice: ${error.message}`);
-  }
-
-  if (!data) {
-    throw new Error('Invoice not found');
-  }
-
-  // Fetch invoice items
-  const { data: itemsData, error: itemsError } = await supabase
-    .from('invoice_items')
-    .select('*')
-    .eq('invoice_id', id);
-
-  if (itemsError) {
-    console.error('Error fetching invoice items:', itemsError);
-    throw new Error(`Error fetching invoice items: ${itemsError.message}`);
-  }
-
-  // Convert database invoice to app invoice format
-  const invoice: Invoice = {
-    id: data.id,
-    number: data.number,
-    type: data.type as InvoiceType,
-    transactionType: (data.transaction_type as TransactionType) || TransactionType.INCOME,
-    issueDate: data.issue_date,
-    dueDate: data.due_date,
-    sellDate: data.sell_date,
-    businessProfileId: data.business_profile_id,
-    customerId: data.customer_id || '',
-    paymentMethod: toPaymentMethodUi(data.payment_method as PaymentMethodDb),
-    isPaid: data.is_paid || false,
-    comments: data.comments || '',
-    totalNetValue: data.total_net_value || 0,
-    totalGrossValue: data.total_gross_value || 0,
-    totalVatValue: data.total_vat_value || 0,
-    ksef: {
-      status: (data.ksef_status as 'pending' | 'sent' | 'error' | 'none') || 'none',
-      referenceNumber: data.ksef_reference_number || undefined
-    },
-    user_id: data.user_id,
-    businessName: data.business_profiles?.name || '',
-    customerName: data.customers?.name || '',
-    vat: data.vat !== undefined ? data.vat : true,
-    vatExemptionReason: (data.vat_exemption_reason as VatExemptionReason) || undefined,
-    items: (itemsData || []).map(item => ({
-      id: item.id,
-      productId: item.product_id || undefined,
-      name: item.name || '',
-      description: '', // Add default empty string for description
-      quantity: Number(item.quantity) || 0,
-      unitPrice: Number(item.unit_price) || 0,
-      vatRate: Number(item.vat_rate) || 0,
-      unit: item.unit || 'szt',
-      totalNetValue: Number(item.total_net_value) || 0,
-      totalGrossValue: Number(item.total_gross_value) || 0,
-      totalVatValue: Number(item.total_vat_value) || 0
-    }));
-
-    return invoice;
-  } catch (error) {
-    console.error('Error in getInvoice:', error);
+    console.error("Error fetching invoices:", error);
     throw error;
   }
-}
 
- * Fetches multiple invoices with optional filtering
- * @param options - Filtering and pagination options
- * @returns Array of invoices
- */
-export async function getInvoices(options: {
-  userId: string;
-  limit?: number;
-  offset?: number;
-  type?: InvoiceType;
-  transactionType?: TransactionType;
-  isPaid?: boolean;
-  search?: string;
-}): Promise<Invoice[]> {
-  const {
-    userId,
-    limit = 50,
-    offset = 0,
-    type,
-    transactionType,
-    isPaid,
-    search
-  } = options;
+  if (!data) return [];
 
-  try {
-    let query = supabase
-      .from('invoices')
-      .select(`
-        id,
-        number,
-        type,
-        transaction_type,
-        issue_date,
-        due_date,
-        sell_date,
-        business_profile_id,
-        customer_id,
-        payment_method,
-        is_paid,
-        comments,
-        total_net_value,
-        total_gross_value,
-        total_vat_value,
-        ksef_status,
-        ksef_reference_number,
-        user_id,
-        vat,
-        vat_exemption_reason,
-        business_profiles:business_profile_id (
-          id,
-          name
-        ),
-        customers:customer_id (
-          id,
-          name
-        )
-      `)
-      .eq('user_id', userId)
-      .order('issue_date', { ascending: false })
-      .range(offset, offset + limit - 1);
-
-    // Apply filters if provided
-    if (type) {
-      query = query.eq('type', type);
-    }
+  // Map the data to the Invoice interface, including transaction_type
+  return data.map((item) => {
+    const dbItem = item as unknown as DatabaseInvoice;
+    const paymentMethod = (() => {
+      const method = dbItem.payment_method?.toLowerCase();
+      return (['transfer', 'cash', 'card', 'other'].includes(method || '') 
+        ? method 
+        : 'transfer') as PaymentMethodDb;
+    })();
     
-    if (transactionType) {
-      query = query.eq('transaction_type', transactionType);
-    }
-    
-    if (typeof isPaid === 'boolean') {
-      query = query.eq('is_paid', isPaid);
-    }
-    
-    if (search) {
-      query = query.or(`number.ilike.%${search}%,customers.name.ilike.%${search}%`);
-    }
-
-    const { data, error } = await query;
-
-    if (error) {
-      console.error('Error fetching invoices:', error);
-      throw new Error(`Error fetching invoices: ${error.message}`);
-    }
-
-    if (!data || data.length === 0) {
-      return [];
-    }
-
-    // Fetch all invoice items in a single query
-    const invoiceIds = data.map(invoice => invoice.id);
-    const { data: itemsData, error: itemsError } = await supabase
-      .from('invoice_items')
-      .select('*')
-      .in('invoice_id', invoiceIds);
-
-    if (itemsError) {
-      console.error('Error fetching invoice items:', itemsError);
-      throw new Error(`Error fetching invoice items: ${itemsError.message}`);
-    }
-
-    // Group items by invoice ID
-    const itemsByInvoiceId = (itemsData || []).reduce((acc, item) => {
-      if (!acc[item.invoice_id]) {
-        acc[item.invoice_id] = [];
-      }
-      acc[item.invoice_id].push(item);
-      return acc;
-    }, {} as Record<string, typeof itemsData>);
-
-    // Map database invoices to app invoices
-    return data.map(invoice => ({
-      id: invoice.id,
-      number: invoice.number,
-      type: invoice.type as InvoiceType,
-      transactionType: (invoice.transaction_type as TransactionType) || TransactionType.INCOME,
-      issueDate: invoice.issue_date,
-      dueDate: invoice.due_date,
-      sellDate: invoice.sell_date,
-      businessProfileId: invoice.business_profile_id,
-      customerId: invoice.customer_id || '',
-      paymentMethod: toPaymentMethodUi(invoice.payment_method as PaymentMethodDb),
-      isPaid: invoice.is_paid || false,
-      comments: invoice.comments || '',
-      totalNetValue: invoice.total_net_value || 0,
-      totalGrossValue: invoice.total_gross_value || 0,
-      totalVatValue: invoice.total_vat_value || 0,
-      ksef: {
-        status: (invoice.ksef_status as 'pending' | 'sent' | 'error' | 'none') || 'none',
-        referenceNumber: invoice.ksef_reference_number || undefined
-      },
-      user_id: invoice.user_id,
-      businessName: invoice.business_profiles?.name || '',
-      customerName: invoice.customers?.name || '',
-      vat: invoice.vat ?? true,
-      vatExemptionReason: invoice.vat_exemption_reason as VatExemptionReason || undefined,
-      items: (itemsByInvoiceId[invoice.id] || []).map(item => ({
-        id: item.id,
-        productId: item.product_id || undefined,
-        name: item.name || '',
-        description: item.description || '',
-        quantity: Number(item.quantity) || 0,
-        unitPrice: Number(item.unit_price) || 0,
-        vatRate: Number(item.vat_rate) || 0,
-        unit: item.unit || 'szt',
-        totalNetValue: Number(item.total_net_value) || 0,
-        totalGrossValue: Number(item.total_gross_value) || 0,
-        totalVatValue: Number(item.total_vat_value) || 0
-      } as InvoiceItem))
-    }));
-  } catch (error) {
-    console.error('Error in getInvoices:', error);
-    throw error;
-  }
-}
-
-/**
- * Fetches an invoice by ID
- * @param id - The ID of the invoice to fetch
- * @returns The invoice
- */
-export async function getInvoice(id: string): Promise<Invoice> {
-  try {
-    const { data, error } = await supabase
-      .from('invoices')
-      .select(`
-        id,
-        number,
-        type,
-        transaction_type,
-        issue_date,
-        due_date,
-        sell_date,
-        business_profile_id,
-        customer_id,
-        payment_method,
-        is_paid,
-        comments,
-        total_net_value,
-        total_gross_value,
-        total_vat_value,
-        ksef_status,
-        ksef_reference_number,
-        user_id,
-        vat,
-        vat_exemption_reason,
-        business_profiles:business_profile_id (
-          id,
-          name
-        ),
-        customers:customer_id (
-          id,
-          name
-        )
-      `)
-      .eq('id', id)
-      .single<DatabaseInvoiceResponse>();
-
-    if (error) {
-      console.error('Error fetching invoice:', error);
-      throw new Error(`Error fetching invoice: ${error.message}`);
-    }
-
-    if (!data) {
-      throw new Error('Invoice not found');
-    }
-
-    // Fetch invoice items
-    const { data: itemsData, error: itemsError } = await supabase
-      .from('invoice_items')
-      .select('*')
-      .eq('invoice_id', id);
-
-    if (itemsError) {
-      console.error('Error fetching invoice items:', itemsError);
-      throw new Error(`Error fetching invoice items: ${itemsError.message}`);
-    }
-
-    // Convert database invoice to app invoice format
     const invoice: Invoice = {
-      id: data.id,
-      number: data.number,
-      type: data.type as InvoiceType,
-      transactionType: (data.transaction_type as TransactionType) || TransactionType.INCOME,
-      issueDate: data.issue_date,
-      dueDate: data.due_date,
-      sellDate: data.sell_date,
-      businessProfileId: data.business_profile_id,
-      customerId: data.customer_id || '',
-      paymentMethod: toPaymentMethodUi(data.payment_method as PaymentMethodDb),
-      isPaid: data.is_paid || false,
-      comments: data.comments || '',
-      totalNetValue: data.total_net_value || 0,
-      totalGrossValue: data.total_gross_value || 0,
-      totalVatValue: data.total_vat_value || 0,
+      id: dbItem.id,
+      number: dbItem.number,
+      type: dbItem.type as InvoiceType,
+      transactionType: (dbItem.transaction_type?.toLowerCase() as TransactionType) || TransactionType.INCOME,
+      issueDate: dbItem.issue_date,
+      dueDate: dbItem.due_date,
+      sellDate: dbItem.sell_date,
+      businessProfileId: dbItem.business_profile_id,
+      customerId: dbItem.customer_id || '',
+      items: [], // Items are loaded separately when needed
+      paymentMethod,
+      isPaid: dbItem.is_paid || false,
+      comments: dbItem.comments || "",
+      totalNetValue: Number(dbItem.total_net_value) || 0,
+      totalGrossValue: Number(dbItem.total_gross_value) || 0,
+      totalVatValue: Number(dbItem.total_vat_value) || 0,
       ksef: {
-        status: (data.ksef_status as 'pending' | 'sent' | 'error' | 'none') || 'none',
-        referenceNumber: data.ksef_reference_number || undefined
+        status: (dbItem.ksef_status as 'pending' | 'sent' | 'error' | 'none') || 'none',
+        referenceNumber: dbItem.ksef_reference_number || null
       },
-      user_id: data.user_id,
-      businessName: data.business_profiles?.name || '',
-      customerName: data.customers?.name || '',
-      vat: data.vat ?? true,
-      vatExemptionReason: (data.vat_exemption_reason as VatExemptionReason) || undefined,
-      items: (itemsData || []).map(item => ({
-        id: item.id,
-        productId: item.product_id || undefined,
-        name: item.name || '',
-        description: item.description || '',
-        quantity: Number(item.quantity) || 0,
-        unitPrice: Number(item.unit_price) || 0,
-        vatRate: Number(item.vat_rate) || 0,
-        unit: item.unit || 'szt',
-        totalNetValue: Number(item.total_net_value) || 0,
-        totalGrossValue: Number(item.total_gross_value) || 0,
-        totalVatValue: Number(item.total_vat_value) || 0
-      } as InvoiceItem))
+      user_id: dbItem.user_id,
+      businessName: dbItem.business_profiles?.name || '',
+      customerName: dbItem.customers?.name || '',
+      vat: dbItem.vat || true,
+      vatExemptionReason: dbItem.vat_exemption_reason as VatExemptionReason || undefined
     };
-
+    
     return invoice;
-  } catch (error) {
-    console.error('Error in getInvoice:', error);
-    throw error;
-  }
+  });
 }
 
-/**
- * Deletes an invoice and its associated items
- * @param id - The ID of the invoice to delete
- */
 export async function deleteInvoice(id: string): Promise<void> {
-  // First delete the invoice items
+  // First delete all invoice items
   const { error: itemsError } = await supabase
-    .from('invoice_items')
+    .from("invoice_items")
     .delete()
-    .eq('invoice_id', id);
+    .eq("invoice_id", id);
 
   if (itemsError) {
-    console.error('Error deleting invoice items:', itemsError);
+    console.error("Error deleting invoice items:", itemsError);
     throw new Error(`Error deleting invoice items: ${itemsError.message}`);
   }
 
   // Then delete the invoice
-  const { error } = await supabase
-    .from('invoices')
+  const { error: invoiceError } = await supabase
+    .from("invoices")
     .delete()
-    .eq('id', id);
+    .eq("id", id);
 
-  if (error) {
-    console.error('Error deleting invoice:', error);
-    throw new Error(`Error deleting invoice: ${error.message}`);
+  if (invoiceError) {
+    console.error("Error deleting invoice:", invoiceError);
+    throw new Error(`Error deleting invoice: ${invoiceError.message}`);
   }
 }

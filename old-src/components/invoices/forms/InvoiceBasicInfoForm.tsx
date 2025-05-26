@@ -1,11 +1,12 @@
 import React from "react";
-import { FormField, FormItem, FormLabel, FormControl, FormMessage } from "@/components/ui/form";
+import { FormField, FormItem, FormLabel, FormControl, FormMessage, FormDescription } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { CardHeader, CardTitle, CardContent, Card } from "@/components/ui/card";
 import { UseFormReturn } from "react-hook-form";
 import { PaymentMethod, VatExemptionReason } from "@/types";
 import { Checkbox } from "@/components/ui/checkbox";
+import { Switch } from "@/components/ui/switch";
 
 interface InvoiceBasicInfoFormProps {
   form: UseFormReturn<any, any>;
@@ -80,30 +81,59 @@ export const InvoiceBasicInfoForm: React.FC<InvoiceBasicInfoFormProps> = ({
           />
         </div>
         
-        <FormField
-          control={form.control}
-          name="paymentMethod"
-          render={({ field }) => (
-            <FormItem>
-              <FormLabel>Metoda płatności</FormLabel>
-              <Select onValueChange={field.onChange} value={field.value}>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <FormField
+            control={form.control}
+            name="paymentMethod"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>Metoda płatności</FormLabel>
+                <Select onValueChange={field.onChange} value={field.value}>
+                  <FormControl>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Wybierz metodę płatności" />
+                    </SelectTrigger>
+                  </FormControl>
+                  <SelectContent>
+                    {Object.values(PaymentMethod).map((method) => (
+                      <SelectItem key={method} value={method}>
+                        {method.charAt(0).toUpperCase() + method.slice(1)}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+          
+          <FormField
+            control={form.control}
+            name="isPaid"
+            render={({ field }) => (
+              <FormItem className="flex flex-row items-center justify-between rounded-lg border p-4">
+                <div className="space-y-0.5">
+                  <FormLabel className="text-base">Status płatności</FormLabel>
+                  <FormDescription>
+                    {field.value ? 'Zapłacono' : 'Do zapłaty'}
+                  </FormDescription>
+                </div>
                 <FormControl>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Wybierz metodę płatności" />
-                  </SelectTrigger>
+                  <Switch
+                    checked={field.value}
+                    onCheckedChange={(checked) => {
+                      field.onChange(checked);
+                      // If marking as paid, set payment date to today
+                      if (checked) {
+                        form.setValue('issueDate', new Date().toISOString().split('T')[0]);
+                      }
+                    }}
+                  />
                 </FormControl>
-                <SelectContent>
-                  {Object.values(PaymentMethod).map((method) => (
-                    <SelectItem key={method} value={method}>
-                      {method.charAt(0).toUpperCase() + method.slice(1)}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-              <FormMessage />
-            </FormItem>
-          )}
-        />
+              </FormItem>
+            )}
+          />
+        </div>
         
         <FormField
           control={form.control}
