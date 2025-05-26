@@ -1,4 +1,3 @@
-
 import React from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { useForm } from "react-hook-form";
@@ -22,7 +21,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Product } from "@/types";
+import { Product, VatType } from "@/types";
 import { saveProduct } from "@/integrations/supabase/repositories/productRepository";
 import { useAuth } from "@/App";
 import {
@@ -34,11 +33,11 @@ import {
 import { ArrowLeft } from "lucide-react";
 
 const VAT_RATES = [
-  { label: "23%", value: 23 },
-  { label: "8%", value: 8 },
-  { label: "5%", value: 5 },
-  { label: "0%", value: 0 },
-  { label: "Zwolniony", value: -1 },
+  { label: "23%", value: VatType.RATE_23 },
+  { label: "8%", value: VatType.RATE_8 },
+  { label: "5%", value: VatType.RATE_5 },
+  { label: "0%", value: VatType.RATE_0 },
+  { label: "Zwolniony", value: VatType.ZW },
 ];
 
 const UNITS = ["szt.", "godz.", "usł.", "kg", "m", "m²", "m³", "l", "komplet"];
@@ -46,7 +45,9 @@ const UNITS = ["szt.", "godz.", "usł.", "kg", "m", "m²", "m³", "l", "komplet"
 const formSchema = z.object({
   name: z.string().min(1, "Nazwa jest wymagana"),
   unitPrice: z.coerce.number().min(0, "Cena musi być większa lub równa 0"),
-  vatRate: z.coerce.number(),
+  vatRate: z.coerce.number().refine(val => val === Number(VatType.ZW) || (val >= 0 && val <= 100), {
+    message: "Stawka VAT musi być liczbą od 0 do 100 lub -1 dla zwolnionych",
+  }),
   unit: z.string().min(1, "Jednostka jest wymagana"),
 });
 
@@ -72,7 +73,7 @@ const ProductForm = ({
     defaultValues: {
       name: initialData?.name || "",
       unitPrice: initialData?.unitPrice || 0,
-      vatRate: initialData?.vatRate ?? 23,
+      vatRate: initialData?.vatRate ?? VatType.RATE_23,
       unit: initialData?.unit || "szt.",
     },
   });
@@ -177,8 +178,8 @@ const ProductForm = ({
                       <FormItem>
                         <FormLabel>Stawka VAT</FormLabel>
                         <Select
-                          onValueChange={(value) => field.onChange(parseInt(value))}
-                          defaultValue={field.value.toString()}
+                          onValueChange={(value) => field.onChange(value === 'zw' ? Number(VatType.ZW) : Number(value))}
+                          value={field.value === Number(VatType.ZW) ? 'zw' : field.value.toString()}
                         >
                           <FormControl>
                             <SelectTrigger>
@@ -186,14 +187,11 @@ const ProductForm = ({
                             </SelectTrigger>
                           </FormControl>
                           <SelectContent>
-                            {VAT_RATES.map((rate) => (
-                              <SelectItem
-                                key={rate.value}
-                                value={rate.value.toString()}
-                              >
-                                {rate.label}
-                              </SelectItem>
-                            ))}
+                            <SelectItem value="23">23%</SelectItem>
+                            <SelectItem value="8">8%</SelectItem>
+                            <SelectItem value="5">5%</SelectItem>
+                            <SelectItem value="0">0%</SelectItem>
+                            <SelectItem value="zw">Zwolniony</SelectItem>
                           </SelectContent>
                         </Select>
                         <FormMessage />

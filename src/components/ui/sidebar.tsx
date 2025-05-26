@@ -127,7 +127,7 @@ const Sidebar = React.forwardRef<HTMLDivElement, React.ComponentProps<"div"> & V
       <div
         ref={ref}
         data-state={state}
-        className={cn(sidebarVariants({ variant, size }), className)}
+        className={cn(sidebarVariants({ variant, size }), "z-51", className)}
         onMouseEnter={handleMouseEnter}
         onMouseLeave={handleMouseLeave}
         {...props}

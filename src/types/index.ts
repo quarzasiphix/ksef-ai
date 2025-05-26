@@ -109,6 +109,7 @@ export interface InvoiceItem {
   id: string;
   productId?: string;
   name: string;
+  description?: string;
   quantity: number;
   unitPrice: number; // Netto price
   vatRate: number;

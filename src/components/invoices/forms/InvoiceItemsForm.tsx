@@ -2,7 +2,7 @@ import React, { useState, useEffect } from "react";
 import { CardHeader, CardTitle, CardContent, Card } from "@/components/ui/card";
 import { EditableInvoiceItemsTable } from "@/components/invoices/EditableInvoiceItemsTable";
 import { calculateItemValues } from "@/lib/invoice-utils";
-import { InvoiceItem, InvoiceType, Product } from "@/types";
+import { InvoiceItem, InvoiceType, Product, VatExemptionReason } from "@/types";
 import { TransactionType } from "@/types/common";
 import { getProducts } from "@/integrations/supabase/repositories/productRepository";
 import { toast } from "sonner";
@@ -14,7 +14,7 @@ interface InvoiceItemsFormProps {
   onItemsChange: (items: InvoiceItem[]) => void;
   userId: string;
   fakturaBezVAT?: boolean;
-  vatExemptionReason?: string;
+  vatExemptionReason?: VatExemptionReason;
 }
 
 export const InvoiceItemsForm: React.FC<InvoiceItemsFormProps> = ({
@@ -61,7 +61,7 @@ export const InvoiceItemsForm: React.FC<InvoiceItemsFormProps> = ({
 
   const handleUpdateItem = (id: string, updates: Partial<InvoiceItem>) => {
     onItemsChange(items.map(item =>
-      item.id === id ? calculateItemValues({ ...item, ...updates }) : calculateItemValues(item)
+      item.id === id ? calculateItemValues({ ...item, ...updates }) : item
     ));
   };
 

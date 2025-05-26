@@ -15,6 +15,7 @@ interface InvoiceItemRowProps {
   documentType: InvoiceType;
   onRemoveItem: (id: string) => void;
   onUpdateItem: (id: string, updates: Partial<InvoiceItem>) => void;
+  userId: string;
   fakturaBezVAT?: boolean;
   vatExemptionReason?: string | null;
 }
@@ -26,6 +27,7 @@ export const InvoiceItemRow: React.FC<InvoiceItemRowProps> = ({
   documentType,
   onRemoveItem,
   onUpdateItem,
+  userId,
   fakturaBezVAT,
   vatExemptionReason
 }) => {
@@ -46,10 +48,11 @@ export const InvoiceItemRow: React.FC<InvoiceItemRowProps> = ({
   };
 
   const handleVatRateChange = (value: string) => {
+    // Handle VAT exemption
     const vatRate = value === 'zw' ? -1 : Number(value);
-    if (isNaN(vatRate)) return;
-    
-    const updated = calculateItemValues({ ...item, vatRate });
+    if (value !== 'zw' && isNaN(Number(value))) return;
+    // Update the item with the new VAT rate
+    const updated = calculateItemValues({ ...item, vatRate: Number(vatRate) });
     onUpdateItem(item.id, updated);
   };
 
@@ -63,8 +66,8 @@ export const InvoiceItemRow: React.FC<InvoiceItemRowProps> = ({
 
   const handleZwolnionyZVATChange = (checked: boolean | string) => {
     const isChecked = typeof checked === 'string' ? checked === 'true' : checked;
-    const vatRate = isChecked ? VatType.ZW : 23; // Default to 23% if not exempt
-    const updated = calculateItemValues({ ...item, vatRate });
+    const vatRate = isChecked ? -1 : 23; // Default to 23% if not exempt
+    const updated = calculateItemValues({ ...item, vatRate: Number(vatRate) });
     onUpdateItem(item.id, updated);
   };
   
@@ -128,22 +131,28 @@ export const InvoiceItemRow: React.FC<InvoiceItemRowProps> = ({
                 id: item.productId,
                 name: item.name,
                 unitPrice: item.unitPrice,
-                vatRate: item.vatRate,
+                vatRate: Number(item.vatRate),
                 unit: item.unit
               }}
               documentType={documentType}
               onProductSaved={(product: Product) => {
-                const vatRate = typeof product.vatRate === 'number' ? product.vatRate : Number(product.vatRate);
+                let vatRate: number;
+                if (typeof product.vatRate === 'string') {
+                  vatRate = product.vatRate === 'zw' ? -1 : Number(product.vatRate);
+                } else {
+                  vatRate = product.vatRate === -1 ? -1 : product.vatRate;
+                }
                 onUpdateItem(item.id, {
                   ...calculateItemValues({
                     ...item,
                     name: product.name,
                     unitPrice: product.unitPrice,
-                    vatRate: vatRate,
+                    vatRate: Number(vatRate),
                     unit: product.unit
                   })
                 });
               }}
+              userId={userId}
             />
           )}
           <Button 

@@ -4,7 +4,7 @@ import { toast } from "sonner";
 import { ArrowLeft, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Invoice } from "@/types";
-import { getInvoice, deleteInvoice } from "@/integrations/supabase/repositories/invoiceRepository";
+import { getInvoice, deleteInvoice, saveInvoice } from "@/integrations/supabase/repositories/invoiceRepository";
 import NewInvoice from "./NewInvoice";
 import { useQueryClient } from "@tanstack/react-query";
 import {
@@ -20,7 +20,7 @@ import {
 } from "@/components/ui/alert-dialog";
 import { useSidebar } from "@/components/ui/sidebar";
 import { cn } from "@/lib/utils";
-import { InvoiceFormActions } from "@/components/invoices/forms/InvoiceFormActions";
+import { useAuth } from "@/App";
 
 const EditInvoice = () => {
   const { id } = useParams<{ id: string }>();
@@ -30,6 +30,7 @@ const EditInvoice = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const { state } = useSidebar();
+  const { user } = useAuth();
 
   useEffect(() => {
     const fetchInvoice = async () => {
@@ -55,6 +56,55 @@ const EditInvoice = () => {
 
     fetchInvoice();
   }, [id]);
+
+  const handleUpdate = async (formData: any) => {
+    if (!id) {
+      console.log('handleUpdate called but id is null');
+      return;
+    }
+
+    if (!user) {
+      toast.error("Nie jesteś zalogowany");
+      return;
+    }
+
+    console.log('handleUpdate called with ID:', id);
+    console.log('Original form data:', formData);
+    console.log('Original items:', formData.items);
+    console.log('Original invoice items:', invoice?.items);
+
+    // Ensure items are preserved from the original invoice if not present in form data
+    const updatedData = {
+      ...formData,
+      id: id,
+      user_id: user.id,
+      items: formData.items || invoice?.items || []
+    };
+
+    console.log('Final data being sent to saveInvoice:', updatedData);
+    console.log('Items being sent:', updatedData.items);
+
+    try {
+      console.log('Updating invoice with ID:', id, 'and data:', updatedData);
+      await saveInvoice(updatedData);
+      
+      // Invalidate both the invoices list and the specific invoice query
+      await queryClient.invalidateQueries({ queryKey: ['invoices'] });
+      await queryClient.invalidateQueries({ queryKey: ['invoice', id] });
+      
+      console.log("Document updated successfully");
+      toast.success("Dokument został zaktualizowany");
+      
+      // Navigate back to the invoice detail page
+      const redirectPath = invoice?.transactionType === 'income' 
+        ? `/income/${id}`
+        : `/expense/${id}`;
+      navigate(redirectPath);
+    } catch (error) {
+      console.error("Error updating invoice:", error);
+      toast.error("Wystąpił błąd podczas aktualizacji dokumentu");
+    }
+  };
 
   const handleDelete = async () => {
     if (!id) return;
@@ -131,7 +181,7 @@ const EditInvoice = () => {
       }),
       buyer: isExpense ? invoice.seller : invoice.buyer,
       seller: isExpense ? invoice.buyer : invoice.seller,
-      fakturaBezVAT: !invoice.vat, // Convert vat boolean to fakturaBezVAT
+      fakturaBezVAT: !(invoice as any).vat, // Explicitly cast to any to access vat
       vatExemptionReason: invoice.vatExemptionReason, // Pass through the VAT exemption reason
     };
     console.log('Final transformed data:', transformed);
@@ -174,20 +224,16 @@ const EditInvoice = () => {
           </AlertDialogContent>
         </AlertDialog>
       </div>
-      <NewInvoice
-        initialData={transformedData}
-        type={invoice.transactionType as any}
-      />
-      {/* Sticky form actions */}
-      <div className="fixed bottom-0 left-0 right-0 bg-background border-t z-50 md:border-none lg:max-h-12">
-        <div className={cn("container py-2 lg:py-2", state === "expanded" ? "md:ml-64" : "md:ml-16")}>
-          <InvoiceFormActions
-            isLoading={loading}
-            isEditing={true}
-            onSubmit={() => alert('onSubmit')}
-            transactionType={invoice.transactionType}
-          />
-        </div>
+
+      {/* Main Content Area - Flex column to contain form and static bar */}
+      {/* Added pb-12 to make space for the static bottom bar on non-mobile */}
+      <div className="flex flex-col flex-1 pb-12">
+        <NewInvoice
+          initialData={transformedData}
+          type={invoice.transactionType as any}
+          showFormActions={true}
+          onSave={handleUpdate}
+        />
       </div>
     </div>
   );

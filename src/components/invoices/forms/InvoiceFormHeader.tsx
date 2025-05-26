@@ -1,4 +1,3 @@
-
 import React from "react";
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
@@ -32,15 +31,17 @@ export const InvoiceFormHeader: React.FC<InvoiceFormHeaderProps> = ({
   };
 
   return (
-    <div className={`flex items-center justify-between ${className}`.trim()}>
-      <div className="flex items-center gap-2">
-        <Button variant="outline" size="icon" onClick={() => navigate(-1)} type="button">
-          <ArrowLeft className="h-4 w-4" />
-        </Button>
-        <h1 className="text-xl font-bold">
-          {isEditing ? "Edytuj dokument" : `Nowy ${getDocumentTitle().toLowerCase()}`}
-        </h1>
+    !isEditing ? (
+      <div className={`flex items-center justify-between ${className}`.trim()}>
+        <div className="flex items-center gap-2">
+          <Button variant="outline" size="icon" onClick={() => navigate(-1)} type="button">
+            <ArrowLeft className="h-4 w-4" />
+          </Button>
+          <h1 className="text-xl font-bold">
+            {isEditing ? "Edytuj dokument" : `Nowy ${getDocumentTitle().toLowerCase()}`}
+          </h1>
+        </div>
       </div>
-    </div>
+    ) : null
   );
 };

@@ -106,9 +106,10 @@ const AppSidebar = () => {
                   onClick={() => navigate("/")}
                   style={{ display: 'flex', alignItems: 'center', width: '100%', padding: '0.35rem 0.5rem', justifyContent: state === 'expanded' ? 'flex-start' : 'center' }}
                 >
-                        <LayoutDashboard className={cn(
-                        "h-4 w-4",
-                        state === "expanded" && "text-white"
+                        <LayoutDashboard
+                        className={cn(
+                        "h-4 w-4 transition-colors",
+                        location.pathname === "/" ? "text-accent-foreground" : "text-white"
                       )} />
                       {state === "expanded" && <span className="ml-2 text-white">Dashboard</span>}
                   </Button>
@@ -119,14 +120,20 @@ const AppSidebar = () => {
                   variant="ghost"
                   className={cn(
                     "flex w-full items-center rounded-md text-sm font-medium transition-colors",
-                    location.pathname === "/income" ? "bg-accent text-accent-foreground" : "text-muted-foreground hover:bg-accent hover:text-accent-foreground",
+                    location.pathname === "/income"
+                      ? "bg-accent text-accent-foreground"
+                      : cn(
+                          state === "collapsed" ? "text-white" : "text-muted-foreground",
+                          "hover:bg-accent hover:text-accent-foreground"
+                        ),
                   )}
                   onClick={() => navigate("/income")}
                   style={{ display: 'flex', alignItems: 'center', width: '100%', padding: '0.35rem 0.5rem', justifyContent: state === 'expanded' ? 'flex-start' : 'center' }}
                 >
-                        <Receipt className={cn(
-                        "h-4 w-4",
-                        state === "expanded" && "text-white"
+                        <Receipt
+                        className={cn(
+                        "h-4 w-4 transition-colors",
+                        location.pathname === "/income" ? "text-accent-foreground" : "text-white"
                       )} />
                       {state === "expanded" && <span className="ml-2 text-white">Przychody</span>}
                   </Button>
@@ -137,14 +144,20 @@ const AppSidebar = () => {
                   variant="ghost"
                   className={cn(
                     "flex w-full items-center rounded-md text-sm font-medium transition-colors",
-                    location.pathname === "/expense" ? "bg-accent text-accent-foreground" : "text-muted-foreground hover:bg-accent hover:text-accent-foreground",
+                    location.pathname === "/expense"
+                      ? "bg-accent text-accent-foreground"
+                      : cn(
+                          state === "collapsed" ? "text-white" : "text-muted-foreground",
+                          "hover:bg-accent hover:text-accent-foreground"
+                        ),
                   )}
                   onClick={() => navigate("/expense")}
                   style={{ display: 'flex', alignItems: 'center', width: '100%', padding: '0.35rem 0.5rem', justifyContent: state === 'expanded' ? 'flex-start' : 'center' }}
                 >
-                      <Receipt className={cn(
-                        "h-4 w-4",
-                        state === "expanded" && "text-white"
+                      <Receipt
+                      className={cn(
+                        "h-4 w-4 transition-colors",
+                        location.pathname === "/expense" ? "text-accent-foreground" : "text-white"
                       )} />
                       {state === "expanded" && <span className="ml-2 text-white">Wydatki</span>}
                   </Button>
@@ -155,14 +168,20 @@ const AppSidebar = () => {
                   variant="ghost"
                   className={cn(
                     "flex w-full items-center rounded-md text-sm font-medium transition-colors",
-                    location.pathname === "/customers" ? "bg-accent text-accent-foreground" : "text-muted-foreground hover:bg-accent hover:text-accent-foreground",
+                    location.pathname === "/customers"
+                      ? "bg-accent text-accent-foreground"
+                      : cn(
+                          state === "collapsed" ? "text-white" : "text-muted-foreground",
+                          "hover:bg-accent hover:text-accent-foreground"
+                        ),
                   )}
                   onClick={() => navigate("/customers")}
                   style={{ display: 'flex', alignItems: 'center', width: '100%', padding: '0.35rem 0.5rem', justifyContent: state === 'expanded' ? 'flex-start' : 'center' }}
                 >
-                      <Users className={cn(
-                        "h-4 w-4",
-                        state === "expanded" && "text-white"
+                      <Users
+                      className={cn(
+                        "h-4 w-4 transition-colors",
+                        location.pathname === "/customers" ? "text-accent-foreground" : "text-white"
                       )} />
                       {state === "expanded" && <span className="ml-2 text-white">Kontrahenci</span>}
                   </Button>
@@ -173,14 +192,20 @@ const AppSidebar = () => {
                   variant="ghost"
                   className={cn(
                     "flex w-full items-center rounded-md text-sm font-medium transition-colors",
-                    location.pathname === "/products" ? "bg-accent text-accent-foreground" : "text-muted-foreground hover:bg-accent hover:text-accent-foreground",
+                    location.pathname === "/products"
+                      ? "bg-accent text-accent-foreground"
+                      : cn(
+                          state === "collapsed" ? "text-white" : "text-muted-foreground",
+                          "hover:bg-accent hover:text-accent-foreground"
+                        ),
                   )}
                   onClick={() => navigate("/products")}
                   style={{ display: 'flex', alignItems: 'center', width: '100%', padding: '0.35rem 0.5rem', justifyContent: state === 'expanded' ? 'flex-start' : 'center' }}
                 >
-                       <Package className={cn(
-                        "h-4 w-4",
-                        state === "expanded" && "text-white"
+                       <Package
+                       className={cn(
+                        "h-4 w-4 transition-colors",
+                        location.pathname === "/products" ? "text-accent-foreground" : "text-white"
                       )} />
                       {state === "expanded" && <span className="ml-2 text-white">Produkty</span>}
                   </Button>
@@ -191,14 +216,20 @@ const AppSidebar = () => {
                   variant="ghost"
                   className={cn(
                     "flex w-full items-center rounded-md text-sm font-medium transition-colors",
-                    location.pathname === "/settings" ? "bg-accent text-accent-foreground" : "text-muted-foreground hover:bg-accent hover:text-accent-foreground",
+                    location.pathname === "/settings"
+                      ? "bg-accent text-accent-foreground"
+                      : cn(
+                          state === "collapsed" ? "text-white" : "text-muted-foreground",
+                          "hover:bg-accent hover:text-accent-foreground"
+                        ),
                   )}
                   onClick={() => navigate("/settings")}
                   style={{ display: 'flex', alignItems: 'center', width: '100%', padding: '0.35rem 0.5rem', justifyContent: state === 'expanded' ? 'flex-start' : 'center' }}
                 >
-                      <Settings className={cn(
-                        "h-4 w-4",
-                        state === "expanded" && "text-white"
+                      <Settings
+                      className={cn(
+                        "h-4 w-4 transition-colors",
+                        location.pathname === "/settings" ? "text-accent-foreground" : "text-white"
                       )} />
                       {state === "expanded" && <span className="ml-2 text-white">Ustawienia</span>}
                   </Button>

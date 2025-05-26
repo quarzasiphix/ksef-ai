@@ -193,19 +193,27 @@ export async function saveInvoice(invoice: Omit<Invoice, 'id'> & { id?: string }
 
   // Then, save all invoice items
   if (invoice.items && invoice.items.length > 0) {
-    const itemsPayload = invoice.items.map(item => ({
-      invoice_id: invoiceId,
-      user_id: invoice.user_id, // Include user_id for RLS
-      product_id: item.productId || null,
-      name: item.name,
-      quantity: item.quantity,
-      unit_price: item.unitPrice,
-      vat_rate: item.vatRate,
-      unit: item.unit,
-      total_net_value: item.totalNetValue || item.unitPrice * item.quantity,
-      total_gross_value: item.totalGrossValue || (item.unitPrice * item.quantity) * (1 + item.vatRate / 100),
-      total_vat_value: item.totalVatValue || (item.unitPrice * item.quantity) * (item.vatRate / 100)
-    }));
+    const itemsPayload = invoice.items.map(item => {
+      const isVatExempt = item.vatRate === -1;
+      const vatRate = isVatExempt ? -1 : Number(item.vatRate);
+      const totalNetValue = item.totalNetValue || item.unitPrice * item.quantity;
+      const totalVatValue = isVatExempt ? 0 : (item.totalVatValue || totalNetValue * (vatRate / 100));
+      const totalGrossValue = isVatExempt ? totalNetValue : (item.totalGrossValue || totalNetValue * (1 + vatRate / 100));
+
+      return {
+        invoice_id: invoiceId,
+        user_id: invoice.user_id,
+        product_id: item.productId || null,
+        name: item.name,
+        quantity: item.quantity,
+        unit_price: item.unitPrice,
+        vat_rate: vatRate,
+        unit: item.unit || 'szt',
+        total_net_value: totalNetValue,
+        total_gross_value: totalGrossValue,
+        total_vat_value: totalVatValue
+      };
+    });
 
     console.log('Saving invoice items with payload:', itemsPayload);
 
@@ -289,7 +297,7 @@ export async function getInvoice(id: string): Promise<Invoice> {
     name: item.name || item.products?.name,
     quantity: Number(item.quantity),
     unitPrice: Number(item.unit_price) || 0,
-    vatRate: item.vat_rate || 0,
+    vatRate: Number(item.vat_rate),
     unit: item.unit || 'szt',
     totalNetValue: Number(item.total_net_value) || 0,
     totalGrossValue: Number(item.total_gross_value) || 0,

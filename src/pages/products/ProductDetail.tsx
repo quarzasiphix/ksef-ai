@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from "react";
 import { useParams, useNavigate, Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
@@ -8,17 +7,22 @@ import { getProducts } from "@/integrations/supabase/repositories/productReposit
 import ProductForm from "@/components/products/ProductForm";
 import { toast } from "sonner";
 import { useAuth } from "@/App";
+import { getInvoices } from "@/integrations/supabase/repositories/invoiceRepository";
+import { Invoice } from "@/types";
+import InvoiceCard from "@/components/invoices/InvoiceCard";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 
 const ProductDetail = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const { user } = useAuth();
   const [product, setProduct] = useState<Product | null>(null);
+  const [productInvoices, setProductInvoices] = useState<Invoice[]>([]);
   const [loading, setLoading] = useState(true);
   const [isEditOpen, setIsEditOpen] = useState(false);
   
   useEffect(() => {
-    const fetchProduct = async () => {
+    const fetchData = async () => {
       if (!id || !user?.id) return;
       
       setLoading(true);
@@ -26,15 +30,24 @@ const ProductDetail = () => {
         const products = await getProducts(user.id);
         const foundProduct = products.find(p => p.id === id) || null;
         setProduct(foundProduct);
+
+        if (foundProduct) {
+          const allInvoices = await getInvoices(user.id);
+          const filteredInvoices = allInvoices.filter(inv =>
+            inv.items.some(item => item.productId === foundProduct.id)
+          );
+          setProductInvoices(filteredInvoices);
+        }
+
       } catch (error) {
-        console.error("Error fetching product:", error);
-        toast.error("Błąd podczas wczytywania produktu");
+        console.error("Error fetching product data:", error);
+        toast.error("Błąd podczas wczytywania danych produktu");
       } finally {
         setLoading(false);
       }
     };
     
-    fetchProduct();
+    fetchData();
   }, [id, user?.id]);
   
   const handleEditClose = () => {
@@ -114,6 +127,25 @@ const ProductDetail = () => {
           </Button>
         </div>
       </div>
+      
+      <Card className="mt-6">
+        <CardHeader>
+          <CardTitle>Faktury zawierające ten produkt</CardTitle>
+        </CardHeader>
+        <CardContent>
+          {productInvoices.length === 0 ? (
+            <div className="text-center py-4">
+              <p>Brak faktur zawierających ten produkt.</p>
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              {productInvoices.map((invoice) => (
+                <InvoiceCard key={invoice.id} invoice={invoice} />
+              ))}
+            </div>
+          )}
+        </CardContent>
+      </Card>
       
       {isEditOpen && product && (
         <ProductForm
