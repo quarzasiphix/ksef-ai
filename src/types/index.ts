@@ -45,7 +45,12 @@ export enum InvoiceType {
 }
 
 // For database storage
-export type PaymentMethodDb = 'transfer' | 'cash' | 'card' | 'other';
+export enum PaymentMethodDb { // Changed to enum
+  TRANSFER = 'transfer',
+  CASH = 'cash',
+  CARD = 'card',
+  OTHER = 'other',
+}
 
 // For UI display
 export enum PaymentMethod {
@@ -104,6 +109,7 @@ export interface InvoiceItem {
   id: string;
   productId?: string;
   name: string;
+  description?: string;
   quantity: number;
   unitPrice: number; // Netto price
   vatRate: number;
@@ -190,7 +196,7 @@ export interface Invoice {
   bankAccountNumber?: string;
   created_at?: string;
   updated_at?: string;
-  vat: boolean;
+  vat?: boolean; // Making vat optional to avoid issues
   vatExemptionReason?: VatExemptionReason;
   fakturaBezVAT?: boolean;
 }

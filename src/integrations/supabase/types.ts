@@ -25,6 +25,7 @@ export type Database = {
           regon: string | null
           tax_id: string
           updated_at: string
+          user_id: string | null
         }
         Insert: {
           address: string
@@ -41,6 +42,7 @@ export type Database = {
           regon?: string | null
           tax_id: string
           updated_at?: string
+          user_id?: string | null
         }
         Update: {
           address?: string
@@ -57,6 +59,7 @@ export type Database = {
           regon?: string | null
           tax_id?: string
           updated_at?: string
+          user_id?: string | null
         }
         Relationships: []
       }
@@ -72,6 +75,7 @@ export type Database = {
           postal_code: string
           tax_id: string | null
           updated_at: string
+          user_id: string
         }
         Insert: {
           address: string
@@ -84,6 +88,7 @@ export type Database = {
           postal_code: string
           tax_id?: string | null
           updated_at?: string
+          user_id: string
         }
         Update: {
           address?: string
@@ -96,6 +101,7 @@ export type Database = {
           postal_code?: string
           tax_id?: string | null
           updated_at?: string
+          user_id?: string
         }
         Relationships: []
       }
@@ -113,6 +119,7 @@ export type Database = {
           unit: string
           unit_price: number
           updated_at: string
+          user_id: string | null
           vat_rate: number
         }
         Insert: {
@@ -128,6 +135,7 @@ export type Database = {
           unit: string
           unit_price: number
           updated_at?: string
+          user_id?: string | null
           vat_rate: number
         }
         Update: {
@@ -143,6 +151,7 @@ export type Database = {
           unit?: string
           unit_price?: number
           updated_at?: string
+          user_id?: string | null
           vat_rate?: number
         }
         Relationships: [
@@ -180,8 +189,12 @@ export type Database = {
           total_gross_value: number
           total_net_value: number
           total_vat_value: number
+          transaction_type: string
           type: string
           updated_at: string
+          user_id: string | null
+          vat: boolean | null
+          vat_exemption_reason: string | null
         }
         Insert: {
           business_profile_id: string
@@ -200,8 +213,12 @@ export type Database = {
           total_gross_value: number
           total_net_value: number
           total_vat_value: number
+          transaction_type?: string
           type: string
           updated_at?: string
+          user_id?: string | null
+          vat?: boolean | null
+          vat_exemption_reason?: string | null
         }
         Update: {
           business_profile_id?: string
@@ -220,8 +237,12 @@ export type Database = {
           total_gross_value?: number
           total_net_value?: number
           total_vat_value?: number
+          transaction_type?: string
           type?: string
           updated_at?: string
+          user_id?: string | null
+          vat?: boolean | null
+          vat_exemption_reason?: string | null
         }
         Relationships: [
           {
@@ -240,6 +261,71 @@ export type Database = {
           },
         ]
       }
+      premium_subscriptions: {
+        Row: {
+          created_at: string | null
+          ends_at: string | null
+          id: string
+          is_active: boolean
+          starts_at: string
+          transaction_id: string | null
+          user_id: string | null
+          stripe_subscription_id: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          ends_at?: string | null
+          id?: string
+          is_active?: boolean
+          starts_at?: string
+          transaction_id?: string | null
+          user_id?: string | null
+          stripe_subscription_id?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          ends_at?: string | null
+          id?: string
+          is_active?: boolean
+          starts_at?: string
+          transaction_id?: string | null
+          user_id?: string | null
+          stripe_subscription_id?: string | null
+        }
+        Relationships: []
+      }
+      profiles: {
+        Row: {
+          user_id: string
+          full_name: string | null
+          phone_number: string | null
+          avatar_url: string | null
+          created_at: string | null
+        }
+        Insert: {
+          user_id: string
+          full_name?: string | null
+          phone_number?: string | null
+          avatar_url?: string | null
+          created_at?: string | null
+        }
+        Update: {
+          user_id?: string
+          full_name?: string | null
+          phone_number?: string | null
+          avatar_url?: string | null
+          created_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "profiles_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: true
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          }
+        ]
+      }
       products: {
         Row: {
           created_at: string
@@ -248,6 +334,7 @@ export type Database = {
           unit: string
           unit_price: number
           updated_at: string
+          user_id: string
           vat_rate: number
         }
         Insert: {
@@ -257,6 +344,7 @@ export type Database = {
           unit: string
           unit_price: number
           updated_at?: string
+          user_id: string
           vat_rate: number
         }
         Update: {
@@ -266,6 +354,7 @@ export type Database = {
           unit?: string
           unit_price?: number
           updated_at?: string
+          user_id?: string
           vat_rate?: number
         }
         Relationships: []

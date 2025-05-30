@@ -1,10 +1,10 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { toast } from "sonner";
 import { ArrowLeft, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Invoice } from "@/types";
-import { getInvoice, deleteInvoice } from "@/integrations/supabase/repositories/invoiceRepository";
+import { getInvoice, deleteInvoice, saveInvoice } from "@/integrations/supabase/repositories/invoiceRepository";
 import NewInvoice from "./NewInvoice";
 import { useQueryClient } from "@tanstack/react-query";
 import {
@@ -18,6 +18,10 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
+import { useSidebar } from "@/components/ui/sidebar";
+import { cn } from "@/lib/utils";
+import { useAuth } from "@/App";
+import { InvoiceFormActions } from "@/components/invoices/forms/InvoiceFormActions";
 
 const EditInvoice = () => {
   const { id } = useParams<{ id: string }>();
@@ -26,6 +30,9 @@ const EditInvoice = () => {
   const [invoice, setInvoice] = useState<Invoice | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const { state } = useSidebar();
+  const { user } = useAuth();
+  const newInvoiceRef = useRef<{ handleSubmit: (onValid: (data: any) => Promise<void>) => (e?: React.BaseSyntheticEvent) => Promise<void>; } | null>(null);
 
   useEffect(() => {
     const fetchInvoice = async () => {
@@ -51,6 +58,57 @@ const EditInvoice = () => {
 
     fetchInvoice();
   }, [id]);
+
+  const handleUpdate = async (formData: any) => {
+    if (!id) {
+      console.log('handleUpdate called but id is null');
+      return;
+    }
+
+    if (!user) {
+      toast.error("Nie jesteś zalogowany");
+      return;
+    }
+
+    console.log('handleUpdate called with ID:', id);
+    console.log('Original form data:', formData);
+    console.log('Original items:', formData.items);
+    console.log('Original invoice items:', invoice?.items);
+
+    // Ensure items are preserved from the original invoice if not present in form data
+    const updatedData = {
+      ...formData,
+      id: id,
+      user_id: user.id,
+      items: formData.items || invoice?.items || [],
+      // Explicitly include isPaid from the original invoice if not in form data
+      isPaid: formData.isPaid !== undefined ? formData.isPaid : invoice?.isPaid || false
+    };
+
+    console.log('Final data being sent to saveInvoice:', updatedData);
+    console.log('Items being sent:', updatedData.items);
+
+    try {
+      console.log('Updating invoice with ID:', id, 'and data:', updatedData);
+      await saveInvoice(updatedData);
+      
+      // Invalidate both the invoices list and the specific invoice query
+      await queryClient.invalidateQueries({ queryKey: ['invoices'] });
+      await queryClient.invalidateQueries({ queryKey: ['invoice', id] });
+      
+      console.log("Document updated successfully");
+      toast.success("Dokument został zaktualizowany");
+      
+      // Navigate back to the invoice detail page
+      const redirectPath = invoice?.transactionType === 'income' 
+        ? `/income/${id}`
+        : `/expense/${id}`;
+      navigate(redirectPath);
+    } catch (error) {
+      console.error("Error updating invoice:", error);
+      toast.error("Wystąpił błąd podczas aktualizacji dokumentu");
+    }
+  };
 
   const handleDelete = async () => {
     if (!id) return;
@@ -127,7 +185,7 @@ const EditInvoice = () => {
       }),
       buyer: isExpense ? invoice.seller : invoice.buyer,
       seller: isExpense ? invoice.buyer : invoice.seller,
-      fakturaBezVAT: !invoice.vat, // Convert vat boolean to fakturaBezVAT
+      fakturaBezVAT: !(invoice as any).vat, // Explicitly cast to any to access vat
       vatExemptionReason: invoice.vatExemptionReason, // Pass through the VAT exemption reason
     };
     console.log('Final transformed data:', transformed);
@@ -138,6 +196,16 @@ const EditInvoice = () => {
   const transformedData = transformInvoiceData(invoice);
   console.log('Passing to NewInvoice:', transformedData);
   
+  // Define handleFormSubmit here, outside the return statement
+  const handleFormSubmit = (e: React.FormEvent) => {
+    // Prevent the default form submission behavior
+    e.preventDefault();
+    if (newInvoiceRef.current?.handleSubmit) {
+      // Call the handleSubmit method from the NewInvoice component
+      newInvoiceRef.current.handleSubmit(handleUpdate)(e);
+    }
+  };
+
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
@@ -170,10 +238,39 @@ const EditInvoice = () => {
           </AlertDialogContent>
         </AlertDialog>
       </div>
-      <NewInvoice 
-        initialData={transformedData} 
-        type={invoice.transactionType as any}
-      />
+
+      {/* Main Content Area - Flex column to contain form and static bar */}
+      {/* Added pb-12 to make space for the static bottom bar on non-mobile */}
+      <div className="flex flex-col flex-1 pb-12 md:pb-0"> {/* Adjust padding for non-mobile when actions are static */}
+        {/* Scrollable content area */}
+        <div className="flex-1 overflow-y-auto">
+          <NewInvoice
+            initialData={transformedData}
+            type={invoice.transactionType as any}
+            onSave={handleUpdate}
+            ref={newInvoiceRef}
+          />
+        </div>
+
+        {/* Sticky form actions - Rendered by EditInvoice */}
+        {/* Use the isLoading state from EditInvoice */} 
+        {/* Fixed on mobile, static at the bottom on non-mobile */}
+        <div className={cn(
+            "fixed bottom-0 left-0 right-0 w-full border-t bg-background z-[9999]", // Fixed at bottom on mobile with high z-index
+            "md:static md:bottom-auto md:left-auto md:right-auto md:w-auto md:border-t-0 md:bg-transparent md:z-auto", // Static on medium+ screens
+            "py-2 lg:py-2", // Padding
+            "container" // Apply container padding
+          )}>
+          <InvoiceFormActions
+            isLoading={loading} // Use loading state from EditInvoice
+            isEditing={true} // Always editing in this component
+            onSubmit={handleFormSubmit} // Pass the handleFormSubmit defined in EditInvoice
+            transactionType={invoice.transactionType as any}
+          />
+        </div>
+
+      </div>
+
     </div>
   );
 };

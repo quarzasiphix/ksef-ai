@@ -8,6 +8,7 @@ import Login from "./pages/auth/Login";
 import Register from "./pages/auth/Register";
 import React, { createContext, useState, useEffect, useContext } from "react";
 import { supabase } from "@/integrations/supabase/client";
+import { Database } from "@/integrations/supabase/types"; // Import Database type
 
 import Layout from "./components/layout/Layout";
 import GlobalDataLoader from "./components/layout/GlobalDataLoader";
@@ -35,134 +36,164 @@ import IncomeDetail from "./pages/income/[id]";
 import ExpenseDetail from "./pages/expense/[id]";
 import { SidebarProvider } from "@/components/ui/sidebar";
 import EditInvoice from "./pages/invoices/EditInvoice";
+import SettingsMenu from "./pages/settings/SettingsMenu"; // Import the new component
+import ProfileSettings from "./pages/settings/ProfileSettings"; // Import the new component
+import { AuthChangeEvent, Session, User, SupabaseClient, Subscription } from '@supabase/supabase-js'; // Import necessary types
 
 // Export the query client for use in other files
 export const queryClient = new QueryClient({
   defaultOptions: {
     queries: {
-      refetchOnWindowFocus: true, // Enable refetch on window focus
-      refetchOnMount: true, // Enable refetch when component mounts
-      refetchOnReconnect: true, // Enable refetch on reconnect
-      staleTime: 5 * 60 * 1000, // 5 minutes before data is considered stale
-      gcTime: 10 * 60 * 1000, // 10 minutes before inactive queries are garbage collected
-      retry: 1, // Only retry failed requests once
+      refetchOnWindowFocus: true,
+      refetchOnMount: true,
+      refetchOnReconnect: true,
+      staleTime: 5 * 60 * 1000,
+      gcTime: 10 * 60 * 1000,
+      retry: 1,
     },
   },
 });
 
 // --- Auth Context ---
-type AuthContextType = { 
-  user: any; 
-  setUser: (u: any) => void;
+interface AuthContextType {
+  user: User | null; // Use Supabase User type
+  setUser: (u: User | null) => void; // Use Supabase User type
   logout: () => Promise<void>;
-};
+  isPremium: boolean;
+  session: Session | null; // Add session
+  isLoading: boolean; // Add isLoading
+  supabase: SupabaseClient<Database>; // Add supabase client
+}
 
-const AuthContext = createContext<AuthContextType>({ 
-  user: null, 
+const AuthContext = createContext<AuthContextType>({
+  user: null,
   setUser: () => {},
-  logout: async () => {}
+  logout: async () => {},
+  isPremium: false,
+  session: null, // Default session
+  isLoading: true, // Default loading state
+  supabase: supabase, // Provide the actual supabase instance
 });
 
 export const useAuth = () => useContext(AuthContext);
 
 const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  console.log("AuthProvider - START"); // Add this
-  const [user, setUser] = useState<any>(null);
-  const [loading, setLoading] = useState(true);
+  console.log("AuthProvider - START");
+  const [user, setUser] = useState<User | null>(null); // Use Supabase User type
+  const [loading, setLoading] = useState(true); // Keep local loading state
+  const [isPremium, setIsPremium] = useState(false); // State for premium status
+  const [session, setSession] = useState<Session | null>(null); // Add session state
   const queryClient = useQueryClient();
 
-  const handleAuthStateChange = React.useCallback(async (_event: string, session: any) => {
+  const fetchPremiumStatus = async (userId: string) => {
+    try {
+      const { data, error } = await supabase
+        .from('premium_subscriptions')
+        .select('is_active, ends_at')
+        .eq('user_id', userId)
+        .eq('is_active', true)
+        .order('ends_at', { ascending: false })
+        .limit(1);
+
+      if (error) {
+        console.error("Error fetching premium status:", error);
+        setIsPremium(false);
+        return;
+      }
+
+      // Check if there is an active subscription that hasn't ended
+      const hasActiveSubscription = data && data.length > 0 && (!data[0].ends_at || new Date(data[0].ends_at) > new Date());
+      setIsPremium(hasActiveSubscription);
+
+    } catch (error) {
+      console.error("Error in fetchPremiumStatus:", error);
+      setIsPremium(false);
+    }
+  };
+
+  const handleAuthStateChange = React.useCallback(async (_event: string, session: Session | null) => { // Use Session type
     console.log("AuthProvider - handleAuthStateChange - event:", _event, "session:", session);
-    
-    // Only update state if it's actually different
+    setSession(session);
     const currentUser = user;
     const newUser = session?.user || null;
-    
-    // Check if user state actually changed
+
     const userChanged = JSON.stringify(currentUser) !== JSON.stringify(newUser);
-    
-    if (!userChanged) {
+
+    if (!userChanged && _event !== 'SIGNED_IN') { // Also run for SIGNED_IN even if user object is same (e.g. on refresh)
       console.log("AuthProvider - User state unchanged, skipping update");
+      // If user state is unchanged but it's a SIGNED_IN event, re-fetch premium status
+      if (newUser?.id) {
+         fetchPremiumStatus(newUser.id);
+      }
       return;
     }
 
     if (newUser) {
-      console.log("AuthProvider - Setting new user");
+      console.log("AuthProvider - Setting new user and fetching premium status");
       setUser(newUser);
       localStorage.setItem("sb_session", JSON.stringify(session));
-      // Invalidate all queries to force refetch with new user data
+      await fetchPremiumStatus(newUser.id);
       await queryClient.invalidateQueries();
     } else {
-      console.log("AuthProvider - Removing user");
+      console.log("AuthProvider - Removing user and clearing premium status");
       setUser(null);
+      setIsPremium(false); // Clear premium status on logout
       localStorage.removeItem("sb_session");
-      // Clear all queries when logging out
       queryClient.clear();
     }
-    
-    // Only set loading to false after the initial check
+
     if (loading) {
       console.log("AuthProvider - Initial load complete");
       setLoading(false);
     }
-    
+
     console.log("AuthProvider - handleAuthStateChange - END");
   }, [user, loading, queryClient]);
 
   const logout = async () => {
-    console.log("AuthProvider - logout - START"); // Add this
+    console.log("AuthProvider - logout - START");
     try {
-      // Sign out from Supabase
       await supabase.auth.signOut();
-
-      // Clear all queries
       queryClient.clear();
-
-      // Explicitly remove specific query caches
       queryClient.removeQueries({ queryKey: ['invoices'] });
       queryClient.removeQueries({ queryKey: ['businessProfiles'] });
       queryClient.removeQueries({ queryKey: ['customers'] });
       queryClient.removeQueries({ queryKey: ['products'] });
       queryClient.removeQueries({ queryKey: ['settings'] });
-
-      // Clear any persisted query state in localStorage/sessionStorage
       ['invoices', 'businessProfiles', 'customers', 'products', 'settings'].forEach(key => {
         localStorage.removeItem(`tanstack-query-${key}`);
         sessionStorage.removeItem(`tanstack-query-${key}`);
       });
-
-      // Reset user state
       setUser(null);
+      setIsPremium(false); // Clear premium status on logout
       localStorage.removeItem("sb_session");
     } catch (error) {
-      console.error("AuthProvider - Error during logout:", error); // Modified log
+      console.error("AuthProvider - Error during logout:", error);
     }
-    console.log("AuthProvider - logout - END"); // Add this
+    console.log("AuthProvider - logout - END");
   };
 
   useEffect(() => {
     console.log("AuthProvider - useEffect - START");
-    
-    // Always check Supabase for a valid session on mount
+
     const checkSession = async () => {
       console.log("AuthProvider - useEffect - checkSession - START");
       try {
         const { data, error } = await supabase.auth.getSession();
-        
+
         if (error) {
           console.error("Error getting session:", error);
           setLoading(false);
           return;
         }
-        
+
         console.log("AuthProvider - useEffect - checkSession - after getSession, data:", data);
-        
-        // Only update state if we have a session
+
         if (data?.session) {
-          await handleAuthStateChange('INITIAL_SESSION', data.session);
+          handleAuthStateChange('INITIAL_SESSION', data.session);
         } else {
-          // No session, ensure we're in a clean state
           setUser(null);
+          setIsPremium(false);
           localStorage.removeItem("sb_session");
           setLoading(false);
         }
@@ -174,7 +205,6 @@ const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => 
 
     checkSession();
 
-    // Listen to auth state changes (login/logout/refresh)
     if (supabase.auth.onAuthStateChange) {
       console.log("AuthProvider - useEffect - setting up auth state listener");
       const { data: { subscription } } = supabase.auth.onAuthStateChange(
@@ -183,7 +213,7 @@ const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => 
           handleAuthStateChange(event, session);
         }
       );
-      
+
       return () => {
         console.log("AuthProvider - useEffect - cleaning up auth state listener");
         subscription?.unsubscribe();
@@ -191,42 +221,40 @@ const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => 
     }
   }, [handleAuthStateChange]);
 
-  console.log("AuthProvider - rendering - loading:", loading, "user:", user); // Add this
+  console.log("AuthProvider - rendering - loading:", loading, "user:", user, "isPremium:", isPremium);
   if (loading) {
     return <div className="flex items-center justify-center min-h-screen bg-neutral-900 text-white text-xl">Ładowanie...</div>;
   }
 
-  console.log("AuthProvider - rendering - authenticated, providing context"); // Add this
-  return <AuthContext.Provider value={{ user, setUser, logout }}>{children}</AuthContext.Provider>;
+  console.log("AuthProvider - rendering - authenticated, providing context");
+  return <AuthContext.Provider value={{ user, setUser, logout, isPremium, session, isLoading: loading, supabase }}>{children}</AuthContext.Provider>;
 };
 
 const RequireAuth: React.FC<{ children?: React.ReactNode }> = ({ children }) => {
-  console.log("RequireAuth - START"); // Add this
+  console.log("RequireAuth - START");
   const { user } = useAuth();
-  console.log("RequireAuth - user from useAuth:", user); // Add this
+  console.log("RequireAuth - user from useAuth:", user);
 
-  // Don't redirect until AuthProvider loading is done
   const [loading, setLoading] = useState(true);
-  console.log("RequireAuth - initial loading state:", loading); // Add this
+  console.log("RequireAuth - initial loading state:", loading);
 
   useEffect(() => {
-    console.log("RequireAuth - useEffect - setting loading to false"); // Add this
+    console.log("RequireAuth - useEffect - setting loading to false");
     setLoading(false);
   }, []);
 
-  console.log("RequireAuth - rendering - loading:", loading, "user:", user); // Add this
+  console.log("RequireAuth - rendering - loading:", loading, "user:", user);
 
   if (loading) {
-    console.log("RequireAuth - rendering - still loading, returning null"); // Add this
     return null;
   }
 
   if (!user) {
-    console.log("RequireAuth - rendering - no user, navigating to login"); // Add this
+    console.log("RequireAuth - rendering - no user, navigating to login");
     return <Navigate to="/auth/login" replace />;
   }
 
-  console.log("RequireAuth - rendering - user exists, rendering children/outlet"); // Add this
+  console.log("RequireAuth - rendering - user exists, rendering children/outlet");
   return <>{children ? children : <Outlet />}</>;
 };
 
@@ -248,15 +276,15 @@ const App = () => (
                     <Route index element={<Dashboard />} />
                     {/* Invoice routes */}
                     <Route path="invoices/new" element={<NewInvoice />} />
-                    
+
                     {/* Income routes */}
                     <Route path="/income/:id" element={<InvoiceDetail type="income" />} />
                     <Route path="/income/:id/edit" element={<EditInvoice />} />
-                    
+
                     {/* Expense routes */}
                     <Route path="/expense/:id" element={<InvoiceDetail type="expense" />} />
                     <Route path="/expense/:id/edit" element={<EditInvoice />} />
-                    
+
                     {/* Legacy routes for backward compatibility */}
                     <Route path="/invoices/:id" element={<InvoiceDetail type="income" />} />
                     {/* Customer routes */}
@@ -270,10 +298,16 @@ const App = () => (
                     <Route path="products/edit/:id" element={<EditProduct />} />
                     <Route path="products/:id" element={<ProductDetail />} />
                     {/* Settings routes */}
-                    <Route path="settings" element={<BusinessProfiles />} />
-                    <Route path="settings/business-profiles/new" element={<NewBusinessProfile />} />
-                    <Route path="settings/business-profiles/:id" element={<EditBusinessProfile />} />
-                    <Route path="settings/documents" element={<DocumentSettings />} />
+                    <Route path="settings" element={<SettingsMenu />} >
+                      <Route index element={<Navigate to="business-profiles" replace />} /> {/* Set profile as the default nested route */}
+                      <Route path="profile" element={<ProfileSettings />} /> {/* Add the profile settings route */}
+                      <Route path="business-profiles" element={<BusinessProfiles />} />
+                      <Route path="business-profiles/new" element={<NewBusinessProfile />} />
+                      <Route path="business-profiles/:id" element={<EditBusinessProfile />} />
+                      <Route path="documents" element={<DocumentSettings />} />
+                      {/* Using Outlet in SettingsMenu will render the nested routes */}
+                    </Route>
+
                     {/* New invoice routes */}
                     <Route path="income/new" element={<NewInvoice type={TransactionType.INCOME} />} />
                     <Route path="expense/new" element={<NewInvoice type={TransactionType.EXPENSE} />} />

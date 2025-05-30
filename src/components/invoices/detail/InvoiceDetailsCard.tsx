@@ -6,9 +6,9 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { formatPolishDate, getPolishPaymentMethod } from "@/lib/invoice-utils";
-import { InvoiceType } from "@/types";
+import { InvoiceType, VatExemptionReason } from "@/types";
 
-interface InvoiceDetailsCardProps {
+export interface InvoiceDetailsCardProps {
   paymentMethod: string; // Added payment method prop
   number: string;
   issueDate: string;
@@ -23,6 +23,7 @@ interface InvoiceDetailsCardProps {
   type: InvoiceType;
   bankAccount?: string; // Added bank account prop
   vat: boolean; // Add vat prop
+  vatExemptionReason?: VatExemptionReason; // Add vatExemptionReason prop
 }
 
 export const InvoiceDetailsCard: React.FC<InvoiceDetailsCardProps> = ({
@@ -37,6 +38,7 @@ export const InvoiceDetailsCard: React.FC<InvoiceDetailsCardProps> = ({
   type,
   bankAccount,
   vat, // Destructure vat prop
+  vatExemptionReason, // Destructure vatExemptionReason
 }) => {
   const isReceipt = type === InvoiceType.RECEIPT;
   

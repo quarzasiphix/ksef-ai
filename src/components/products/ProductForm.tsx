@@ -1,4 +1,3 @@
-
 import React from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { useForm } from "react-hook-form";
@@ -22,7 +21,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Product } from "@/types";
+import { Product, VatType } from "@/types";
 import { saveProduct } from "@/integrations/supabase/repositories/productRepository";
 import { useAuth } from "@/App";
 import {
@@ -46,7 +45,9 @@ const UNITS = ["szt.", "godz.", "usł.", "kg", "m", "m²", "m³", "l", "komplet"
 const formSchema = z.object({
   name: z.string().min(1, "Nazwa jest wymagana"),
   unitPrice: z.coerce.number().min(0, "Cena musi być większa lub równa 0"),
-  vatRate: z.coerce.number(),
+  vatRate: z.coerce.number().refine(val => val === -1 || (val >= 0 && val <= 100), {
+    message: "Stawka VAT musi być liczbą od 0 do 100 lub -1 dla zwolnionych",
+  }),
   unit: z.string().min(1, "Jednostka jest wymagana"),
 });
 
@@ -177,8 +178,8 @@ const ProductForm = ({
                       <FormItem>
                         <FormLabel>Stawka VAT</FormLabel>
                         <Select
-                          onValueChange={(value) => field.onChange(parseInt(value))}
-                          defaultValue={field.value.toString()}
+                          onValueChange={(value) => field.onChange(value === 'zw' ? -1 : Number(value))}
+                          value={field.value === -1 ? 'zw' : (field.value?.toString() || '23')}
                         >
                           <FormControl>
                             <SelectTrigger>
@@ -186,14 +187,11 @@ const ProductForm = ({
                             </SelectTrigger>
                           </FormControl>
                           <SelectContent>
-                            {VAT_RATES.map((rate) => (
-                              <SelectItem
-                                key={rate.value}
-                                value={rate.value.toString()}
-                              >
-                                {rate.label}
-                              </SelectItem>
-                            ))}
+                            <SelectItem value="23">23%</SelectItem>
+                            <SelectItem value="8">8%</SelectItem>
+                            <SelectItem value="5">5%</SelectItem>
+                            <SelectItem value="0">0%</SelectItem>
+                            <SelectItem value="zw">Zwolniony</SelectItem>
                           </SelectContent>
                         </Select>
                         <FormMessage />

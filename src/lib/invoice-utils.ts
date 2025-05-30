@@ -1,5 +1,6 @@
 import { InvoiceItem, PaymentMethod } from "@/types";
 import { PaymentMethodDb } from "@/types/common";
+import * as z from "zod";
 
 // Format number to Polish currency
 export const formatCurrency = (amount: number): string => {
@@ -22,21 +23,22 @@ export const calculateItemValues = (item: Partial<InvoiceItem> & { name?: string
   const description = item.description || item.name || '';
 
   // Safely convert vatRate to number
-  let vatRateValue: number;
+  let vatRate: number;
   if (typeof item.vatRate === 'number') {
-    vatRateValue = item.vatRate;
+    vatRate = item.vatRate;
   } else if (typeof item.vatRate === 'string') {
-    vatRateValue = parseFloat(item.vatRate) || 0;
+    vatRate = item.vatRate === 'zw' ? -1 : parseFloat(item.vatRate) || 0;
   } else {
-    vatRateValue = Number(item.vatRate) || 0;
+    vatRate = Number(item.vatRate) || 0;
   }
   
-  // Handle VAT-exempt items (vatRate = -1 or VatType.ZW)
-  const isVatExempt = vatRateValue === -1;
+  // Handle VAT-exempt items (vatRate = -1)
+  const isVatExempt = vatRate === -1;
   
-  // For VAT-exempt items, treat as 0% VAT for calculation purposes
-  // For other cases, ensure the rate is between 0 and 100
-  const vatRate = isVatExempt ? 0 : Math.max(0, Math.min(100, Number.isFinite(vatRateValue) ? vatRateValue : 0));
+  // For non-VAT-exempt items, ensure the rate is between 0 and 100
+  if (!isVatExempt) {
+    vatRate = Math.max(0, Math.min(100, Number.isFinite(vatRate) ? vatRate : 0));
+  }
   
   // Defensive: Clamp quantity and unitPrice to at least 0
   const quantity = Number.isFinite(item.quantity) && item.quantity > 0 ? item.quantity : 0;
@@ -58,7 +60,7 @@ export const calculateItemValues = (item: Partial<InvoiceItem> & { name?: string
   return {
     ...item,
     description, // Ensure description is always set
-    vatRate: vatRateValue, // Keep original vatRate value for display
+    vatRate: isVatExempt ? -1 : vatRate, // Preserve -1 for VAT-exempt items
     quantity,
     unitPrice,
     totalNetValue,
@@ -192,3 +194,18 @@ export const toPaymentMethodDb = (method: string | PaymentMethod): PaymentMethod
     ? dbValue 
     : 'transfer') as PaymentMethodDb;
 };
+
+export const invoiceItemSchema = z.object({
+  id: z.string(),
+  productId: z.string().optional(),
+  name: z.string().min(1, "Nazwa produktu jest wymagana"),
+  quantity: z.number().min(1, "Ilość musi być większa od 0"),
+  unitPrice: z.number().min(0, "Cena netto musi być większa lub równa 0"),
+  vatRate: z.number().refine(val => val === -1 || (val >= 0 && val <= 100), {
+    message: "Stawka VAT musi być liczbą od 0 do 100 lub -1 dla zwolnionych",
+  }),
+  unit: z.string().min(1, "Jednostka jest wymagana"),
+  totalNetValue: z.number().optional(),
+  totalGrossValue: z.number().optional(),
+  totalVatValue: z.number().optional(),
+});

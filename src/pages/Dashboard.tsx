@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { formatCurrency } from "@/lib/invoice-utils";
@@ -9,6 +8,7 @@ import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { useGlobalData } from "@/hooks/use-global-data";
+import { useAuth } from "@/App";
 
 const Dashboard = () => {
   const [monthlySummaries, setMonthlySummaries] = useState<any[]>([]);
@@ -16,6 +16,7 @@ const Dashboard = () => {
   
   // Get data from our global data cache
   const { invoices: { data: invoices, isLoading } } = useGlobalData();
+  const { isPremium } = useAuth();
   
   useEffect(() => {
     if (invoices?.length > 0) {
@@ -59,11 +60,30 @@ const Dashboard = () => {
 
   const totalInvoices = invoices.length;
   const unpaidInvoices = invoices.filter(inv => !inv.isPaid).length;
-  const totalGross = invoices.reduce((sum, inv) => sum + (inv.totalGrossValue || 0), 0);
-  const totalTax = invoices.reduce((sum, inv) => sum + (inv.totalVatValue || 0), 0);
+  
+  // Recalculate totalGross and totalTax by summing up item values,
+  // explicitly handling VAT-exempt items (vatRate === -1)
+  const totalGross = invoices.reduce((invoiceSum, invoice) => {
+    const invoiceGross = (invoice.items || []).reduce((itemSum, item) => {
+      // For VAT-exempt items, the contribution to gross is just the net value
+      // For other items, use the calculated item's gross value
+      const itemGross = item.vatRate === -1 ? (item.totalNetValue || 0) : (item.totalGrossValue || 0);
+      return itemSum + Math.max(0, itemGross);
+    }, 0);
+    return invoiceSum + invoiceGross;
+  }, 0);
+
+  const totalTax = invoices.reduce((invoiceSum, invoice) => {
+    const invoiceVat = (invoice.items || []).reduce((itemSum, item) => {
+      // Only sum VAT for items that are NOT VAT-exempt (vatRate !== -1)
+      const itemVat = item.vatRate !== -1 ? (item.totalVatValue || 0) : 0;
+      return itemSum + Math.max(0, itemVat);
+    }, 0);
+    return invoiceSum + invoiceVat;
+  }, 0);
 
   return (
-    <div className="space-y-6 max-w-full">
+    <div className="space-y-6 max-w-full pb-20">
       <div className="flex items-center justify-between">
         <h1 className="text-3xl font-bold">Dashboard</h1>
       </div>
@@ -200,6 +220,25 @@ const Dashboard = () => {
         </CardContent>
       </Card>
       
+      <Card>
+        <CardHeader>
+          <CardTitle>Nawigacja</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="flex flex-wrap gap-3">
+            <Link to="/products">
+              <Button variant="outline">Produkty</Button>
+            </Link>
+            <Link to="/settings">
+              <Button variant="outline">Ustawienia</Button>
+            </Link>
+            <Link to="/customers">
+              <Button variant="outline">Klienci</Button>
+            </Link>
+          </div>
+        </CardContent>
+      </Card>
+
       <div className="space-y-4">
         <div className="flex justify-between items-center">
           <h2 className="text-xl font-bold">Ostatnie faktury</h2>
@@ -225,56 +264,65 @@ const Dashboard = () => {
         )}
       </div>
       
+      {/* Conditionally render KSeF Status card for premium users */}
+      {/* Conditionally show KSeF Status card for premium users, or a blurred version with message for non-premium */}
       <Card>
         <CardHeader>
           <CardTitle>KSeF Status</CardTitle>
         </CardHeader>
-        <CardContent className="p-0">
-          <div className="overflow-x-auto">
-            <table className="w-full invoice-table">
-              <thead>
-                <tr>
-                  <th className="w-1/3">{isMobile ? "Nr" : "Nr faktury"}</th>
-                  <th className="w-1/4">{isMobile ? "Data" : "Data wystawienia"}</th>
-                  <th className="w-1/3">Status</th>
-                  {!isMobile && <th>Nr referencyjny</th>}
-                </tr>
-              </thead>
-              <tbody>
-                {isLoading ? (
+        <CardContent className="p-0 relative">
+          {!isPremium && (
+             <div className="absolute inset-0 bg-background/80 backdrop-blur-sm z-10 flex items-center justify-center rounded-md">
+               <p className="text-lg font-semibold text-foreground">Kup Premium na dostęp</p>
+             </div>
+          )}
+          <div className={isPremium ? "" : "pointer-events-none opacity-50"}> {/* Apply styles if not premium */}
+            <div className="overflow-x-auto">
+              <table className="w-full invoice-table">
+                <thead>
                   <tr>
-                    <td colSpan={isMobile ? 3 : 4} className="text-center py-4">Ładowanie...</td>
+                    <th className="w-1/3">{isMobile ? "Nr" : "Nr faktury"}</th>
+                    <th className="w-1/4">{isMobile ? "Data" : "Data wystawienia"}</th>
+                    <th className="w-1/3">Status</th>
+                    {!isMobile && <th>Nr referencyjny</th>}
                   </tr>
-                ) : invoices.length === 0 ? (
-                  <tr>
-                    <td colSpan={isMobile ? 3 : 4} className="text-center py-4">Brak faktur</td>
-                  </tr>
-                ) : (
-                  invoices.slice(0, 5).map((invoice) => (
-                    <tr key={invoice.id}>
-                      <td className="truncate max-w-[80px]">{invoice.number}</td>
-                      <td>{new Date(invoice.issueDate).toLocaleDateString("pl-PL")}</td>
-                      <td>
-                        <span className={`px-1 py-0.5 rounded-full text-xs ${
-                          invoice.ksef?.status === "sent" 
-                            ? "bg-green-100 text-green-800" 
-                            : invoice.ksef?.status === "pending" 
-                              ? "bg-amber-100 text-amber-800" 
-                              : "bg-gray-100 text-gray-800"
-                        }`}>
-                          {invoice.ksef?.status === "sent" 
-                            ? "Wysłano" 
-                            : invoice.ksef?.status === "pending" 
-                              ? "Oczekuje" 
-                              : "Brak"}
-                        </span>
-                      </td>
-                      {!isMobile && <td className="truncate">{invoice.ksef?.referenceNumber || "—"}</td>}
+                </thead>
+                <tbody>
+                  {isLoading ? (
+                    <tr>
+                      <td colSpan={isMobile ? 3 : 4} className="text-center py-4">Ładowanie...</td>
                     </tr>
-                  ))
-                )}
-              </tbody>
-            </table>
+                  ) : invoices.length === 0 ? (
+                    <tr>
+                      <td colSpan={isMobile ? 3 : 4} className="text-center py-4">Brak faktur</td>
+                    </tr>
+                  ) : (
+                    invoices.slice(0, 5).map((invoice) => (
+                      <tr key={invoice.id}>
+                        <td className="truncate max-w-[80px]">{invoice.number}</td>
+                        <td>{new Date(invoice.issueDate).toLocaleDateString("pl-PL")}</td>
+                        <td>
+                          <span className={`px-1 py-0.5 rounded-full text-xs ${
+                            invoice.ksef?.status === "sent" 
+                              ? "bg-green-100 text-green-800" 
+                              : invoice.ksef?.status === "pending" 
+                                ? "bg-amber-100 text-amber-800" 
+                                : "bg-gray-100 text-gray-800"
+                          }`}>
+                            {invoice.ksef?.status === "sent" 
+                              ? "Wysłano" 
+                              : invoice.ksef?.status === "pending" 
+                                ? "Oczekuje" 
+                                : "Brak"}
+                          </span>
+                        </td>
+                        {!isMobile && <td className="truncate">{invoice.ksef?.referenceNumber || "—"}</td>}
+                      </tr>
+                    ))
+                  )}
+                </tbody>
+              </table>
+            </div>
           </div>
         </CardContent>
       </Card>

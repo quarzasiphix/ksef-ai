@@ -1,4 +1,3 @@
-
 import React from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -102,20 +101,8 @@ const CustomerForm = ({
             onSubmit={form.handleSubmit(onSubmit)}
             className="space-y-4 pt-2"
           >
-            <FormField
-              control={form.control}
-              name="name"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Nazwa</FormLabel>
-                  <FormControl>
-                    <Input placeholder="Nazwa firmy lub imię i nazwisko" {...field} />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-            <FormField
+
+<FormField
               control={form.control}
               name="taxId"
               render={({ field }) => (
@@ -139,7 +126,16 @@ const CustomerForm = ({
                         try {
                           const today = new Date().toISOString().slice(0, 10);
                           const res = await fetch(`https://wl-api.mf.gov.pl/api/search/nip/${nip}?date=${today}`);
+
+                          if (!res.ok) {
+                            const errorData = await res.json();
+                            const errorMessage = errorData.error ? errorData.error.message : `Błąd HTTP: ${res.status} ${res.statusText}`;
+                            toast.error(`Błąd pobierania danych: ${errorMessage}`);
+                            return;
+                          }
+
                           const data = await res.json();
+
                           if (data.result && data.result.subject) {
                             const subject = data.result.subject;
                             form.setValue("name", subject.name || "");
@@ -157,8 +153,8 @@ const CustomerForm = ({
                           } else {
                             toast.error("Nie znaleziono firmy dla podanego NIP");
                           }
-                        } catch (err) {
-                          toast.error("Błąd podczas pobierania danych z API");
+                        } catch (err: any) {
+                          toast.error(`Błąd podczas pobierania danych z API: ${err.message || err}`);
                         }
                       }}
                     >
@@ -169,6 +165,21 @@ const CustomerForm = ({
                 </FormItem>
               )}
             />
+            
+            <FormField
+              control={form.control}
+              name="name"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Nazwa</FormLabel>
+                  <FormControl>
+                    <Input placeholder="Nazwa firmy lub imię i nazwisko" {...field} />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+
             <FormField
               control={form.control}
               name="address"

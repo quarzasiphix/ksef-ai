@@ -1,10 +1,9 @@
-
 import React, { useState } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Product, InvoiceType } from "@/types";
+import { Product, InvoiceType, VatType } from "@/types";
 import { Edit, Plus } from "lucide-react";
 import { saveProduct } from "@/integrations/supabase/repositories/productRepository";
 import { toast } from "sonner";
@@ -54,8 +53,8 @@ export const ProductEditDialog: React.FC<ProductEditDialogProps> = ({
       return;
     }
     
-    if (!vatRate || isNaN(Number(vatRate)) || Number(vatRate) < 0) {
-      toast.error("Stawka VAT musi być liczbą większą lub równą 0");
+    if (!vatRate) {
+      toast.error("Stawka VAT jest wymagana");
       return;
     }
     
@@ -71,7 +70,7 @@ export const ProductEditDialog: React.FC<ProductEditDialogProps> = ({
         id: initialProduct?.id || "",
         name,
         unitPrice: Number(unitPrice),
-        vatRate: vatRate === "zw" ? -1 : Number(vatRate), // Convert "zw" to -1 for VAT-exempt
+        vatRate: vatRate === "zw" ? Number(VatType.ZW) : Number(vatRate), // Convert "zw" to -1 for VAT-exempt
         unit,
         user_id: userId
       };
@@ -89,7 +88,7 @@ export const ProductEditDialog: React.FC<ProductEditDialogProps> = ({
           id: crypto.randomUUID(), // Temporary ID
           name,
           unitPrice: Number(unitPrice),
-          vatRate: vatRate === "zw" ? -1 : Number(vatRate), // Convert "zw" to -1 for VAT-exempt
+          vatRate: vatRate === "zw" ? Number(VatType.ZW) : Number(vatRate), // Convert "zw" to -1 for VAT-exempt
           unit,
           user_id: ""
         });
@@ -179,7 +178,7 @@ export const ProductEditDialog: React.FC<ProductEditDialogProps> = ({
                     <SelectItem value="8">8%</SelectItem>
                     <SelectItem value="5">5%</SelectItem>
                     <SelectItem value="0">0%</SelectItem>
-                    <SelectItem value="zw">zw</SelectItem>
+                    <SelectItem value="zw">Zwolniony</SelectItem>
                   </SelectContent>
                 </Select>
               </div>

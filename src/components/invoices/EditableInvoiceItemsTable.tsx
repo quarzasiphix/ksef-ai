@@ -66,12 +66,17 @@ export const EditableInvoiceItemsTable: React.FC<EditableInvoiceItemsTableProps>
     const item = items.find(item => item.id === id);
     if (!item) return;
     
-    let vatRate = Number(value);
-    if (isNaN(vatRate) || vatRate < 0) vatRate = 0;
+    // Handle VAT exemption
+    let vatRate: number;
+    if (value === 'zw') {
+      vatRate = Number(VatType.ZW);
+    } else {
+      vatRate = Number(value);
+      if (isNaN(vatRate)) return;
+    }
     
     recalculateItemTotals(id, { vatRate });
   };
-
 
   const recalculateItemTotals = (id: string, updates: Partial<InvoiceItem>) => {
     const item = items.find(item => item.id === id);
@@ -87,12 +92,13 @@ export const EditableInvoiceItemsTable: React.FC<EditableInvoiceItemsTableProps>
     const product = products.find(p => p.id === productId);
     if (!product) return;
     
-    let vatRate = isReceipt ? 0 : product.vatRate;
-    if (isNaN(vatRate) || vatRate < 0) vatRate = 0;
+    // Handle VAT rate conversion
+    const vatRate = product.vatRate;
+    
     const quantity = 1;
     const unitPrice = product.unitPrice;
     const totalNetValue = unitPrice * quantity;
-    const totalVatValue = isReceipt ? 0 : totalNetValue * (vatRate / 100);
+    const totalVatValue = isReceipt || vatRate === -1 ? 0 : totalNetValue * (vatRate / 100);
     const totalGrossValue = totalNetValue + totalVatValue;
     
     const newItem: InvoiceItem = {
@@ -113,12 +119,13 @@ export const EditableInvoiceItemsTable: React.FC<EditableInvoiceItemsTableProps>
   };
 
   const handleNewProductAdded = (product: Product) => {
-    let vatRate = isReceipt ? 0 : product.vatRate;
-    if (isNaN(vatRate) || vatRate < 0) vatRate = 0;
+    // Handle VAT rate conversion
+    const vatRate = product.vatRate;
+
     const quantity = 1;
     const unitPrice = product.unitPrice;
     const totalNetValue = unitPrice * quantity;
-    const totalVatValue = isReceipt ? 0 : totalNetValue * (vatRate / 100);
+    const totalVatValue = isReceipt || vatRate === -1 ? 0 : totalNetValue * (vatRate / 100);
     const totalGrossValue = totalNetValue + totalVatValue;
     
     const newItem: InvoiceItem = {
@@ -137,7 +144,6 @@ export const EditableInvoiceItemsTable: React.FC<EditableInvoiceItemsTableProps>
     
     onAddItem(newItem);
   };
-
 
   // NEW: when a product is edited, update all invoice items with matching productId instantly
   const handleProductSavedAndSync = (product: Product) => {

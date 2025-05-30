@@ -1,4 +1,3 @@
-
 import React from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -40,8 +39,8 @@ export const InvoiceItemMobileCard: React.FC<InvoiceItemMobileCardProps> = ({
   };
 
   const handleVatRateChange = (value: string) => {
-    const vatRate = Number(value);
-    if (isNaN(vatRate) || vatRate < 0) return;
+    const vatRate = value === 'zw' ? -1 : Number(value);
+    if (value !== 'zw' && isNaN(Number(value))) return;
     
     onUpdateItem(item.id, { vatRate });
   };
@@ -114,7 +113,7 @@ export const InvoiceItemMobileCard: React.FC<InvoiceItemMobileCardProps> = ({
             <div>
               <label className="text-xs text-muted-foreground">VAT:</label>
               <Select 
-                value={item.vatRate.toString()} 
+                value={item.vatRate === -1 ? 'zw' : item.vatRate.toString()} 
                 onValueChange={(value) => handleVatRateChange(value)}
               >
                 <SelectTrigger className="h-7">
@@ -125,6 +124,7 @@ export const InvoiceItemMobileCard: React.FC<InvoiceItemMobileCardProps> = ({
                   <SelectItem value="8">8%</SelectItem>
                   <SelectItem value="5">5%</SelectItem>
                   <SelectItem value="0">0%</SelectItem>
+                  <SelectItem value="zw">zw</SelectItem>
                 </SelectContent>
               </Select>
             </div>

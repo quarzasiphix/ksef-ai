@@ -9,6 +9,7 @@ import { Separator } from "@/components/ui/separator"
 import { Input } from "@/components/ui/input"
 import { Sheet, SheetContent } from "@/components/ui/sheet"
 import { Skeleton } from "@/components/ui/skeleton"
+import { useMediaQuery } from "@/hooks/use-mobile";
 
 type SidebarState = "expanded" | "collapsed"
 
@@ -36,10 +37,10 @@ interface SidebarProviderProps {
   onStateChange?: (state: SidebarState) => void
 }
 
-function SidebarProvider({ 
-  children, 
+function SidebarProvider({
+  children,
   defaultState = "expanded",
-  onStateChange 
+  onStateChange
 }: SidebarProviderProps) {
   const [state, setState] = React.useState<SidebarState>(defaultState)
   const [open, setOpen] = React.useState(false)
@@ -96,22 +97,42 @@ const sidebarVariants = cva(
 )
 
 const Sidebar = React.forwardRef<HTMLDivElement, React.ComponentProps<"div"> & VariantProps<typeof sidebarVariants>>(
-  ({ 
-    className, 
-    variant, 
-    size, 
-    ...props 
+  ({
+    className,
+    variant,
+    size,
+    ...props
   }, ref) => {
-    const { state, toggle } = useSidebar()
+    const { state, toggle, setState } = useSidebar();
+    const [isHovering, setIsHovering] = React.useState(false);
+    const isDesktop = useMediaQuery('(min-width: 1400px)');
+
+    React.useEffect(() => {
+      if (!isDesktop && isHovering) {
+        setState('expanded');
+      } else if (!isDesktop && !isHovering) {
+        setState('collapsed');
+      }
+    }, [isHovering, isDesktop, setState]);
+
+    const handleMouseEnter = () => {
+      setIsHovering(true);
+    };
+
+    const handleMouseLeave = () => {
+      setIsHovering(false);
+    };
 
     return (
       <div
         ref={ref}
         data-state={state}
-        className={cn(sidebarVariants({ variant, size }), className)}
+        className={cn(sidebarVariants({ variant, size }), "z-51", className)}
+        onMouseEnter={handleMouseEnter}
+        onMouseLeave={handleMouseLeave}
         {...props}
       />
-    )
+    );
   }
 )
 
@@ -135,7 +156,7 @@ const SidebarContent = React.forwardRef<
 >(({ className, ...props }, ref) => (
   <div
     ref={ref}
-    className={cn("flex-1 overflow-y-auto px-3 py-4", className)}
+    className={cn("flex-1 overflow-y-auto overflow-x-hidden px-3 py-4", className)}
     {...props}
   />
 ))
@@ -158,7 +179,7 @@ const SidebarTrigger = React.forwardRef<
   React.ButtonHTMLAttributes<HTMLButtonElement>
 >(({ className, ...props }, ref) => {
   const { toggle } = useSidebar()
-  
+
   return (
     <Button
       ref={ref}
@@ -230,30 +251,31 @@ const SidebarMenuButton = React.forwardRef<
     isActive?: boolean
     tooltip?: string
   }
->(({ 
-    className, 
-    isActive, 
-    tooltip, 
-    children, 
-    ...props 
+>(({
+    className,
+    isActive,
+    tooltip,
+    children,
+    ...props
   }, ref) => {
   const { state } = useSidebar()
   const isCollapsed = state === "collapsed"
-  
+
   const content = (
-    <button
+    <Button
       ref={ref}
       className={cn(
-        "flex w-full items-center rounded-md p-2 text-sm font-medium transition-colors",
+        "flex w-full items-center rounded-md text-sm font-medium transition-colors",
         isActive
           ? "bg-accent text-accent-foreground"
           : "text-muted-foreground hover:bg-accent hover:text-accent-foreground",
         className
       )}
+      style={{ display: 'flex', alignItems: 'center', width: '100%', padding: '0.5rem', justifyContent: state === 'expanded' ? 'flex-start' : 'center' }}
       {...props}
     >
       {children}
-    </button>
+    </Button>
   )
 
   if (isCollapsed && tooltip) {

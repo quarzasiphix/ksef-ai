@@ -1,4 +1,3 @@
-
 import React from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -130,9 +129,59 @@ const BusinessProfileForm = ({
               render={({ field }) => (
                 <FormItem>
                   <FormLabel>NIP</FormLabel>
-                  <FormControl>
-                    <Input placeholder="NIP" {...field} />
-                  </FormControl>
+                  <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+                    <FormControl>
+                      <Input placeholder="NIP" maxLength={10} {...field} />
+                    </FormControl>
+                    <Button
+                      type="button"
+                      size="sm"
+                      variant="secondary"
+                      style={{ minWidth: 60, padding: '0 10px' }}
+                      onClick={async () => {
+                        const nip = form.getValues("taxId");
+                        if (!nip || nip.length !== 10) {
+                          toast.error("Podaj poprawny NIP (10 cyfr)");
+                          return;
+                        }
+                        try {
+                          const today = new Date().toISOString().slice(0, 10);
+                          const res = await fetch(`https://wl-api.mf.gov.pl/api/search/nip/${nip}?date=${today}`);
+
+                          if (!res.ok) {
+                            const errorData = await res.json();
+                            const errorMessage = errorData.error ? errorData.error.message : `Błąd HTTP: ${res.status} ${res.statusText}`;
+                            toast.error(`Błąd pobierania danych: ${errorMessage}`);
+                            return;
+                          }
+
+                          const data = await res.json();
+
+                          if (data.result && data.result.subject) {
+                            const subject = data.result.subject;
+                            form.setValue("name", subject.name || "");
+                            form.setValue("address", subject.workingAddress || subject.residenceAddress || "");
+                            // Try to extract postal code and city from address
+                            if (subject.workingAddress || subject.residenceAddress) {
+                              const addr = subject.workingAddress || subject.residenceAddress;
+                              const match = addr.match(/(\d{2}-\d{3})\s+(.+)/);
+                              if (match) {
+                                form.setValue("postalCode", match[1]);
+                                form.setValue("city", match[2]);
+                              }
+                            }
+                            toast.success("Dane firmy pobrane z GUS");
+                          } else {
+                            toast.error("Nie znaleziono firmy dla podanego NIP");
+                          }
+                        } catch (err: any) {
+                          toast.error(`Błąd podczas pobierania danych z API: ${err.message || err}`);
+                        }
+                      }}
+                    >
+                      Szukaj
+                    </Button>
+                  </div>
                   <FormMessage />
                 </FormItem>
               )}
