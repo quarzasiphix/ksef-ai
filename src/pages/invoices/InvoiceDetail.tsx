@@ -29,6 +29,8 @@ import { useQueryClient } from "@tanstack/react-query";
 import { saveInvoice } from "@/integrations/supabase/repositories/invoiceRepository";
 import type { InvoiceDetailsCardProps } from "@/components/invoices/detail/InvoiceDetailsCard";
 import type { InvoiceItemsCardProps } from "@/components/invoices/detail/InvoiceItemsCard";
+import { useAuth } from "@/App";
+import PremiumCheckoutModal from '@/components/PremiumCheckoutModal';
 
 interface InvoiceDetailProps {
   type: 'income' | 'expense';
@@ -37,6 +39,10 @@ interface InvoiceDetailProps {
 const InvoiceDetail: React.FC<InvoiceDetailProps> = ({ type }) => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
+  const { isPremium } = useAuth();
+
+  // State for premium checkout modal
+  const [isPremiumModalOpen, setIsPremiumModalOpen] = useState(false);
 
   // Refs
   const containerRef = useRef<HTMLDivElement>(null);
@@ -281,6 +287,8 @@ const InvoiceDetail: React.FC<InvoiceDetailProps> = ({ type }) => {
             canSharePdf={canSharePdf}
             transactionType={selectedInvoice.transactionType}
             isPaid={selectedInvoice.isPaid}
+            isPremium={isPremium}
+            onRequirePremiumClick={() => setIsPremiumModalOpen(true)}
           />
           {/* Actions Row - Including Mark as Paid Button (kept with initial header) */}
           {(selectedInvoice.transactionType === 'income') && !selectedInvoice.isPaid && (
@@ -399,6 +407,11 @@ const InvoiceDetail: React.FC<InvoiceDetailProps> = ({ type }) => {
           }}
         />
       </div>
+      {/* Premium Checkout Modal */}
+      <PremiumCheckoutModal 
+        isOpen={isPremiumModalOpen} 
+        onClose={() => setIsPremiumModalOpen(false)}
+      />
     </div>
   );
 };

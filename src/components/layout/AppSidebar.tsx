@@ -12,7 +12,8 @@ import {
   Settings,
   ChevronLeft,
   ChevronRight,
-  LogOut
+  LogOut,
+  Star
 } from "lucide-react";
 import {
   Sidebar,
@@ -26,7 +27,7 @@ import {
 const AppSidebar = () => {
   const navigate = useNavigate();
   const location = useLocation();
-  const { user, logout } = useAuth();
+  const { user, logout, isPremium } = useAuth();
   const { state, setState } = useSidebar();
   const isManualToggle = useRef(false);
 
@@ -76,7 +77,15 @@ const AppSidebar = () => {
               <span className="text-lg font-semibold">K</span>
             </div>
             {state === "expanded" && (
-              <span className="text-lg font-semibold">KSEF AI</span>
+              <div className="flex items-center gap-2">
+                 <span className="text-lg font-semibold">KSEF AI</span>
+                 {isPremium && (
+                    <Star className="h-4 w-4 text-amber-400" fill="currentColor" />
+                 )}
+                 {isPremium && state === "expanded" && (
+                     <span className="text-xs font-semibold text-amber-400">PREMIUM</span>
+                 )}
+              </div>
             )}
           </div>
           <Button
@@ -250,7 +259,12 @@ const AppSidebar = () => {
               {state === "expanded" && (
                 <div className="flex flex-col">
                   <span className="text-sm font-medium">Zalogowano jako</span>
-                  <span className="text-xs text-muted-foreground truncate max-w-[150px]">
+                  <span className={cn(
+                     "text-xs truncate max-w-[150px]",
+                     isPremium 
+                       ? "text-amber-400"
+                       : "text-muted-foreground"
+                  )}>
                     {user?.email}
                   </span>
                 </div>

@@ -1,6 +1,6 @@
 import React, { useState } from "react";
 import { NavLink, useLocation, useNavigate } from "react-router-dom";
-import { BarChart, FileText, Settings, Menu, Users, Package, CreditCard } from "lucide-react";
+import { BarChart, FileText, Settings, Menu, Users, Package, CreditCard, Star } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 import { ThemeToggle } from "@/components/theme/ThemeToggle";
@@ -61,6 +61,7 @@ const MobileNavigation = () => {
         <SheetContent side="right" className="w-[250px] pt-10">
           <div className="flex flex-col h-full">
             <div className="flex-1">
+              <PremiumIndicator />
               <div className="flex flex-col space-y-3 pt-4">
                 {sideMenuItems.map((item) => (
                   <NavLink
@@ -95,13 +96,20 @@ const MobileNavigation = () => {
 };
 
 const UserMenuFooter = () => {
-  const { user, setUser } = useAuth();
+  const { user, setUser, isPremium } = useAuth();
   const navigate = useNavigate();
   if (!user) return null;
   return (
     <div className="mt-8 border-t pt-4 flex flex-col items-start">
       <span className="text-xs text-muted-foreground mb-2">Zalogowano jako:</span>
-      <span className="text-sm font-medium mb-2">{user.email}</span>
+      <span className={cn(
+        "text-sm font-medium mb-2 truncate max-w-[180px]",
+        isPremium 
+          ? "text-amber-400"
+          : "text-foreground"
+      )}>
+        {user.email}
+      </span>
       <button
         className="text-xs text-red-500 hover:underline"
         onClick={() => {
@@ -112,6 +120,18 @@ const UserMenuFooter = () => {
       >
         Wyloguj się
       </button>
+    </div>
+  );
+};
+
+const PremiumIndicator = () => {
+  const { isPremium } = useAuth();
+  if (!isPremium) return null;
+
+  return (
+    <div className="flex items-center justify-center gap-2 mb-4 text-amber-400 font-semibold">
+      <Star className="h-5 w-5" fill="currentColor" />
+      <span>Premium</span>
     </div>
   );
 };

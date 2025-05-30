@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Link, Outlet, useSearchParams, useNavigate } from 'react-router-dom';
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Settings, Building2, Star } from "lucide-react";
+import { Settings, Building2, Star, User } from "lucide-react";
 import { useAuth } from "@/App";
 import PremiumCheckoutModal from "@/components/PremiumCheckoutModal";
 import { toast } from "sonner";
@@ -61,32 +61,34 @@ const SettingsMenu = () => {
         )}
       </div>
 
+      <Card>
+        <CardHeader>
+          <CardTitle>Menu Ustawień</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="grid gap-4">
+            <Link to="/settings/profile">
+              <Button variant="outline" className="w-full justify-start">
+                <User className="mr-2 h-4 w-4" />
+                Ustawienia Profilu
+              </Button>
+            </Link>
+            <Link to="/settings/business-profiles">
+              <Button variant="outline" className="w-full justify-start">
+                <Building2 className="mr-2 h-4 w-4" />
+                Profile Firmowe
+              </Button>
+            </Link>
+          </div>
+        </CardContent>
+      </Card>
+
       <Outlet />
 
-       <Card>
-          <CardHeader>
-            <CardTitle>Menu Ustawień</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="grid gap-4">
-              <Link to="/settings/business-profiles">
-                <Button variant="outline" className="w-full justify-start">
-                  <Building2 className="mr-2 h-4 w-4" />
-                  Profile Firmowe
-                </Button>
-              </Link>
-              <Button variant="outline" className="w-full justify-start" disabled>
-                <Settings className="mr-2 h-4 w-4" />
-                Ustawienia Konta (Wkrótce)
-              </Button>
-            </div>
-          </CardContent>
-        </Card>
-
-        <PremiumCheckoutModal isOpen={isModalOpen} onClose={handleCloseModal} />
+      <PremiumCheckoutModal isOpen={isModalOpen} onClose={handleCloseModal} />
 
     </div>
   );
 };
 
-export default SettingsMenu; 
+export default SettingsMenu;

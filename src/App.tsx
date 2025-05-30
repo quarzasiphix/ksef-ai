@@ -37,6 +37,7 @@ import ExpenseDetail from "./pages/expense/[id]";
 import { SidebarProvider } from "@/components/ui/sidebar";
 import EditInvoice from "./pages/invoices/EditInvoice";
 import SettingsMenu from "./pages/settings/SettingsMenu"; // Import the new component
+import ProfileSettings from "./pages/settings/ProfileSettings"; // Import the new component
 import { AuthChangeEvent, Session, User, SupabaseClient, Subscription } from '@supabase/supabase-js'; // Import necessary types
 
 // Export the query client for use in other files
@@ -298,6 +299,8 @@ const App = () => (
                     <Route path="products/:id" element={<ProductDetail />} />
                     {/* Settings routes */}
                     <Route path="settings" element={<SettingsMenu />} >
+                      <Route index element={<Navigate to="business-profiles" replace />} /> {/* Set profile as the default nested route */}
+                      <Route path="profile" element={<ProfileSettings />} /> {/* Add the profile settings route */}
                       <Route path="business-profiles" element={<BusinessProfiles />} />
                       <Route path="business-profiles/new" element={<NewBusinessProfile />} />
                       <Route path="business-profiles/:id" element={<EditBusinessProfile />} />

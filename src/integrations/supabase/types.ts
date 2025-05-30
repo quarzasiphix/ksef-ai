@@ -270,6 +270,7 @@ export type Database = {
           starts_at: string
           transaction_id: string | null
           user_id: string | null
+          stripe_subscription_id: string | null
         }
         Insert: {
           created_at?: string | null
@@ -279,6 +280,7 @@ export type Database = {
           starts_at?: string
           transaction_id?: string | null
           user_id?: string | null
+          stripe_subscription_id?: string | null
         }
         Update: {
           created_at?: string | null
@@ -288,8 +290,41 @@ export type Database = {
           starts_at?: string
           transaction_id?: string | null
           user_id?: string | null
+          stripe_subscription_id?: string | null
         }
         Relationships: []
+      }
+      profiles: {
+        Row: {
+          user_id: string
+          full_name: string | null
+          phone_number: string | null
+          avatar_url: string | null
+          created_at: string | null
+        }
+        Insert: {
+          user_id: string
+          full_name?: string | null
+          phone_number?: string | null
+          avatar_url?: string | null
+          created_at?: string | null
+        }
+        Update: {
+          user_id?: string
+          full_name?: string | null
+          phone_number?: string | null
+          avatar_url?: string | null
+          created_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "profiles_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: true
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          }
+        ]
       }
       products: {
         Row: {

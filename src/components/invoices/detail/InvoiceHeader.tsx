@@ -2,10 +2,11 @@ import React, { useState, useEffect, RefObject, forwardRef } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import type { ButtonProps } from "@/components/ui/button";
-import { ArrowLeft, Printer, FilePlus, FileDown, Pencil, SendHorizontal, Share2 } from "lucide-react";
+import { ArrowLeft, Printer, FilePlus, FileDown, Pencil, SendHorizontal, Share2, Star } from "lucide-react";
 import { InvoiceType } from "@/types";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { Capacitor } from '@capacitor/core';
+import { toast } from "@/components/ui/use-toast";
 
 interface InvoiceHeaderProps {
   id: string;
@@ -17,6 +18,8 @@ interface InvoiceHeaderProps {
   handleSharePdf: () => Promise<void>;
   canSharePdf: boolean;
   isPaid?: boolean;
+  isPremium: boolean;
+  onRequirePremiumClick: () => void;
 }
 
 const getInvoiceTypeTitle = (type: InvoiceType) => {
@@ -43,7 +46,9 @@ export const InvoiceHeader = forwardRef<HTMLDivElement, InvoiceHeaderProps>(({
   handleSharePdf,
   canSharePdf,
   transactionType = 'income',
-  isPaid
+  isPaid,
+  isPremium,
+  onRequirePremiumClick
 }, ref) => {
   const isMobile = useIsMobile();
   const navigate = useNavigate();
@@ -111,7 +116,18 @@ export const InvoiceHeader = forwardRef<HTMLDivElement, InvoiceHeaderProps>(({
             </Link>
           </Button>
           {type !== InvoiceType.RECEIPT && (
-            <Button className="flex items-center gap-1 text-xs" size={isMobile ? "sm" : "sm"}>
+            <Button 
+              className="flex items-center gap-1 text-xs"
+              size={isMobile ? "sm" : "sm"}
+              onClick={() => {
+                if (isPremium) {
+                  console.log("Trigger KSeF action for premium user");
+                  toast.info("Funkcjonalność KSeF wkrótce!");
+                } else {
+                  onRequirePremiumClick();
+                }
+              }}
+            >
               <SendHorizontal className="h-3.5 w-3.5" />
               <span className="hidden sm:inline">Wyślij do KSeF</span>
             </Button>
