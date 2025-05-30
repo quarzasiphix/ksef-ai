@@ -14,7 +14,8 @@ import {
   ChevronRight,
   LogOut,
   ChevronDown,
-  Star
+  Star,
+  FileText
 } from "lucide-react";
 import {
   Sidebar,
@@ -41,33 +42,11 @@ const AppSidebar = () => {
   const { user, logout, isPremium, openPremiumDialog } = useAuth();
   const { state, setState } = useSidebar();
   const { profiles, selectedProfileId, selectProfile, isLoadingProfiles } = useBusinessProfile();
-  const isManualToggle = useRef(false);
   const { toast } = useToast();
 
   const handleToggle = useCallback(() => {
-    isManualToggle.current = true;
     setState(state === "expanded" ? "collapsed" : "expanded");
   }, [state, setState]);
-
-  useEffect(() => {
-    const handleResize = () => {
-      if (isManualToggle.current === false) {
-        setState(window.innerWidth >= 1400 ? "expanded" : "collapsed");
-      }
-    };
-
-    // Set initial state
-    handleResize();
-
-    // Add resize listener
-    window.addEventListener("resize", handleResize);
-
-    // Cleanup
-    return () => {
-      window.removeEventListener("resize", handleResize);
-      isManualToggle.current = false;
-    };
-  }, [setState]);
 
   const handleLogout = async () => {
     await logout();
@@ -210,6 +189,30 @@ const AppSidebar = () => {
                         location.pathname === "/" ? "text-accent-foreground" : "text-white"
                       )} />
                       {state !== "collapsed" && <span className="ml-2 text-white">Dashboard</span>}
+                  </Button>
+                </SidebarMenuButton>
+
+                <SidebarMenuButton asChild  tooltip={state !== 'expanded' ? 'Księgowanie' : undefined}>
+                  <Button
+                    variant="ghost"
+                    className={cn(
+                      "flex w-full items-center rounded-md text-sm font-medium transition-colors",
+                      location.pathname === "/accounting"
+                        ? "bg-accent text-accent-foreground"
+                        : cn(
+                            state === "collapsed" ? "text-white" : "text-muted-foreground",
+                            "hover:bg-accent hover:text-accent-foreground"
+                          ),
+                    )}
+                    onClick={() => navigate("/accounting")}
+                    style={{ display: 'flex', alignItems: 'center', width: '100%', padding: '0.35rem 0.5rem', justifyContent: state === 'expanded' ? 'flex-start' : 'center' }}
+                  >
+                    <FileText
+                      className={cn(
+                        "h-4 w-4 transition-colors",
+                        location.pathname === "/accounting" ? "text-accent-foreground" : "text-white"
+                      )} />
+                    {state !== "collapsed" && <span className="ml-2 text-white">Księgowanie</span>}
                   </Button>
                 </SidebarMenuButton>
 

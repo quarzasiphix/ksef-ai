@@ -24,9 +24,10 @@ const MobileNavigation = () => {
   
   // Side menu items
   const sideMenuItems = [
-    { title: "Ustawienia", path: "/settings", icon: Settings },
+    { title: "Księgowanie", path: "/accounting", icon: FileText },
     { title: "Klienci", path: "/customers", icon: Users },
     { title: "Produkty", path: "/products", icon: Package },
+    { title: "Ustawienia", path: "/settings", icon: Settings },
   ];
 
   // Generate NavLink className based on active state

@@ -99,7 +99,7 @@ export async function getDefaultBusinessProfile(): Promise<BusinessProfile | nul
   };
 }
 
-export async function getBusinessProfileById(id: string): Promise<BusinessProfile | null> {
+export async function getBusinessProfileById(id: string, userId: string): Promise<BusinessProfile | null> {
   const { data, error } = await supabase
     .from("business_profiles")
     .select("*")

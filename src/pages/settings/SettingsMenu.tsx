@@ -1,67 +1,70 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { Link, Outlet, useSearchParams, useNavigate } from 'react-router-dom';
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Settings, Building2, Star, User } from "lucide-react";
 import { useAuth } from "@/App";
-import PremiumCheckoutModal from "@/components/PremiumCheckoutModal";
 import { toast } from "sonner";
+import { motion } from "framer-motion";
+import { cn } from "@/lib/utils";
+import PremiumSuccessMessage from "@/components/PremiumSuccessMessage";
 
 const SettingsMenu = () => {
-  const { isPremium } = useAuth();
-  const [isModalOpen, setIsModalOpen] = useState(false);
+  const { isPremium, openPremiumDialog, isShowingPremiumSuccess, hidePremiumSuccess } = useAuth();
   const [searchParams, setSearchParams] = useSearchParams();
   const navigate = useNavigate();
-
-  const handleOpenModal = () => {
-    setIsModalOpen(true);
-  };
-
-  const handleCloseModal = () => {
-    setIsModalOpen(false);
-  };
 
   useEffect(() => {
     const status = searchParams.get('status');
     const sessionId = searchParams.get('session_id');
 
-    if (status === 'success') {
-      toast.success("Płatność zakończona sukcesem! Twoja subskrypcja Premium jest aktywna.");
+    if (status) {
+      if (status === 'success') {
+        // Success toast is now handled globally in AuthProvider when isPremium changes
+        // toast.success("Płatność zakończona sukcesem! Twoja subskrypcja Premium jest aktywna.");
+      } else if (status === 'cancelled') {
+        toast.info("Płatność anulowana. Możesz spróbować ponownie.");
+      }
 
-    } else if (status === 'cancelled') {
-      toast.info("Płatność anulowana. Możesz spróbować ponownie.");
-    }
-
-    if (status || sessionId) {
       setSearchParams({});
+
+      // Success message display is now handled globally
     }
-  }, [searchParams, setSearchParams, navigate]);
+
+  }, [searchParams, setSearchParams, navigate, toast]);
 
   const isNestedRoute = location.pathname !== '/settings';
+
+  const premiumFeatures = [
+    "Tworzenie wielu profili firmowych",
+    "Generowanie faktur bez limitu",
+    "Pełny dostęp do statystyk i raportów",
+    "Wsparcie KSeF (wkrótce)",
+    "Priorytetowe wsparcie techniczne",
+  ];
 
   return (
     <div className="space-y-6 pb-20">
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-        <div>
-          <h1 className="text-2xl font-bold">Zarządzaj profilami firmowymi.</h1>
-        </div>
         {isPremium ? (
-          <div className="flex items-center text-amber-500 font-semibold">
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={{ duration: 0.8 }}
+            className={cn("flex items-center font-semibold text-transparent bg-clip-text bg-gradient-to-r from-amber-400 via-amber-500 to-amber-700")}
+          >
             <Star className="mr-2 h-5 w-5" fill="currentColor" />
             <span>Jesteś Premium, zarządzaj subskrypcją</span>
-          </div>
+          </motion.div>
         ) : (
-          <Button variant="default" className="bg-amber-500 hover:bg-amber-600 text-white" onClick={handleOpenModal}>
+          <Button variant="default" className="bg-amber-500 hover:bg-amber-600 text-white" onClick={openPremiumDialog}>
             <Star className="mr-2 h-4 w-4" />
             Kup subskrypcję Premium
           </Button>
         )}
       </div>
 
-
       <Outlet />
-
-      <PremiumCheckoutModal isOpen={isModalOpen} onClose={handleCloseModal} />
 
     </div>
   );

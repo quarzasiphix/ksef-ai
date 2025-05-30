@@ -108,12 +108,25 @@ const Sidebar = React.forwardRef<HTMLDivElement, React.ComponentProps<"div"> & V
     const isDesktop = useMediaQuery('(min-width: 1400px)');
 
     React.useEffect(() => {
-      if (!isDesktop && isHovering) {
-        setState('expanded');
-      } else if (!isDesktop && !isHovering) {
-        setState('collapsed');
+      // Handle desktop hover-to-expand when collapsed
+      if (isDesktop) {
+        if (isHovering && state === 'collapsed') {
+          setState('expanded');
+        }
+        // Remove the collapse on mouse leave for desktop to avoid dropdown conflict
+        // else if (!isHovering && state === 'expanded') {
+        //   setState('collapsed');
+        // }
       }
-    }, [isHovering, isDesktop, setState]);
+      // The mobile state logic in this effect seems incorrect anyway and conflicts.
+      // Remove the !isDesktop part entirely.
+      // if (!isDesktop && isHovering) {
+      //   setState('expanded');
+      // } else if (!isDesktop && !isHovering) {
+      //   setState('collapsed');
+      // }
+
+    }, [isHovering, isDesktop, state, setState]); // Keep dependencies
 
     const handleMouseEnter = () => {
       setIsHovering(true);

@@ -6,7 +6,7 @@ import { BrowserRouter, Routes, Route, Navigate, Outlet, useSearchParams } from 
 import { ThemeProvider } from "./components/theme/ThemeProvider";
 import Login from "./pages/auth/Login";
 import Register from "./pages/auth/Register";
-import React, { createContext, useState, useEffect, useContext } from "react";
+import React, { createContext, useState, useEffect, useContext, useRef } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Database } from "@/integrations/supabase/types"; // Import Database type
 
@@ -40,6 +40,10 @@ import SettingsMenu from "./pages/settings/SettingsMenu"; // Import the new comp
 import ProfileSettings from "./pages/settings/ProfileSettings"; // Import the new component
 import { AuthChangeEvent, Session, User, SupabaseClient, Subscription } from '@supabase/supabase-js'; // Import necessary types
 import { BusinessProfileProvider } from './context/BusinessProfileContext'; // Import the provider
+import PremiumCheckoutModal from "@/components/PremiumCheckoutModal"; // Import the modal
+import Accounting from './pages/accounting/Accounting'; // Import Accounting component
+import RequirePremium from './components/auth/RequirePremium'; // Import RequirePremium
+import PremiumSuccessMessage from "@/components/PremiumSuccessMessage"; // Import PremiumSuccessMessage
 
 // Export the query client for use in other files
 export const queryClient = new QueryClient({
@@ -65,6 +69,11 @@ interface AuthContextType {
   isLoading: boolean; // Add isLoading
   supabase: SupabaseClient<Database>; // Add supabase client
   openPremiumDialog: () => void; // Add function to open premium dialog
+  closePremiumDialog: () => void; // Add function to close premium dialog
+  isModalOpen: boolean; // Add isModalOpen to context type
+  isShowingPremiumSuccess: boolean; // Add state for success message
+  showPremiumSuccess: () => void; // Add handler to show success message
+  hidePremiumSuccess: () => void; // Add handler to hide success message
 }
 
 const AuthContext = createContext<AuthContextType>({
@@ -75,28 +84,35 @@ const AuthContext = createContext<AuthContextType>({
   session: null, // Default session
   isLoading: true, // Default loading state
   supabase: supabase, // Provide the actual supabase instance
-  openPremiumDialog: () => {}, // Placeholder function to open premium dialog
+  openPremiumDialog: () => {}, // Placeholder function
+  closePremiumDialog: () => {}, // Placeholder function
+  isModalOpen: false, // Add default value for isModalOpen
+  isShowingPremiumSuccess: false, // Default value
+  showPremiumSuccess: () => {},
+  hidePremiumSuccess: () => {},
 });
 
 export const useAuth = () => useContext(AuthContext);
 
 const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   console.log("AuthProvider - START");
-  const [user, setUser] = useState<User | null>(null); // Use Supabase User type
-  const [loading, setLoading] = useState(true); // Keep local loading state
-  const [isPremium, setIsPremium] = useState(false); // State for premium status
-  const [session, setSession] = useState<Session | null>(null); // Add session state
+  const [user, setUser] = useState<User | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [isPremium, setIsPremium] = useState(false);
+  const [session, setSession] = useState<Session | null>(null);
+  const [isModalOpen, setIsModalOpen] = useState(false); // State for premium modal
+  const [isShowingPremiumSuccess, setIsShowingPremiumSuccess] = useState(false); // State for success message
   const queryClient = useQueryClient();
+  const prevIsPremiumRef = useRef(false); // Use ref to track previous premium status, initialize to false
 
-  // Placeholder function to open premium dialog
-  // TODO: Implement actual logic to open the premium dialog component
-  const openPremiumDialog = () => {
-    console.log("Premium dialog requested");
-    // This is where you would typically set a state to true
-    // which would trigger the rendering of your premium dialog modal.
-  };
+  const openPremiumDialog = () => setIsModalOpen(true);
+  const closePremiumDialog = () => setIsModalOpen(false);
+
+  const showPremiumSuccessMessage = () => setIsShowingPremiumSuccess(true);
+  const hidePremiumSuccessMessage = () => setIsShowingPremiumSuccess(false);
 
   const fetchPremiumStatus = async (userId: string) => {
+    console.log("AuthProvider - fetchPremiumStatus - START for user:", userId);
     try {
       const { data, error } = await supabase
         .from('premium_subscriptions')
@@ -109,57 +125,50 @@ const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => 
       if (error) {
         console.error("Error fetching premium status:", error);
         setIsPremium(false);
-        return;
+        return false; // Indicate failure
       }
 
-      // Check if there is an active subscription that hasn't ended
       const hasActiveSubscription = data && data.length > 0 && (!data[0].ends_at || new Date(data[0].ends_at) > new Date());
+
+      console.log("AuthProvider - fetchPremiumStatus - hasActiveSubscription:", hasActiveSubscription, "current isPremium:", isPremium, "prev isPremium:", prevIsPremiumRef.current);
+
+      // Update state
       setIsPremium(hasActiveSubscription);
+
+      return hasActiveSubscription; // Return the status
 
     } catch (error) {
       console.error("Error in fetchPremiumStatus:", error);
       setIsPremium(false);
+      return false; // Indicate failure
     }
   };
 
-  const handleAuthStateChange = React.useCallback(async (_event: string, session: Session | null) => { // Use Session type
+  const handleAuthStateChange = React.useCallback(async (_event: string, session: Session | null) => {
     console.log("AuthProvider - handleAuthStateChange - event:", _event, "session:", session);
     setSession(session);
-    const currentUser = user;
     const newUser = session?.user || null;
 
-    const userChanged = JSON.stringify(currentUser) !== JSON.stringify(newUser);
-
-    if (!userChanged && _event !== 'SIGNED_IN') { // Also run for SIGNED_IN even if user object is same (e.g. on refresh)
-      console.log("AuthProvider - User state unchanged, skipping update");
-      // If user state is unchanged but it's a SIGNED_IN event, re-fetch premium status
-      if (newUser?.id) {
-         fetchPremiumStatus(newUser.id);
-      }
-      return;
-    }
+    console.log("AuthProvider - handleAuthStateChange - newUser:", newUser, "_event:", _event);
 
     if (newUser) {
       console.log("AuthProvider - Setting new user and fetching premium status");
       setUser(newUser);
       localStorage.setItem("sb_session", JSON.stringify(session));
+      // Fetch premium status after setting user
       await fetchPremiumStatus(newUser.id);
       await queryClient.invalidateQueries();
     } else {
       console.log("AuthProvider - Removing user and clearing premium status");
       setUser(null);
-      setIsPremium(false); // Clear premium status on logout
+      setIsPremium(false);
+      setIsShowingPremiumSuccess(false); // Hide success message on logout
       localStorage.removeItem("sb_session");
       queryClient.clear();
     }
 
-    if (loading) {
-      console.log("AuthProvider - Initial load complete");
-      setLoading(false);
-    }
-
     console.log("AuthProvider - handleAuthStateChange - END");
-  }, [user, loading, queryClient]);
+  }, [queryClient]); // Removed user dependency
 
   const logout = async () => {
     console.log("AuthProvider - logout - START");
@@ -176,7 +185,8 @@ const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => 
         sessionStorage.removeItem(`tanstack-query-${key}`);
       });
       setUser(null);
-      setIsPremium(false); // Clear premium status on logout
+      setIsPremium(false);
+      setIsShowingPremiumSuccess(false); // Hide success message on logout
       localStorage.removeItem("sb_session");
     } catch (error) {
       console.error("AuthProvider - Error during logout:", error);
@@ -184,61 +194,171 @@ const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => 
     console.log("AuthProvider - logout - END");
   };
 
+  // Effect for initial session check and auth listener setup
   useEffect(() => {
-    console.log("AuthProvider - useEffect - START");
+     console.log("AuthProvider - initial setup useEffect - START");
+     const setupAuth = async () => {
+        console.log("AuthProvider - setupAuth - START");
+        setLoading(true);
+        try {
+            const { data, error } = await supabase.auth.getSession();
 
-    const checkSession = async () => {
-      console.log("AuthProvider - useEffect - checkSession - START");
-      try {
-        const { data, error } = await supabase.auth.getSession();
+            if (error) {
+              console.error("Error getting session:", error);
+              setUser(null);
+              setIsPremium(false);
+              localStorage.removeItem("sb_session");
+              setLoading(false);
+              return;
+            }
 
-        if (error) {
-          console.error("Error getting session:", error);
-          setLoading(false);
-          return;
+            console.log("AuthProvider - setupAuth - after getSession, data:", data);
+
+            const initialUser = data?.session?.user || null;
+            const initialSession = data?.session || null;
+
+            setSession(initialSession);
+            setUser(initialUser);
+            localStorage.setItem("sb_session", JSON.stringify(initialSession));
+
+            let initialIsPremium = false;
+            if (initialUser) {
+              initialIsPremium = await fetchPremiumStatus(initialUser.id);
+              console.log("AuthProvider - setupAuth - fetched initialIsPremium:", initialIsPremium);
+            }
+
+            setIsPremium(initialIsPremium);
+            prevIsPremiumRef.current = initialIsPremium;
+            console.log("AuthProvider - setupAuth - isPremium state set to:", initialIsPremium, "prevIsPremiumRef.current set to:", prevIsPremiumRef.current);
+
+            if (supabase.auth.onAuthStateChange) {
+               console.log("AuthProvider - setupAuth - setting up auth state listener");
+               const { data: { subscription } } = supabase.auth.onAuthStateChange(
+                 (event, session) => {
+                   console.log("Auth state changed:", event);
+                   handleAuthStateChange(event, session);
+                 }
+               );
+
+               return () => {
+                 console.log("AuthProvider - setupAuth - cleaning up auth state listener");
+                 subscription?.unsubscribe();
+               };
+            }
+
+        } catch (error) {
+            console.error("Error in setupAuth:", error);
+            setUser(null);
+            setIsPremium(false);
+            localStorage.removeItem("sb_session");
+        } finally {
+            setLoading(false);
+            console.log("AuthProvider - setupAuth - FINALLY");
         }
+     };
 
-        console.log("AuthProvider - useEffect - checkSession - after getSession, data:", data);
+     setupAuth();
 
-        if (data?.session) {
-          handleAuthStateChange('INITIAL_SESSION', data.session);
-        } else {
-          setUser(null);
-          setIsPremium(false);
-          localStorage.removeItem("sb_session");
-          setLoading(false);
-        }
-      } catch (error) {
-        console.error("Error in checkSession:", error);
-        setLoading(false);
+     // No cleanup needed here, as the subscription cleanup is handled inside setupAuth
+  }, [handleAuthStateChange]); // Dependency includes handleAuthStateChange
+
+  // Effect to subscribe to premium_subscriptions changes
+  useEffect(() => {
+      let subscription: any = null;
+      console.log("AuthProvider - Realtime subscription useEffect - user:", user);
+
+      if (user) {
+          console.log("AuthProvider - Realtime subscription useEffect - Subscribing to premium_subscriptions for user:", user.id);
+           subscription = supabase
+              .channel('premium_changes') // Use a unique channel name
+              .on('postgres_changes',
+                  { event: 'UPDATE', schema: 'public', table: 'premium_subscriptions', filter: `user_id=eq.${user.id}` },
+                  async (payload) => {
+                      console.log('Realtime UPDATE payload:', payload);
+                      // Refetch premium status on update
+                      if (user) {
+                         await fetchPremiumStatus(user.id);
+                      }
+                  }
+              )
+               .on('postgres_changes',
+                  { event: 'DELETE', schema: 'public', table: 'premium_subscriptions', filter: `user_id=eq.${user.id}` },
+                  async (payload) => {
+                       console.log('Realtime DELETE payload:', payload);
+                       // Refetch premium status on delete
+                        if (user) {
+                           await fetchPremiumStatus(user.id);
+                        }
+                  }
+               )
+              .subscribe();
+
+           console.log("AuthProvider - Realtime subscription useEffect - Subscription established:", subscription);
       }
-    };
-
-    checkSession();
-
-    if (supabase.auth.onAuthStateChange) {
-      console.log("AuthProvider - useEffect - setting up auth state listener");
-      const { data: { subscription } } = supabase.auth.onAuthStateChange(
-        (event, session) => {
-          console.log("Auth state changed:", event);
-          handleAuthStateChange(event, session);
-        }
-      );
 
       return () => {
-        console.log("AuthProvider - useEffect - cleaning up auth state listener");
-        subscription?.unsubscribe();
+          console.log("AuthProvider - Realtime subscription useEffect - Cleaning up subscription.");
+          if (subscription) {
+              supabase.removeChannel(subscription);
+          }
+      };
+  }, [user, fetchPremiumStatus]); // Dependencies: user and fetchPremiumStatus
+
+  // Effect to detect isPremium change and show success message
+  useEffect(() => {
+    console.log("AuthProvider - isPremium effect - isPremium:", isPremium, "prevIsPremiumRef.current:", prevIsPremiumRef.current);
+
+    // Only show success message if isPremium transitioned from false to true
+    if (!prevIsPremiumRef.current && isPremium) {
+       console.log("AuthProvider - isPremium effect - Premium status changed to true, showing success message.");
+       showPremiumSuccessMessage();
+    }
+    // Update ref *after* the effect runs to store the latest state for the next render
+    prevIsPremiumRef.current = isPremium;
+    console.log("AuthProvider - isPremium effect - prevIsPremiumRef.current updated to:", prevIsPremiumRef.current);
+  }, [isPremium, showPremiumSuccessMessage]); // Depends on isPremium and the handler
+
+  // Effect to hide success message after a duration
+   useEffect(() => {
+    if (isShowingPremiumSuccess) {
+      console.log("AuthProvider - hide success message effect - isShowingPremiumSuccess:", isShowingPremiumSuccess);
+      const timer = setTimeout(() => {
+        console.log("AuthProvider - hide success message effect - Hiding success message.");
+        hidePremiumSuccessMessage();
+      }, 20000); // Show for 20 seconds (increased duration)
+      return () => {
+         console.log("AuthProvider - hide success message effect - Clearing timeout.");
+         clearTimeout(timer);
       };
     }
-  }, [handleAuthStateChange]);
+  }, [isShowingPremiumSuccess, hidePremiumSuccessMessage]);
 
   console.log("AuthProvider - rendering - loading:", loading, "user:", user, "isPremium:", isPremium);
   if (loading) {
     return <div className="flex items-center justify-center min-h-screen bg-neutral-900 text-white text-xl">Ładowanie...</div>;
   }
 
+  const premiumFeatures = [
+    "Tworzenie wielu profili firmowych",
+    "Generowanie faktur bez limitu",
+    "Pełny dostęp do statystyk i raportów",
+    "Wsparcie KSeF (wkrótce)",
+    "Priorytetowe wsparcie techniczne",
+  ];
+
   console.log("AuthProvider - rendering - authenticated, providing context");
-  return <AuthContext.Provider value={{ user, setUser, logout, isPremium, session, isLoading: loading, supabase, openPremiumDialog }}>{children}</AuthContext.Provider>;
+  return (
+    <AuthContext.Provider value={{ user, setUser, logout, isPremium, session, isLoading: loading, supabase, openPremiumDialog, closePremiumDialog, isModalOpen, isShowingPremiumSuccess, showPremiumSuccess: showPremiumSuccessMessage, hidePremiumSuccess: hidePremiumSuccessMessage }}>
+      {children}
+      <PremiumCheckoutModal isOpen={isModalOpen} onClose={closePremiumDialog} />
+       {/* Render Premium Success Message globally */}
+      <PremiumSuccessMessage
+        isOpen={isShowingPremiumSuccess}
+        onClose={hidePremiumSuccessMessage}
+        premiumFeatures={premiumFeatures} // Pass the features list
+      />
+    </AuthContext.Provider>
+  );
 };
 
 const RequireAuth: React.FC<{ children?: React.ReactNode }> = ({ children }) => {
@@ -286,6 +406,12 @@ const App = () => (
                     <Route path="/" element={<Layout />}>
                       {/* Main routes */}
                       <Route index element={<Dashboard />} />
+
+                      {/* Accounting Route - Protected by RequirePremium */}
+                      <Route element={<RequirePremium />}>
+                         <Route path="accounting" element={<Accounting />} />
+                      </Route>
+
                       {/* Invoice routes */}
                       <Route path="invoices/new" element={<NewInvoice />} />
 

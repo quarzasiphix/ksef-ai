@@ -1,22 +1,26 @@
-
 import React, { useState, useEffect } from 'react';
 import { ArrowLeft } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Link, useParams } from 'react-router-dom';
 import BusinessProfileForm from './BusinessProfileForm';
-import { getBusinessProfiles } from '@/integrations/supabase/repositories/businessProfileRepository';
+import { getBusinessProfileById } from '@/integrations/supabase/repositories/businessProfileRepository';
 import { BusinessProfile } from '@/types';
+import { useAuth } from '@/App';
 
 const EditBusinessProfile = () => {
   const { id } = useParams();
   const [profile, setProfile] = useState<BusinessProfile | null>(null);
   const [loading, setLoading] = useState(true);
+  const { user } = useAuth();
 
   useEffect(() => {
     const loadProfile = async () => {
+      if (!id || !user?.id) {
+        setLoading(false);
+        return;
+      }
       try {
-        const profiles = await getBusinessProfiles();
-        const foundProfile = profiles.find(p => p.id === id);
+        const foundProfile = await getBusinessProfileById(id, user.id);
         if (foundProfile) {
           setProfile(foundProfile);
         }
@@ -27,10 +31,8 @@ const EditBusinessProfile = () => {
       }
     };
 
-    if (id) {
-      loadProfile();
-    }
-  }, [id]);
+    loadProfile();
+  }, [id, user]);
 
   if (loading) {
     return <div className="text-center p-10">Ładowanie...</div>;

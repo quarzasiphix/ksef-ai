@@ -178,7 +178,6 @@ export async function saveInvoice(invoice: Omit<Invoice, 'id' | 'ksef' | 'vat' |
     transaction_type: "income" | "expense";
     vat: boolean;
     vat_exemption_reason: VatExemptionReason | null;
-    status: InvoiceStatus;
   };
 
   // Ensure payment method is in the correct format for the database
@@ -224,7 +223,6 @@ export async function saveInvoice(invoice: Omit<Invoice, 'id' | 'ksef' | 'vat' |
     ksef_reference_number: invoice.ksef?.referenceNumber || null,
     vat: invoice.vat || true,
     vat_exemption_reason: invoice.vatExemptionReason || null,
-    status: invoice.status
   };
 
   console.log('Prepared invoice payload:', basePayload);
