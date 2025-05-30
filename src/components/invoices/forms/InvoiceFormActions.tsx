@@ -1,4 +1,3 @@
-
 import React from "react";
 import { Button } from "@/components/ui/button";
 import { useNavigate, useLocation } from "react-router-dom";
@@ -51,6 +50,12 @@ export const InvoiceFormActions: React.FC<InvoiceFormActionsProps> = ({
       <Button
         type="submit"
         disabled={isLoading}
+        onClick={(e) => {
+          if (onSubmit) {
+            console.log('InvoiceFormActions - Save button clicked, calling onSubmit prop');
+            onSubmit(e);
+          }
+        }}
       >
         {isLoading ? "Zapisywanie..." : isEditing ? "Zapisz" : "Utwórz dokument"}
       </Button>

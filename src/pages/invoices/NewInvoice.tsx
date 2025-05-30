@@ -473,7 +473,6 @@ const NewInvoice: React.ForwardRefExoticComponent<
                   isEditing={isEditing}
                 />
                 {/* Transaction Type Toggle - Desktop */}
-                {/* Show only on /invoices/new */}
                 {location.pathname === "/invoices/new" && (
                   <div className="hidden md:flex items-center space-x-2">
                     <Button
@@ -496,7 +495,6 @@ const NewInvoice: React.ForwardRefExoticComponent<
                 )}
               </div>
               {/* Transaction Type Toggle - Mobile */}
-              {/* Show only on /invoices/new */}
               {location.pathname === "/invoices/new" && (
                 <div className="md:hidden flex space-x-2">
                   <Button
@@ -519,8 +517,8 @@ const NewInvoice: React.ForwardRefExoticComponent<
               )}
             </div>
 
-            {/* Form sections */}
-            <div className="space-y-6">
+            {/* Form sections - Wrapped in a flex-1, overflow-y-auto div */}
+            <div className="flex-1 overflow-y-auto space-y-6">
               <InvoiceBasicInfoForm 
                 form={form}
                 documentTitle={documentTitle}
@@ -553,6 +551,23 @@ const NewInvoice: React.ForwardRefExoticComponent<
                 />
               </div>
             </div>
+
+            {/* InvoiceFormActions component and its positioning div - Moved outside the scrollable div */}
+            {showFormActions && ( 
+              <div className={cn(
+                  "fixed bottom-0 left-0 right-0 w-full border-t bg-background z-[9999]", // Fixed at bottom on mobile with high z-index
+                  "md:static md:bottom-auto md:left-auto md:right-auto md:w-auto md:border-t-0 md:bg-transparent md:z-auto", // Static on medium+ screens
+                  "py-2 lg:py-2", // Padding
+                  "container" // Apply container padding
+                )}>
+                <InvoiceFormActions
+                  isLoading={isLoading}
+                  isEditing={Boolean(initialData)} 
+                  onSubmit={handleFormSubmit}
+                  transactionType={transactionType}
+                />
+              </div>
+            )}
           </form>
         </Form>
       </div>

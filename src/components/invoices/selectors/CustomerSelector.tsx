@@ -1,5 +1,4 @@
-
-import React, { useEffect } from "react";
+import React, { useEffect, useState } from "react";
 import { 
   Select,
   SelectContent,
@@ -7,23 +6,28 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Customer } from "@/types";
+import type { Customer } from "@/types";
 import { Button } from "@/components/ui/button";
 import { useNavigate } from "react-router-dom";
 import { Plus } from "lucide-react";
 import { useGlobalData } from "@/hooks/use-global-data";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import CustomerForm from "@/components/customers/CustomerForm";
 
 interface CustomerSelectorProps {
   value?: string;
   onChange: (value: string, name?: string) => void;
+  showBusinessProfiles?: boolean;
 }
 
 export const CustomerSelector: React.FC<CustomerSelectorProps> = ({
   value,
   onChange,
+  showBusinessProfiles = true // Default to true if not provided
 }) => {
-  const { customers: { data: customers, isLoading, error } } = useGlobalData();
+  const { customers: { data: customers, isLoading, error }, refreshAllData } = useGlobalData();
   const navigate = useNavigate();
+  const [isModalOpen, setIsModalOpen] = useState(false);
 
   useEffect(() => {
     // Set first customer as default if no value and customers exist
@@ -33,7 +37,15 @@ export const CustomerSelector: React.FC<CustomerSelectorProps> = ({
   }, [customers, isLoading, value, onChange]);
 
   const handleAddCustomer = () => {
-    navigate("/customers/new");
+    setIsModalOpen(true);
+  };
+
+  const handleCustomerFormSuccess = async (customer: Customer) => {
+    // After successfully creating a customer, refetch all data including the customer list
+    await refreshAllData();
+    // Select the newly created customer
+    onChange(customer.id, customer.name);
+    setIsModalOpen(false);
   };
 
   if (isLoading) {
@@ -73,6 +85,7 @@ export const CustomerSelector: React.FC<CustomerSelectorProps> = ({
         </Select>
       </div>
       <Button 
+        type="button" // Changed to type="button" to prevent form submission
         variant="outline" 
         size="icon" 
         onClick={handleAddCustomer} 
@@ -80,6 +93,20 @@ export const CustomerSelector: React.FC<CustomerSelectorProps> = ({
       >
         <Plus className="h-4 w-4" />
       </Button>
+
+      {/* New Customer Modal */}
+      <Dialog open={isModalOpen} onOpenChange={setIsModalOpen}>
+        <DialogContent className="sm:max-w-[525px] max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>Dodaj nowego klienta</DialogTitle>
+          </DialogHeader>
+          <CustomerForm 
+            isOpen={isModalOpen} // Pass modal state
+            onClose={() => setIsModalOpen(false)} // Function to close modal
+            onSuccess={handleCustomerFormSuccess} // Function to handle successful customer creation
+          />
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };

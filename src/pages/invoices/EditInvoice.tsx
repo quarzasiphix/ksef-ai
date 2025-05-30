@@ -60,6 +60,7 @@ const EditInvoice = () => {
   }, [id]);
 
   const handleUpdate = async (formData: any) => {
+    console.log('EditInvoice handleUpdate - started');
     if (!id) {
       console.log('handleUpdate called but id is null');
       return;
@@ -89,8 +90,9 @@ const EditInvoice = () => {
     console.log('Items being sent:', updatedData.items);
 
     try {
-      console.log('Updating invoice with ID:', id, 'and data:', updatedData);
+      console.log('EditInvoice handleUpdate - calling saveInvoice');
       await saveInvoice(updatedData);
+      console.log('EditInvoice handleUpdate - saveInvoice completed');
       
       // Invalidate both the invoices list and the specific invoice query
       await queryClient.invalidateQueries({ queryKey: ['invoices'] });
@@ -200,7 +202,9 @@ const EditInvoice = () => {
   const handleFormSubmit = (e: React.FormEvent) => {
     // Prevent the default form submission behavior
     e.preventDefault();
+    console.log('EditInvoice handleFormSubmit - started');
     if (newInvoiceRef.current?.handleSubmit) {
+      console.log('EditInvoice handleFormSubmit - calling NewInvoice handleSubmit');
       // Call the handleSubmit method from the NewInvoice component
       newInvoiceRef.current.handleSubmit(handleUpdate)(e);
     }
