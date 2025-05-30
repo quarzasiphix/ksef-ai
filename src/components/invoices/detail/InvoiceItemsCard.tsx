@@ -339,21 +339,35 @@ export const InvoiceItemsCard: React.FC<InvoiceItemsCardProps> = ({
   };
   
   return (
-    <Card className="mb-6">
-      <CardHeader className="pb-2">
-        <CardTitle>Pozycje faktury</CardTitle>
-      </CardHeader>
-      <CardContent>
-        {isMobile ? (
-          <div>
-            {renderMobileItems()}
+    <div className="space-y-4">
+      {isMobile ? renderMobileItems() : renderDesktopItems()}
+
+      {isMobile && renderMobileSummary()}
+
+      {!isMobile && (
+        <div className="flex justify-end">
+          <div className="w-full md:w-1/2 space-y-2">
+            <div className="flex justify-between">
+              <span className="text-muted-foreground">Wartość netto:</span>
+              <span>{formatCurrency(totalNetValue)}</span>
+            </div>
+            {!isReceipt && (
+              <div className="flex justify-between">
+                <span className="text-muted-foreground">Kwota VAT:</span>
+                <span>{formatCurrency(totalVatValue)}</span>
+              </div>
+            )}
+            <div className="flex justify-between font-bold text-lg">
+              <span>Wartość brutto:</span>
+              <span>{formatCurrency(totalGrossValue)}</span>
+            </div>
           </div>
-        ) : (
-          <div>
-            {renderDesktopItems()}
-          </div>
-        )}
-      </CardContent>
-    </Card>
+        </div>
+      )}
+    </div>
   );
 };
+
+const MemoizedInvoiceItemsCard = React.memo(InvoiceItemsCard);
+
+export default MemoizedInvoiceItemsCard;

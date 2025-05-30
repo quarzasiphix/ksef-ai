@@ -117,6 +117,7 @@ export interface InvoiceItem {
   totalNetValue?: number; // Calculated: unitPrice * quantity
   totalGrossValue?: number; // Calculated: totalNetValue + VAT
   totalVatValue?: number; // Calculated: totalNetValue * (vatRate/100)
+  vatExempt?: boolean; // Added vatExempt property
 }
 
 export enum VatExemptionReason {

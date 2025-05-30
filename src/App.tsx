@@ -16,7 +16,7 @@ import Dashboard from "./pages/Dashboard";
 import InvoiceList from "./pages/invoices/InvoiceList";
 import InvoiceDetail from "./pages/invoices/InvoiceDetail";
 import NewInvoice from "./pages/invoices/NewInvoice";
-import { TransactionType } from "./types";
+import { TransactionType } from "./common-types";
 import BusinessProfiles from "./pages/settings/BusinessProfiles";
 import NewBusinessProfile from "./pages/settings/NewBusinessProfile";
 import EditBusinessProfile from "./pages/settings/EditBusinessProfile";
@@ -39,6 +39,7 @@ import EditInvoice from "./pages/invoices/EditInvoice";
 import SettingsMenu from "./pages/settings/SettingsMenu"; // Import the new component
 import ProfileSettings from "./pages/settings/ProfileSettings"; // Import the new component
 import { AuthChangeEvent, Session, User, SupabaseClient, Subscription } from '@supabase/supabase-js'; // Import necessary types
+import { BusinessProfileProvider } from './context/BusinessProfileContext'; // Import the provider
 
 // Export the query client for use in other files
 export const queryClient = new QueryClient({
@@ -63,6 +64,7 @@ interface AuthContextType {
   session: Session | null; // Add session
   isLoading: boolean; // Add isLoading
   supabase: SupabaseClient<Database>; // Add supabase client
+  openPremiumDialog: () => void; // Add function to open premium dialog
 }
 
 const AuthContext = createContext<AuthContextType>({
@@ -73,6 +75,7 @@ const AuthContext = createContext<AuthContextType>({
   session: null, // Default session
   isLoading: true, // Default loading state
   supabase: supabase, // Provide the actual supabase instance
+  openPremiumDialog: () => {}, // Placeholder function to open premium dialog
 });
 
 export const useAuth = () => useContext(AuthContext);
@@ -84,6 +87,14 @@ const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => 
   const [isPremium, setIsPremium] = useState(false); // State for premium status
   const [session, setSession] = useState<Session | null>(null); // Add session state
   const queryClient = useQueryClient();
+
+  // Placeholder function to open premium dialog
+  // TODO: Implement actual logic to open the premium dialog component
+  const openPremiumDialog = () => {
+    console.log("Premium dialog requested");
+    // This is where you would typically set a state to true
+    // which would trigger the rendering of your premium dialog modal.
+  };
 
   const fetchPremiumStatus = async (userId: string) => {
     try {
@@ -227,7 +238,7 @@ const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => 
   }
 
   console.log("AuthProvider - rendering - authenticated, providing context");
-  return <AuthContext.Provider value={{ user, setUser, logout, isPremium, session, isLoading: loading, supabase }}>{children}</AuthContext.Provider>;
+  return <AuthContext.Provider value={{ user, setUser, logout, isPremium, session, isLoading: loading, supabase, openPremiumDialog }}>{children}</AuthContext.Provider>;
 };
 
 const RequireAuth: React.FC<{ children?: React.ReactNode }> = ({ children }) => {
@@ -266,60 +277,62 @@ const App = () => (
         <Sonner position="top-center" offset={10} />
         <BrowserRouter>
           <AuthProvider>
-            <SidebarProvider>
-              <Routes>
-                <Route path="/auth/login" element={<Login />} />
-                <Route path="/auth/register" element={<Register />} />
-                <Route element={<RequireAuth />}>
-                  <Route path="/" element={<Layout />}>
-                    {/* Main routes */}
-                    <Route index element={<Dashboard />} />
-                    {/* Invoice routes */}
-                    <Route path="invoices/new" element={<NewInvoice />} />
+            <BusinessProfileProvider>
+              <SidebarProvider>
+                <Routes>
+                  <Route path="/auth/login" element={<Login />} />
+                  <Route path="/auth/register" element={<Register />} />
+                  <Route element={<RequireAuth />}>
+                    <Route path="/" element={<Layout />}>
+                      {/* Main routes */}
+                      <Route index element={<Dashboard />} />
+                      {/* Invoice routes */}
+                      <Route path="invoices/new" element={<NewInvoice />} />
 
-                    {/* Income routes */}
-                    <Route path="/income/:id" element={<InvoiceDetail type="income" />} />
-                    <Route path="/income/:id/edit" element={<EditInvoice />} />
+                      {/* Income routes */}
+                      <Route path="/income/:id" element={<InvoiceDetail type="income" />} />
+                      <Route path="/income/:id/edit" element={<EditInvoice />} />
 
-                    {/* Expense routes */}
-                    <Route path="/expense/:id" element={<InvoiceDetail type="expense" />} />
-                    <Route path="/expense/:id/edit" element={<EditInvoice />} />
+                      {/* Expense routes */}
+                      <Route path="/expense/:id" element={<InvoiceDetail type="expense" />} />
+                      <Route path="/expense/:id/edit" element={<EditInvoice />} />
 
-                    {/* Legacy routes for backward compatibility */}
-                    <Route path="/invoices/:id" element={<InvoiceDetail type="income" />} />
-                    {/* Customer routes */}
-                    <Route path="customers" element={<CustomerList />} />
-                    <Route path="customers/new" element={<NewCustomer />} />
-                    <Route path="customers/edit/:id" element={<EditCustomer />} />
-                    <Route path="customers/:id" element={<CustomerDetail />} />
-                    {/* Product routes */}
-                    <Route path="products" element={<ProductList />} />
-                    <Route path="products/new" element={<NewProduct />} />
-                    <Route path="products/edit/:id" element={<EditProduct />} />
-                    <Route path="products/:id" element={<ProductDetail />} />
-                    {/* Settings routes */}
-                    <Route path="settings" element={<SettingsMenu />} >
-                      <Route index element={<Navigate to="business-profiles" replace />} /> {/* Set profile as the default nested route */}
-                      <Route path="profile" element={<ProfileSettings />} /> {/* Add the profile settings route */}
-                      <Route path="business-profiles" element={<BusinessProfiles />} />
-                      <Route path="business-profiles/new" element={<NewBusinessProfile />} />
-                      <Route path="business-profiles/:id" element={<EditBusinessProfile />} />
-                      <Route path="documents" element={<DocumentSettings />} />
-                      {/* Using Outlet in SettingsMenu will render the nested routes */}
+                      {/* Legacy routes for backward compatibility */}
+                      <Route path="/invoices/:id" element={<InvoiceDetail type="income" />} />
+                      {/* Customer routes */}
+                      <Route path="customers" element={<CustomerList />} />
+                      <Route path="customers/new" element={<NewCustomer />} />
+                      <Route path="customers/edit/:id" element={<EditCustomer />} />
+                      <Route path="customers/:id" element={<CustomerDetail />} />
+                      {/* Product routes */}
+                      <Route path="products" element={<ProductList />} />
+                      <Route path="products/new" element={<NewProduct />} />
+                      <Route path="products/edit/:id" element={<EditProduct />} />
+                      <Route path="products/:id" element={<ProductDetail />} />
+                      {/* Settings routes */}
+                      <Route path="settings" element={<SettingsMenu />} >
+                        <Route index element={<Navigate to="business-profiles" replace />} /> {/* Set profile as the default nested route */}
+                        <Route path="profile" element={<ProfileSettings />} /> {/* Add the profile settings route */}
+                        <Route path="business-profiles" element={<BusinessProfiles />} />
+                        <Route path="business-profiles/new" element={<NewBusinessProfile />} />
+                        <Route path="business-profiles/:id" element={<EditBusinessProfile />} />
+                        <Route path="documents" element={<DocumentSettings />} />
+                        {/* Using Outlet in SettingsMenu will render the nested routes */}
+                      </Route>
+
+                      {/* New invoice routes */}
+                      <Route path="income/new" element={<NewInvoice type={TransactionType.INCOME} />} />
+                      <Route path="expense/new" element={<NewInvoice type={TransactionType.EXPENSE} />} />
+                      {/* Legacy routes for backward compatibility */}
+                      <Route path="income" element={<IncomeList />} />
+                      <Route path="expense" element={<ExpenseList />} />
+                      {/* Catch-all for any other routes */}
+                      <Route path="*" element={<NotFound />} />
                     </Route>
-
-                    {/* New invoice routes */}
-                    <Route path="income/new" element={<NewInvoice type={TransactionType.INCOME} />} />
-                    <Route path="expense/new" element={<NewInvoice type={TransactionType.EXPENSE} />} />
-                    {/* Legacy routes for backward compatibility */}
-                    <Route path="income" element={<IncomeList />} />
-                    <Route path="expense" element={<ExpenseList />} />
-                    {/* Catch-all for any other routes */}
-                    <Route path="*" element={<NotFound />} />
                   </Route>
-                </Route>
-              </Routes>
-            </SidebarProvider>
+                </Routes>
+              </SidebarProvider>
+            </BusinessProfileProvider>
           </AuthProvider>
         </BrowserRouter>
       </TooltipProvider>

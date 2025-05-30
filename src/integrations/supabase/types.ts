@@ -261,6 +261,63 @@ export type Database = {
           },
         ]
       }
+      expenses: {
+        Row: {
+          id: string;
+          user_id: string;
+          business_profile_id: string;
+          customer_id: string | null;
+          amount: number;
+          date: string;
+          description: string | null;
+          category: string | null;
+          payment_method: string | null;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          user_id: string;
+          business_profile_id: string;
+          customer_id?: string | null;
+          amount: number;
+          date: string;
+          description?: string | null;
+          category?: string | null;
+          payment_method?: string | null;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: {
+          id?: string;
+          user_id?: string;
+          business_profile_id?: string;
+          customer_id?: string | null;
+          amount?: number;
+          date?: string;
+          description?: string | null;
+          category?: string | null;
+          payment_method?: string | null;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Relationships: [
+           {
+            foreignKeyName: "expenses_business_profile_id_fkey"
+            columns: ["business_profile_id"]
+            isOneToOne: false
+            referencedRelation: "business_profiles"
+            referencedColumns: ["id"]
+          },
+           {
+            foreignKeyName: "expenses_customer_id_fkey"
+            columns: ["customer_id"]
+            isOneToOne: false
+            referencedRelation: "customers"
+            referencedColumns: ["id"]
+          },
+        ];
+      }
       premium_subscriptions: {
         Row: {
           created_at: string | null

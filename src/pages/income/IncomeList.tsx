@@ -13,6 +13,7 @@ import { Invoice, InvoiceType } from "@/types";
 import { Plus, Search, Filter, Trash2 } from "lucide-react";
 import InvoiceCard from "@/components/invoices/InvoiceCard";
 import { useGlobalData } from "@/hooks/use-global-data";
+import { useBusinessProfile } from "@/context/BusinessProfileContext";
 import {
   Select,
   SelectContent,
@@ -34,6 +35,7 @@ import { useQueryClient } from "@tanstack/react-query";
 
 const IncomeList = () => {
   const { invoices: { data: invoices, isLoading } } = useGlobalData();
+  const { selectedProfileId } = useBusinessProfile();
   const [searchTerm, setSearchTerm] = useState("");
   const [activeTab, setActiveTab] = useState<string>("all");
   const [contextMenu, setContextMenu] = useState<{visible: boolean, x: number, y: number, invoiceId: string | null}>({visible: false, x: 0, y: 0, invoiceId: null});
@@ -156,27 +158,36 @@ const IncomeList = () => {
     touchStartPosition.current = null; // Reset on touch end
   };
 
-  // Filter invoices based on search term, document type, and transaction type (income only)
-  const filteredInvoices = invoices.filter(
-    (invoice) => {
-      // Only show income transactions
-      if (invoice.transactionType !== 'income') return false;
-      
-      const matchesSearch = 
-        invoice.number.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        (invoice.customerName || "").toLowerCase().includes(searchTerm.toLowerCase());
-      
-      // Filter by document type tab
-      const matchesType = 
-        activeTab === "all" || 
-        (activeTab === "invoice" && invoice.type === InvoiceType.SALES) ||
-        (activeTab === "receipt" && invoice.type === InvoiceType.RECEIPT) ||
-        (activeTab === "proforma" && invoice.type === InvoiceType.PROFORMA) ||
-        (activeTab === "correction" && invoice.type === InvoiceType.CORRECTION);
-      
-      return matchesSearch && matchesType;
-    }
-  );
+  // Filter invoices based on search term, document type, transaction type (income only), AND business profile
+  const filteredInvoices = useMemo(() => {
+    // Ensure invoices data is available before filtering
+    if (!invoices) return [];
+
+    return invoices.filter(
+      (invoice) => {
+        // Only show income transactions
+        if (invoice.transactionType !== 'income') return false;
+
+        // Filter by selected business profile
+        // selectedProfileId could be null if no profile is selected, in which case we show no invoices
+        if (!selectedProfileId || invoice.businessProfileId !== selectedProfileId) return false;
+
+        const matchesSearch =
+          invoice.number.toLowerCase().includes(searchTerm.toLowerCase()) ||
+          (invoice.customerName || "").toLowerCase().includes(searchTerm.toLowerCase());
+
+        // Filter by document type tab
+        const matchesType =
+          activeTab === "all" ||
+          (activeTab === "invoice" && invoice.type === InvoiceType.SALES) ||
+          (activeTab === "receipt" && invoice.type === InvoiceType.RECEIPT) ||
+          (activeTab === "proforma" && invoice.type === InvoiceType.PROFORMA) ||
+          (activeTab === "correction" && invoice.type === InvoiceType.CORRECTION);
+
+        return matchesSearch && matchesType;
+      }
+    );
+  }, [invoices, searchTerm, activeTab, selectedProfileId]); // Include all dependencies
 
   const getDocumentTypeName = (type: string) => {
     switch(type) {

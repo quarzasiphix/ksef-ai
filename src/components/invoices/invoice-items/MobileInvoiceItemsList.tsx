@@ -1,4 +1,3 @@
-
 import React from "react";
 import { InvoiceItem, InvoiceType } from "@/types";
 import { InvoiceItemMobileCard } from "./InvoiceItemMobileCard";

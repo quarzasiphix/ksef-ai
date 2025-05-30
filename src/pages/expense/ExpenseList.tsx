@@ -7,13 +7,15 @@ import { Badge } from '@/components/ui/badge';
 import { Plus, FileText } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
 import { useGlobalData } from '@/hooks/use-global-data';
+import { useBusinessProfile } from "@/context/BusinessProfileContext";
 
 // ExpenseList component for displaying a list of expenses
 export default function ExpenseList() {
   const [invoices, setInvoices] = useState<Invoice[]>([]);
   const [searchTerm, setSearchTerm] = useState('');
 
-  const { invoices: { data: allInvoices, isLoading: isLoadingInvoices } } = useGlobalData();
+  const { invoices: { data: allInvoices, isLoading: isLoadingInvoices }, expenses: { data: allExpenses, isLoading: isLoadingExpenses } } = useGlobalData();
+  const { selectedProfileId } = useBusinessProfile();
 
   useEffect(() => {
     if (allInvoices) {
@@ -26,33 +28,26 @@ export default function ExpenseList() {
         });
       }
       
-      // Filter for expense transactions only
-      const expenseInvoices = allInvoices.filter(invoice => {
+      // Filter for expense transactions for the selected profile only
+      const filteredExpenses = allExpenses?.filter(expense => {
+        // Filter by selected business profile
+        if (!selectedProfileId || expense.businessProfileId !== selectedProfileId) return false;
+        
         // Safely get the transaction type regardless of case or property name
         const transactionType = (
-          invoice.transactionType || 
-          (invoice as any).transaction_type ||
-          (invoice as any).transactionType
+          expense.transactionType ||
+          (expense as any).transaction_type
         )?.toString().toLowerCase();
         
-        const isExpense = transactionType === 'expense';
-        
-        console.log(`Invoice ${invoice.number} (${invoice.id}):`, {
-          transactionType: invoice.transactionType,
-          transaction_type: (invoice as any).transaction_type,
-          computedTransactionType: transactionType,
-          isExpense
-        });
-        
-        return isExpense;
-      });
+        return transactionType === 'expense';
+      }) || []; // Provide a default empty array if allExpenses is null/undefined
       
-      console.log('Filtered expense invoices:', expenseInvoices);
-      setInvoices(expenseInvoices);
+      console.log('Filtered expense invoices:', filteredExpenses);
+      setInvoices(filteredExpenses);
     }
-  }, [allInvoices]);
+  }, [allInvoices, allExpenses, selectedProfileId]);
   
-  const isLoading = isLoadingInvoices;
+  const isLoading = isLoadingInvoices || isLoadingExpenses;
 
   if (isLoading) {
     return (

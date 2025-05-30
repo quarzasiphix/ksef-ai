@@ -5,6 +5,7 @@ import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { toast } from 'sonner';
 import { Database } from '@/integrations/supabase/types'; // Import Database type
+import { Link } from 'react-router-dom';
 
 type Profile = Database['public']['Tables']['profiles']['Row'];
 
@@ -91,6 +92,13 @@ const ProfileSettings: React.FC = () => {
       <div>
         <h2 className="text-xl font-semibold">Profile Settings</h2>
         <p className="text-muted-foreground">Manage your personal profile information.</p>
+      </div>
+
+      {/* Link to Business Profiles Settings */}
+      <div className="mt-6">
+        <Link to="/settings/business-profiles" className="text-blue-600 hover:underline">
+          Go to Business Profiles Settings
+        </Link>
       </div>
 
       <div className="grid gap-4 py-4">

@@ -83,6 +83,19 @@ export const EditableInvoiceItemsTable: React.FC<EditableInvoiceItemsTableProps>
     if (!item) return;
     // Always use defensive calculation
     const updated = calculateItemValues({ ...item, ...updates });
+
+    // Log item data after recalculation, before updating parent
+    console.log(`EditableInvoiceItemsTable - Recalculated item ${id}:`, {
+      vatRate: updated.vatRate,
+      totalNetValue: updated.totalNetValue,
+      totalVatValue: updated.totalVatValue,
+      totalGrossValue: updated.totalGrossValue,
+      // Include other relevant fields if needed for debugging
+      name: updated.name,
+      quantity: updated.quantity,
+      unitPrice: updated.unitPrice
+    });
+
     onUpdateItem(id, updated);
   };
 
@@ -119,26 +132,28 @@ export const EditableInvoiceItemsTable: React.FC<EditableInvoiceItemsTableProps>
   };
 
   const handleNewProductAdded = (product: Product) => {
-    // Handle VAT rate conversion
-    const vatRate = product.vatRate;
+    // Handle VAT rate conversion - ensure it's a number
+    const vatRate = typeof product.vatRate === 'number' ? product.vatRate : Number(product.vatRate) || 23;
 
     const quantity = 1;
     const unitPrice = product.unitPrice;
     const totalNetValue = unitPrice * quantity;
-    const totalVatValue = isReceipt || vatRate === -1 ? 0 : totalNetValue * (vatRate / 100);
-    const totalGrossValue = totalNetValue + totalVatValue;
+    // Ensure calculation handles VAT exemption correctly
+    const calculatedVatValue = isReceipt || vatRate === -1 ? 0 : totalNetValue * (vatRate / 100);
+    const totalGrossValue = totalNetValue + calculatedVatValue;
     
     const newItem: InvoiceItem = {
       id: crypto.randomUUID(),
-      productId: undefined,
+      productId: product.id,
       name: product.name,
       description: product.description || '',
       quantity,
       unitPrice,
-      vatRate,
+      // Use the correctly typed vatRate
+      vatRate: vatRate,
       unit: product.unit,
       totalNetValue,
-      totalVatValue,
+      totalVatValue: calculatedVatValue,
       totalGrossValue
     };
     

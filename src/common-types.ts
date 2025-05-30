@@ -59,7 +59,6 @@ export interface InvoiceItem {
   totalVatValue?: number;
   totalGrossValue?: number;
   unit?: string;
-  vatExempt?: boolean;
 }
 
 export interface Product {
@@ -115,4 +114,4 @@ export interface BusinessProfile {
   updated_at?: string;
   user_id?: string;
   tax_type?: string | null; // Added tax_type to interface
-}
+} 

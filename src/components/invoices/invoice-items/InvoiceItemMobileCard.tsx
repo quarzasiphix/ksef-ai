@@ -14,6 +14,8 @@ interface InvoiceItemMobileCardProps {
   documentType: InvoiceType;
   onRemoveItem: (id: string) => void;
   onUpdateItem: (id: string, updates: Partial<InvoiceItem>) => void;
+  fakturaBezVAT?: boolean;
+  vatExemptionReason?: string | null;
 }
 
 export const InvoiceItemMobileCard: React.FC<InvoiceItemMobileCardProps> = ({

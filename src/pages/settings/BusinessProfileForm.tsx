@@ -19,6 +19,13 @@ import { BusinessProfile } from "@/types";
 import { saveBusinessProfile } from "@/integrations/supabase/repositories/businessProfileRepository";
 import { useAuth } from "@/App";
 import { useIsMobile } from "@/hooks/use-mobile";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 
 const formSchema = z.object({
   name: z.string().min(1, "Nazwa jest wymagana"),
@@ -26,11 +33,12 @@ const formSchema = z.object({
   address: z.string().min(1, "Adres jest wymagany"),
   postalCode: z.string().min(1, "Kod pocztowy jest wymagany"),
   city: z.string().min(1, "Miasto jest wymagane"),
-  regon: z.string().optional(),
-  bankAccount: z.string().optional(),
+  regon: z.string().optional().or(z.literal("")),
+  bankAccount: z.string().optional().or(z.literal("")),
   email: z.string().email("Niepoprawny format email").optional().or(z.literal("")),
-  phone: z.string().optional(),
+  phone: z.string().optional().or(z.literal("")),
   isDefault: z.boolean().default(false),
+  tax_type: z.enum(["skala", "liniowy", "ryczalt"]).optional(),
 });
 
 interface BusinessProfileFormProps {
@@ -60,6 +68,7 @@ const BusinessProfileForm = ({
       email: initialData?.email || "",
       phone: initialData?.phone || "",
       isDefault: initialData?.isDefault || false,
+      tax_type: initialData?.tax_type || "skala",
     },
   });
 
@@ -84,6 +93,7 @@ const BusinessProfileForm = ({
         isDefault: values.isDefault,
         logo: initialData?.logo || "", // Preserve existing logo if any
         user_id: user.id, // Enforce RLS: always include user_id
+        tax_type: values.tax_type,
       };
 
       await saveBusinessProfile(profile);
@@ -287,6 +297,29 @@ const BusinessProfileForm = ({
               )}
             />
           </div>
+
+          <FormField
+            control={form.control}
+            name="tax_type"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>Forma opodatkowania</FormLabel>
+                <Select onValueChange={field.onChange} defaultValue={field.value}>
+                  <FormControl>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Wybierz formę opodatkowania" />
+                    </SelectTrigger>
+                  </FormControl>
+                  <SelectContent>
+                    <SelectItem value="skala">Skala podatkowa</SelectItem>
+                    <SelectItem value="liniowy">Podatek liniowy (19%)</SelectItem>
+                    <SelectItem value="ryczalt">Ryczałt ewidencjonowany</SelectItem>
+                  </SelectContent>
+                </Select>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
 
           <FormField
             control={form.control}

@@ -9,20 +9,67 @@ import { Button } from "@/components/ui/button";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { useGlobalData } from "@/hooks/use-global-data";
 import { useAuth } from "@/App";
+import type { BusinessProfile } from "@/types";
+import { getBusinessProfiles } from "@/integrations/supabase/repositories/businessProfileRepository";
+import { calculateIncomeTax } from "@/lib/tax-utils";
+import { useBusinessProfile } from "@/context/BusinessProfileContext";
 
 const Dashboard = () => {
   const [monthlySummaries, setMonthlySummaries] = useState<any[]>([]);
+  const [selectedProfileIncomeTax, setSelectedProfileIncomeTax] = useState<number | string | null>(null);
+  const [selectedProfileTotalExpenses, setSelectedProfileTotalExpenses] = useState<number>(0);
+  
+  const { selectedProfileId, profiles, isLoadingProfiles } = useBusinessProfile();
   const isMobile = useIsMobile();
   
   // Get data from our global data cache
-  const { invoices: { data: invoices, isLoading } } = useGlobalData();
+  const { invoices: { data: invoices, isLoading: isLoadingInvoices }, expenses: { data: expenses, isLoading: isLoadingExpenses } } = useGlobalData();
   const { isPremium } = useAuth();
+  
+  const isLoading = isLoadingInvoices || isLoadingExpenses || isLoadingProfiles; // Combined loading state
   
   useEffect(() => {
     if (invoices?.length > 0) {
       generateMonthlySummaries(invoices);
     }
-  }, [invoices]);
+    
+    // Fetch and set the default business profile
+    const processProfilesAndInvoices = async () => {
+      try {
+        if (selectedProfileId && invoices && expenses && profiles) {
+          // Filter invoices and expenses by selected profile
+          const filteredInvoices = invoices.filter(inv => inv.businessProfileId === selectedProfileId);
+          const filteredExpenses = expenses.filter(exp => exp.businessProfileId === selectedProfileId);
+
+          // Calculate total net income for the selected profile
+          const totalNetIncomeSelected = filteredInvoices.reduce((sum, inv) => sum + (inv.totalNetValue || 0), 0);
+
+          // Find the selected profile object to get its tax type
+          const currentProfile = profiles.find(p => p.id === selectedProfileId);
+
+          console.log('Dashboard: Selected Profile ID:', selectedProfileId);
+          console.log('Dashboard: Found Profile Object:', currentProfile);
+          console.log('Dashboard: Selected Profile Tax Type:', currentProfile?.tax_type);
+
+          // Calculate estimated income tax for the selected profile
+          const estimatedTax = calculateIncomeTax(totalNetIncomeSelected, currentProfile?.tax_type);
+          setSelectedProfileIncomeTax(estimatedTax);
+
+          // Calculate total expenses for the selected profile
+          const totalExpensesSelected = filteredExpenses.reduce((sum, exp) => sum + (exp.totalAmount || 0), 0);
+          setSelectedProfileTotalExpenses(totalExpensesSelected);
+        }
+
+      } catch (error) {
+        console.error("Error processing profiles and invoices:", error);
+        setSelectedProfileIncomeTax(null);
+        setSelectedProfileTotalExpenses(0);
+      }
+    };
+
+    processProfilesAndInvoices();
+
+  }, [invoices, expenses, selectedProfileId, profiles]);
   
   const generateMonthlySummaries = (invoicesData: Invoice[]) => {
     // Group invoices by month
@@ -82,6 +129,8 @@ const Dashboard = () => {
     return invoiceSum + invoiceVat;
   }, 0);
 
+  const selectedProfile = profiles?.find(p => p.id === selectedProfileId);
+
   return (
     <div className="space-y-6 max-w-full pb-20">
       <div className="flex items-center justify-between">
@@ -128,6 +177,38 @@ const Dashboard = () => {
               <div className="text-2xl font-bold truncate">{formatCurrency(totalTax)}</div>
             </CardContent>
           </Card>
+          
+          {/* Estimated Income Tax Card (Mobile) */}
+          {selectedProfile && (
+            <Card>
+              <CardHeader className="pb-2">
+                <CardTitle className="text-sm font-medium text-muted-foreground">
+                  Szacowany Podatek Dochodowy ({selectedProfile.name}) - {selectedProfile.tax_type === 'skala' ? 'Skala' : selectedProfile.tax_type === 'liniowy' ? 'Liniowy' : selectedProfile.tax_type === 'ryczalt' ? 'Ryczałt' : 'Nieokreślona'})
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold truncate">
+                  {typeof selectedProfileIncomeTax === 'number' ? formatCurrency(selectedProfileIncomeTax) : selectedProfileIncomeTax}
+                </div>
+              </CardContent>
+            </Card>
+          )}
+          
+          {/* Total Expenses Card (Mobile) */}
+          {selectedProfile && (
+            <Card>
+              <CardHeader className="pb-2">
+                <CardTitle className="text-sm font-medium text-muted-foreground">
+                  Suma Wydatków ({selectedProfile.name})
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold truncate">
+                  {formatCurrency(selectedProfileTotalExpenses)}
+                </div>
+              </CardContent>
+            </Card>
+          )}
         </div>
       ) : (
         // Desktop/Tablet view - original 2x2 grid
@@ -175,6 +256,38 @@ const Dashboard = () => {
               <div className="text-2xl font-bold truncate">{formatCurrency(totalTax)}</div>
             </CardContent>
           </Card>
+          
+          {/* Estimated Income Tax Card (Desktop) */}
+          {selectedProfile && (
+            <Card className="col-span-2">
+              <CardHeader className="pb-2">
+                <CardTitle className="text-sm font-medium text-muted-foreground">
+                  Szacowany Podatek Dochodowy ({selectedProfile.name}) - {selectedProfile.tax_type === 'skala' ? 'Skala' : selectedProfile.tax_type === 'liniowy' ? 'Liniowy' : selectedProfile.tax_type === 'ryczalt' ? 'Ryczałt' : 'Nieokreślona'})
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold truncate">
+                   {typeof selectedProfileIncomeTax === 'number' ? formatCurrency(selectedProfileIncomeTax) : selectedProfileIncomeTax}
+                </div>
+              </CardContent>
+            </Card>
+          )}
+          
+          {/* Total Expenses Card (Desktop) */}
+          {selectedProfile && (
+            <Card>
+              <CardHeader className="pb-2">
+                <CardTitle className="text-sm font-medium text-muted-foreground">
+                  Suma Wydatków ({selectedProfile.name})
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold truncate">
+                  {formatCurrency(selectedProfileTotalExpenses)}
+                </div>
+              </CardContent>
+            </Card>
+          )}
         </div>
       )}
       
@@ -247,7 +360,7 @@ const Dashboard = () => {
           </Button>
         </div>
         
-        {isLoading ? (
+        {isLoadingInvoices ? (
           <div className="text-center py-8">
             <p>Ładowanie...</p>
           </div>
@@ -288,16 +401,16 @@ const Dashboard = () => {
                   </tr>
                 </thead>
                 <tbody>
-                  {isLoading ? (
+                  {isLoadingInvoices ? (
                     <tr>
                       <td colSpan={isMobile ? 3 : 4} className="text-center py-4">Ładowanie...</td>
                     </tr>
-                  ) : invoices.length === 0 ? (
+                  ) : invoices?.filter(inv => inv.businessProfileId === selectedProfileId).length === 0 ? (
                     <tr>
                       <td colSpan={isMobile ? 3 : 4} className="text-center py-4">Brak faktur</td>
                     </tr>
                   ) : (
-                    invoices.slice(0, 5).map((invoice) => (
+                    invoices?.filter(inv => inv.businessProfileId === selectedProfileId).slice(0, 5).map((invoice) => (
                       <tr key={invoice.id}>
                         <td className="truncate max-w-[80px]">{invoice.number}</td>
                         <td>{new Date(invoice.issueDate).toLocaleDateString("pl-PL")}</td>
@@ -326,6 +439,59 @@ const Dashboard = () => {
           </div>
         </CardContent>
       </Card>
+
+      {/* Section to display tax for all profiles if more than one */}
+      {profiles?.length > 1 && !isLoadingInvoices && !isLoadingExpenses && !isLoadingProfiles ? (
+        <Card className="col-span-full">
+           <CardHeader>
+             <CardTitle>Szacowany Podatek Dochodowy wg Profili</CardTitle>
+           </CardHeader>
+           <CardContent className="pt-2">
+               <div className="space-y-4">
+               {profiles.map(profile => {
+                   // Calculate income and tax for THIS profile again for the list view
+                   const profileInvoices = invoices?.filter(inv => inv.businessProfileId === profile.id) || [];
+                   const totalNetIncome = profileInvoices.reduce((sum, inv) => sum + (inv.totalNetValue || 0), 0);
+                   const estimatedIncomeTax = calculateIncomeTax(totalNetIncome, profile.tax_type);
+
+                   return (
+                       <div key={profile.id} className="border rounded-md p-3">
+                           <div className="font-medium">{profile.name} ({profile.tax_type === 'skala' ? 'Skala' : profile.tax_type === 'liniowy' ? 'Liniowy' : profile.tax_type === 'ryczalt' ? 'Ryczałt' : 'Nieokreślona'})</div>
+                           <div className="text-sm text-muted-foreground">Przychód netto z faktur: {formatCurrency(totalNetIncome)}</div>
+                           <div className="text-lg font-bold mt-1">
+                               Szacowany podatek: {typeof estimatedIncomeTax === 'number' ? formatCurrency(estimatedIncomeTax) : estimatedIncomeTax}
+                           </div>
+                            {profile.tax_type === 'skala' && (
+                                <div className="text-xs text-amber-600 mt-1">
+                                    (Wymaga pełnego obliczenia z uwzględnieniem kosztów, progów podatkowych itp.)
+                                </div>
+                            )}
+                             {profile.tax_type === 'ryczalt' && (
+                                <div className="text-xs text-amber-600 mt-1">
+                                    (Stawka ryczałtu zależy od rodzaju działalności - użyto przykładowej stawki 17% dla przychodu netto)
+                                </div>
+                            )}
+                              {profile.tax_type === 'liniowy' && (
+                                <div className="text-xs text-amber-600 mt-1">
+                                    (Obliczone od przychodu netto - nie uwzględnia kosztów)
+                                </div>
+                            )}
+                       </div>
+                   );
+               })}
+               </div>
+           </CardContent>
+        </Card>
+      ) : profiles?.length > 1 && ( // Show loading state for this section
+          <Card className="col-span-full">
+             <CardHeader>
+              <CardTitle>Szacowany Podatek Dochodowy wg Profili</CardTitle>
+            </CardHeader>
+            <CardContent className="pt-2">
+              <div className="text-center py-4">Ładowanie danych profili...</div>
+            </CardContent>
+           </Card>
+      )}
     </div>
   );
 };

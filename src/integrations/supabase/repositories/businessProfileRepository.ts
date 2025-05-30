@@ -2,10 +2,16 @@ import { supabase } from "../client";
 import type { BusinessProfile } from "@/types";
 import { queryClient } from "@/App";
 
-export async function getBusinessProfiles(): Promise<BusinessProfile[]> {
+export async function getBusinessProfiles(userId: string): Promise<BusinessProfile[]> {
+  if (!userId) {
+    console.error("No user ID provided to getBusinessProfiles");
+    return [];
+  }
+  
   const { data, error } = await supabase
     .from("business_profiles")
     .select("*")
+    .eq('user_id', userId)
     .order("name");
 
   if (error) {

@@ -13,6 +13,7 @@ import {
   ChevronLeft,
   ChevronRight,
   LogOut,
+  ChevronDown,
   Star
 } from "lucide-react";
 import {
@@ -23,26 +24,34 @@ import {
   SidebarMenuButton,
   SidebarMenuItem
 } from "@/components/ui/sidebar";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { useBusinessProfile } from "@/context/BusinessProfileContext";
+import { useToast } from "@/components/ui/use-toast";
+import { Link } from "react-router-dom";
 
 const AppSidebar = () => {
   const navigate = useNavigate();
   const location = useLocation();
-  const { user, logout, isPremium } = useAuth();
+  const { user, logout, isPremium, openPremiumDialog } = useAuth();
   const { state, setState } = useSidebar();
+  const { profiles, selectedProfileId, selectProfile, isLoadingProfiles } = useBusinessProfile();
   const isManualToggle = useRef(false);
+  const { toast } = useToast();
 
   const handleToggle = useCallback(() => {
     isManualToggle.current = true;
     setState(state === "expanded" ? "collapsed" : "expanded");
-    // Reset the manual toggle flag after a short delay
-    setTimeout(() => {
-      isManualToggle.current = false;
-    }, 100);
   }, [state, setState]);
 
   useEffect(() => {
     const handleResize = () => {
-      if (!isManualToggle.current) {
+      if (isManualToggle.current === false) {
         setState(window.innerWidth >= 1400 ? "expanded" : "collapsed");
       }
     };
@@ -64,6 +73,9 @@ const AppSidebar = () => {
     await logout();
     navigate("/auth/login");
   };
+
+  // Find the currently selected profile object
+  const selectedProfile = profiles?.find(p => p.id === selectedProfileId);
 
   return (
     <Sidebar className={cn(
@@ -102,147 +114,227 @@ const AppSidebar = () => {
           </Button>
         </SidebarHeader>
 
+        {/* Business Profile Selector - Displayed in expanded state */}
+        {state === "expanded" && (
+           <div className="p-4 border-b bg-muted/50">
+             <div className="flex flex-col">
+               <span className="text-sm font-medium mb-2">Aktywny profil:</span>
+               {isLoadingProfiles ? (
+                   <span className="text-xs text-muted-foreground">Ładowanie profili...</span>
+               ) : profiles && profiles.length > 0 ? (
+                 <>
+                   {!isPremium && profiles.length === 1 ? ( // Single non-premium profile
+                     <div className="flex items-center gap-1">
+                       <span className="text-xs text-muted-foreground">{profiles[0]?.name?.split(' ').slice(0, 3).join(' ')}</span>
+                       <ChevronDown className="h-3 w-3 text-muted-foreground" />
+                     </div>
+                   ) : isPremium && profiles.length > 0 ? ( // Premium with profiles (show dropdown)
+                      <Select value={selectedProfileId || ''} onValueChange={(value) => {
+                          if (value === "add-new-profile") {
+                              if (isPremium) {
+                                  navigate("/settings/business-profiles"); // Navigate to settings to add a new profile
+                              } else {
+                                   toast({
+                                       title: "Wymagane Premium",
+                                       description: "Kup Premium, aby dodać więcej profili firmowych.",
+                                       variant: "destructive",
+                                   });
+                                   openPremiumDialog();
+                               }
+                          } else {
+                              selectProfile(value);
+                          }
+                      }}>
+                         <SelectTrigger className="w-full text-xs">
+                           <SelectValue placeholder="Wybierz profil">
+                             {selectedProfile?.name?.split(' ').slice(0, 3).join(' ') || "Wybierz profil"} {/* Use selectedProfile for display */}
+                           </SelectValue>
+                         </SelectTrigger>
+                         <SelectContent position="popper">
+                           {profiles.map(profile => (
+                             <SelectItem key={profile.id} value={profile.id}>
+                               {profile.name} {/* Show full name in dropdown */}
+                             </SelectItem>
+                           ))}
+                           <SelectItem value="add-new-profile" className="text-blue-600 font-medium">
+                             Dodaj profil
+                           </SelectItem>
+                         </SelectContent>
+                       </Select>
+                   ) : !isPremium && profiles.length > 1 ? ( // Multiple non-premium profiles
+                       <span className="text-xs text-amber-500">Kup Premium, aby zarządzać wieloma profilami.</span>
+                   ) : null}
+                 </>
+               ) : !isLoadingProfiles && profiles && profiles.length === 0 ? ( // No profiles
+                   <span className="text-xs text-muted-foreground">Dodaj swój pierwszy profil firmy w Ustawieniach.</span>
+               ) : null}
+             </div>
+           </div>
+        )}
+
         <div className="flex-1 overflow-y-auto scrollbar-none pb-16">
           <SidebarContent>
-            <SidebarMenu className="space-y-0.5">
-              <SidebarMenuButton asChild tooltip={state === 'collapsed' ? 'Dashboard' : undefined}>
-                 <Button
-                  variant="ghost"
-                  className={cn(
-                    "flex w-full items-center rounded-md text-sm font-medium transition-colors",
-                    location.pathname === "/" ? "bg-accent text-accent-foreground" : "text-muted-foreground hover:bg-accent hover:text-accent-foreground",
+            <SidebarMenu className={cn("space-y-0.5", state === "collapsed" && "pt-8")}>
+              {/* Render profile specific items only after profiles are loaded and exist */}
+              {!isLoadingProfiles && profiles && profiles.length > 0 && (
+                <>
+                  {/* Active Profile display in collapsed state */}
+                  {state === 'collapsed' && selectedProfile && ( // Use selectedProfile for display
+                      <SidebarMenuButton asChild tooltip={selectedProfile?.name || 'Aktywny profil'}>
+                          <Button
+                               variant="ghost"
+                               className={cn(
+                                   "flex w-full items-center rounded-md text-sm font-medium transition-colors text-muted-foreground hover:bg-accent hover:text-accent-foreground",
+                                   "justify-center"
+                               )}
+                               onClick={() => navigate("/settings/business-profiles")} // Navigate to profile settings on click
+                                style={{ display: 'flex', alignItems: 'center', width: '100%', padding: '0.35rem 0.5rem', justifyContent: 'center' }}
+                            >
+                             <span className="text-xs font-semibold">{selectedProfile?.name?.[0] || 'P'}</span>{/* Added ? for safe access */}
+                           </Button>
+                      </SidebarMenuButton>
                   )}
-                  onClick={() => navigate("/")}
-                  style={{ display: 'flex', alignItems: 'center', width: '100%', padding: '0.35rem 0.5rem', justifyContent: state === 'expanded' ? 'flex-start' : 'center' }}
-                >
+
+                <SidebarMenuButton asChild tooltip={state !== 'expanded' ? 'Dashboard' : undefined}>
+                  <Button
+                   variant="ghost"
+                   className={cn(
+                     "flex w-full items-center rounded-md text-sm font-medium transition-colors",
+                     location.pathname === "/" ? "bg-accent text-accent-foreground" : "text-muted-foreground hover:bg-accent hover:text-accent-foreground",
+                   )}
+                   onClick={() => navigate("/")}
+                   style={{ display: 'flex', alignItems: 'center', width: '100%', padding: '0.35rem 0.5rem', justifyContent: state === 'expanded' ? 'flex-start' : 'center' }}
+                 >
                         <LayoutDashboard
                         className={cn(
                         "h-4 w-4 transition-colors",
                         location.pathname === "/" ? "text-accent-foreground" : "text-white"
                       )} />
-                      {state === "expanded" && <span className="ml-2 text-white">Dashboard</span>}
+                      {state !== "collapsed" && <span className="ml-2 text-white">Dashboard</span>}
                   </Button>
-              </SidebarMenuButton>
+                </SidebarMenuButton>
 
-              <SidebarMenuButton asChild  tooltip={state === 'collapsed' ? 'Przychody' : undefined}>
-              <Button
-                  variant="ghost"
-                  className={cn(
-                    "flex w-full items-center rounded-md text-sm font-medium transition-colors",
-                    location.pathname === "/income"
-                      ? "bg-accent text-accent-foreground"
-                      : cn(
-                          state === "collapsed" ? "text-white" : "text-muted-foreground",
-                          "hover:bg-accent hover:text-accent-foreground"
-                        ),
-                  )}
-                  onClick={() => navigate("/income")}
-                  style={{ display: 'flex', alignItems: 'center', width: '100%', padding: '0.35rem 0.5rem', justifyContent: state === 'expanded' ? 'flex-start' : 'center' }}
-                >
+                <SidebarMenuButton asChild  tooltip={state !== 'expanded' ? 'Przychody' : undefined}>
+                <Button
+                    variant="ghost"
+                    className={cn(
+                      "flex w-full items-center rounded-md text-sm font-medium transition-colors",
+                      location.pathname === "/income"
+                        ? "bg-accent text-accent-foreground"
+                        : cn(
+                            state === "collapsed" ? "text-white" : "text-muted-foreground",
+                            "hover:bg-accent hover:text-accent-foreground"
+                          ),
+                    )}
+                    onClick={() => navigate("/income")}
+                    style={{ display: 'flex', alignItems: 'center', width: '100%', padding: '0.35rem 0.5rem', justifyContent: state === 'expanded' ? 'flex-start' : 'center' }}
+                  >
                         <Receipt
                         className={cn(
                           "h-4 w-4 transition-colors",
                           location.pathname === "/income" ? "text-accent-foreground" : "text-white"
                         )} />
-                        {state === "expanded" && <span className="ml-2 text-white">Przychody</span>}
+                        {state !== "collapsed" && <span className="ml-2 text-white">Przychody</span>}
                     </Button>
-              </SidebarMenuButton>
+                </SidebarMenuButton>
 
-              <SidebarMenuButton asChild  tooltip={state === 'collapsed' ? 'Wydatki' : undefined}>
-              <Button
-                  variant="ghost"
-                  className={cn(
-                    "flex w-full items-center rounded-md text-sm font-medium transition-colors",
-                    location.pathname === "/expense"
-                      ? "bg-accent text-accent-foreground"
-                      : cn(
-                          state === "collapsed" ? "text-white" : "text-muted-foreground",
-                          "hover:bg-accent hover:text-accent-foreground"
-                        ),
-                  )}
-                  onClick={() => navigate("/expense")}
-                  style={{ display: 'flex', alignItems: 'center', width: '100%', padding: '0.35rem 0.5rem', justifyContent: state === 'expanded' ? 'flex-start' : 'center' }}
-                >
-                      <Receipt
-                      className={cn(
-                        "h-4 w-4 transition-colors",
-                        location.pathname === "/expense" ? "text-accent-foreground" : "text-white"
-                      )} />
-                      {state === "expanded" && <span className="ml-2 text-white">Wydatki</span>}
-                  </Button>
-              </SidebarMenuButton>
+                <SidebarMenuButton asChild  tooltip={state !== 'expanded' ? 'Wydatki' : undefined}>
+                <Button
+                    variant="ghost"
+                    className={cn(
+                      "flex w-full items-center rounded-md text-sm font-medium transition-colors",
+                      location.pathname === "/expense"
+                        ? "bg-accent text-accent-foreground"
+                        : cn(
+                            state === "collapsed" ? "text-white" : "text-muted-foreground",
+                            "hover:bg-accent hover:text-accent-foreground"
+                          ),
+                    )}
+                    onClick={() => navigate("/expense")}
+                    style={{ display: 'flex', alignItems: 'center', width: '100%', padding: '0.35rem 0.5rem', justifyContent: state === 'expanded' ? 'flex-start' : 'center' }}
+                  >
+                        <Receipt
+                        className={cn(
+                          "h-4 w-4 transition-colors",
+                          location.pathname === "/expense" ? "text-accent-foreground" : "text-white"
+                        )} />
+                        {state !== "collapsed" && <span className="ml-2 text-white">Wydatki</span>}
+                    </Button>
+                </SidebarMenuButton>
 
-              <SidebarMenuButton asChild  tooltip={state === 'collapsed' ? 'Kontrahenci' : undefined}>
-              <Button
-                  variant="ghost"
-                  className={cn(
-                    "flex w-full items-center rounded-md text-sm font-medium transition-colors",
-                    location.pathname === "/customers"
-                      ? "bg-accent text-accent-foreground"
-                      : cn(
-                          state === "collapsed" ? "text-white" : "text-muted-foreground",
-                          "hover:bg-accent hover:text-accent-foreground"
-                        ),
-                  )}
-                  onClick={() => navigate("/customers")}
-                  style={{ display: 'flex', alignItems: 'center', width: '100%', padding: '0.35rem 0.5rem', justifyContent: state === 'expanded' ? 'flex-start' : 'center' }}
-                >
-                      <Users
-                      className={cn(
-                        "h-4 w-4 transition-colors",
-                        location.pathname === "/customers" ? "text-accent-foreground" : "text-white"
-                      )} />
-                      {state === "expanded" && <span className="ml-2 text-white">Kontrahenci</span>}
-                  </Button>
-              </SidebarMenuButton>
+                <SidebarMenuButton asChild  tooltip={state !== 'expanded' ? 'Kontrahenci' : undefined}>
+                <Button
+                    variant="ghost"
+                    className={cn(
+                      "flex w-full items-center rounded-md text-sm font-medium transition-colors",
+                      location.pathname === "/customers"
+                        ? "bg-accent text-accent-foreground"
+                        : cn(
+                            state === "collapsed" ? "text-white" : "text-muted-foreground",
+                            "hover:bg-accent hover:text-accent-foreground"
+                          ),
+                    )}
+                    onClick={() => navigate("/customers")}
+                    style={{ display: 'flex', alignItems: 'center', width: '100%', padding: '0.35rem 0.5rem', justifyContent: state === 'expanded' ? 'flex-start' : 'center' }}
+                  >
+                        <Users
+                        className={cn(
+                          "h-4 w-4 transition-colors",
+                          location.pathname === "/customers" ? "text-accent-foreground" : "text-white"
+                        )} />
+                        {state !== "collapsed" && <span className="ml-2 text-white">Kontrahenci</span>}
+                    </Button>
+                </SidebarMenuButton>
 
-              <SidebarMenuButton asChild  tooltip={state === 'collapsed' ? 'Produkty' : undefined}>
-              <Button
-                  variant="ghost"
-                  className={cn(
-                    "flex w-full items-center rounded-md text-sm font-medium transition-colors",
-                    location.pathname === "/products"
-                      ? "bg-accent text-accent-foreground"
-                      : cn(
-                          state === "collapsed" ? "text-white" : "text-muted-foreground",
-                          "hover:bg-accent hover:text-accent-foreground"
-                        ),
-                  )}
-                  onClick={() => navigate("/products")}
-                  style={{ display: 'flex', alignItems: 'center', width: '100%', padding: '0.35rem 0.5rem', justifyContent: state === 'expanded' ? 'flex-start' : 'center' }}
-                >
-                       <Package
-                       className={cn(
-                        "h-4 w-4 transition-colors",
-                        location.pathname === "/products" ? "text-accent-foreground" : "text-white"
-                      )} />
-                      {state === "expanded" && <span className="ml-2 text-white">Produkty</span>}
-                  </Button>
-              </SidebarMenuButton>
+                <SidebarMenuButton asChild  tooltip={state !== 'expanded' ? 'Produkty' : undefined}>
+                <Button
+                    variant="ghost"
+                    className={cn(
+                      "flex w-full items-center rounded-md text-sm font-medium transition-colors",
+                      location.pathname === "/products"
+                        ? "bg-accent text-accent-foreground"
+                        : cn(
+                            state === "collapsed" ? "text-white" : "text-muted-foreground",
+                            "hover:bg-accent hover:text-accent-foreground"
+                          ),
+                    )}
+                    onClick={() => navigate("/products")}
+                    style={{ display: 'flex', alignItems: 'center', width: '100%', padding: '0.35rem 0.5rem', justifyContent: state === 'expanded' ? 'flex-start' : 'center' }}
+                  >
+                         <Package
+                         className={cn(
+                          "h-4 w-4 transition-colors",
+                          location.pathname === "/products" ? "text-accent-foreground" : "text-white"
+                        )} />
+                        {state !== "collapsed" && <span className="ml-2 text-white">Produkty</span>}
+                    </Button>
+                </SidebarMenuButton>
 
-              <SidebarMenuButton asChild  tooltip={state === 'collapsed' ? 'Ustawienia' : undefined}>
-              <Button
-                  variant="ghost"
-                  className={cn(
-                    "flex w-full items-center rounded-md text-sm font-medium transition-colors",
-                    location.pathname === "/settings"
-                      ? "bg-accent text-accent-foreground"
-                      : cn(
-                          state === "collapsed" ? "text-white" : "text-muted-foreground",
-                          "hover:bg-accent hover:text-accent-foreground"
-                        ),
-                  )}
-                  onClick={() => navigate("/settings")}
-                  style={{ display: 'flex', alignItems: 'center', width: '100%', padding: '0.35rem 0.5rem', justifyContent: state === 'expanded' ? 'flex-start' : 'center' }}
-                >
-                      <Settings
-                      className={cn(
-                        "h-4 w-4 transition-colors",
-                        location.pathname === "/settings" ? "text-accent-foreground" : "text-white"
-                      )} />
-                      {state === "expanded" && <span className="ml-2 text-white">Ustawienia</span>}
-                  </Button>
-              </SidebarMenuButton>
+                <SidebarMenuButton asChild  tooltip={state !== 'expanded' ? 'Ustawienia' : undefined}>
+                <Button
+                    variant="ghost"
+                    className={cn(
+                      "flex w-full items-center rounded-md text-sm font-medium transition-colors",
+                      location.pathname === "/settings"
+                        ? "bg-accent text-accent-foreground"
+                        : cn(
+                            state === "collapsed" ? "text-white" : "text-muted-foreground",
+                            "hover:bg-accent hover:text-accent-foreground"
+                          ),
+                    )}
+                    onClick={() => navigate("/settings")}
+                    style={{ display: 'flex', alignItems: 'center', width: '100%', padding: '0.35rem 0.5rem', justifyContent: state === 'expanded' ? 'flex-start' : 'center' }}
+                  >
+                        <Settings
+                        className={cn(
+                          "h-4 w-4 transition-colors",
+                          location.pathname === "/settings" ? "text-accent-foreground" : "text-white"
+                        )} />
+                        {state !== "collapsed" && <span className="ml-2 text-white">Ustawienia</span>}
+                    </Button>
+                </SidebarMenuButton>
+                </>
+              )}
             </SidebarMenu>
           </SidebarContent>
         </div>
@@ -261,12 +353,16 @@ const AppSidebar = () => {
                   <span className="text-sm font-medium">Zalogowano jako</span>
                   <span className={cn(
                      "text-xs truncate max-w-[150px]",
-                     isPremium 
+                     isPremium
                        ? "text-amber-400"
                        : "text-muted-foreground"
                   )}>
                     {user?.email}
                   </span>
+                  {/* Link to Personal Profile Settings */}
+                  <Link to="/settings/profile" className="text-xs text-blue-600 hover:underline mt-1">
+                    Profil osobisty
+                  </Link>
                 </div>
               )}
             </div>
