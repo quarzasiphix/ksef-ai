@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { formatCurrency } from "@/lib/invoice-utils";
@@ -63,7 +62,7 @@ const Dashboard = () => {
   const totalTax = invoices.reduce((sum, inv) => sum + (inv.totalVatValue || 0), 0);
 
   return (
-    <div className="space-y-6 max-w-full">
+    <div className="space-y-6 max-w-full pb-20">
       <div className="flex items-center justify-between">
         <h1 className="text-3xl font-bold">Dashboard</h1>
       </div>
@@ -200,6 +199,25 @@ const Dashboard = () => {
         </CardContent>
       </Card>
       
+      <Card>
+        <CardHeader>
+          <CardTitle>Nawigacja</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="flex flex-wrap gap-3">
+            <Link to="/products">
+              <Button variant="outline">Produkty</Button>
+            </Link>
+            <Link to="/settings">
+              <Button variant="outline">Ustawienia</Button>
+            </Link>
+            <Link to="/customers">
+              <Button variant="outline">Klienci</Button>
+            </Link>
+          </div>
+        </CardContent>
+      </Card>
+
       <div className="space-y-4">
         <div className="flex justify-between items-center">
           <h2 className="text-xl font-bold">Ostatnie faktury</h2>

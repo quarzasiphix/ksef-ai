@@ -29,7 +29,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { toast } from "sonner";
-import { deleteInvoice } from "@/integrations/supabase/repositories/invoiceRepository";
+import { deleteInvoice, saveInvoice } from "@/integrations/supabase/repositories/invoiceRepository";
 import { useQueryClient } from "@tanstack/react-query";
 
 const IncomeList = () => {
@@ -38,6 +38,9 @@ const IncomeList = () => {
   const [activeTab, setActiveTab] = useState<string>("all");
   const [contextMenu, setContextMenu] = useState<{visible: boolean, x: number, y: number, invoiceId: string | null}>({visible: false, x: 0, y: 0, invoiceId: null});
   const menuRef = useRef<HTMLDivElement>(null);
+  const touchStartTime = useRef<number | null>(null);
+  const touchTimer = useRef<NodeJS.Timeout | null>(null);
+  const touchStartPosition = useRef<{ x: number; y: number } | null>(null);
   const navigate = useNavigate();
   const queryClient = useQueryClient();
 
@@ -68,6 +71,24 @@ const IncomeList = () => {
     }
   };
 
+  const handleMarkAsPaid = async (invoiceId: string, currentInvoice: Invoice) => {
+    try {
+      // Update the invoice with isPaid set to true
+      const updatedInvoice = { ...currentInvoice, isPaid: true };
+      await saveInvoice(updatedInvoice);
+      
+      // Invalidate the queries to refetch the updated data
+      await queryClient.invalidateQueries({ queryKey: ['invoices'] });
+      await queryClient.invalidateQueries({ queryKey: ['invoice', invoiceId] }); // Also invalidate the single invoice query
+      
+      toast.success("Dokument oznaczono jako zapłacony");
+      setContextMenu({...contextMenu, visible: false});
+    } catch (error) {
+      console.error("Error marking invoice as paid:", error);
+      toast.error("Wystąpił błąd podczas oznaczania dokumentu jako zapłacony");
+    }
+  };
+
   // Close menu when clicking outside
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
@@ -82,17 +103,59 @@ const IncomeList = () => {
     };
   }, [contextMenu]);
 
-  const handleContextMenu = (e: React.MouseEvent, invoiceId: string) => {
+  const handleContextMenu = (e: React.MouseEvent | React.TouchEvent, invoiceId: string) => {
     e.preventDefault();
-    // Use the click position directly
+    
+    let clientX, clientY;
+    if ('touches' in e) { // Check if it's a touch event
+      clientX = e.touches[0].clientX;
+      clientY = e.touches[0].clientY;
+    } else { // Otherwise assume it's a mouse event
+      clientX = e.clientX;
+      clientY = e.clientY;
+    }
+
     setContextMenu({
       visible: true,
-      x: e.clientX,
-      y: e.clientY,
+      x: clientX,
+      y: clientY,
       invoiceId
     });
   };
   
+  const LONG_PRESS_THRESHOLD = 500; // milliseconds
+  const MOVE_THRESHOLD = 10; // pixels
+
+  const handleTouchStart = (e: React.TouchEvent, invoiceId: string) => {
+    touchStartTime.current = Date.now();
+    touchStartPosition.current = { x: e.touches[0].clientX, y: e.touches[0].clientY };
+    touchTimer.current = setTimeout(() => {
+      handleContextMenu(e, invoiceId);
+    }, LONG_PRESS_THRESHOLD);
+  };
+
+  const handleTouchMove = (e: React.TouchEvent) => {
+    if (touchStartPosition.current) {
+      const deltaX = Math.abs(e.touches[0].clientX - touchStartPosition.current.x);
+      const deltaY = Math.abs(e.touches[0].clientY - touchStartPosition.current.y);
+      const distance = Math.sqrt(deltaX * deltaX + deltaY * deltaY);
+      
+      if (distance > MOVE_THRESHOLD && touchTimer.current) {
+        clearTimeout(touchTimer.current);
+        touchTimer.current = null;
+        touchStartPosition.current = null;
+      }
+    }
+  };
+
+  const handleTouchEnd = () => {
+    if (touchTimer.current) {
+      clearTimeout(touchTimer.current);
+      touchTimer.current = null;
+    }
+    touchStartPosition.current = null; // Reset on touch end
+  };
+
   // Filter invoices based on search term, document type, and transaction type (income only)
   const filteredInvoices = invoices.filter(
     (invoice) => {
@@ -219,6 +282,9 @@ const IncomeList = () => {
                   className="relative"
                   onContextMenu={(e) => handleContextMenu(e, invoice.id)}
                   onClick={() => navigate(`/income/${invoice.id}`)}
+                  onTouchStart={(e) => handleTouchStart(e, invoice.id)}
+                  onTouchMove={handleTouchMove}
+                  onTouchEnd={handleTouchEnd}
                 >
                   <InvoiceCard invoice={invoice} />
                 </div>
@@ -241,13 +307,47 @@ const IncomeList = () => {
           }}
           onClick={(e) => e.stopPropagation()}
         >
-          <button
-            className="w-full text-left px-4 py-2 text-sm text-red-600 hover:bg-gray-100 flex items-center"
-            onClick={() => contextMenu.invoiceId && handleDeleteInvoice(contextMenu.invoiceId)}
-          >
-            <Trash2 className="mr-2 h-4 w-4" />
-            Usuń dokument
-          </button>
+          {/* Find the invoice based on contextMenu.invoiceId */}
+          {contextMenu.invoiceId && filteredInvoices.find(inv => inv.id === contextMenu.invoiceId) && (
+            <>
+              {/* "Mark as Paid" option - Show only if not already paid */}
+              {!filteredInvoices.find(inv => inv.id === contextMenu.invoiceId)?.isPaid && (
+                <button
+                  className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 flex items-center"
+                  onClick={() => {
+                    const invoiceToUpdate = filteredInvoices.find(inv => inv.id === contextMenu.invoiceId);
+                    if (invoiceToUpdate) {
+                      handleMarkAsPaid(invoiceToUpdate.id, invoiceToUpdate);
+                    }
+                  }}
+                >
+                  Oznacz jako zapłacony
+                </button>
+              )}
+
+              {/* Edit option (optional, can be added later if needed in context menu) */}
+              {/* <button
+                className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 flex items-center"
+                onClick={() => {
+                  if (contextMenu.invoiceId) {
+                    navigate(`/income/${contextMenu.invoiceId}/edit`);
+                    setContextMenu({...contextMenu, visible: false});
+                  }
+                }}
+              >
+                Edytuj dokument
+              </button> */}
+
+              {/* Delete option */}
+              <button
+                className="w-full text-left px-4 py-2 text-sm text-red-600 hover:bg-gray-100 flex items-center"
+                onClick={() => contextMenu.invoiceId && handleDeleteInvoice(contextMenu.invoiceId)}
+              >
+                <Trash2 className="mr-2 h-4 w-4" />
+                Usuń dokument
+              </button>
+            </>
+          )}
         </div>
       )}
     </div>

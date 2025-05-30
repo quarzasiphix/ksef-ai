@@ -553,26 +553,6 @@ const NewInvoice: React.ForwardRefExoticComponent<
                 />
               </div>
             </div>
-
-            {/* Sticky form actions */}
-            {/* Fixed on mobile, static at the bottom on non-mobile */}
-            {showFormActions && (
-              <div className={cn(
-                  "bg-background border-t z-50", // Base styles
-                  "bottom-0 left-0 right-0 w-full", // These apply on all screen sizes unless overridden
-                  "md:static md:bottom-auto md:left-auto md:right-auto md:w-auto md:border-t-0", // Override to static on medium+
-                  "md:mt-6 md:border-none lg:max-h-12" // Non-mobile specific styles
-                )}>
-                <div className="container py-2 lg:py-2"> {/* Keep container with standard padding */}
-                  <InvoiceFormActions
-                    isLoading={isLoading}
-                    isEditing={isEditing}
-                    onSubmit={handleFormSubmit}
-                    transactionType={transactionType}
-                  />
-                </div>
-              </div>
-            )}
           </form>
         </Form>
       </div>

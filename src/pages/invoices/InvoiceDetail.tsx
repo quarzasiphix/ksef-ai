@@ -5,7 +5,7 @@ import html2canvas from 'html2canvas';
 import { Capacitor } from '@capacitor/core';
 import { Filesystem, Directory, Encoding } from '@capacitor/filesystem';
 import { Share } from '@capacitor/share';
-import { Invoice, InvoiceType, BusinessProfile, Customer, KsefInfo } from "@/types";
+import { Invoice, InvoiceType } from "@/types";
 import { useQuery } from "@tanstack/react-query";
 import { getInvoice } from "@/integrations/supabase/repositories/invoiceRepository";
 import { getBusinessProfileById } from "@/integrations/supabase/repositories/businessProfileRepository";
@@ -18,12 +18,15 @@ import { InvoicePdfTemplate } from '@/components/invoices/pdf/InvoicePdfTemplate
 import TotalsSummary from "@/components/invoices/detail/TotalsSummary";
 import { CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { ArrowLeft, Pencil, Plus, Printer, FilePlus, FileDown, Share2 } from "lucide-react";
+import { ArrowLeft, Pencil, Plus, Printer, FilePlus, FileDown, Share2, Check } from "lucide-react";
 import { generateElementPdf, getInvoiceFileName } from '@/lib/pdf-utils';
 import { calculateInvoiceTotals } from '@/lib/invoice-utils';
 import { useIsMobile } from "@/hooks/use-mobile";
 import { cn } from "@/lib/utils";
 import { formatCurrency } from "@/lib/invoice-utils";
+import { toast } from "sonner";
+import { useQueryClient } from "@tanstack/react-query";
+import { saveInvoice } from "@/integrations/supabase/repositories/invoiceRepository";
 
 interface InvoiceDetailProps {
   type: 'income' | 'expense';
@@ -40,6 +43,7 @@ const InvoiceDetail: React.FC<InvoiceDetailProps> = ({ type }) => {
   const [pdfLoading, setPdfLoading] = useState(false);
   const [canSharePdf, setCanSharePdf] = useState(false);
   const [isStickyVisible, setIsStickyVisible] = useState(false);
+  const [isMarkingPaid, setIsMarkingPaid] = useState(false);
 
   // Fetch the invoice (with items) directly
   const { data: selectedInvoice, isLoading: isLoadingInvoice, error: invoiceError } = useQuery({
@@ -47,8 +51,6 @@ const InvoiceDetail: React.FC<InvoiceDetailProps> = ({ type }) => {
     queryFn: () => getInvoice(id!),
     enabled: !!id
   });
-
-  console.log('InvoiceDetail - Fetched selectedInvoice.vat:', selectedInvoice?.vat as any);
 
   // Fetch the full business profile for the seller
   const { data: sellerProfile, isLoading: isLoadingSeller, error: sellerError } = useQuery({
@@ -66,6 +68,7 @@ const InvoiceDetail: React.FC<InvoiceDetailProps> = ({ type }) => {
 
   const isLoading = isLoadingInvoice || isLoadingSeller || isLoadingBuyer;
   const error = invoiceError || sellerError || buyerError;
+  const queryClient = useQueryClient();
 
   // PDF sharing capability check
   useEffect(() => {
@@ -202,6 +205,53 @@ const InvoiceDetail: React.FC<InvoiceDetailProps> = ({ type }) => {
     }
   };
 
+  const handleMarkAsPaid = async () => {
+    if (!selectedInvoice) return;
+
+    setIsMarkingPaid(true);
+    try {
+      // Create updated invoice object with isPaid set to true
+      const updatedInvoice = { ...selectedInvoice, isPaid: true };
+      
+      // Use the saveInvoice function to update the record
+      await saveInvoice(updatedInvoice as any); // Cast to any as saveInvoice expects Invoice type
+      
+      // Manually update the cache for this specific invoice
+      queryClient.setQueryData(['invoice', selectedInvoice.id], (oldData: Invoice | undefined) => {
+        if (oldData) {
+          return { ...oldData, isPaid: true };
+        } else {
+          // If old data doesn't exist in cache, just return the updated invoice object
+          // This case is less likely since we just fetched it for the detail page
+          return updatedInvoice as any; // Use updatedInvoice from handleMarkAsPaid scope
+        }
+      });
+      
+      // Manually update the cache for the list of invoices as well for immediate reflection
+      queryClient.setQueryData(['invoices'], (oldData: Invoice[] | undefined) => {
+        if (oldData) {
+          return oldData.map(inv => 
+            inv.id === selectedInvoice.id ? { ...inv, isPaid: true } : inv
+          );
+        } else {
+          // Should not happen if IncomeList was viewed, but handle defensively
+          return [updatedInvoice] as any[]; // Add the updated invoice if cache is empty
+        }
+      });
+      
+      // Invalidate still needed for background refetch to sync with DB
+      await queryClient.invalidateQueries({ queryKey: ['invoice', selectedInvoice.id] });
+      await queryClient.invalidateQueries({ queryKey: ['invoices'] });
+
+      toast.success("Dokument oznaczono jako zapłacony");
+    } catch (error) {
+      console.error("Error marking invoice as paid:", error);
+      toast.error("Wystąpił błąd podczas oznaczania dokumentu jako zapłacony");
+    } finally {
+      setIsMarkingPaid(false);
+    }
+  };
+
   // Calculate totals using the utility function
   const calculatedTotals = selectedInvoice ? calculateInvoiceTotals(selectedInvoice.items) : {
     totalNetValue: 0,
@@ -222,67 +272,86 @@ const InvoiceDetail: React.FC<InvoiceDetailProps> = ({ type }) => {
           handleSharePdf={handleSharePdf}
           canSharePdf={canSharePdf}
           transactionType={selectedInvoice.transactionType}
+          isPaid={selectedInvoice.isPaid}
         />
       )}
 
-      <div className="space-y-8">
-        <div className="grid grid-cols-1 xl:grid-cols-3 gap-6">
-          <div className="xl:col-span-2 space-y-6">
-            <div className="bg-card p-6 rounded-lg border">
-              <CardTitle className="text-lg mb-4">Szczegóły dokumentu</CardTitle>
-              <InvoiceDetailsCard
-                number={selectedInvoice.number}
-                issueDate={selectedInvoice.issueDate}
-                dueDate={selectedInvoice.dueDate}
-                sellDate={selectedInvoice.sellDate}
-                paymentMethod={selectedInvoice.paymentMethod}
-                isPaid={selectedInvoice.isPaid || false}
-                ksef={selectedInvoice.ksef}
-                comments={selectedInvoice.comments}
-                type={selectedInvoice.type}
-                bankAccount={sellerCardData?.bankAccount}
-                vat={selectedInvoice.vat}
-              />
-            </div>
-            <div className="bg-card p-6 rounded-lg border">
-              <CardTitle className="text-lg mb-4">Pozycje na dokumencie</CardTitle>
+      {/* Actions Row - Including Mark as Paid Button */}
+      {selectedInvoice && (selectedInvoice.transactionType === 'income') && !selectedInvoice.isPaid && (
+        <div className="flex justify-end gap-2 mb-4">
+          <Button 
+            variant="outline"
+            size="sm"
+            onClick={handleMarkAsPaid}
+            disabled={isMarkingPaid || pdfLoading} // Disable while marking paid or generating PDF
+          >
+            {isMarkingPaid ? "Oznaczanie..." : (<>Oznacz jako zapłacony <Check className="ml-2 h-4 w-4" /></>)}
+          </Button>
+        </div>
+      )}
 
-              <InvoiceItemsCard
-                items={Array.isArray(selectedInvoice.items) ? selectedInvoice.items : []}
-                totalNetValue={calculatedTotals.totalNetValue}
-                totalVatValue={calculatedTotals.totalVatValue}
-                totalGrossValue={calculatedTotals.totalGrossValue}
-                type={selectedInvoice.type}
-              />
+      {/* Scrollable Content Area */}
+      <div className="flex-1 overflow-y-auto pb-8">
+        <div className="space-y-8">
+          <div className="grid grid-cols-1 xl:grid-cols-3 gap-6">
+            <div className="xl:col-span-2 space-y-6">
+              <div className="bg-card p-6 rounded-lg border">
+                <CardTitle className="text-lg mb-4">Szczegóły dokumentu</CardTitle>
+                <InvoiceDetailsCard
+                  number={selectedInvoice.number}
+                  issueDate={selectedInvoice.issueDate}
+                  dueDate={selectedInvoice.dueDate}
+                  sellDate={selectedInvoice.sellDate}
+                  paymentMethod={selectedInvoice.paymentMethod}
+                  isPaid={selectedInvoice.isPaid || false}
+                  ksef={selectedInvoice.ksef}
+                  comments={selectedInvoice.comments}
+                  type={selectedInvoice.type}
+                  bankAccount={sellerCardData?.bankAccount}
+                  fakturaBezVAT={selectedInvoice.fakturaBezVAT}
+                  vatExemptionReason={selectedInvoice.vatExemptionReason}
+                />
+              </div>
+              <div className="bg-card p-6 rounded-lg border">
+                <CardTitle className="text-lg mb-4">Pozycje na dokumencie</CardTitle>
+
+                <InvoiceItemsCard
+                  items={Array.isArray(selectedInvoice.items) ? selectedInvoice.items : []}
+                  totalNetValue={calculatedTotals.totalNetValue}
+                  totalVatValue={calculatedTotals.totalVatValue}
+                  totalGrossValue={calculatedTotals.totalGrossValue}
+                  type={selectedInvoice.type}
+                />
+              </div>
+            </div>
+            <div className="xl:block hidden">
+              <div className="bg-card p-6 rounded-lg border">
+                <CardTitle className="text-lg mb-4">Dane Kontrahentów</CardTitle>
+                <div className="space-y-6">
+                  <ContractorCard title="Sprzedawca" contractor={sellerCardData} />
+                  <ContractorCard title="Nabywca" contractor={buyerCardData} />
+                </div>
+              </div>
             </div>
           </div>
-          <div className="xl:block hidden">
+          {/* Mobile and tablet view for Contractor Cards */}
+          <div className="xl:hidden">
             <div className="bg-card p-6 rounded-lg border">
               <CardTitle className="text-lg mb-4">Dane Kontrahentów</CardTitle>
-              <div className="space-y-6">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <ContractorCard title="Sprzedawca" contractor={sellerCardData} />
                 <ContractorCard title="Nabywca" contractor={buyerCardData} />
               </div>
             </div>
           </div>
-        </div>
-        {/* Mobile and tablet view for Contractor Cards */}
-        <div className="xl:hidden">
           <div className="bg-card p-6 rounded-lg border">
-            <CardTitle className="text-lg mb-4">Dane Kontrahentów</CardTitle>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              <ContractorCard title="Sprzedawca" contractor={sellerCardData} />
-              <ContractorCard title="Nabywca" contractor={buyerCardData} />
-            </div>
+            <TotalsSummary
+              totalNetValue={calculatedTotals.totalNetValue}
+              totalVatValue={calculatedTotals.totalVatValue}
+              totalGrossValue={calculatedTotals.totalGrossValue}
+              type={selectedInvoice.type}
+            />
           </div>
-        </div>
-        <div className="bg-card p-6 rounded-lg border">
-          <TotalsSummary
-            totalNetValue={calculatedTotals.totalNetValue}
-            totalVatValue={calculatedTotals.totalVatValue}
-            totalGrossValue={calculatedTotals.totalGrossValue}
-            type={selectedInvoice.type}
-          />
         </div>
       </div> 
       {/* Hidden PDF template */}

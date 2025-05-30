@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { toast } from "sonner";
 import { ArrowLeft, Trash2 } from "lucide-react";
@@ -21,6 +21,7 @@ import {
 import { useSidebar } from "@/components/ui/sidebar";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/App";
+import { InvoiceFormActions } from "@/components/invoices/forms/InvoiceFormActions";
 
 const EditInvoice = () => {
   const { id } = useParams<{ id: string }>();
@@ -31,6 +32,7 @@ const EditInvoice = () => {
   const [error, setError] = useState<string | null>(null);
   const { state } = useSidebar();
   const { user } = useAuth();
+  const newInvoiceRef = useRef<{ handleSubmit: (onValid: (data: any) => Promise<void>) => (e?: React.BaseSyntheticEvent) => Promise<void>; } | null>(null);
 
   useEffect(() => {
     const fetchInvoice = async () => {
@@ -78,7 +80,9 @@ const EditInvoice = () => {
       ...formData,
       id: id,
       user_id: user.id,
-      items: formData.items || invoice?.items || []
+      items: formData.items || invoice?.items || [],
+      // Explicitly include isPaid from the original invoice if not in form data
+      isPaid: formData.isPaid !== undefined ? formData.isPaid : invoice?.isPaid || false
     };
 
     console.log('Final data being sent to saveInvoice:', updatedData);
@@ -192,6 +196,16 @@ const EditInvoice = () => {
   const transformedData = transformInvoiceData(invoice);
   console.log('Passing to NewInvoice:', transformedData);
   
+  // Define handleFormSubmit here, outside the return statement
+  const handleFormSubmit = (e: React.FormEvent) => {
+    // Prevent the default form submission behavior
+    e.preventDefault();
+    if (newInvoiceRef.current?.handleSubmit) {
+      // Call the handleSubmit method from the NewInvoice component
+      newInvoiceRef.current.handleSubmit(handleUpdate)(e);
+    }
+  };
+
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
@@ -227,14 +241,36 @@ const EditInvoice = () => {
 
       {/* Main Content Area - Flex column to contain form and static bar */}
       {/* Added pb-12 to make space for the static bottom bar on non-mobile */}
-      <div className="flex flex-col flex-1 pb-12">
-        <NewInvoice
-          initialData={transformedData}
-          type={invoice.transactionType as any}
-          showFormActions={true}
-          onSave={handleUpdate}
-        />
+      <div className="flex flex-col flex-1 pb-12 md:pb-0"> {/* Adjust padding for non-mobile when actions are static */}
+        {/* Scrollable content area */}
+        <div className="flex-1 overflow-y-auto">
+          <NewInvoice
+            initialData={transformedData}
+            type={invoice.transactionType as any}
+            onSave={handleUpdate}
+            ref={newInvoiceRef}
+          />
+        </div>
+
+        {/* Sticky form actions - Rendered by EditInvoice */}
+        {/* Use the isLoading state from EditInvoice */} 
+        {/* Fixed on mobile, static at the bottom on non-mobile */}
+        <div className={cn(
+            "fixed bottom-0 left-0 right-0 w-full border-t bg-background z-[9999]", // Fixed at bottom on mobile with high z-index
+            "md:static md:bottom-auto md:left-auto md:right-auto md:w-auto md:border-t-0 md:bg-transparent md:z-auto", // Static on medium+ screens
+            "py-2 lg:py-2", // Padding
+            "container" // Apply container padding
+          )}>
+          <InvoiceFormActions
+            isLoading={loading} // Use loading state from EditInvoice
+            isEditing={true} // Always editing in this component
+            onSubmit={handleFormSubmit} // Pass the handleFormSubmit defined in EditInvoice
+            transactionType={invoice.transactionType as any}
+          />
+        </div>
+
       </div>
+
     </div>
   );
 };
