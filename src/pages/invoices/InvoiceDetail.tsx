@@ -5,7 +5,7 @@ import html2canvas from 'html2canvas';
 import { Capacitor } from '@capacitor/core';
 import { Filesystem, Directory, Encoding } from '@capacitor/filesystem';
 import { Share } from '@capacitor/share';
-import { Invoice, InvoiceType } from "@/types";
+import { Invoice, InvoiceType, VatExemptionReason } from "@/types";
 import { useQuery } from "@tanstack/react-query";
 import { getInvoice } from "@/integrations/supabase/repositories/invoiceRepository";
 import { getBusinessProfileById } from "@/integrations/supabase/repositories/businessProfileRepository";
@@ -27,6 +27,8 @@ import { formatCurrency } from "@/lib/invoice-utils";
 import { toast } from "sonner";
 import { useQueryClient } from "@tanstack/react-query";
 import { saveInvoice } from "@/integrations/supabase/repositories/invoiceRepository";
+import type { InvoiceDetailsCardProps } from "@/components/invoices/detail/InvoiceDetailsCard";
+import type { InvoiceItemsCardProps } from "@/components/invoices/detail/InvoiceItemsCard";
 
 interface InvoiceDetailProps {
   type: 'income' | 'expense';
@@ -35,35 +37,39 @@ interface InvoiceDetailProps {
 const InvoiceDetail: React.FC<InvoiceDetailProps> = ({ type }) => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
+
+  // Refs
   const containerRef = useRef<HTMLDivElement>(null);
   const printRef = useRef<HTMLDivElement>(null);
+  const scrollableContentRef = useRef<HTMLDivElement>(null);
+  // const initialHeaderRef = useRef<HTMLDivElement>(null); // Ref for the initial full header (disabled)
+  // const stickyHeaderRef = useRef<HTMLDivElement>(null); // Ref for the minimal sticky header (disabled)
+
   const isMobile = useIsMobile();
 
   // State hooks
   const [pdfLoading, setPdfLoading] = useState(false);
   const [canSharePdf, setCanSharePdf] = useState(false);
-  const [isStickyVisible, setIsStickyVisible] = useState(false);
+  // const [showStickyHeader, setShowStickyHeader] = useState(false); // State to control sticky header visibility (disabled)
   const [isMarkingPaid, setIsMarkingPaid] = useState(false);
 
-  // Fetch the invoice (with items) directly
+  // Fetch data using useQuery - placed at the top
   const { data: selectedInvoice, isLoading: isLoadingInvoice, error: invoiceError } = useQuery({
     queryKey: ['invoice', id],
     queryFn: () => getInvoice(id!),
-    enabled: !!id
+    enabled: !!id // Only fetch if id is available
   });
 
-  // Fetch the full business profile for the seller
   const { data: sellerProfile, isLoading: isLoadingSeller, error: sellerError } = useQuery({
     queryKey: ['businessProfile', selectedInvoice?.businessProfileId],
-    queryFn: () => getBusinessProfileById(selectedInvoice!.businessProfileId),
-    enabled: !!selectedInvoice?.businessProfileId,
+    queryFn: () => getBusinessProfileById(selectedInvoice!.businessProfileId!), // Use non-null assertion as enabled ensures selectedInvoice is available
+    enabled: !!selectedInvoice?.businessProfileId, // Only fetch if selectedInvoice and businessProfileId are available
   });
 
-  // Fetch the full customer profile for the buyer
   const { data: buyerCustomer, isLoading: isLoadingBuyer, error: buyerError } = useQuery({
     queryKey: ['customer', selectedInvoice?.customerId],
-    queryFn: () => getCustomerById(selectedInvoice!.customerId!),
-    enabled: !!selectedInvoice?.customerId,
+    queryFn: () => getCustomerById(selectedInvoice!.customerId!), // Use non-null assertion as enabled ensures selectedInvoice is available
+    enabled: !!selectedInvoice?.customerId, // Only fetch if selectedInvoice and customerId are available
   });
 
   const isLoading = isLoadingInvoice || isLoadingSeller || isLoadingBuyer;
@@ -75,9 +81,9 @@ const InvoiceDetail: React.FC<InvoiceDetailProps> = ({ type }) => {
     if (Capacitor.isNativePlatform() || (navigator as any).share) {
       setCanSharePdf(true);
     }
-  }, []);
+  }, []); // Empty dependency array means this runs once on mount
 
-  // Back button handler for mobile
+  // Back button handler for mobile (existing, already at top)
   useEffect(() => {
     const handleBackButton = (e: BeforeUnloadEvent) => {
       if (Capacitor.isNativePlatform()) {
@@ -87,9 +93,11 @@ const InvoiceDetail: React.FC<InvoiceDetailProps> = ({ type }) => {
     };
     window.addEventListener('beforeunload', handleBackButton);
     return () => window.removeEventListener('beforeunload', handleBackButton);
-  }, [navigate]);
+  }, [navigate]); // Depend on navigate
 
-  // Early returns after all hooks
+  // Sticky header logic and padding effect disabled
+
+  // Early returns (now placed after all hook calls)
   if (!id) {
     return <div className="p-4">Brak ID faktury</div>;
   }
@@ -147,8 +155,7 @@ const InvoiceDetail: React.FC<InvoiceDetailProps> = ({ type }) => {
     </div>;
   }
 
-  // Prepare seller and buyer data for contractor cards
-  // Use data from the newly fetched sellerProfile and buyerCustomer
+  // Prepare seller and buyer data for contractor cards (now placed after hooks and loading checks)
   const sellerCardData = sellerProfile ? {
     name: selectedInvoice.businessName || sellerProfile.name, // Prioritize name from invoice if exists
     ...sellerProfile,
@@ -252,46 +259,50 @@ const InvoiceDetail: React.FC<InvoiceDetailProps> = ({ type }) => {
     }
   };
 
-  // Calculate totals using the utility function
-  const calculatedTotals = selectedInvoice ? calculateInvoiceTotals(selectedInvoice.items) : {
+  // Calculate totals using the utility function (now placed after hooks and loading checks)
+  const totals = selectedInvoice ? calculateInvoiceTotals(selectedInvoice.items) : { // Pass only items
     totalNetValue: 0,
     totalVatValue: 0,
     totalGrossValue: 0
   };
 
   return (
-    <div ref={containerRef} className="flex-1 space-y-3 lg:space-y-4 relative pt-16 md:pt-0">
-      {/* Original Static header content */}
+    <div ref={containerRef} className="flex flex-col flex-1 relative p-4 md:p-6"> {/* Add padding to the main container */}
+      {/* Original Static header content and Actions Row */}
       {selectedInvoice && (
-        <InvoiceHeader 
-          id={selectedInvoice.id}
-          number={selectedInvoice.number}
-          type={selectedInvoice.type}
-          pdfLoading={pdfLoading}
-          handleGeneratePdf={handleGeneratePdf}
-          handleSharePdf={handleSharePdf}
-          canSharePdf={canSharePdf}
-          transactionType={selectedInvoice.transactionType}
-          isPaid={selectedInvoice.isPaid}
-        />
-      )}
-
-      {/* Actions Row - Including Mark as Paid Button */}
-      {selectedInvoice && (selectedInvoice.transactionType === 'income') && !selectedInvoice.isPaid && (
-        <div className="flex justify-end gap-2 mb-4">
-          <Button 
-            variant="outline"
-            size="sm"
-            onClick={handleMarkAsPaid}
-            disabled={isMarkingPaid || pdfLoading} // Disable while marking paid or generating PDF
-          >
-            {isMarkingPaid ? "Oznaczanie..." : (<>Oznacz jako zapłacony <Check className="ml-2 h-4 w-4" /></>)}
-          </Button>
+        <div className="pb-2"> {/* Add bottom padding below header/actions */}
+          <InvoiceHeader 
+            id={selectedInvoice.id}
+            number={selectedInvoice.number}
+            type={selectedInvoice.type}
+            pdfLoading={pdfLoading}
+            handleGeneratePdf={handleGeneratePdf}
+            handleSharePdf={handleSharePdf}
+            canSharePdf={canSharePdf}
+            transactionType={selectedInvoice.transactionType}
+            isPaid={selectedInvoice.isPaid}
+          />
+          {/* Actions Row - Including Mark as Paid Button (kept with initial header) */}
+          {(selectedInvoice.transactionType === 'income') && !selectedInvoice.isPaid && (
+            <div className="flex justify-end gap-2 mt-2">
+              <Button 
+                variant="outline"
+                size="sm"
+                onClick={handleMarkAsPaid}
+                disabled={isMarkingPaid || pdfLoading} // Disable while marking paid or generating PDF
+              >
+                {isMarkingPaid ? "Oznaczanie..." : (<>Oznacz jako zapłacony <Check className="ml-2 h-4 w-4" /></>)}
+              </Button>
+            </div>
+          )}
         </div>
       )}
 
-      {/* Scrollable Content Area */}
-      <div className="flex-1 overflow-y-auto pb-8">
+      {/* Scrollable Content Area (with increased bottom padding) */}
+      <div 
+        ref={scrollableContentRef} 
+        className="flex-1 overflow-y-auto space-y-3 lg:space-y-4 pb-24 md:pb-6" // Removed p-4 md-p-6, kept bottom padding
+      >
         <div className="space-y-8">
           <div className="grid grid-cols-1 xl:grid-cols-3 gap-6">
             <div className="xl:col-span-2 space-y-6">
@@ -304,11 +315,10 @@ const InvoiceDetail: React.FC<InvoiceDetailProps> = ({ type }) => {
                   sellDate={selectedInvoice.sellDate}
                   paymentMethod={selectedInvoice.paymentMethod}
                   isPaid={selectedInvoice.isPaid || false}
-                  ksef={selectedInvoice.ksef}
-                  comments={selectedInvoice.comments}
+                  comments={selectedInvoice.comments || ''}
                   type={selectedInvoice.type}
-                  bankAccount={sellerCardData?.bankAccount}
-                  fakturaBezVAT={selectedInvoice.fakturaBezVAT}
+                  bankAccount={sellerProfile?.bankAccount || ''}
+                  vat={!selectedInvoice.fakturaBezVAT}
                   vatExemptionReason={selectedInvoice.vatExemptionReason}
                 />
               </div>
@@ -317,9 +327,9 @@ const InvoiceDetail: React.FC<InvoiceDetailProps> = ({ type }) => {
 
                 <InvoiceItemsCard
                   items={Array.isArray(selectedInvoice.items) ? selectedInvoice.items : []}
-                  totalNetValue={calculatedTotals.totalNetValue}
-                  totalVatValue={calculatedTotals.totalVatValue}
-                  totalGrossValue={calculatedTotals.totalGrossValue}
+                  totalNetValue={totals.totalNetValue}
+                  totalVatValue={totals.totalVatValue}
+                  totalGrossValue={totals.totalGrossValue}
                   type={selectedInvoice.type}
                 />
               </div>
@@ -346,9 +356,9 @@ const InvoiceDetail: React.FC<InvoiceDetailProps> = ({ type }) => {
           </div>
           <div className="bg-card p-6 rounded-lg border">
             <TotalsSummary
-              totalNetValue={calculatedTotals.totalNetValue}
-              totalVatValue={calculatedTotals.totalVatValue}
-              totalGrossValue={calculatedTotals.totalGrossValue}
+              totalNetValue={totals.totalNetValue}
+              totalVatValue={totals.totalVatValue}
+              totalGrossValue={totals.totalGrossValue}
               type={selectedInvoice.type}
             />
           </div>

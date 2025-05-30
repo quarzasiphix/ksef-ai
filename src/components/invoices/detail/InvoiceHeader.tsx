@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, RefObject, forwardRef } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import type { ButtonProps } from "@/components/ui/button";
@@ -16,6 +16,7 @@ interface InvoiceHeaderProps {
   handleGeneratePdf: () => Promise<string | null>;
   handleSharePdf: () => Promise<void>;
   canSharePdf: boolean;
+  isPaid?: boolean;
 }
 
 const getInvoiceTypeTitle = (type: InvoiceType) => {
@@ -33,7 +34,7 @@ const getInvoiceTypeTitle = (type: InvoiceType) => {
   }
 };
 
-export const InvoiceHeader: React.FC<InvoiceHeaderProps> = ({
+export const InvoiceHeader = forwardRef<HTMLDivElement, InvoiceHeaderProps>(({
   id,
   number,
   type,
@@ -41,90 +42,82 @@ export const InvoiceHeader: React.FC<InvoiceHeaderProps> = ({
   handleGeneratePdf,
   handleSharePdf,
   canSharePdf,
-  transactionType = 'income'
-}) => {
+  transactionType = 'income',
+  isPaid
+}, ref) => {
   const isMobile = useIsMobile();
   const navigate = useNavigate();
-  const [isSticky, setIsSticky] = useState(false);
-
-  useEffect(() => {
-    const handleScroll = () => {
-      setIsSticky(window.scrollY > 0);
-    };
-    window.addEventListener('scroll', handleScroll);
-    return () => {
-      window.removeEventListener('scroll', handleScroll);
-    };
-  }, []);
 
   return (
     <div 
       id="invoice-header" 
-      className={`flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mb-4 
-        ${isSticky ? 'sticky top-0 bg-background z-10 pb-2 pt-1' : ''}`}
+      ref={ref}
+      className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mb-4 bg-background shadow-sm py-2"
     >
-      <div className="flex items-center gap-2">
-        <Button 
-          variant="outline" 
-          size="sm"
-          onClick={() => navigate(transactionType === 'income' ? '/income' : '/expense')}
-        >
-          <ArrowLeft className="h-4 w-4" />
-        </Button>
-        <div>
-          <h1 className="text-xl md:text-2xl font-bold">{number}</h1>
-          <p className="text-muted-foreground text-sm">
-            {getInvoiceTypeTitle(type)}
-          </p>
+      <div className="w-full flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+        <div className="flex items-center gap-2">
+          <Button 
+            variant="outline" 
+            size="sm"
+            onClick={() => navigate(transactionType === 'income' ? '/income' : '/expense')}
+          >
+            <ArrowLeft className="h-4 w-4" />
+          </Button>
+          <div>
+            <h1 className="text-xl md:text-2xl font-bold">{number}</h1>
+            <p className="text-muted-foreground text-sm">
+              {getInvoiceTypeTitle(type)}
+            </p>
+          </div>
         </div>
-      </div>
-      <div className="flex flex-wrap gap-1.5 w-full sm:w-auto">
-        <Button variant="outline" className="flex items-center gap-1 text-xs" size={isMobile ? "sm" : "sm"}>
-          <Printer className="h-3.5 w-3.5" />
-          <span className="hidden sm:inline">Drukuj</span>
-        </Button>
-        <Button variant="outline" className="flex items-center gap-1 text-xs" size={isMobile ? "sm" : "sm"}>
-          <FilePlus className="h-3.5 w-3.5" />
-          <span className="hidden sm:inline">Duplikat</span>
-        </Button>
-        {!isMobile && (
-          <Button 
-            variant="outline" 
-            className="flex items-center gap-1 text-xs" 
-            size={isMobile ? "sm" : "sm"}
-            onClick={handleGeneratePdf}
-            disabled={pdfLoading}
-          >
-            <FileDown className="h-3.5 w-3.5" />
-            <span className="hidden sm:inline">PDF</span>
+        <div className="flex flex-wrap gap-1.5 w-full sm:w-auto">
+          <Button variant="outline" className="flex items-center gap-1 text-xs" size={isMobile ? "sm" : "sm"}>
+            <Printer className="h-3.5 w-3.5" />
+            <span className="hidden sm:inline">Drukuj</span>
           </Button>
-        )}
-        {(canSharePdf || Capacitor.getPlatform() === 'android' || isMobile) && (
-          <Button 
-            variant="outline" 
-            className="flex items-center gap-1 text-xs"
-            size={isMobile ? "sm" : "sm"}
-            onClick={handleSharePdf}
-            disabled={pdfLoading}
-          >
-            <Share2 className="h-3.5 w-3.5" />
-            <span className="hidden sm:inline">Udostępnij</span>
+          <Button variant="outline" className="flex items-center gap-1 text-xs" size={isMobile ? "sm" : "sm"}>
+            <FilePlus className="h-3.5 w-3.5" />
+            <span className="hidden sm:inline">Duplikat</span>
           </Button>
-        )}
+          {!isMobile && (
+            <Button 
+              variant="outline" 
+              className="flex items-center gap-1 text-xs" 
+              size={isMobile ? "sm" : "sm"}
+              onClick={handleGeneratePdf}
+              disabled={pdfLoading}
+            >
+              <FileDown className="h-3.5 w-3.5" />
+              <span className="hidden sm:inline">PDF</span>
+            </Button>
+          )}
+          {(canSharePdf || Capacitor.isNativePlatform() || (navigator as any).share) && (
+            <Button 
+              variant="outline" 
+              className="flex items-center gap-1 text-xs"
+              size={isMobile ? "sm" : "sm"}
+              onClick={handleSharePdf}
+              disabled={pdfLoading}
+            >
+              <Share2 className="h-3.5 w-3.5" />
+              <span className="hidden sm:inline">Udostępnij</span>
+            </Button>
+          )}
 
-        <Button variant="outline" className="flex items-center gap-1 text-xs" size={isMobile ? "sm" : "sm"} asChild>
-          <Link to={transactionType === 'income' ? `/income/${id}/edit` : `/expense/${id}/edit`}>
-            <Pencil className="h-3.5 w-3.5" />
-            <span className="hidden sm:inline">Edytuj</span>
-          </Link>
-        </Button>
-        {type !== InvoiceType.RECEIPT && (
-          <Button className="flex items-center gap-1 text-xs" size={isMobile ? "sm" : "sm"}>
-            <SendHorizontal className="h-3.5 w-3.5" />
-            <span className="hidden sm:inline">Wyślij do KSeF</span>
+          <Button variant="outline" className="flex items-center gap-1 text-xs" size={isMobile ? "sm" : "sm"} asChild>
+            <Link to={transactionType === 'income' ? `/income/${id}/edit` : `/expense/${id}/edit`}>
+              <Pencil className="h-3.5 w-3.5" />
+              <span className="hidden sm:inline">Edytuj</span>
+            </Link>
           </Button>
-        )}
+          {type !== InvoiceType.RECEIPT && (
+            <Button className="flex items-center gap-1 text-xs" size={isMobile ? "sm" : "sm"}>
+              <SendHorizontal className="h-3.5 w-3.5" />
+              <span className="hidden sm:inline">Wyślij do KSeF</span>
+            </Button>
+          )}
+        </div>
       </div>
     </div>
   );
-};
+});

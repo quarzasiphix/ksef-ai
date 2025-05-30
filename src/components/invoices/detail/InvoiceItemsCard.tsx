@@ -31,7 +31,7 @@ const toNumberVatRate = (rate: unknown): number => {
   return isNaN(num) ? 23 : num; // Default to 23% if invalid
 };
 
-interface InvoiceItemsCardProps {
+export interface InvoiceItemsCardProps {
   items: InvoiceItem[];
   totalNetValue: number;
   totalVatValue: number;
