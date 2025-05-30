@@ -35,8 +35,12 @@ export function useGlobalData() {
   });
 
   const businessProfilesQuery = useQuery({
-    queryKey: QUERY_KEYS.businessProfiles,
-    queryFn: getBusinessProfiles,
+    queryKey: [...QUERY_KEYS.businessProfiles, user?.id],
+    queryFn: () => {
+      if (!user?.id) return Promise.resolve([]);
+      return getBusinessProfiles(user.id);
+    },
+    enabled: !!user?.id,
     staleTime: 1000 * 60 * 5, // 5 minutes
   });
 

@@ -120,20 +120,8 @@ const BusinessProfileForm = ({
       >
         <div className="space-y-4">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <FormField
-              control={form.control}
-              name="name"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Nazwa firmy</FormLabel>
-                  <FormControl>
-                    <Input placeholder="Nazwa firmy" {...field} />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-            <FormField
+            
+          <FormField
               control={form.control}
               name="taxId"
               render={({ field }) => (
@@ -192,6 +180,22 @@ const BusinessProfileForm = ({
                       Szukaj
                     </Button>
                   </div>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+
+            <br></br>
+
+            <FormField
+              control={form.control}
+              name="name"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Nazwa firmy</FormLabel>
+                  <FormControl>
+                    <Input placeholder="Nazwa firmy" {...field} />
+                  </FormControl>
                   <FormMessage />
                 </FormItem>
               )}

@@ -128,11 +128,11 @@ const AppSidebar = () => {
                        <span className="text-xs text-muted-foreground">{profiles[0]?.name?.split(' ').slice(0, 3).join(' ')}</span>
                        <ChevronDown className="h-3 w-3 text-muted-foreground" />
                      </div>
-                   ) : isPremium && profiles.length > 0 ? ( // Premium with profiles (show dropdown)
+                   ) : (
                       <Select value={selectedProfileId || ''} onValueChange={(value) => {
                           if (value === "add-new-profile") {
                               if (isPremium) {
-                                  navigate("/settings/business-profiles"); // Navigate to settings to add a new profile
+                                  navigate("/settings/business-profiles/new"); // Navigate to settings to add a new profile
                               } else {
                                    toast({
                                        title: "Wymagane Premium",
@@ -156,14 +156,13 @@ const AppSidebar = () => {
                                {profile.name} {/* Show full name in dropdown */}
                              </SelectItem>
                            ))}
+                           {/* Always show Add Profile option */}
                            <SelectItem value="add-new-profile" className="text-blue-600 font-medium">
                              Dodaj profil
                            </SelectItem>
                          </SelectContent>
                        </Select>
-                   ) : !isPremium && profiles.length > 1 ? ( // Multiple non-premium profiles
-                       <span className="text-xs text-amber-500">Kup Premium, aby zarządzać wieloma profilami.</span>
-                   ) : null}
+                   )}
                  </>
                ) : !isLoadingProfiles && profiles && profiles.length === 0 ? ( // No profiles
                    <span className="text-xs text-muted-foreground">Dodaj swój pierwszy profil firmy w Ustawieniach.</span>

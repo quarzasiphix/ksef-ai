@@ -43,10 +43,7 @@ const SettingsMenu = () => {
     <div className="space-y-6 pb-20">
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div>
-          <h1 className="text-2xl font-bold">Ustawienia</h1>
-          <p className="text-muted-foreground">
-            Zarządzaj ustawieniami konta i profilami firmowymi.
-          </p>
+          <h1 className="text-2xl font-bold">Zarządzaj profilami firmowymi.</h1>
         </div>
         {isPremium ? (
           <div className="flex items-center text-amber-500 font-semibold">
@@ -61,27 +58,6 @@ const SettingsMenu = () => {
         )}
       </div>
 
-      <Card>
-        <CardHeader>
-          <CardTitle>Menu Ustawień</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="grid gap-4">
-            <Link to="/settings/profile">
-              <Button variant="outline" className="w-full justify-start">
-                <User className="mr-2 h-4 w-4" />
-                Ustawienia Profilu
-              </Button>
-            </Link>
-            <Link to="/settings/business-profiles">
-              <Button variant="outline" className="w-full justify-start">
-                <Building2 className="mr-2 h-4 w-4" />
-                Profile Firmowe
-              </Button>
-            </Link>
-          </div>
-        </CardContent>
-      </Card>
 
       <Outlet />
 

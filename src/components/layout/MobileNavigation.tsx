@@ -80,20 +80,17 @@ const MobileNavigation = () => {
                           <span className="text-xs text-muted-foreground">Ładowanie profili...</span>
                       </div>
                   </div>
-              ) : profiles && profiles.length > 0 ? (
+              ) : (
                    <div className="p-4 border-b">
                       <div className="flex flex-col">
                           <span className="text-sm font-medium mb-2">Aktywny profil:</span>
-                          {!isPremium && profiles.length === 1 ? (
-                              <div className="flex items-center gap-1">
-                                  <span className="text-xs text-muted-foreground">{profiles[0]?.name?.split(' ').slice(0, 3).join(' ')}</span>
-                                  <ChevronDown className="h-3 w-3 text-muted-foreground" />
-                              </div>
-                          ) : isPremium && profiles.length > 0 ? (
+                          {profiles && profiles.length === 0 ? (
+                               <span className="text-xs text-muted-foreground">Dodaj swój pierwszy profil firmy w Ustawieniach.</span>
+                          ) : (
                               <Select value={selectedProfileId || ''} onValueChange={(value) => {
                                   if (value === "add-new-profile") {
                                       if (isPremium) {
-                                          navigate("/settings/business-profiles");
+                                          navigate("/settings/business-profiles/new");
                                       } else {
                                            toast({
                                                title: "Wymagane Premium",
@@ -112,7 +109,7 @@ const MobileNavigation = () => {
                                    </SelectValue>
                                  </SelectTrigger>
                                  <SelectContent>
-                                   {profiles.map(profile => (
+                                   {profiles?.map(profile => (
                                      <SelectItem key={profile.id} value={profile.id}>
                                         {profile.name}
                                      </SelectItem>
@@ -122,19 +119,10 @@ const MobileNavigation = () => {
                                    </SelectItem>
                                  </SelectContent>
                                </Select>
-                          ) : !isPremium && profiles.length > 1 ? (
-                              <span className="text-xs text-amber-500">Kup Premium, aby zarządzać wieloma profilami.</span>
-                          ) : null}
+                           )}
                       </div>
                   </div>
-              ) : !isLoadingProfiles && profiles && profiles.length === 0 ? (
-                   <div className="p-4 border-b">
-                       <div className="flex flex-col">
-                           <span className="text-sm font-medium mb-2">Aktywny profil:</span>
-                           <span className="text-xs text-muted-foreground">Dodaj swój pierwszy profil firmy w Ustawieniach.</span>
-                       </div>
-                   </div>
-              ) : null}
+              )}
               <div className="flex flex-col space-y-3 pt-4">
                 {!isLoadingProfiles && profiles && profiles.length > 0 && (
                   <>
