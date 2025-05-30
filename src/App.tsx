@@ -37,6 +37,7 @@ import ExpenseDetail from "./pages/expense/[id]";
 import { SidebarProvider } from "@/components/ui/sidebar";
 import EditInvoice from "./pages/invoices/EditInvoice";
 import SettingsMenu from "./pages/settings/SettingsMenu"; // Import the new component
+import { AuthChangeEvent, Session, User, SupabaseClient, Subscription } from '@supabase/supabase-js'; // Import necessary types
 
 // Export the query client for use in other files
 export const queryClient = new QueryClient({
@@ -53,27 +54,34 @@ export const queryClient = new QueryClient({
 });
 
 // --- Auth Context ---
-type AuthContextType = { 
-  user: any; 
-  setUser: (u: any) => void;
+interface AuthContextType {
+  user: User | null; // Use Supabase User type
+  setUser: (u: User | null) => void; // Use Supabase User type
   logout: () => Promise<void>;
-  isPremium: boolean; // Add isPremium to context type
-};
+  isPremium: boolean;
+  session: Session | null; // Add session
+  isLoading: boolean; // Add isLoading
+  supabase: SupabaseClient<Database>; // Add supabase client
+}
 
 const AuthContext = createContext<AuthContextType>({
   user: null,
   setUser: () => {},
   logout: async () => {},
-  isPremium: false, // Default value
+  isPremium: false,
+  session: null, // Default session
+  isLoading: true, // Default loading state
+  supabase: supabase, // Provide the actual supabase instance
 });
 
 export const useAuth = () => useContext(AuthContext);
 
 const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   console.log("AuthProvider - START");
-  const [user, setUser] = useState<any>(null);
-  const [loading, setLoading] = useState(true);
+  const [user, setUser] = useState<User | null>(null); // Use Supabase User type
+  const [loading, setLoading] = useState(true); // Keep local loading state
   const [isPremium, setIsPremium] = useState(false); // State for premium status
+  const [session, setSession] = useState<Session | null>(null); // Add session state
   const queryClient = useQueryClient();
 
   const fetchPremiumStatus = async (userId: string) => {
@@ -102,9 +110,9 @@ const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => 
     }
   };
 
-  const handleAuthStateChange = React.useCallback(async (_event: string, session: any) => {
+  const handleAuthStateChange = React.useCallback(async (_event: string, session: Session | null) => { // Use Session type
     console.log("AuthProvider - handleAuthStateChange - event:", _event, "session:", session);
-
+    setSession(session);
     const currentUser = user;
     const newUser = session?.user || null;
 
@@ -181,7 +189,7 @@ const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => 
         console.log("AuthProvider - useEffect - checkSession - after getSession, data:", data);
 
         if (data?.session) {
-          await handleAuthStateChange('INITIAL_SESSION', data.session);
+          handleAuthStateChange('INITIAL_SESSION', data.session);
         } else {
           setUser(null);
           setIsPremium(false);
@@ -218,7 +226,7 @@ const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => 
   }
 
   console.log("AuthProvider - rendering - authenticated, providing context");
-  return <AuthContext.Provider value={{ user, setUser, logout, isPremium }}>{children}</AuthContext.Provider>;
+  return <AuthContext.Provider value={{ user, setUser, logout, isPremium, session, isLoading: loading, supabase }}>{children}</AuthContext.Provider>;
 };
 
 const RequireAuth: React.FC<{ children?: React.ReactNode }> = ({ children }) => {
@@ -237,7 +245,6 @@ const RequireAuth: React.FC<{ children?: React.ReactNode }> = ({ children }) => 
   console.log("RequireAuth - rendering - loading:", loading, "user:", user);
 
   if (loading) {
-    console.log("RequireAuth - rendering - still loading, returning null");
     return null;
   }
 

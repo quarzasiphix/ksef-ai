@@ -1,16 +1,43 @@
-import React from 'react';
-import { Link, Outlet } from 'react-router-dom';
+import React, { useState, useEffect } from 'react';
+import { Link, Outlet, useSearchParams, useNavigate } from 'react-router-dom';
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Settings, Building2, Star } from "lucide-react";
-import { useAuth } from "@/App"; // Import useAuth hook
+import { useAuth } from "@/App";
+import PremiumCheckoutModal from "@/components/PremiumCheckoutModal";
+import { toast } from "sonner";
 
 const SettingsMenu = () => {
-  const { isPremium } = useAuth(); // Use isPremium from auth context
+  const { isPremium } = useAuth();
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [searchParams, setSearchParams] = useSearchParams();
+  const navigate = useNavigate();
 
-  // Check if a nested route is matched. If so, render the Outlet.
-  // Otherwise, render the main menu content.
-  const isNestedRoute = location.pathname !== '/settings'; // Simple check, might need refinement
+  const handleOpenModal = () => {
+    setIsModalOpen(true);
+  };
+
+  const handleCloseModal = () => {
+    setIsModalOpen(false);
+  };
+
+  useEffect(() => {
+    const status = searchParams.get('status');
+    const sessionId = searchParams.get('session_id');
+
+    if (status === 'success') {
+      toast.success("Płatność zakończona sukcesem! Twoja subskrypcja Premium jest aktywna.");
+
+    } else if (status === 'cancelled') {
+      toast.info("Płatność anulowana. Możesz spróbować ponownie.");
+    }
+
+    if (status || sessionId) {
+      setSearchParams({});
+    }
+  }, [searchParams, setSearchParams, navigate]);
+
+  const isNestedRoute = location.pathname !== '/settings';
 
   return (
     <div className="space-y-6 pb-20">
@@ -27,40 +54,15 @@ const SettingsMenu = () => {
             <span>Jesteś Premium, zarządzaj subskrypcją</span>
           </div>
         ) : (
-          <Button variant="default" className="bg-amber-500 hover:bg-amber-600 text-white">
+          <Button variant="default" className="bg-amber-500 hover:bg-amber-600 text-white" onClick={handleOpenModal}>
             <Star className="mr-2 h-4 w-4" />
             Kup subskrypcję Premium
           </Button>
         )}
       </div>
 
-      {/* Render Outlet for nested routes or the menu if no nested route is matched */}
       <Outlet />
 
-      {/* Optionally, you could add conditional rendering here if you only want the menu when NOT on a nested route */}
-      {/* {!isNestedRoute && (
-        <Card>
-          <CardHeader>
-            <CardTitle>Menu Ustawień</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="grid gap-4">
-              <Link to="/settings/business-profiles">
-                <Button variant="outline" className="w-full justify-start">
-                  <Building2 className="mr-2 h-4 w-4" />
-                  Profile Firmowe
-                </Button>
-              </Link>
-              <Button variant="outline" className="w-full justify-start" disabled>
-                <Settings className="mr-2 h-4 w-4" />
-                Ustawienia Konta (Wkrótce)
-              </Button>
-            </div>
-          </CardContent>
-        </Card>
-      )} */}
-
-      {/* For now, let's keep the menu always visible, and Outlet will render nested content below it */}
        <Card>
           <CardHeader>
             <CardTitle>Menu Ustawień</CardTitle>
@@ -80,6 +82,8 @@ const SettingsMenu = () => {
             </div>
           </CardContent>
         </Card>
+
+        <PremiumCheckoutModal isOpen={isModalOpen} onClose={handleCloseModal} />
 
     </div>
   );
