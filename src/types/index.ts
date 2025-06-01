@@ -13,6 +13,9 @@ export interface BusinessProfile {
   phone?: string;
   logo?: string;
   isDefault?: boolean;
+  tax_type?: "skala" | "liniowy" | "ryczalt"; // Added tax type
+  monthlySocialSecurity?: number; // Monthly social security contribution amount
+  monthlyHealthInsurance?: number; // Monthly health insurance contribution amount
 }
 
 export interface Customer {

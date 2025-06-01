@@ -11,6 +11,7 @@ import { format, parseISO, isPast, addMonths, isBefore } from "date-fns";
 import { generateJpckV7Data, generateJpckV7Xml } from "@/integrations/jpk/jpkV7Generator";
 import { useGlobalData } from "@/hooks/use-global-data";
 import { pl } from 'date-fns/locale';
+import { calculateIncomeTax } from "@/utils/taxCalculations";
 
 const Accounting = () => {
   const { isPremium, openPremiumDialog, user } = useAuth();
@@ -21,6 +22,7 @@ const Accounting = () => {
     period: string; // YYYY-MM format
     deadline: string; // YYYY-MM-DD format
     status: 'not-due' | 'due-soon' | 'overdue';
+    estimatedTax?: number; // Added estimated tax for the period
   }[]>([]);
 
   const { invoices: { data: invoices, isLoading: isLoadingInvoices }, expenses: { data: expenses, isLoading: isLoadingExpenses } } = useGlobalData(selectedPeriod);
@@ -29,6 +31,27 @@ const Accounting = () => {
   const loadingData = isLoadingInvoices || isLoadingExpenses; // Combine loading states
 
   const [generatedXml, setGeneratedXml] = useState<string | null>(null);
+
+  // Calculate total income and expenses for the selected period
+  const totalIncome = invoices.reduce((sum, invoice) => {
+    const income = invoice.totalGrossValue || 0;
+    console.log(`Calculating income for invoice ${invoice.number}: ${income}, current sum: ${sum}`);
+    return sum + income;
+  }, 0);
+
+  const totalExpenses = expenses.reduce((sum, expense) => {
+    const expenseAmount = expense.amount || 0; // Assuming amount is the relevant field for expense value
+    console.log(`Calculating expense for expense item (ID: ${expense.id}): ${expenseAmount}, current sum: ${sum}`); // Added expense ID log
+    return sum + expenseAmount;
+  }, 0);
+
+  // Get the selected business profile to access the tax type
+  const selectedProfile = profiles?.find(p => p.id === selectedProfileId);
+
+  // Calculate estimated tax for the selected period
+  const estimatedTax = selectedProfile && selectedProfile.tax_type
+    ? calculateIncomeTax(selectedProfile.tax_type, totalIncome, totalExpenses, 0, 0) // Pass tax type, income, expenses, and placeholder ZUS
+    : 0; // Default to 0 if no profile or tax type is selected
 
   // Function to trigger JPK generation for a specific period
   const handleGenerateJpck = (periodToGenerate: string) => {
@@ -128,7 +151,7 @@ const Accounting = () => {
     }
 
     // Generate monthly reporting periods from the earliest invoice month to the current month
-    const periods: { period: string; deadline: string; status: 'not-due' | 'due-soon' | 'overdue' }[] = [];
+    const periods: { period: string; deadline: string; status: 'not-due' | 'due-soon' | 'overdue'; estimatedTax?: number }[] = [];
     let currentPeriodDate = new Date(earliestInvoiceDate.getFullYear(), earliestInvoiceDate.getMonth(), 1);
     const today = new Date();
     const filingDay = 20; // JPK filing deadline is usually 20th of the next month
@@ -138,6 +161,31 @@ const Accounting = () => {
       const nextMonth = addMonths(currentPeriodDate, 1);
       const deadlineDate = new Date(nextMonth.getFullYear(), nextMonth.getMonth(), filingDay);
       const deadline = format(deadlineDate, 'yyyy-MM-dd');
+
+      // Define start and end dates for the current reporting period
+      const periodStartDate = new Date(currentPeriodDate.getFullYear(), currentPeriodDate.getMonth(), 1);
+      const periodEndDate = new Date(currentPeriodDate.getFullYear(), currentPeriodDate.getMonth() + 1, 0);
+
+      // Filter invoices for the current period
+      const invoicesForPeriod = profileInvoices.filter(invoice => {
+        const issueDate = parseISO(invoice.issueDate);
+        return isBefore(issueDate, periodEndDate) && !isBefore(issueDate, periodStartDate);
+      });
+
+      // Filter expenses for the current period (using expenses fetched with fetchAllInvoices=true)
+      const expensesForPeriod = expenses.filter(expense => {
+        const expenseDate = parseISO(expense.date);
+        return isBefore(expenseDate, periodEndDate) && !isBefore(expenseDate, periodStartDate);
+      });
+
+      // Calculate total income and expenses for this specific period
+      const totalIncomeForPeriod = invoicesForPeriod.reduce((sum, invoice) => sum + (invoice.totalGrossValue || 0), 0);
+      const totalExpensesForPeriod = expensesForPeriod.reduce((sum, expense) => sum + (expense.amount || 0), 0);
+
+      // Calculate estimated tax for this period (using placeholder ZUS for now)
+      const estimatedTaxForPeriod = selectedProfile && selectedProfile.tax_type
+        ? calculateIncomeTax(selectedProfile.tax_type as "skala" | "liniowy" | "ryczalt", totalIncomeForPeriod, totalExpensesForPeriod, 0, 0)
+        : 0;
 
       let status: 'not-due' | 'due-soon' | 'overdue';
       const daysUntilDeadline = (deadlineDate.getTime() - today.getTime()) / (1000 * 60 * 60 * 24);
@@ -150,27 +198,14 @@ const Accounting = () => {
         status = 'not-due';
       }
 
-      periods.push({ period, deadline, status });
+      periods.push({ period, deadline, status, estimatedTax: estimatedTaxForPeriod }); // Add estimatedTax to the period object
 
       currentPeriodDate = addMonths(currentPeriodDate, 1);
     }
 
     setReportingPeriods(periods);
 
-  }, [allInvoices, selectedProfileId]); // Recalculate when allInvoices or selectedProfileId changes
-
-  // Calculate total income and expenses for the selected period
-  const totalIncome = invoices.reduce((sum, invoice) => {
-    const income = invoice.totalGrossValue || 0;
-    console.log(`Calculating income for invoice ${invoice.number}: ${income}, current sum: ${sum}`);
-    return sum + income;
-  }, 0);
-
-  const totalExpenses = expenses.reduce((sum, expense) => {
-    const expenseAmount = expense.amount || 0; // Assuming amount is the relevant field for expense value
-    console.log(`Calculating expense for expense item (ID: ${expense.id}): ${expenseAmount}, current sum: ${sum}`); // Added expense ID log
-    return sum + expenseAmount;
-  }, 0);
+  }, [allInvoices, selectedProfileId, profiles, expenses]); // Add expenses and profiles to dependencies
 
   if (!isPremium) {
     return null;
@@ -212,35 +247,31 @@ const Accounting = () => {
       {/* Period Selector */}
        <Card>
         <CardHeader>
-          <CardTitle className="text-lg">Wybierz okres rozliczeniowy</CardTitle>
-        </CardHeader>
-        <CardContent>
-            <Select value={selectedPeriod} onValueChange={setSelectedPeriod}>
-                <SelectTrigger className="w-full md:w-[250px]">
-                    <SelectValue placeholder="Wybierz okres" />
-                </SelectTrigger>
-                <SelectContent>
-                    <SelectItem value="this_month">Bieżący miesiąc</SelectItem>
-                    <SelectItem value="last_month">Poprzedni miesiąc</SelectItem>
-                    <SelectItem value="this_quarter">Bieżący kwartał</SelectItem>
-                    <SelectItem value="last_quarter">Poprzedni kwartał</SelectItem>
-                    <SelectItem value="this_year">Bieżący rok</SelectItem>
-                    <SelectItem value="last_year">Poprzedni rok</SelectItem>
-                </SelectContent>
-            </Select>
-        </CardContent>
-      </Card>
-
-      {/* JPK Generation Section */}
-       <Card>
-        <CardHeader>
-          <CardTitle className="text-lg">Generowanie JPK V7M</CardTitle>
+          <CardTitle className="text-lg">Okres rozliczeniowy i generowanie JPK V7M</CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
-           <p className="text-muted-foreground">Generuj i pobierz plik JPK V7M dla wybranego okresu rozliczeniowego i profilu firmowego.</p>
-           <Button onClick={() => handleGenerateJpck(selectedPeriod)} disabled={!selectedProfileId || loadingData || !isPremium} className="w-full md:w-auto">Pobierz JPK V7M XML</Button>
-           {/* Optionally display a link to download the generated XML if not using direct download */}
-           {/* {generatedXml && ( <a href={\`data:application/xml;charset=utf-8,\\${encodeURIComponent(generatedXml)}\`} download={\`JPK_V7_\${selectedProfileId || \\\'jpk\\\'}_\\${selectedPeriod}.xml\`}>Pobierz JPK XML</a> )} */}
+           <div className="space-y-2">
+             <p className="text-sm font-medium leading-none">Wybierz okres rozliczeniowy dla statystyk:</p>
+             <Select value={selectedPeriod} onValueChange={setSelectedPeriod}>
+                 <SelectTrigger className="w-full md:w-[250px]">
+                     <SelectValue placeholder="Wybierz okres" />
+                 </SelectTrigger>
+                 <SelectContent>
+                     <SelectItem value="this_month">Bieżący miesiąc</SelectItem>
+                     <SelectItem value="last_month">Poprzedni miesiąc</SelectItem>
+                     <SelectItem value="this_quarter">Bieżący kwartał</SelectItem>
+                     <SelectItem value="last_quarter">Poprzedni kwartał</SelectItem>
+                     <SelectItem value="this_year">Bieżący rok</SelectItem>
+                     <SelectItem value="last_year">Poprzedni rok</SelectItem>
+                 </SelectContent>
+             </Select>
+           </div>
+
+           <div className="space-y-2">
+             <p className="text-sm font-medium leading-none">Generuj JPK V7M dla wybranego okresu statystyk:</p>
+             <p className="text-muted-foreground">Generuj i pobierz plik JPK V7M dla wybranego okresu rozliczeniowego i profilu firmowego.</p>
+             <Button onClick={() => handleGenerateJpck(selectedPeriod)} disabled={!selectedProfileId || loadingData || !isPremium} className="w-full md:w-auto">Pobierz JPK V7M XML</Button>
+           </div>
         </CardContent>
       </Card>
 
@@ -281,8 +312,8 @@ const Accounting = () => {
               <Star className="h-4 w-4 text-muted-foreground" />{/* Placeholder Icon */}
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">0.00 PLN</div>{/* Placeholder Value */}
-              <p className="text-xs text-muted-foreground">Oblicz VAT za ostatni okres</p>{/* Placeholder Action */}
+              <div className="text-2xl font-bold">{loadingData ? 'Ładowanie...' : estimatedTax.toFixed(2)} PLN</div>{/* Display estimated tax */}
+              <p className="text-xs text-muted-foreground">Szacowany podatek dochodowy ({selectedProfile?.tax_type || '-'})</p>{/* Indicate tax type */}
             </CardContent>
           </Card>
 
@@ -307,6 +338,7 @@ const Accounting = () => {
                      <th className="px-4 py-2 text-left">Okres</th>
                      <th className="px-4 py-2 text-left">Termin złożenia</th>
                      <th className="px-4 py-2 text-left">Status</th>
+                     <th className="px-4 py-2 text-left">Szacowany Podatek Doch.</th>
                      <th className="px-4 py-2 text-left">Akcje</th>
                    </tr>
                  </thead>
@@ -339,6 +371,7 @@ const Accounting = () => {
                          <td className="px-4 py-2">{periodFormatted}</td>
                          <td className="px-4 py-2">{deadlineFormatted}</td>
                          <td className="px-4 py-2">{statusText}</td>
+                         <td className="px-4 py-2">{estimatedTax?.toFixed(2) || '-'} PLN</td>
                          <td className="px-4 py-2">
                            {showGenerateButton && (
                              // Pass the current period to handleGenerateJpck
