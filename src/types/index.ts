@@ -6,6 +6,7 @@ export interface BusinessProfile {
   address: string;
   postalCode: string;
   city: string;
+  country?: string; // Added optional country property
   regon?: string;
   bankAccount?: string;
   email?: string;

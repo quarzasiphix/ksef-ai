@@ -177,38 +177,7 @@ const Dashboard = () => {
               <div className="text-2xl font-bold truncate">{formatCurrency(totalTax)}</div>
             </CardContent>
           </Card>
-          
-          {/* Estimated Income Tax Card (Mobile) */}
-          {selectedProfile && (
-            <Card>
-              <CardHeader className="pb-2">
-                <CardTitle className="text-sm font-medium text-muted-foreground">
-                  Szacowany Podatek Dochodowy ({selectedProfile.name}) - {selectedProfile.tax_type === 'skala' ? 'Skala' : selectedProfile.tax_type === 'liniowy' ? 'Liniowy' : selectedProfile.tax_type === 'ryczalt' ? 'Ryczałt' : 'Nieokreślona'})
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="text-2xl font-bold truncate">
-                  {typeof selectedProfileIncomeTax === 'number' ? formatCurrency(selectedProfileIncomeTax) : selectedProfileIncomeTax}
-                </div>
-              </CardContent>
-            </Card>
-          )}
-          
-          {/* Total Expenses Card (Mobile) */}
-          {selectedProfile && (
-            <Card>
-              <CardHeader className="pb-2">
-                <CardTitle className="text-sm font-medium text-muted-foreground">
-                  Suma Wydatków ({selectedProfile.name})
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="text-2xl font-bold truncate">
-                  {formatCurrency(selectedProfileTotalExpenses)}
-                </div>
-              </CardContent>
-            </Card>
-          )}
+ 
         </div>
       ) : (
         // Desktop/Tablet view - original 2x2 grid
@@ -257,37 +226,6 @@ const Dashboard = () => {
             </CardContent>
           </Card>
           
-          {/* Estimated Income Tax Card (Desktop) */}
-          {selectedProfile && (
-            <Card className="col-span-2">
-              <CardHeader className="pb-2">
-                <CardTitle className="text-sm font-medium text-muted-foreground">
-                  Szacowany Podatek Dochodowy ({selectedProfile.name}) - {selectedProfile.tax_type === 'skala' ? 'Skala' : selectedProfile.tax_type === 'liniowy' ? 'Liniowy' : selectedProfile.tax_type === 'ryczalt' ? 'Ryczałt' : 'Nieokreślona'})
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="text-2xl font-bold truncate">
-                   {typeof selectedProfileIncomeTax === 'number' ? formatCurrency(selectedProfileIncomeTax) : selectedProfileIncomeTax}
-                </div>
-              </CardContent>
-            </Card>
-          )}
-          
-          {/* Total Expenses Card (Desktop) */}
-          {selectedProfile && (
-            <Card>
-              <CardHeader className="pb-2">
-                <CardTitle className="text-sm font-medium text-muted-foreground">
-                  Suma Wydatków ({selectedProfile.name})
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="text-2xl font-bold truncate">
-                  {formatCurrency(selectedProfileTotalExpenses)}
-                </div>
-              </CardContent>
-            </Card>
-          )}
         </div>
       )}
       

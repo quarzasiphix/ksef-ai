@@ -9,7 +9,7 @@ import React, { useEffect, useRef } from "react";
 import { useBusinessProfile } from "@/context/BusinessProfileContext";
 
 // Custom hook for prefetching and caching global data
-export function useGlobalData(selectedPeriod?: string) {
+export function useGlobalData(selectedPeriod?: string, fetchAllInvoices?: boolean) {
   const { user } = useAuth();
   const queryClient = useQueryClient();
   const { selectedProfileId } = useBusinessProfile();
@@ -25,11 +25,13 @@ export function useGlobalData(selectedPeriod?: string) {
 
   // Fetch data with React Query
   const invoicesQuery = useQuery({
-    queryKey: selectedPeriod 
-      ? [...QUERY_KEYS.invoices, user?.id, selectedProfileId, selectedPeriod]
-      : [...QUERY_KEYS.invoices, user?.id, selectedProfileId], 
+    queryKey: fetchAllInvoices
+      ? [...QUERY_KEYS.invoices, user?.id, selectedProfileId, 'all']
+      : selectedPeriod 
+        ? [...QUERY_KEYS.invoices, user?.id, selectedProfileId, selectedPeriod]
+        : [...QUERY_KEYS.invoices, user?.id, selectedProfileId], 
     queryFn: async () => {
-      console.log('useGlobalData - invoicesQuery: Fetching invoices for user', user?.id, 'and profile', selectedProfileId, 'period', selectedPeriod);
+      console.log('useGlobalData - invoicesQuery: Fetching invoices for user', user?.id, 'and profile', selectedProfileId, 'period', selectedPeriod, 'fetchAllInvoices:', fetchAllInvoices);
       if (!user?.id) {
         console.log('useGlobalData - invoicesQuery: No user ID, returning empty array.');
         return [];
@@ -38,9 +40,11 @@ export function useGlobalData(selectedPeriod?: string) {
          console.log('useGlobalData - invoicesQuery: No selected profile ID, returning empty array.');
          return [];
       }
-      const data = selectedPeriod 
-        ? await getInvoices(user.id, selectedProfileId, selectedPeriod)
-        : await getInvoices(user.id, selectedProfileId);
+      const data = fetchAllInvoices
+        ? await getInvoices(user.id, selectedProfileId)
+        : selectedPeriod 
+          ? await getInvoices(user.id, selectedProfileId, selectedPeriod)
+          : await getInvoices(user.id, selectedProfileId);
       console.log('useGlobalData - invoicesQuery: Fetched invoices:', data);
       
       // Calculate aggregate totals for each invoice
@@ -62,7 +66,7 @@ export function useGlobalData(selectedPeriod?: string) {
       console.log('useGlobalData - invoicesQuery: Processed invoices with totals:', invoicesWithTotals);
       return invoicesWithTotals;
     },
-    enabled: !!user?.id && !!selectedProfileId && (selectedPeriod === undefined || selectedPeriod !== undefined),
+    enabled: !!user?.id && !!selectedProfileId && (selectedPeriod !== undefined || fetchAllInvoices),
     staleTime: 1000 * 60 * 5, // 5 minutes
   });
 
@@ -102,7 +106,7 @@ export function useGlobalData(selectedPeriod?: string) {
         ? getExpenses(user.id, selectedProfileId || undefined, selectedPeriod)
         : getExpenses(user.id, selectedProfileId || undefined);
     },
-    enabled: !!user?.id && !!selectedProfileId && (selectedPeriod === undefined || selectedPeriod !== undefined),
+    enabled: !!user?.id && !!selectedProfileId && (selectedPeriod !== undefined || fetchAllInvoices),
     staleTime: 1000 * 60 * 5, // 5 minutes
   });
 
