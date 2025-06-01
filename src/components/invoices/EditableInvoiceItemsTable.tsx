@@ -142,9 +142,12 @@ export const EditableInvoiceItemsTable: React.FC<EditableInvoiceItemsTableProps>
     const calculatedVatValue = isReceipt || vatRate === -1 ? 0 : totalNetValue * (vatRate / 100);
     const totalGrossValue = totalNetValue + calculatedVatValue;
     
+    // Check if the product id looks like a newly generated UUID (not saved to DB yet)
+    const isTemporaryId = product.id && product.id.length === 36 && product.id.split('-').length === 5;
+
     const newItem: InvoiceItem = {
       id: crypto.randomUUID(),
-      productId: product.id,
+      productId: isTemporaryId ? null : product.id, // Set productId to null if it's a temporary ID
       name: product.name,
       description: product.description || '',
       quantity,

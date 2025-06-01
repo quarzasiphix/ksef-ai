@@ -1,8 +1,7 @@
-
 import React from "react";
 import { Link } from "react-router-dom";
 import { formatCurrency } from "@/lib/invoice-utils";
-import { Invoice, InvoiceType } from "../../types";
+import { Invoice, InvoiceType } from "@/types";
 import { Badge } from "@/components/ui/badge";
 import { Calendar, FileText, User, CreditCard } from "lucide-react";
 

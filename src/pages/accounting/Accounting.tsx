@@ -6,20 +6,20 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { useBusinessProfile } from "@/context/BusinessProfileContext";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { cn } from "@/lib/utils";
-import { getInvoices } from "@/integrations/supabase/repositories/invoiceRepository";
-import { getExpenses } from "@/integrations/supabase/repositories/expenseRepository";
-import { Invoice, Expense } from "@/types/index";
+import { Invoice, Expense } from "@/types";
 import { format } from "date-fns";
 import { generateJpckV7Data, generateJpckV7Xml } from "@/integrations/jpk/jpkV7Generator";
+import { useGlobalData } from "@/hooks/use-global-data";
 
 const Accounting = () => {
-  const { isPremium, openPremiumDialog } = useAuth();
+  const { isPremium, openPremiumDialog, user } = useAuth();
   const { profiles, selectedProfileId, selectProfile, isLoadingProfiles } = useBusinessProfile();
 
-  const [invoices, setInvoices] = useState<Invoice[]>([]);
-  const [expenses, setExpenses] = useState<Expense[]>([]);
-  const [loadingData, setLoadingData] = useState(false);
   const [selectedPeriod, setSelectedPeriod] = useState<string>('this_month'); // State for selected period
+
+  const { invoices: { data: invoices, isLoading: isLoadingInvoices }, expenses: { data: expenses, isLoading: isLoadingExpenses } } = useGlobalData(selectedPeriod);
+  const loadingData = isLoadingInvoices || isLoadingExpenses; // Combine loading states
+
   const [generatedXml, setGeneratedXml] = useState<string | null>(null);
 
   // Function to get start and end dates based on selected period
@@ -74,48 +74,18 @@ const Accounting = () => {
     }
   }, [isPremium, openPremiumDialog]);
 
-  useEffect(() => {
-    const fetchData = async () => {
-      if (selectedProfileId) {
-        setLoadingData(true);
-        try {
-          const fetchedInvoices = await getInvoices(useAuth().user!.id, selectedProfileId);
-          const fetchedExpenses = await getExpenses(useAuth().user!.id, selectedProfileId);
-
-          const { startDate, endDate } = getPeriodDates(selectedPeriod);
-
-          // Filter data by date within the selected period
-          const filteredInvoices = fetchedInvoices.filter(invoice => {
-            const issueDate = format(new Date(invoice.issueDate), 'yyyy-MM-dd');
-            return issueDate >= startDate && issueDate <= endDate;
-          });
-
-          const filteredExpenses = fetchedExpenses.filter(expense => {
-            const issueDate = format(new Date(expense.issueDate), 'yyyy-MM-dd');
-            return issueDate >= startDate && issueDate <= endDate;
-          });
-
-          setInvoices(filteredInvoices);
-          setExpenses(filteredExpenses);
-        } catch (error) {
-          console.error('Error fetching accounting data:', error);
-          setInvoices([]);
-          setExpenses([]);
-        } finally {
-          setLoadingData(false);
-        }
-      } else {
-        setInvoices([]);
-        setExpenses([]);
-      }
-    };
-
-    fetchData();
-  }, [selectedProfileId, selectedPeriod]); // Refetch data when profile or period changes
-
   // Calculate total income and expenses for the selected period
-  const totalIncome = invoices.reduce((sum, invoice) => sum + invoice.totalGrossValue, 0);
-  const totalExpenses = expenses.reduce((sum, expense) => sum + expense.amount, 0);
+  const totalIncome = invoices.reduce((sum, invoice) => {
+    const income = invoice.totalGrossValue || 0;
+    console.log(`Calculating income for invoice ${invoice.number}: ${income}, current sum: ${sum}`);
+    return sum + income;
+  }, 0);
+
+  const totalExpenses = expenses.reduce((sum, expense) => {
+    const expenseAmount = expense.amount || 0; // Assuming amount is the relevant field for expense value
+    console.log(`Calculating expense for expense item (ID: ${expense.id}): ${expenseAmount}, current sum: ${sum}`); // Added expense ID log
+    return sum + expenseAmount;
+  }, 0);
 
   // Function to trigger JPK generation
   const handleGenerateJpck = () => {

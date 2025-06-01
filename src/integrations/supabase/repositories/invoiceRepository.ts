@@ -3,6 +3,8 @@ import { InvoiceItem, InvoiceType, PaymentMethod, PaymentMethodDb, Invoice, Ksef
 import { toPaymentMethodUi, toPaymentMethodDb } from "@/lib/invoice-utils";
 import { useAuth } from "@/App";
 import { TransactionType } from "@/common-types";
+import { format } from 'date-fns';
+import { getPeriodDates } from '@/lib/date-utils';
 
 interface DatabaseInvoiceResponse {
   id: string;
@@ -463,7 +465,7 @@ export async function getInvoice(id: string): Promise<Invoice> {
   return invoice;
 }
 
-export async function getInvoices(userId: string, businessProfileId?: string): Promise<Invoice[]> {
+export async function getInvoices(userId: string, businessProfileId?: string, period?: string): Promise<Invoice[]> {
   if (!userId) {
     console.error("No user ID provided to getInvoices");
     return [];
@@ -471,20 +473,35 @@ export async function getInvoices(userId: string, businessProfileId?: string): P
 
   let query = supabase
     .from("invoices")
-    .select(`
-    id, number, type, transaction_type, issue_date, due_date, sell_date,
-    business_profile_id, customer_id, payment_method, is_paid, comments,
-    total_net_value, total_gross_value, total_vat_value, ksef_status,
-    ksef_reference_number, user_id, created_at, updated_at, vat,
-    vat_exemption_reason,
-    business_profiles!inner(id, name, user_id, tax_id, address, city, postal_code),
-    customers!inner(id, name, user_id, tax_id, address, city, postal_code),
-    invoice_items(id, product_id, name, quantity, unit_price, vat_rate, unit, total_net_value, total_gross_value, total_vat_value, vat_exempt)
-  `)
-    .eq('user_id', userId);
+    .select(
+      `
+      *,
+      business_profiles ( id, name, user_id, tax_id, address, city, postal_code ),
+      customers ( id, name, user_id, tax_id, address, city, postal_code ),
+      invoice_items (
+        id,
+        product_id,
+        name,
+        quantity,
+        unit_price,
+        vat_rate,
+        unit,
+        total_net_value,
+        total_gross_value,
+        total_vat_value,
+        vat_exempt
+      )
+    `
+    )
+    .eq("user_id", userId);
 
   if (businessProfileId) {
-    query = query.eq('business_profile_id', businessProfileId);
+    query = query.eq("business_profile_id", businessProfileId);
+  }
+
+  if (period) {
+    const { startDate, endDate } = getPeriodDates(period);
+    query = query.gte('issue_date', startDate).lte('issue_date', endDate);
   }
 
   const { data, error } = await query.order("issue_date", { ascending: false });

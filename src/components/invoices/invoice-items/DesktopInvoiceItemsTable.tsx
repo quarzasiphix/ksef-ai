@@ -61,6 +61,8 @@ export const DesktopInvoiceItemsTable: React.FC<DesktopInvoiceItemsTableProps> =
               onUpdateItem={onUpdateItem}
               fakturaBezVAT={fakturaBezVAT}
               vatExemptionReason={vatExemptionReason}
+              userId={'' as any}
+              onClick={() => console.log('Row clicked:', item.id, item.name, item.productId)}
             />
           ))}
           

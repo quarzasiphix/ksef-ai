@@ -18,6 +18,7 @@ interface InvoiceItemRowProps {
   userId: string;
   fakturaBezVAT?: boolean;
   vatExemptionReason?: string | null;
+  onClick?: (event: React.MouseEvent<HTMLTableRowElement, MouseEvent>) => void;
 }
 
 export const InvoiceItemRow: React.FC<InvoiceItemRowProps> = ({
@@ -29,7 +30,8 @@ export const InvoiceItemRow: React.FC<InvoiceItemRowProps> = ({
   onUpdateItem,
   userId,
   fakturaBezVAT,
-  vatExemptionReason
+  vatExemptionReason,
+  onClick
 }) => {
   const handleQuantityChange = (value: string) => {
     const quantity = Number(value);
@@ -72,7 +74,7 @@ export const InvoiceItemRow: React.FC<InvoiceItemRowProps> = ({
   };
   
   return (
-    <tr key={item.id} className="border-b">
+    <tr key={item.id} className="border-b" onClick={onClick}>
       <td className="px-2 py-2 text-left">{index + 1}</td>
       <td className="px-2 py-2 text-left">
         {item.name}
@@ -158,7 +160,10 @@ export const InvoiceItemRow: React.FC<InvoiceItemRowProps> = ({
           <Button 
             variant="ghost" 
             size="icon" 
-            onClick={() => onRemoveItem(item.id)}
+            onClick={(e) => {
+              e.stopPropagation();
+              onRemoveItem(item.id);
+            }}
             className="h-7 w-7"
           >
             <X className="h-4 w-4" />

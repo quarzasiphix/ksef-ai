@@ -46,6 +46,9 @@ const IncomeList = () => {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
 
+  console.log('IncomeList - Raw invoices from useGlobalData:', invoices);
+  console.log('IncomeList - Selected Profile ID:', selectedProfileId);
+
   // Get only document types that exist in the data
   const availableTypes = useMemo(() => {
     const typeMap = new Map<string, boolean>();
@@ -162,6 +165,8 @@ const IncomeList = () => {
   const filteredInvoices = useMemo(() => {
     // Ensure invoices data is available before filtering
     if (!invoices) return [];
+
+    console.log('IncomeList - Filtering invoices with selectedProfileId:', selectedProfileId);
 
     return invoices.filter(
       (invoice) => {

@@ -184,10 +184,10 @@ export interface Invoice {
   paid: boolean;
   status: InvoiceStatus;
   comments?: string;
-  totalNetValue: number;
-  totalGrossValue: number;
-  totalVatValue: number;
-  totalAmount: number;
+  totalNetValue?: number;
+  totalGrossValue?: number;
+  totalVatValue?: number;
+  totalAmount?: number;
   ksef?: KsefInfo;
   seller: Company;
   buyer: Company;
@@ -197,7 +197,7 @@ export interface Invoice {
   bankAccountNumber?: string;
   created_at?: string;
   updated_at?: string;
-  vat?: boolean; // Making vat optional to avoid issues
+  vat?: boolean;
   vatExemptionReason?: VatExemptionReason;
   fakturaBezVAT?: boolean;
 }

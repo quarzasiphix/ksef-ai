@@ -45,7 +45,7 @@ interface NewInvoiceProps {
   initialData?: Invoice;
   type?: TransactionType;
   showFormActions?: boolean;
-  onSave?: (formData: InvoiceFormValues) => Promise<void>;
+  onSave?: (formData: InvoiceFormValues & { items: InvoiceItem[] }) => Promise<void>;
 }
 
 const NewInvoice: React.ForwardRefExoticComponent<
@@ -248,115 +248,83 @@ const NewInvoice: React.ForwardRefExoticComponent<
         console.log('Starting form submission...');
         setIsLoading(true);
         
-        // Calculate invoice totals
-        const calculatedItems = items.map(item => {
-          console.log('Processing item:', item);
-          const quantity = Number(item.quantity) || 0;
-          const unitPrice = Number(item.unitPrice) || 0;
-          // Handle VAT rate conversion
-          let vatRate: number;
-          if (typeof item.vatRate === 'string' && item.vatRate === 'zw') {
-            vatRate = -1;
-          } else {
-            vatRate = Number(item.vatRate);
-            if (isNaN(vatRate)) vatRate = 0;
-          }
-          
-          const totalNetValue = quantity * unitPrice;
-          const totalVatValue = documentType === InvoiceType.RECEIPT || vatRate === -1
-            ? 0 
-            : (totalNetValue * vatRate) / 100;
-          const totalGrossValue = documentType === InvoiceType.RECEIPT || vatRate === -1
-            ? totalNetValue
-            : totalNetValue * (1 + vatRate / 100);
-          
-          const calculatedItem = {
-            ...item,
-            vatRate,
-            totalNetValue: Number(totalNetValue.toFixed(2)),
-            totalVatValue: Number(totalVatValue.toFixed(2)),
-            totalGrossValue: Number(totalGrossValue.toFixed(2))
-          };
-          
-          console.log('Calculated item:', calculatedItem);
-          return calculatedItem;
-        });
-        
-        console.log('All calculated items:', calculatedItems);
-        
-        const totalNetValue = Number(calculatedItems
-          .reduce((sum, item) => sum + (item.totalNetValue || 0), 0)
-          .toFixed(2));
-        const totalVatValue = Number(calculatedItems
-          .reduce((sum, item) => sum + (item.totalVatValue || 0), 0)
-          .toFixed(2));
-        const totalGrossValue = Number(calculatedItems
-          .reduce((sum, item) => sum + (item.totalGrossValue || 0), 0)
-          .toFixed(2));
-        
-        // Create seller and buyer objects
-        const seller: Company = {
-          name: businessName || '',
-          taxId: '',
-          address: '',
-          city: '',
-          postalCode: ''
-        };
-
-        const buyer: Company = {
-          name: customerName || '',
-          taxId: '',
-          address: '',
-          city: '',
-          postalCode: ''
-        };
-
-        // Create the invoice data
-        const invoiceData: Omit<Invoice, 'id' | 'created_at' | 'updated_at'> = {
+        const invoicePayload = { // Prepare payload for saveInvoice
           ...formData,
-          number: formData.number.trim(),
-          type: documentType,
-          transactionType,
-          items: calculatedItems,
-          paymentMethod: toPaymentMethodDb(formData.paymentMethod as any),
-          totalNetValue,
-          totalVatValue,
-          totalGrossValue,
-          totalAmount: totalGrossValue,
           user_id: user.id,
-          businessProfileId: formData.businessProfileId,
-          customerId: formData.customerId || '',
-          isPaid: initialData?.isPaid || false,
-          paid: initialData?.paid || false,
-          status: initialData?.status || 'draft',
-          issueDate: formData.issueDate,
-          dueDate: formData.dueDate,
-          sellDate: formData.sellDate || formData.issueDate,
-          date: formData.issueDate,
-          seller,
-          buyer,
-          comments: formData.comments || '',
-          businessName: businessName || '',
-          customerName: customerName || '',
-          vat: !(formData.fakturaBezVAT),
-          vatExemptionReason: formData.fakturaBezVAT ? formData.vatExemptionReason : undefined
-        } as any;
+          transactionType: formData.transactionType, // Ensure transactionType is included
+          // Map items to ensure correct database format for product_id and calculate totals
+          items: items.map(item => {
+            const quantity = Number(item.quantity) || 0; // Ensure quantity is a number
+            const unitPrice = Number(item.unitPrice) || 0; // Ensure unitPrice is a number
+            const vatRate = Number(item.vatRate) || 0; // Ensure vatRate is a number
 
-        console.log('Saving invoice with data:', invoiceData);
-        
-        if (initialData && onSave) {
-          await onSave(invoiceData);
+            const totalNetValue = quantity * unitPrice;
+            const totalVatValue = (totalNetValue * vatRate) / 100;
+            const totalGrossValue = totalNetValue + totalVatValue;
+
+            return {
+              ...item,
+              // Explicitly set product_id to null if productId is not a non-empty string
+              product_id: item.productId && item.productId !== '' ? item.productId : null,
+              // Ensure values are numbers and use snake_case for database
+              quantity: quantity,
+              unit_price: unitPrice,
+              vat_rate: vatRate,
+              total_net_value: Number(totalNetValue.toFixed(2)),
+              total_vat_value: Number(totalVatValue.toFixed(2)),
+              total_gross_value: Number(totalGrossValue.toFixed(2)),
+              vat_exempt: item.vatExempt || false,
+            };
+          }),
+          // Ensure total values are numbers
+           totalNetValue: calculateInvoiceTotals(items).totalNetValue,
+           totalGrossValue: calculateInvoiceTotals(items).totalGrossValue,
+           totalVatValue: calculateInvoiceTotals(items).totalVatValue,
+          isPaid: (initialData as any)?.isPaid || false, // Preserve or default isPaid
+           // Handle vat and vatExemptionReason based on fakturaBezVAT
+          vat: !formData.fakturaBezVAT, // If fakturaBezVAT is true, vat is false
+          vatExemptionReason: formData.fakturaBezVAT ? formData.vatExemptionReason : null, // Include reason only if fakturaBezVAT
+           paid: (initialData as any)?.paid || false, // Preserve or default paid
+           // Convert paymentMethod string to PaymentMethodDb enum
+           paymentMethod: toPaymentMethodDb(formData.paymentMethod as any),
+           // Add other required fields expected by saveInvoice based on its Omit type
+           number: formData.number,
+           type: documentType,
+           issueDate: formData.issueDate,
+           dueDate: formData.dueDate,
+           sellDate: formData.sellDate || formData.issueDate,
+           comments: formData.comments || null, // Ensure comments is null if empty string
+           businessProfileId: formData.businessProfileId,
+           customerId: formData.customerId || null, // Ensure customerId is null if empty string
+        };
+
+        console.log('Invoice Payload being sent to saveInvoice:', invoicePayload);
+
+        // Use onSave prop if provided (for use in other components like EditInvoice)
+        if (onSave) {
+           console.log('Using provided onSave prop.');
+          // When using onSave, we pass the original form data and items, as the parent component handles the final save structure
+          await onSave({...formData, items: items});
         } else {
-          const savedInvoice = await saveInvoice(invoiceData);
-          console.log('Invoice saved successfully:', savedInvoice);
-          await queryClient.invalidateQueries({ queryKey: ['invoices'] });
-          // Navigate to the correct details page based on transaction type
-          const basePath = savedInvoice.transactionType === TransactionType.INCOME ? '/income' : '/expense';
-          navigate(`${basePath}/${savedInvoice.id}`);
+           console.log('Using internal saveInvoice function.');
+          // Call the saveInvoice function from the repository
+          // Cast the payload to match the expected type of saveInvoice more closely
+          const savedInvoice = await saveInvoice(invoicePayload as any);
+           console.log('Invoice saved successfully:', savedInvoice);
+
+          // Invalidate queries to refresh data
+          queryClient.invalidateQueries({ queryKey: ['invoices'] });
+          queryClient.invalidateQueries({ queryKey: ['invoice', savedInvoice.id] });
+
+          // Redirect to the detail page of the newly created/updated invoice
+          const detailRoute = savedInvoice.transactionType === TransactionType.EXPENSE ? '/expense' : '/income';
+          navigate(`${detailRoute}/${savedInvoice.id}`);
+
+          toast.success(`Dokument ${savedInvoice.number} zapisany pomyślnie`);
         }
         
         setIsLoading(false);
-      } catch (error) {
+      } catch (error: any) {
         console.error('Error saving invoice:', error);
         toast.error('Wystąpił błąd podczas zapisywania faktury');
         setIsLoading(false);
