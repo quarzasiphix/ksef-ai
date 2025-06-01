@@ -1,6 +1,6 @@
 export interface BusinessProfile {
   id: string;
-  user_id: string; // Added for RLS
+  user_id?: string; // Added for RLS, making optional for compatibility
   name: string;
   taxId: string; // NIP
   address: string;
@@ -209,4 +209,17 @@ export interface MonthlyInvoiceSummary {
   totalNetValue: number;
   totalGrossValue: number;
   totalVatValue: number;
+}
+
+export interface Expense {
+  id: string;
+  userId: string;
+  businessProfileId: string;
+  issueDate: string;
+  amount: number;
+  currency: string;
+  description?: string;
+  createdAt?: string;
+  transactionType: TransactionType; // Assuming this comes from common-types
+  date: string; // Alias for compatibility
 }
