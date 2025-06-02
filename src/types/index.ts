@@ -1,3 +1,4 @@
+
 export interface BusinessProfile {
   id: string;
   user_id?: string; // Added for RLS, making optional for compatibility
@@ -41,7 +42,7 @@ export interface Product {
   description?: string; // Added optional description
 }
 
-import type { TransactionType } from "./common";
+export type TransactionType = 'income' | 'expense';
 
 export enum InvoiceType {
   SALES = "sales", // Faktura sprzedaży

@@ -22,13 +22,6 @@ const EditCustomer = () => {
     navigate(`/customers/${id}`);
   };
   
-declare global {
-  interface Window {
-    triggerCustomersRefresh?: () => Promise<void>;
-  }
-}
-
-// Extend window type for triggerCustomersRefresh
   const handleSuccess = async (customer: Customer) => {
     toast.success('Klient został zaktualizowany');
     if (window.triggerCustomersRefresh) {

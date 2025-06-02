@@ -1,4 +1,3 @@
-
 import React from "react";
 import { InvoiceItem, InvoiceType } from "@/types";
 import { Button } from "@/components/ui/button";
@@ -36,7 +35,7 @@ export const InvoiceItemsTable: React.FC<InvoiceItemsTableProps> = ({
     if (isNaN(quantity) || quantity < 0) return;
     
     const totalNetValue = item.unitPrice * quantity;
-    const totalVatValue = isReceipt ? 0 : totalNetValue * (item.vatRate / 100);
+    const totalVatValue = isReceipt ? 0 : totalNetValue * (Number(item.vatRate) / 100);
     const totalGrossValue = totalNetValue + totalVatValue;
     
     onUpdateItem(id, {

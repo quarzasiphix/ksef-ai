@@ -14,6 +14,7 @@ import { Customer } from "@/types";
 import { Plus, Search, User, MapPin, Phone, Mail } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { useGlobalData } from "@/hooks/use-global-data";
+import { Loader2 } from "lucide-react";
 
 const CustomerCard = ({ customer }: { customer: Customer }) => {
   return (
@@ -51,27 +52,19 @@ const CustomerCard = ({ customer }: { customer: Customer }) => {
   );
 };
 
-import { Loader2 } from "lucide-react";
-
 const CustomerList = () => {
   const { customers: { data: customers, isLoading }, refreshAllData } = useGlobalData();
   const [searchTerm, setSearchTerm] = useState("");
   const [isUpdating, setIsUpdating] = useState(false);
 
   // Expose this function for triggering a customer refresh from outside (edit/new)
-
-declare global {
-  interface Window {
-    triggerCustomersRefresh?: () => Promise<void>;
-  }
-}
-
-// Extend window type for triggerCustomersRefresh
-window.triggerCustomersRefresh = async () => {
-  setIsUpdating(true);
-  await refreshAllData();
-  setIsUpdating(false);
-};
+  React.useEffect(() => {
+    window.triggerCustomersRefresh = async () => {
+      setIsUpdating(true);
+      await refreshAllData();
+      setIsUpdating(false);
+    };
+  }, [refreshAllData]);
 
   // Filter customers based on search term
   const filteredCustomers = customers.filter(

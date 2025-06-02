@@ -16,13 +16,6 @@ const NewCustomer = () => {
     navigate('/customers');
   };
   
-declare global {
-  interface Window {
-    triggerCustomersRefresh?: () => Promise<void>;
-  }
-}
-
-// Extend window type for triggerCustomersRefresh
   const handleSuccess = async (customer: Customer) => {
     toast.success('Klient został utworzony');
     if (window.triggerCustomersRefresh) {

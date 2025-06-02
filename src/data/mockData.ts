@@ -155,7 +155,6 @@ export const mockInvoices: Invoice[] = [
       referenceNumber: null
     },
     seller: {
-      id: "1",
       name: "ACME Sp. z o.o.",
       taxId: "1234567890",
       address: "ul. Przykładowa 123",
@@ -163,7 +162,6 @@ export const mockInvoices: Invoice[] = [
       postalCode: "00-001"
     },
     buyer: {
-      id: "1", 
       name: "Jan Kowalski",
       taxId: "9876543210",
       address: "ul. Testowa 456",
@@ -199,7 +197,6 @@ export const mockInvoices: Invoice[] = [
       referenceNumber: 'KSeF-2024-001-123456'
     },
     seller: {
-      id: "1",
       name: "ACME Sp. z o.o.",
       taxId: "1234567890", 
       address: "ul. Przykładowa 123",
@@ -207,7 +204,6 @@ export const mockInvoices: Invoice[] = [
       postalCode: "00-001"
     },
     buyer: {
-      id: "2",
       name: "Anna Nowak",
       taxId: "",
       address: "ul. Nowa 789", 
