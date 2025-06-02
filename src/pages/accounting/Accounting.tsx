@@ -244,37 +244,6 @@ const Accounting = () => {
         </CardContent>
       </Card>
 
-      {/* Period Selector */}
-       <Card>
-        <CardHeader>
-          <CardTitle className="text-lg">Okres rozliczeniowy i generowanie JPK V7M</CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-4">
-           <div className="space-y-2">
-             <p className="text-sm font-medium leading-none">Wybierz okres rozliczeniowy dla statystyk:</p>
-             <Select value={selectedPeriod} onValueChange={setSelectedPeriod}>
-                 <SelectTrigger className="w-full md:w-[250px]">
-                     <SelectValue placeholder="Wybierz okres" />
-                 </SelectTrigger>
-                 <SelectContent>
-                     <SelectItem value="this_month">Bieżący miesiąc</SelectItem>
-                     <SelectItem value="last_month">Poprzedni miesiąc</SelectItem>
-                     <SelectItem value="this_quarter">Bieżący kwartał</SelectItem>
-                     <SelectItem value="last_quarter">Poprzedni kwartał</SelectItem>
-                     <SelectItem value="this_year">Bieżący rok</SelectItem>
-                     <SelectItem value="last_year">Poprzedni rok</SelectItem>
-                 </SelectContent>
-             </Select>
-           </div>
-
-           <div className="space-y-2">
-             <p className="text-sm font-medium leading-none">Generuj JPK V7M dla wybranego okresu statystyk:</p>
-             <p className="text-muted-foreground">Generuj i pobierz plik JPK V7M dla wybranego okresu rozliczeniowego i profilu firmowego.</p>
-             <Button onClick={() => handleGenerateJpck(selectedPeriod)} disabled={!selectedProfileId || loadingData || !isPremium} className="w-full md:w-auto">Pobierz JPK V7M XML</Button>
-           </div>
-        </CardContent>
-      </Card>
-
       {/* General Stats Section */}
       <Card>
         <CardHeader>
@@ -319,6 +288,39 @@ const Accounting = () => {
 
         </CardContent>
       </Card>
+
+
+            {/* Period Selector */}
+            <Card>
+        <CardHeader>
+          <CardTitle className="text-lg">Okres rozliczeniowy i generowanie JPK V7M</CardTitle>
+        </CardHeader>
+        <CardContent className="grid gap-4 md:grid-cols-2 items-start">
+          <div className="space-y-1">
+            <p className="text-sm font-medium leading-none">Okres:</p>
+            <Select value={selectedPeriod} onValueChange={setSelectedPeriod} size="sm">
+              <SelectTrigger className="w-full">
+                <SelectValue placeholder="Wybierz" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="this_month">Bieżący miesiąc</SelectItem>
+                <SelectItem value="last_month">Poprzedni miesiąc</SelectItem>
+                <SelectItem value="this_quarter">Bieżący kwartał</SelectItem>
+                <SelectItem value="last_quarter">Poprzedni kwartał</SelectItem>
+                <SelectItem value="this_year">Bieżący rok</SelectItem>
+                <SelectItem value="last_year">Poprzedni rok</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+
+          <div className="space-y-1">
+            <p className="text-sm font-medium leading-none">JPK V7M:</p>
+            <p className="text-muted-foreground text-sm">Pobierz plik JPK V7M.</p>
+            <Button onClick={() => handleGenerateJpck(selectedPeriod)} disabled={!selectedProfileId || loadingData || !isPremium} className="w-full md:w-auto" size="sm">Pobierz XML</Button>
+          </div>
+        </CardContent>
+      </Card>
+
 
       {/* Required JPK Reports Section */}
       <Card>
