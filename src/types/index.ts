@@ -1,4 +1,3 @@
-
 export interface BusinessProfile {
   id: string;
   user_id?: string; // Added for RLS, making optional for compatibility
@@ -115,7 +114,7 @@ export interface InvoiceItem {
   id: string;
   productId?: string;
   name: string;
-  description: string; // Made required to fix type conflicts
+  description?: string; // Made optional to fix type conflicts
   quantity: number;
   unitPrice: number; // Netto price
   vatRate: number;
@@ -193,7 +192,7 @@ export interface Invoice {
   totalNetValue?: number;
   totalGrossValue?: number;
   totalVatValue?: number;
-  totalAmount?: number;
+  totalAmount: number; // Made required
   ksef?: KsefInfo;
   seller: Company;
   buyer: Company;

@@ -1,207 +1,220 @@
 
-import { BusinessProfile, Customer, Invoice, InvoiceType, PaymentMethod, Product } from "@/types";
-import { v4 as uuidv4 } from "uuid";
+import { BusinessProfile, Customer, Product, Invoice, InvoiceType, PaymentMethodDb, InvoiceItem } from "@/types";
+import { generateKsefXml } from "@/integrations/ksef/ksefGenerator";
 
-// Mock business profiles
+// Mock Business Profiles
 export const mockBusinessProfiles: BusinessProfile[] = [
   {
-    id: "bp1",
-    name: "Moja Firma Sp. z o.o.",
+    id: "1",
+    user_id: "user-123",
+    name: "ACME Sp. z o.o.",
     taxId: "1234567890",
-    address: "ul. Warszawska 10",
+    address: "ul. Przykładowa 123",
     postalCode: "00-001",
     city: "Warszawa",
+    country: "Polska",
     regon: "123456789",
-    bankAccount: "PL12 1234 5678 9012 3456 7890 1234",
-    email: "kontakt@mojafirma.pl",
+    bankAccount: "12 3456 7890 1234 5678 9012 3456",
+    email: "kontakt@acme.pl",
     phone: "+48 123 456 789",
     isDefault: true,
-  },
-  {
-    id: "bp2",
-    name: "Jan Kowalski Consulting",
-    taxId: "0987654321",
-    address: "ul. Krakowska 15",
-    postalCode: "30-001",
-    city: "Kraków",
-    email: "jan@consulting.pl",
-    phone: "+48 987 654 321",
-    isDefault: false,
+    tax_type: "skala",
+    monthlySocialSecurity: 1500,
+    monthlyHealthInsurance: 400
   },
 ];
 
-// Mock customers
+// Mock Customers
 export const mockCustomers: Customer[] = [
   {
-    id: "c1",
-    name: "ABC Sp. z o.o.",
-    taxId: "5678901234",
-    address: "ul. Wrocławska 5",
-    postalCode: "50-001",
-    city: "Wrocław",
-    email: "kontakt@abc.pl",
-    phone: "+48 567 890 123",
+    id: "1",
+    user_id: "user-123",
+    name: "Jan Kowalski",
+    taxId: "9876543210",
+    address: "ul. Testowa 456",
+    postalCode: "02-001",
+    city: "Kraków",
+    country: "Polska",
+    email: "jan.kowalski@email.com",
+    phone: "+48 987 654 321"
   },
   {
-    id: "c2",
-    name: "XYZ S.A.",
-    taxId: "6789012345",
-    address: "ul. Gdańska 20",
-    postalCode: "80-001",
+    id: "2", 
+    user_id: "user-123",
+    name: "Anna Nowak",
+    address: "ul. Nowa 789",
+    postalCode: "03-001",
     city: "Gdańsk",
-    email: "biuro@xyz.pl",
-    phone: "+48 678 901 234",
-  },
+    country: "Polska",
+    email: "anna.nowak@email.com"
+  }
 ];
 
-// Mock products
+// Mock Products  
 export const mockProducts: Product[] = [
   {
-    id: "p1",
-    name: "Konsultacja IT",
-    unitPrice: 150,
+    id: "1",
+    user_id: "user-123",
+    name: "Konsultacje IT",
+    unitPrice: 200,
     vatRate: 23,
     unit: "godz.",
+    description: "Konsultacje informatyczne"
   },
   {
-    id: "p2",
-    name: "Strona internetowa",
-    unitPrice: 3000,
+    id: "2",
+    user_id: "user-123", 
+    name: "Projekt strony internetowej",
+    unitPrice: 5000,
     vatRate: 23,
     unit: "szt.",
+    description: "Projekt i wykonanie strony internetowej"
   },
   {
-    id: "p3",
-    name: "Szkolenie",
-    unitPrice: 800,
+    id: "3",
+    user_id: "user-123",
+    name: "Hosting roczny",
+    unitPrice: 300,
     vatRate: 23,
     unit: "szt.",
-  },
+    description: "Hosting strony internetowej na rok"
+  }
 ];
 
-// Mock invoices
+// Mock Invoice Items
+const mockInvoiceItems1: InvoiceItem[] = [
+  {
+    id: "item-1",
+    productId: "1",
+    name: "Konsultacje IT",
+    description: "Konsultacje informatyczne",
+    quantity: 10,
+    unitPrice: 200,
+    vatRate: 23,
+    unit: "godz.",
+    totalNetValue: 2000,
+    totalVatValue: 460,
+    totalGrossValue: 2460
+  },
+  {
+    id: "item-2",
+    productId: "2", 
+    name: "Projekt strony internetowej",
+    description: "Projekt i wykonanie strony internetowej",
+    quantity: 1,
+    unitPrice: 5000,
+    vatRate: 23,
+    unit: "szt.",
+    totalNetValue: 5000,
+    totalVatValue: 1150,
+    totalGrossValue: 6150
+  }
+];
+
+const mockInvoiceItems2: InvoiceItem[] = [
+  {
+    id: "item-3",
+    productId: "3",
+    name: "Hosting roczny", 
+    description: "Hosting strony internetowej na rok",
+    quantity: 1,
+    unitPrice: 300,
+    vatRate: 23,
+    unit: "szt.",
+    totalNetValue: 300,
+    totalVatValue: 69,
+    totalGrossValue: 369
+  }
+];
+
+// Mock Invoices
 export const mockInvoices: Invoice[] = [
   {
-    id: "i1",
-    number: "FV/2023/05/001",
+    id: "1",
+    user_id: "user-123",
+    number: "FV/2024/001",
     type: InvoiceType.SALES,
-    issueDate: "2023-05-15",
-    dueDate: "2023-06-15",
-    sellDate: "2023-05-15",
-    businessProfileId: "bp1",
-    customerId: "c1",
-    items: [
-      {
-        id: "ii1",
-        productId: "p1",
-        name: "Konsultacja IT",
-        quantity: 10,
-        unitPrice: 150,
-        vatRate: 23,
-        unit: "godz.",
-        totalNetValue: 1500,
-        totalVatValue: 345,
-        totalGrossValue: 1845,
-      },
-      {
-        id: "ii2",
-        productId: "p2",
-        name: "Strona internetowa",
-        quantity: 1,
-        unitPrice: 3000,
-        vatRate: 23,
-        unit: "szt.",
-        totalNetValue: 3000,
-        totalVatValue: 690,
-        totalGrossValue: 3690,
-      },
-    ],
-    paymentMethod: PaymentMethod.TRANSFER,
-    isPaid: true,
-    totalNetValue: 4500,
-    totalVatValue: 1035,
-    totalGrossValue: 5535,
+    transactionType: "income",
+    issueDate: "2024-01-15",
+    dueDate: "2024-01-29",
+    sellDate: "2024-01-15",
+    date: "2024-01-15",
+    businessProfileId: "1",
+    customerId: "1",
+    items: mockInvoiceItems1,
+    paymentMethod: PaymentMethodDb.TRANSFER,
+    isPaid: false,
+    paid: false,
+    status: "sent",
+    totalNetValue: 7000,
+    totalGrossValue: 8610,
+    totalVatValue: 1610,
+    totalAmount: 8610,
     ksef: {
-      status: "sent",
-      referenceNumber: "KS123456789",
+      status: 'pending',
+      referenceNumber: null
     },
+    seller: {
+      id: "1",
+      name: "ACME Sp. z o.o.",
+      taxId: "1234567890",
+      address: "ul. Przykładowa 123",
+      city: "Warszawa",
+      postalCode: "00-001"
+    },
+    buyer: {
+      id: "1", 
+      name: "Jan Kowalski",
+      taxId: "9876543210",
+      address: "ul. Testowa 456",
+      city: "Kraków",
+      postalCode: "02-001"
+    },
+    businessName: "ACME Sp. z o.o.",
+    customerName: "Jan Kowalski"
   },
   {
-    id: "i2",
-    number: "FV/2023/06/001",
+    id: "2",
+    user_id: "user-123", 
+    number: "FV/2024/002",
     type: InvoiceType.SALES,
-    issueDate: "2023-06-10",
-    dueDate: "2023-07-10",
-    sellDate: "2023-06-10",
-    businessProfileId: "bp1",
-    customerId: "c2",
-    items: [
-      {
-        id: "ii3",
-        productId: "p3",
-        name: "Szkolenie",
-        quantity: 2,
-        unitPrice: 800,
-        vatRate: 23,
-        unit: "szt.",
-        totalNetValue: 1600,
-        totalVatValue: 368,
-        totalGrossValue: 1968,
-      },
-    ],
-    paymentMethod: PaymentMethod.TRANSFER,
-    isPaid: false,
-    totalNetValue: 1600,
-    totalVatValue: 368,
-    totalGrossValue: 1968,
+    transactionType: "income",
+    issueDate: "2024-01-20",
+    dueDate: "2024-02-03", 
+    sellDate: "2024-01-20",
+    date: "2024-01-20",
+    businessProfileId: "1",
+    customerId: "2",
+    items: mockInvoiceItems2,
+    paymentMethod: PaymentMethodDb.TRANSFER,
+    isPaid: true,
+    paid: true,
+    status: "paid",
+    totalNetValue: 300,
+    totalGrossValue: 369,
+    totalVatValue: 69,
+    totalAmount: 369,
     ksef: {
-      status: "pending",
+      status: 'sent',
+      referenceNumber: 'KSeF-2024-001-123456'
     },
-  },
+    seller: {
+      id: "1",
+      name: "ACME Sp. z o.o.",
+      taxId: "1234567890", 
+      address: "ul. Przykładowa 123",
+      city: "Warszawa",
+      postalCode: "00-001"
+    },
+    buyer: {
+      id: "2",
+      name: "Anna Nowak",
+      taxId: "",
+      address: "ul. Nowa 789", 
+      city: "Gdańsk",
+      postalCode: "03-001"
+    },
+    businessName: "ACME Sp. z o.o.",
+    customerName: "Anna Nowak"
+  }
 ];
-
-// Helper function to get a business profile by ID
-export const getBusinessProfileById = (id: string): BusinessProfile | undefined => {
-  return mockBusinessProfiles.find((profile) => profile.id === id);
-};
-
-// Helper function to get a customer by ID
-export const getCustomerById = (id: string): Customer | undefined => {
-  return mockCustomers.find((customer) => customer.id === id);
-};
-
-// Helper function to get a product by ID
-export const getProductById = (id: string): Product | undefined => {
-  return mockProducts.find((product) => product.id === id);
-};
-
-// Helper function to get an invoice by ID
-export const getInvoiceById = (id: string): Invoice | undefined => {
-  return mockInvoices.find((invoice) => invoice.id === id);
-};
-
-// Helper function to get monthly invoice summaries for analytics
-export const getMonthlyInvoiceSummaries = () => {
-  const summaries = mockInvoices.reduce((acc, invoice) => {
-    const month = invoice.issueDate.substring(0, 7); // Extract YYYY-MM
-    
-    if (!acc[month]) {
-      acc[month] = {
-        month,
-        count: 0,
-        totalNetValue: 0,
-        totalGrossValue: 0,
-        totalVatValue: 0,
-      };
-    }
-    
-    acc[month].count += 1;
-    acc[month].totalNetValue += invoice.totalNetValue || 0;
-    acc[month].totalGrossValue += invoice.totalGrossValue || 0;
-    acc[month].totalVatValue += invoice.totalVatValue || 0;
-    
-    return acc;
-  }, {} as Record<string, any>);
-  
-  return Object.values(summaries);
-};
