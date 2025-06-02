@@ -1,36 +1,52 @@
+
 import React, { useState } from "react";
-import { NavLink, useLocation, useNavigate, Link } from "react-router-dom";
-import { BarChart, FileText, Settings, Menu, Users, Package, CreditCard, Star, ChevronDown } from "lucide-react";
+import { NavLink, useLocation, useNavigate } from "react-router-dom";
+import { 
+  BarChart, 
+  FileText, 
+  Settings, 
+  Menu, 
+  Users, 
+  Package, 
+  CreditCard, 
+  Plus,
+  Calculator,
+  Building,
+  Crown
+} from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 import { ThemeToggle } from "@/components/theme/ThemeToggle";
 import { useAuth } from "@/App";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { useToast } from "@/components/ui/use-toast";
-import { useBusinessProfile } from "@/context/BusinessProfileContext";
+import { Button } from "@/components/ui/button";
 
 const MobileNavigation = () => {
-  const { profiles, selectedProfileId, selectProfile, isLoadingProfiles } = useBusinessProfile();
-  const { isPremium, openPremiumDialog, user, logout, setUser } = useAuth();
-  const { toast } = useToast();
-  const navigate = useNavigate();
-
-  // Main navigation items
+  // Main bottom navigation items - most used features
   const mainNavItems = [
-    { title: "Panel", path: "/", icon: BarChart },
-    { title: "Przychód", path: "/income", icon: CreditCard },
-    { title: "Wydatek", path: "/expense", icon: CreditCard },
+    { title: "Dashboard", path: "/", icon: BarChart },
+    { title: "Faktury", path: "/income", icon: FileText },
+    { title: "Wydatki", path: "/expense", icon: CreditCard },
   ];
   
-  // Side menu items
-  const sideMenuItems = [
-    { title: "Księgowanie", path: "/accounting", icon: FileText },
+  // Quick action items for the side menu
+  const quickActions = [
+    { title: "Nowa Faktura", path: "/income/new", icon: Plus, color: "text-blue-600" },
+    { title: "Nowy Wydatek", path: "/expense/new", icon: Plus, color: "text-green-600" },
+  ];
+
+  // Management items for the side menu
+  const managementItems = [
     { title: "Klienci", path: "/customers", icon: Users },
     { title: "Produkty", path: "/products", icon: Package },
     { title: "Ustawienia", path: "/settings", icon: Settings },
   ];
 
-  // Generate NavLink className based on active state
+  // Premium features for the side menu
+  const premiumFeatures = [
+    { title: "Księgowość", path: "/accounting", icon: Calculator, premium: true },
+    { title: "KSeF", path: "/ksef", icon: Building, premium: true },
+  ];
+
   const getNavClassName = ({ isActive }: { isActive: boolean }) => {
     return cn(
       "flex flex-col items-center justify-center px-4 py-2",
@@ -39,7 +55,6 @@ const MobileNavigation = () => {
   };
 
   const location = useLocation();
-  // Hide navigation on invoice new/edit pages
   const hideNav = location.pathname.startsWith('/invoices/new') || 
                   location.pathname.startsWith('/income/new') || 
                   location.pathname.startsWith('/expense/new') ||
@@ -47,9 +62,6 @@ const MobileNavigation = () => {
                   location.pathname.startsWith('/expense/edit/');
 
   if (hideNav) return null;
-
-  // Find the currently selected profile object
-  const selectedProfile = profiles?.find(p => p.id === selectedProfileId);
 
   return (
     <nav className="fixed bottom-0 left-0 right-0 z-40 flex h-16 items-center justify-around border-t bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/95 md:hidden">
@@ -70,90 +82,59 @@ const MobileNavigation = () => {
           <Menu className="h-5 w-5" />
           <span className="text-xs mt-1">Menu</span>
         </SheetTrigger>
-        <SheetContent side="right" className="w-[250px] pt-10">
-          <div className="flex flex-col h-full">
-            <div className="flex-1">
-              <PremiumIndicator />
-              {isLoadingProfiles ? (
-                  <div className="p-4 border-b">
-                      <div className="flex flex-col">
-                          <span className="text-sm font-medium mb-2">Aktywny profil:</span>
-                          <span className="text-xs text-muted-foreground">Ładowanie profili...</span>
-                      </div>
-                  </div>
-              ) : (
-                   <div className="p-4 border-b">
-                      <div className="flex flex-col">
-                          <span className="text-sm font-medium mb-2">Aktywny profil:</span>
-                          {profiles && profiles.length === 0 ? (
-                               <span className="text-xs text-muted-foreground">Dodaj swój pierwszy profil firmy w Ustawieniach.</span>
-                          ) : (
-                              <Select value={selectedProfileId || ''} onValueChange={(value) => {
-                                  if (value === "add-new-profile") {
-                                      if (isPremium) {
-                                          navigate("/settings/business-profiles/new");
-                                      } else {
-                                           toast({
-                                               title: "Wymagane Premium",
-                                               description: "Kup Premium, aby dodać więcej profili firmowych.",
-                                               variant: "destructive",
-                                           });
-                                           openPremiumDialog();
-                                      }
-                                  } else {
-                                      selectProfile(value);
-                                  }
-                              }}>
-                                 <SelectTrigger className="w-full text-xs">
-                                   <SelectValue placeholder="Wybierz profil">
-                                      {selectedProfile?.name?.split(' ').slice(0, 3).join(' ') || "Wybierz profil"}
-                                   </SelectValue>
-                                 </SelectTrigger>
-                                 <SelectContent>
-                                   {profiles?.map(profile => (
-                                     <SelectItem key={profile.id} value={profile.id}>
-                                        {profile.name}
-                                     </SelectItem>
-                                   ))}
-                                   <SelectItem value="add-new-profile" className="text-blue-600 font-medium">
-                                     Dodaj profil
-                                   </SelectItem>
-                                 </SelectContent>
-                               </Select>
-                           )}
-                      </div>
-                  </div>
-              )}
-              <div className="flex flex-col space-y-3 pt-4">
-                {!isLoadingProfiles && profiles && profiles.length > 0 && (
-                  <>
-                    {sideMenuItems.map((item) => (
-                      <NavLink
-                        key={item.path}
-                        to={item.path}
-                        className={({ isActive }) =>
-                          cn("flex items-center gap-3 px-4 py-2 rounded-md",
-                             isActive ? "bg-primary/10 text-primary" : "text-foreground hover:bg-accent")
-                        }
-                      >
-                        <item.icon className="h-5 w-5" />
-                        <span>{item.title}</span>
-                      </NavLink>
-                    ))}
-                  </>
-                )}
-                
-                <div className="mt-4 px-4 py-2">
-                  <div className="flex items-center justify-between">
-                    <span className="text-sm font-medium">Motyw</span>
-                    <ThemeToggle size="sm" />
-                  </div>
-                </div>
+        <SheetContent side="right" className="w-[280px] pt-6">
+          <div className="flex flex-col space-y-6 pt-4">
+            
+            {/* Quick Actions Section */}
+            <div>
+              <h3 className="text-sm font-semibold text-muted-foreground mb-3 px-2">SZYBKIE AKCJE</h3>
+              <div className="space-y-2">
+                {quickActions.map((action) => (
+                  <NavLink
+                    key={action.path}
+                    to={action.path}
+                    className="flex items-center gap-3 px-3 py-3 rounded-lg bg-muted hover:bg-muted/80 transition-colors"
+                  >
+                    <action.icon className={`h-5 w-5 ${action.color}`} />
+                    <span className="font-medium">{action.title}</span>
+                  </NavLink>
+                ))}
               </div>
             </div>
-            <div className="mt-auto">
-              <UserMenuFooter />
+
+            {/* Management Section */}
+            <div>
+              <h3 className="text-sm font-semibold text-muted-foreground mb-3 px-2">ZARZĄDZANIE</h3>
+              <div className="space-y-1">
+                {managementItems.map((item) => (
+                  <NavLink
+                    key={item.path}
+                    to={item.path}
+                    className={({ isActive }) => 
+                      cn("flex items-center gap-3 px-3 py-2 rounded-lg transition-colors", 
+                         isActive ? "bg-primary/10 text-primary font-medium" : "text-foreground hover:bg-muted")
+                    }
+                  >
+                    <item.icon className="h-5 w-5" />
+                    <span>{item.title}</span>
+                  </NavLink>
+                ))}
+              </div>
             </div>
+
+            {/* Premium Features Section */}
+            <PremiumSection features={premiumFeatures} />
+            
+            {/* Theme Toggle */}
+            <div className="border-t pt-4">
+              <div className="flex items-center justify-between px-3 py-2">
+                <span className="text-sm font-medium">Motyw</span>
+                <ThemeToggle size="sm" />
+              </div>
+            </div>
+
+            {/* User Section */}
+            <UserMenuFooter />
           </div>
         </SheetContent>
       </Sheet>
@@ -161,45 +142,85 @@ const MobileNavigation = () => {
   );
 };
 
-const UserMenuFooter = () => {
-  const { user, setUser, isPremium, openPremiumDialog, logout } = useAuth();
-  const navigate = useNavigate();
-  if (!user) return null;
+const PremiumSection = ({ features }: { features: any[] }) => {
+  const { isPremium, openPremiumDialog } = useAuth();
+
   return (
-    <div className="mt-8 border-t pt-4 flex flex-col items-start">
-      <span className="text-xs text-muted-foreground mb-2">Zalogowano jako:</span>
-      <span className={cn(
-        "text-sm font-medium mb-2 truncate max-w-[180px]",
-        isPremium 
-          ? "text-amber-400"
-          : "text-foreground"
-      )}>
-        {user.email}
-      </span>
-      <Link to="/settings/profile" className="text-xs text-blue-600 hover:underline mt-1">
-         Profil osobisty
-      </Link>
-      <button
-        className="text-xs text-red-500 hover:underline"
-        onClick={async () => {
-          await logout();
-          navigate("/auth/login");
-        }}
-      >
-        Wyloguj się
-      </button>
+    <div>
+      <div className="flex items-center justify-between mb-3 px-2">
+        <h3 className="text-sm font-semibold text-muted-foreground">PREMIUM</h3>
+        {isPremium && (
+          <div className="flex items-center gap-1">
+            <Crown className="h-3 w-3 text-amber-500" />
+            <span className="text-xs text-amber-600 font-medium">AKTYWNE</span>
+          </div>
+        )}
+      </div>
+      
+      <div className="space-y-1">
+        {features.map((feature) => (
+          <div key={feature.path}>
+            {isPremium ? (
+              <NavLink
+                to={feature.path}
+                className={({ isActive }) => 
+                  cn("flex items-center gap-3 px-3 py-2 rounded-lg transition-colors", 
+                     isActive ? "bg-amber-100 text-amber-900 font-medium" : "text-foreground hover:bg-muted")
+                }
+              >
+                <feature.icon className="h-5 w-5 text-amber-600" />
+                <span>{feature.title}</span>
+              </NavLink>
+            ) : (
+              <div 
+                className="flex items-center gap-3 px-3 py-2 rounded-lg bg-amber-50 border border-amber-200 cursor-pointer"
+                onClick={openPremiumDialog}
+              >
+                <feature.icon className="h-5 w-5 text-amber-600" />
+                <span className="text-amber-900 font-medium">{feature.title}</span>
+                <Crown className="h-4 w-4 text-amber-600 ml-auto" />
+              </div>
+            )}
+          </div>
+        ))}
+      </div>
+
+      {!isPremium && (
+        <Button 
+          onClick={openPremiumDialog}
+          className="w-full mt-3 bg-gradient-to-r from-amber-500 to-orange-600 hover:from-amber-600 hover:to-orange-700"
+          size="sm"
+        >
+          <Crown className="mr-2 h-4 w-4" />
+          Kup Premium
+        </Button>
+      )}
     </div>
   );
 };
 
-const PremiumIndicator = () => {
-  const { isPremium } = useAuth();
-  if (!isPremium) return null;
-
+const UserMenuFooter = () => {
+  const { user, setUser } = useAuth();
+  const navigate = useNavigate();
+  
+  if (!user) return null;
+  
   return (
-    <div className="flex items-center justify-center gap-2 mb-4 text-amber-400 font-semibold">
-      <Star className="h-5 w-5" fill="currentColor" />
-      <span>Premium</span>
+    <div className="border-t pt-4 px-3">
+      <div className="space-y-2">
+        <div className="text-xs text-muted-foreground">Zalogowano jako:</div>
+        <div className="text-sm font-medium truncate">{user.email}</div>
+        <button
+          className="text-xs text-red-500 hover:underline"
+          onClick={() => {
+            localStorage.removeItem("sb_session");
+            setUser(null);
+            navigate("/auth/login");
+          }}
+        >
+          Wyloguj się
+        </button>
+      </div>
     </div>
   );
 };

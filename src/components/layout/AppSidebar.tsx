@@ -1,389 +1,253 @@
-import React, { useCallback, useEffect, useRef } from "react";
-import { useNavigate, useLocation } from "react-router-dom";
-import { useAuth } from "@/App";
-import { useSidebar } from "@/components/ui/sidebar";
-import { Button } from "@/components/ui/button";
-import { cn } from "@/lib/utils";
-import {
-  LayoutDashboard,
-  Receipt,
-  Users,
-  Package,
-  Settings,
-  ChevronLeft,
-  ChevronRight,
-  LogOut,
-  ChevronDown,
-  Star,
-  FileText
+
+import React from "react";
+import { NavLink, useLocation } from "react-router-dom";
+import { 
+  BarChart, 
+  FileText, 
+  CreditCard, 
+  Users, 
+  Package, 
+  Settings, 
+  Plus,
+  Calculator,
+  Building,
+  Crown,
+  Shield,
+  Star
 } from "lucide-react";
+import { cn } from "@/lib/utils";
 import {
   Sidebar,
   SidebarContent,
+  SidebarFooter,
+  SidebarGroup,
+  SidebarGroupContent,
+  SidebarGroupLabel,
   SidebarHeader,
   SidebarMenu,
   SidebarMenuButton,
-  SidebarMenuItem
+  SidebarMenuItem,
+  SidebarTrigger,
+  useSidebar,
 } from "@/components/ui/sidebar";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
-import { useBusinessProfile } from "@/context/BusinessProfileContext";
-import { useToast } from "@/components/ui/use-toast";
-import { Link } from "react-router-dom";
+import { useAuth } from "@/App";
+import { Button } from "@/components/ui/button";
+import { ThemeToggle } from "@/components/theme/ThemeToggle";
 
 const AppSidebar = () => {
-  const navigate = useNavigate();
+  const { state } = useSidebar();
   const location = useLocation();
-  const { user, logout, isPremium, openPremiumDialog } = useAuth();
-  const { state, setState } = useSidebar();
-  const { profiles, selectedProfileId, selectProfile, isLoadingProfiles } = useBusinessProfile();
-  const { toast } = useToast();
+  const { isPremium, openPremiumDialog } = useAuth();
+  const isCollapsed = state === "collapsed";
 
-  const handleToggle = useCallback(() => {
-    setState(state === "expanded" ? "collapsed" : "expanded");
-  }, [state, setState]);
+  // Main navigation items
+  const mainNavItems = [
+    { title: "Dashboard", path: "/", icon: BarChart },
+    { title: "Faktury", path: "/income", icon: FileText },
+    { title: "Wydatki", path: "/expense", icon: CreditCard },
+  ];
 
-  const handleLogout = async () => {
-    await logout();
-    navigate("/auth/login");
+  // Quick actions
+  const quickActions = [
+    { title: "Nowa Faktura", path: "/income/new", icon: Plus, color: "text-blue-600" },
+    { title: "Nowy Wydatek", path: "/expense/new", icon: Plus, color: "text-green-600" },
+  ];
+
+  // Management items
+  const managementItems = [
+    { title: "Klienci", path: "/customers", icon: Users },
+    { title: "Produkty", path: "/products", icon: Package },
+    { title: "Ustawienia", path: "/settings", icon: Settings },
+  ];
+
+  // Premium features
+  const premiumFeatures = [
+    { title: "Księgowość", path: "/accounting", icon: Calculator },
+    { title: "KSeF", path: "/ksef", icon: Building },
+  ];
+
+  const isActive = (path: string) => {
+    if (path === "/") return location.pathname === "/";
+    return location.pathname.startsWith(path);
   };
 
-  // Find the currently selected profile object
-  const selectedProfile = profiles?.find(p => p.id === selectedProfileId);
+  const getNavClassName = (path: string) => {
+    return cn(
+      "flex items-center gap-3 px-3 py-2 rounded-lg transition-all duration-200",
+      isActive(path) 
+        ? "bg-primary text-primary-foreground font-medium shadow-sm" 
+        : "hover:bg-muted text-muted-foreground hover:text-foreground"
+    );
+  };
 
   return (
-    <Sidebar className={cn(
-      "h-screen border-r bg-muted/50 transition-all duration-300 relative",
-      state === "expanded" ? "w-64" : "w-16"
-    )}>
-      <div className="flex flex-col h-full">
-        <SidebarHeader className="flex items-center justify-between p-4">
-          <div className="flex items-center gap-2">
-            <div className="h-8 w-8 rounded-full bg-primary/10 flex items-center justify-center">
-              <span className="text-lg font-semibold">K</span>
+    <Sidebar className="border-r-2">
+      <SidebarHeader className="border-b">
+        <div className="flex items-center gap-2 px-2">
+          {!isCollapsed && (
+            <div className="flex-1">
+              <h2 className="text-lg font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
+                Polski System
+              </h2>
+              <p className="text-xs text-muted-foreground">Fakturowy</p>
             </div>
-            {state === "expanded" && (
-              <div className="flex items-center gap-2">
-                 <span className="text-lg font-semibold">KSEF AI</span>
-                 {isPremium && (
-                    <Star className="h-4 w-4 text-amber-400" fill="currentColor" />
-                 )}
-                 {isPremium && state === "expanded" && (
-                     <span className="text-xs font-semibold text-amber-400">PREMIUM</span>
-                 )}
-              </div>
-            )}
-          </div>
-          <Button
-            variant="ghost"
-            size="icon"
-            onClick={handleToggle}
-            className="h-8 w-8"
-          >
-            {state === "expanded" ? (
-              <ChevronLeft className="h-4 w-4" />
-            ) : (
-              <ChevronRight className="h-4 w-4" />
-            )}
-          </Button>
-        </SidebarHeader>
+          )}
+          <SidebarTrigger />
+        </div>
+      </SidebarHeader>
 
-        {/* Business Profile Selector - Displayed in expanded state */}
-        {state === "expanded" && (
-           <div className="p-4 border-b bg-muted/50">
-             <div className="flex flex-col">
-               <span className="text-sm font-medium mb-2">Aktywny profil:</span>
-               {isLoadingProfiles ? (
-                   <span className="text-xs text-muted-foreground">Ładowanie profili...</span>
-               ) : profiles && profiles.length > 0 ? (
-                 <>
-                   {!isPremium && profiles.length === 1 ? ( // Single non-premium profile
-                     <div className="flex items-center gap-1">
-                       <span className="text-xs text-muted-foreground">{profiles[0]?.name?.split(' ').slice(0, 3).join(' ')}</span>
-                       <ChevronDown className="h-3 w-3 text-muted-foreground" />
-                     </div>
-                   ) : (
-                      <Select value={selectedProfileId || ''} onValueChange={(value) => {
-                          if (value === "add-new-profile") {
-                              if (isPremium) {
-                                  navigate("/settings/business-profiles/new"); // Navigate to settings to add a new profile
-                              } else {
-                                   toast({
-                                       title: "Wymagane Premium",
-                                       description: "Kup Premium, aby dodać więcej profili firmowych.",
-                                       variant: "destructive",
-                                   });
-                                   openPremiumDialog();
-                               }
-                          } else {
-                              selectProfile(value);
-                          }
-                      }}>
-                         <SelectTrigger className="w-full text-xs">
-                           <SelectValue placeholder="Wybierz profil">
-                             {selectedProfile?.name?.split(' ').slice(0, 3).join(' ') || "Wybierz profil"} {/* Use selectedProfile for display */}
-                           </SelectValue>
-                         </SelectTrigger>
-                         <SelectContent position="popper">
-                           {profiles.map(profile => (
-                             <SelectItem key={profile.id} value={profile.id}>
-                               {profile.name} {/* Show full name in dropdown */}
-                             </SelectItem>
-                           ))}
-                           {/* Always show Add Profile option */}
-                           <SelectItem value="add-new-profile" className="text-blue-600 font-medium">
-                             Dodaj profil
-                           </SelectItem>
-                         </SelectContent>
-                       </Select>
-                   )}
-                 </>
-               ) : !isLoadingProfiles && profiles && profiles.length === 0 ? ( // No profiles
-                   <span className="text-xs text-muted-foreground">Dodaj swój pierwszy profil firmy w Ustawieniach.</span>
-               ) : null}
-             </div>
-           </div>
-        )}
-
-        <div className="flex-1 overflow-y-auto scrollbar-none pb-16">
-          <SidebarContent>
-            <SidebarMenu className={cn("space-y-0.5", state === "collapsed" && "pt-8")}>
-              {/* Render profile specific items only after profiles are loaded and exist */}
-              {!isLoadingProfiles && profiles && profiles.length > 0 && (
-                <>
-                  {/* Active Profile display in collapsed state */}
-                  {state === 'collapsed' && selectedProfile && ( // Use selectedProfile for display
-                      <SidebarMenuButton asChild tooltip={selectedProfile?.name || 'Aktywny profil'}>
-                          <Button
-                               variant="ghost"
-                               className={cn(
-                                   "flex w-full items-center rounded-md text-sm font-medium transition-colors text-muted-foreground hover:bg-accent hover:text-accent-foreground",
-                                   "justify-center"
-                               )}
-                               onClick={() => navigate("/settings/business-profiles")} // Navigate to profile settings on click
-                                style={{ display: 'flex', alignItems: 'center', width: '100%', padding: '0.35rem 0.5rem', justifyContent: 'center' }}
-                            >
-                             <span className="text-xs font-semibold">{selectedProfile?.name?.[0] || 'P'}</span>{/* Added ? for safe access */}
-                           </Button>
-                      </SidebarMenuButton>
-                  )}
-
-                <SidebarMenuButton asChild tooltip={state !== 'expanded' ? 'Dashboard' : undefined}>
-                  <Button
-                   variant="ghost"
-                   className={cn(
-                     "flex w-full items-center rounded-md text-sm font-medium transition-colors",
-                     location.pathname === "/" ? "bg-accent text-accent-foreground" : "text-muted-foreground hover:bg-accent hover:text-accent-foreground",
-                   )}
-                   onClick={() => navigate("/")}
-                   style={{ display: 'flex', alignItems: 'center', width: '100%', padding: '0.35rem 0.5rem', justifyContent: state === 'expanded' ? 'flex-start' : 'center' }}
-                 >
-                        <LayoutDashboard
-                        className={cn(
-                        "h-4 w-4 transition-colors",
-                        location.pathname === "/" ? "text-accent-foreground" : "text-white"
-                      )} />
-                      {state !== "collapsed" && <span className="ml-2 text-white">Dashboard</span>}
-                  </Button>
-                </SidebarMenuButton>
-
-                <SidebarMenuButton asChild  tooltip={state !== 'expanded' ? 'Księgowanie' : undefined}>
-                  <Button
-                    variant="ghost"
-                    className={cn(
-                      "flex w-full items-center rounded-md text-sm font-medium transition-colors",
-                      location.pathname === "/accounting"
-                        ? "bg-accent text-accent-foreground"
-                        : cn(
-                            state === "collapsed" ? "text-white" : "text-muted-foreground",
-                            "hover:bg-accent hover:text-accent-foreground"
-                          ),
-                    )}
-                    onClick={() => navigate("/accounting")}
-                    style={{ display: 'flex', alignItems: 'center', width: '100%', padding: '0.35rem 0.5rem', justifyContent: state === 'expanded' ? 'flex-start' : 'center' }}
+      <SidebarContent className="px-2">
+        {/* Main Navigation */}
+        <SidebarGroup>
+          {!isCollapsed && <SidebarGroupLabel>GŁÓWNE</SidebarGroupLabel>}
+          <SidebarGroupContent>
+            <SidebarMenu>
+              {mainNavItems.map((item) => (
+                <SidebarMenuItem key={item.path}>
+                  <SidebarMenuButton
+                    asChild
+                    isActive={isActive(item.path)}
+                    tooltip={isCollapsed ? item.title : undefined}
                   >
-                    <FileText
-                      className={cn(
-                        "h-4 w-4 transition-colors",
-                        location.pathname === "/accounting" ? "text-accent-foreground" : "text-white"
-                      )} />
-                    {state !== "collapsed" && <span className="ml-2 text-white">Księgowanie</span>}
-                  </Button>
-                </SidebarMenuButton>
-
-                <SidebarMenuButton asChild  tooltip={state !== 'expanded' ? 'Przychody' : undefined}>
-                <Button
-                    variant="ghost"
-                    className={cn(
-                      "flex w-full items-center rounded-md text-sm font-medium transition-colors",
-                      location.pathname === "/income"
-                        ? "bg-accent text-accent-foreground"
-                        : cn(
-                            state === "collapsed" ? "text-white" : "text-muted-foreground",
-                            "hover:bg-accent hover:text-accent-foreground"
-                          ),
-                    )}
-                    onClick={() => navigate("/income")}
-                    style={{ display: 'flex', alignItems: 'center', width: '100%', padding: '0.35rem 0.5rem', justifyContent: state === 'expanded' ? 'flex-start' : 'center' }}
-                  >
-                        <Receipt
-                        className={cn(
-                          "h-4 w-4 transition-colors",
-                          location.pathname === "/income" ? "text-accent-foreground" : "text-white"
-                        )} />
-                        {state !== "collapsed" && <span className="ml-2 text-white">Przychody</span>}
-                    </Button>
-                </SidebarMenuButton>
-
-                <SidebarMenuButton asChild  tooltip={state !== 'expanded' ? 'Wydatki' : undefined}>
-                <Button
-                    variant="ghost"
-                    className={cn(
-                      "flex w-full items-center rounded-md text-sm font-medium transition-colors",
-                      location.pathname === "/expense"
-                        ? "bg-accent text-accent-foreground"
-                        : cn(
-                            state === "collapsed" ? "text-white" : "text-muted-foreground",
-                            "hover:bg-accent hover:text-accent-foreground"
-                          ),
-                    )}
-                    onClick={() => navigate("/expense")}
-                    style={{ display: 'flex', alignItems: 'center', width: '100%', padding: '0.35rem 0.5rem', justifyContent: state === 'expanded' ? 'flex-start' : 'center' }}
-                  >
-                        <Receipt
-                        className={cn(
-                          "h-4 w-4 transition-colors",
-                          location.pathname === "/expense" ? "text-accent-foreground" : "text-white"
-                        )} />
-                        {state !== "collapsed" && <span className="ml-2 text-white">Wydatki</span>}
-                    </Button>
-                </SidebarMenuButton>
-
-                <SidebarMenuButton asChild  tooltip={state !== 'expanded' ? 'Kontrahenci' : undefined}>
-                <Button
-                    variant="ghost"
-                    className={cn(
-                      "flex w-full items-center rounded-md text-sm font-medium transition-colors",
-                      location.pathname === "/customers"
-                        ? "bg-accent text-accent-foreground"
-                        : cn(
-                            state === "collapsed" ? "text-white" : "text-muted-foreground",
-                            "hover:bg-accent hover:text-accent-foreground"
-                          ),
-                    )}
-                    onClick={() => navigate("/customers")}
-                    style={{ display: 'flex', alignItems: 'center', width: '100%', padding: '0.35rem 0.5rem', justifyContent: state === 'expanded' ? 'flex-start' : 'center' }}
-                  >
-                        <Users
-                        className={cn(
-                          "h-4 w-4 transition-colors",
-                          location.pathname === "/customers" ? "text-accent-foreground" : "text-white"
-                        )} />
-                        {state !== "collapsed" && <span className="ml-2 text-white">Kontrahenci</span>}
-                    </Button>
-                </SidebarMenuButton>
-
-                <SidebarMenuButton asChild  tooltip={state !== 'expanded' ? 'Produkty' : undefined}>
-                <Button
-                    variant="ghost"
-                    className={cn(
-                      "flex w-full items-center rounded-md text-sm font-medium transition-colors",
-                      location.pathname === "/products"
-                        ? "bg-accent text-accent-foreground"
-                        : cn(
-                            state === "collapsed" ? "text-white" : "text-muted-foreground",
-                            "hover:bg-accent hover:text-accent-foreground"
-                          ),
-                    )}
-                    onClick={() => navigate("/products")}
-                    style={{ display: 'flex', alignItems: 'center', width: '100%', padding: '0.35rem 0.5rem', justifyContent: state === 'expanded' ? 'flex-start' : 'center' }}
-                  >
-                         <Package
-                         className={cn(
-                          "h-4 w-4 transition-colors",
-                          location.pathname === "/products" ? "text-accent-foreground" : "text-white"
-                        )} />
-                        {state !== "collapsed" && <span className="ml-2 text-white">Produkty</span>}
-                    </Button>
-                </SidebarMenuButton>
-
-                <SidebarMenuButton asChild  tooltip={state !== 'expanded' ? 'Ustawienia' : undefined}>
-                <Button
-                    variant="ghost"
-                    className={cn(
-                      "flex w-full items-center rounded-md text-sm font-medium transition-colors",
-                      location.pathname === "/settings"
-                        ? "bg-accent text-accent-foreground"
-                        : cn(
-                            state === "collapsed" ? "text-white" : "text-muted-foreground",
-                            "hover:bg-accent hover:text-accent-foreground"
-                          ),
-                    )}
-                    onClick={() => navigate("/settings")}
-                    style={{ display: 'flex', alignItems: 'center', width: '100%', padding: '0.35rem 0.5rem', justifyContent: state === 'expanded' ? 'flex-start' : 'center' }}
-                  >
-                        <Settings
-                        className={cn(
-                          "h-4 w-4 transition-colors",
-                          location.pathname === "/settings" ? "text-accent-foreground" : "text-white"
-                        )} />
-                        {state !== "collapsed" && <span className="ml-2 text-white">Ustawienia</span>}
-                    </Button>
-                </SidebarMenuButton>
-                </>
-              )}
+                    <NavLink to={item.path} className={getNavClassName(item.path)}>
+                      <item.icon className="h-5 w-5 flex-shrink-0" />
+                      {!isCollapsed && <span>{item.title}</span>}
+                    </NavLink>
+                  </SidebarMenuButton>
+                </SidebarMenuItem>
+              ))}
             </SidebarMenu>
-          </SidebarContent>
-        </div>
+          </SidebarGroupContent>
+        </SidebarGroup>
 
-        {/* User info section - fixed at bottom */}
-        <div className="absolute bottom-0 left-0 right-0 border-t bg-muted/50 p-4">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-2">
-              <div className="h-8 w-8 rounded-full bg-primary/10 flex items-center justify-center">
-                <span className="text-sm font-medium">
-                  {user?.email?.[0]?.toUpperCase() || "U"}
-                </span>
-              </div>
-              {state === "expanded" && (
-                <div className="flex flex-col">
-                  <span className="text-sm font-medium">Zalogowano jako</span>
-                  <span className={cn(
-                     "text-xs truncate max-w-[150px]",
-                     isPremium
-                       ? "text-amber-400"
-                       : "text-muted-foreground"
-                  )}>
-                    {user?.email}
-                  </span>
-                  {/* Link to Personal Profile Settings */}
-                  <Link to="/settings/profile" className="text-xs text-blue-600 hover:underline mt-1">
-                    Profil osobisty
-                  </Link>
-                </div>
-              )}
-            </div>
-            {state === "expanded" && (
-              <Button
-                variant="ghost"
-                size="icon"
-                onClick={handleLogout}
-                className="h-8 w-8"
-              >
-                <LogOut className="h-4 w-4" />
-              </Button>
+        {/* Quick Actions */}
+        <SidebarGroup>
+          {!isCollapsed && <SidebarGroupLabel>SZYBKIE AKCJE</SidebarGroupLabel>}
+          <SidebarGroupContent>
+            <SidebarMenu>
+              {quickActions.map((action) => (
+                <SidebarMenuItem key={action.path}>
+                  <SidebarMenuButton
+                    asChild
+                    tooltip={isCollapsed ? action.title : undefined}
+                  >
+                    <NavLink to={action.path} className="flex items-center gap-3 px-3 py-2 rounded-lg bg-muted hover:bg-muted/80 transition-colors">
+                      <action.icon className={`h-5 w-5 flex-shrink-0 ${action.color}`} />
+                      {!isCollapsed && <span className="font-medium">{action.title}</span>}
+                    </NavLink>
+                  </SidebarMenuButton>
+                </SidebarMenuItem>
+              ))}
+            </SidebarMenu>
+          </SidebarGroupContent>
+        </SidebarGroup>
+
+        {/* Management */}
+        <SidebarGroup>
+          {!isCollapsed && <SidebarGroupLabel>ZARZĄDZANIE</SidebarGroupLabel>}
+          <SidebarGroupContent>
+            <SidebarMenu>
+              {managementItems.map((item) => (
+                <SidebarMenuItem key={item.path}>
+                  <SidebarMenuButton
+                    asChild
+                    isActive={isActive(item.path)}
+                    tooltip={isCollapsed ? item.title : undefined}
+                  >
+                    <NavLink to={item.path} className={getNavClassName(item.path)}>
+                      <item.icon className="h-5 w-5 flex-shrink-0" />
+                      {!isCollapsed && <span>{item.title}</span>}
+                    </NavLink>
+                  </SidebarMenuButton>
+                </SidebarMenuItem>
+              ))}
+            </SidebarMenu>
+          </SidebarGroupContent>
+        </SidebarGroup>
+
+        {/* Premium Features */}
+        <SidebarGroup>
+          <div className="flex items-center justify-between px-2 py-2">
+            {!isCollapsed && (
+              <SidebarGroupLabel className="flex items-center gap-2">
+                PREMIUM
+                {isPremium ? (
+                  <Shield className="h-3 w-3 text-amber-500" />
+                ) : (
+                  <Crown className="h-3 w-3 text-amber-500" />
+                )}
+              </SidebarGroupLabel>
             )}
           </div>
-        </div>
-      </div>
+          <SidebarGroupContent>
+            <SidebarMenu>
+              {premiumFeatures.map((feature) => (
+                <SidebarMenuItem key={feature.path}>
+                  {isPremium ? (
+                    <SidebarMenuButton
+                      asChild
+                      isActive={isActive(feature.path)}
+                      tooltip={isCollapsed ? feature.title : undefined}
+                    >
+                      <NavLink to={feature.path} className={cn(
+                        getNavClassName(feature.path),
+                        isActive(feature.path) ? "bg-amber-100 text-amber-900" : "hover:bg-amber-50"
+                      )}>
+                        <feature.icon className="h-5 w-5 flex-shrink-0 text-amber-600" />
+                        {!isCollapsed && <span>{feature.title}</span>}
+                      </NavLink>
+                    </SidebarMenuButton>
+                  ) : (
+                    <SidebarMenuButton
+                      onClick={openPremiumDialog}
+                      tooltip={isCollapsed ? `${feature.title} (Premium)` : undefined}
+                    >
+                      <div className="flex items-center gap-3 px-3 py-2 rounded-lg bg-amber-50 border border-amber-200 hover:bg-amber-100 transition-colors cursor-pointer w-full">
+                        <feature.icon className="h-5 w-5 flex-shrink-0 text-amber-600" />
+                        {!isCollapsed && (
+                          <>
+                            <span className="text-amber-900 font-medium flex-1 text-left">{feature.title}</span>
+                            <Crown className="h-4 w-4 text-amber-600" />
+                          </>
+                        )}
+                      </div>
+                    </SidebarMenuButton>
+                  )}
+                </SidebarMenuItem>
+              ))}
+            </SidebarMenu>
+          </SidebarGroupContent>
+          
+          {!isPremium && !isCollapsed && (
+            <div className="px-2 mt-2">
+              <Button 
+                onClick={openPremiumDialog}
+                className="w-full bg-gradient-to-r from-amber-500 to-orange-600 hover:from-amber-600 hover:to-orange-700 text-white"
+                size="sm"
+              >
+                <Crown className="mr-2 h-4 w-4" />
+                Kup Premium
+              </Button>
+            </div>
+          )}
+        </SidebarGroup>
+      </SidebarContent>
+
+      <SidebarFooter className="border-t p-4">
+        {!isCollapsed && (
+          <div className="flex items-center justify-between">
+            <span className="text-sm text-muted-foreground">Motyw</span>
+            <ThemeToggle size="sm" />
+          </div>
+        )}
+        {isCollapsed && (
+          <div className="flex justify-center">
+            <ThemeToggle size="sm" />
+          </div>
+        )}
+      </SidebarFooter>
     </Sidebar>
   );
 };
-
 
 export default AppSidebar;

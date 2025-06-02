@@ -19,11 +19,16 @@ export type Database = {
           id: string
           is_default: boolean | null
           logo: string | null
+          monthly_health_insurance: number | null
+          monthly_social_security: number | null
           name: string
           phone: string | null
           postal_code: string
           regon: string | null
           tax_id: string
+          tax_type:
+            | Database["public"]["Enums"]["business_profile_tax_type"]
+            | null
           updated_at: string
           user_id: string | null
         }
@@ -36,11 +41,16 @@ export type Database = {
           id?: string
           is_default?: boolean | null
           logo?: string | null
+          monthly_health_insurance?: number | null
+          monthly_social_security?: number | null
           name: string
           phone?: string | null
           postal_code: string
           regon?: string | null
           tax_id: string
+          tax_type?:
+            | Database["public"]["Enums"]["business_profile_tax_type"]
+            | null
           updated_at?: string
           user_id?: string | null
         }
@@ -53,11 +63,16 @@ export type Database = {
           id?: string
           is_default?: boolean | null
           logo?: string | null
+          monthly_health_insurance?: number | null
+          monthly_social_security?: number | null
           name?: string
           phone?: string | null
           postal_code?: string
           regon?: string | null
           tax_id?: string
+          tax_type?:
+            | Database["public"]["Enums"]["business_profile_tax_type"]
+            | null
           updated_at?: string
           user_id?: string | null
         }
@@ -105,6 +120,47 @@ export type Database = {
         }
         Relationships: []
       }
+      expenses: {
+        Row: {
+          amount: number
+          business_profile_id: string | null
+          created_at: string | null
+          currency: string | null
+          description: string | null
+          id: string
+          issue_date: string
+          user_id: string | null
+        }
+        Insert: {
+          amount: number
+          business_profile_id?: string | null
+          created_at?: string | null
+          currency?: string | null
+          description?: string | null
+          id?: string
+          issue_date: string
+          user_id?: string | null
+        }
+        Update: {
+          amount?: number
+          business_profile_id?: string | null
+          created_at?: string | null
+          currency?: string | null
+          description?: string | null
+          id?: string
+          issue_date?: string
+          user_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "expenses_business_profile_id_fkey"
+            columns: ["business_profile_id"]
+            isOneToOne: false
+            referencedRelation: "business_profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       invoice_items: {
         Row: {
           created_at: string
@@ -120,6 +176,7 @@ export type Database = {
           unit_price: number
           updated_at: string
           user_id: string | null
+          vat_exempt: boolean | null
           vat_rate: number
         }
         Insert: {
@@ -136,6 +193,7 @@ export type Database = {
           unit_price: number
           updated_at?: string
           user_id?: string | null
+          vat_exempt?: boolean | null
           vat_rate: number
         }
         Update: {
@@ -152,6 +210,7 @@ export type Database = {
           unit_price?: number
           updated_at?: string
           user_id?: string | null
+          vat_exempt?: boolean | null
           vat_rate?: number
         }
         Relationships: [
@@ -261,63 +320,6 @@ export type Database = {
           },
         ]
       }
-      expenses: {
-        Row: {
-          id: string;
-          user_id: string;
-          business_profile_id: string;
-          customer_id: string | null;
-          amount: number;
-          date: string;
-          description: string | null;
-          category: string | null;
-          payment_method: string | null;
-          created_at: string;
-          updated_at: string;
-        };
-        Insert: {
-          id?: string;
-          user_id: string;
-          business_profile_id: string;
-          customer_id?: string | null;
-          amount: number;
-          date: string;
-          description?: string | null;
-          category?: string | null;
-          payment_method?: string | null;
-          created_at?: string;
-          updated_at?: string;
-        };
-        Update: {
-          id?: string;
-          user_id?: string;
-          business_profile_id?: string;
-          customer_id?: string | null;
-          amount?: number;
-          date?: string;
-          description?: string | null;
-          category?: string | null;
-          payment_method?: string | null;
-          created_at?: string;
-          updated_at?: string;
-        };
-        Relationships: [
-           {
-            foreignKeyName: "expenses_business_profile_id_fkey"
-            columns: ["business_profile_id"]
-            isOneToOne: false
-            referencedRelation: "business_profiles"
-            referencedColumns: ["id"]
-          },
-           {
-            foreignKeyName: "expenses_customer_id_fkey"
-            columns: ["customer_id"]
-            isOneToOne: false
-            referencedRelation: "customers"
-            referencedColumns: ["id"]
-          },
-        ];
-      }
       premium_subscriptions: {
         Row: {
           created_at: string | null
@@ -325,9 +327,9 @@ export type Database = {
           id: string
           is_active: boolean
           starts_at: string
-          transaction_id: string | null
-          user_id: string | null
           stripe_subscription_id: string | null
+          transaction_id: string | null
+          user_id: string
         }
         Insert: {
           created_at?: string | null
@@ -335,9 +337,9 @@ export type Database = {
           id?: string
           is_active?: boolean
           starts_at?: string
-          transaction_id?: string | null
-          user_id?: string | null
           stripe_subscription_id?: string | null
+          transaction_id?: string | null
+          user_id: string
         }
         Update: {
           created_at?: string | null
@@ -345,43 +347,11 @@ export type Database = {
           id?: string
           is_active?: boolean
           starts_at?: string
-          transaction_id?: string | null
-          user_id?: string | null
           stripe_subscription_id?: string | null
+          transaction_id?: string | null
+          user_id?: string
         }
         Relationships: []
-      }
-      profiles: {
-        Row: {
-          user_id: string
-          full_name: string | null
-          phone_number: string | null
-          avatar_url: string | null
-          created_at: string | null
-        }
-        Insert: {
-          user_id: string
-          full_name?: string | null
-          phone_number?: string | null
-          avatar_url?: string | null
-          created_at?: string | null
-        }
-        Update: {
-          user_id?: string
-          full_name?: string | null
-          phone_number?: string | null
-          avatar_url?: string | null
-          created_at?: string | null
-        }
-        Relationships: [
-          {
-            foreignKeyName: "profiles_user_id_fkey"
-            columns: ["user_id"]
-            isOneToOne: true
-            referencedRelation: "users"
-            referencedColumns: ["id"]
-          }
-        ]
       }
       products: {
         Row: {
@@ -392,6 +362,7 @@ export type Database = {
           unit_price: number
           updated_at: string
           user_id: string
+          vat_exempt: boolean | null
           vat_rate: number
         }
         Insert: {
@@ -402,6 +373,7 @@ export type Database = {
           unit_price: number
           updated_at?: string
           user_id: string
+          vat_exempt?: boolean | null
           vat_rate: number
         }
         Update: {
@@ -412,7 +384,32 @@ export type Database = {
           unit_price?: number
           updated_at?: string
           user_id?: string
+          vat_exempt?: boolean | null
           vat_rate?: number
+        }
+        Relationships: []
+      }
+      profiles: {
+        Row: {
+          avatar_url: string | null
+          created_at: string | null
+          full_name: string | null
+          phone_number: string | null
+          user_id: string
+        }
+        Insert: {
+          avatar_url?: string | null
+          created_at?: string | null
+          full_name?: string | null
+          phone_number?: string | null
+          user_id: string
+        }
+        Update: {
+          avatar_url?: string | null
+          created_at?: string | null
+          full_name?: string | null
+          phone_number?: string | null
+          user_id?: string
         }
         Relationships: []
       }
@@ -424,7 +421,7 @@ export type Database = {
       [_ in never]: never
     }
     Enums: {
-      [_ in never]: never
+      business_profile_tax_type: "skala" | "liniowy" | "ryczalt"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -539,6 +536,8 @@ export type CompositeTypes<
 
 export const Constants = {
   public: {
-    Enums: {},
+    Enums: {
+      business_profile_tax_type: ["skala", "liniowy", "ryczalt"],
+    },
   },
 } as const

@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { formatCurrency } from "@/lib/invoice-utils";
@@ -9,70 +10,43 @@ import { Button } from "@/components/ui/button";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { useGlobalData } from "@/hooks/use-global-data";
 import { useAuth } from "@/App";
-import type { BusinessProfile } from "@/types";
-import { getBusinessProfiles } from "@/integrations/supabase/repositories/businessProfileRepository";
 import { calculateIncomeTax } from "@/lib/tax-utils";
 import { useBusinessProfile } from "@/context/BusinessProfileContext";
+import { 
+  FileText, 
+  Plus, 
+  Users, 
+  Package, 
+  Settings, 
+  CreditCard, 
+  BarChart3, 
+  TrendingUp, 
+  Calculator,
+  Crown,
+  Shield,
+  Receipt,
+  Building,
+  Star,
+  ArrowRight
+} from "lucide-react";
 
 const Dashboard = () => {
   const [monthlySummaries, setMonthlySummaries] = useState<any[]>([]);
-  const [selectedProfileIncomeTax, setSelectedProfileIncomeTax] = useState<number | string | null>(null);
-  const [selectedProfileTotalExpenses, setSelectedProfileTotalExpenses] = useState<number>(0);
-  
   const { selectedProfileId, profiles, isLoadingProfiles } = useBusinessProfile();
   const isMobile = useIsMobile();
   
-  // Get data from our global data cache
   const { invoices: { data: invoices, isLoading: isLoadingInvoices }, expenses: { data: expenses, isLoading: isLoadingExpenses } } = useGlobalData();
-  const { isPremium } = useAuth();
+  const { isPremium, openPremiumDialog } = useAuth();
   
-  const isLoading = isLoadingInvoices || isLoadingExpenses || isLoadingProfiles; // Combined loading state
+  const isLoading = isLoadingInvoices || isLoadingExpenses || isLoadingProfiles;
   
   useEffect(() => {
     if (invoices?.length > 0) {
       generateMonthlySummaries(invoices);
     }
-    
-    // Fetch and set the default business profile
-    const processProfilesAndInvoices = async () => {
-      try {
-        if (selectedProfileId && invoices && expenses && profiles) {
-          // Filter invoices and expenses by selected profile
-          const filteredInvoices = invoices.filter(inv => inv.businessProfileId === selectedProfileId);
-          const filteredExpenses = expenses.filter(exp => exp.businessProfileId === selectedProfileId);
-
-          // Calculate total net income for the selected profile
-          const totalNetIncomeSelected = filteredInvoices.reduce((sum, inv) => sum + (inv.totalNetValue || 0), 0);
-
-          // Find the selected profile object to get its tax type
-          const currentProfile = profiles.find(p => p.id === selectedProfileId);
-
-          console.log('Dashboard: Selected Profile ID:', selectedProfileId);
-          console.log('Dashboard: Found Profile Object:', currentProfile);
-          console.log('Dashboard: Selected Profile Tax Type:', currentProfile?.tax_type);
-
-          // Calculate estimated income tax for the selected profile
-          const estimatedTax = calculateIncomeTax(totalNetIncomeSelected, currentProfile?.tax_type);
-          setSelectedProfileIncomeTax(estimatedTax);
-
-          // Calculate total expenses for the selected profile
-          const totalExpensesSelected = filteredExpenses.reduce((sum, exp) => sum + (exp.totalAmount || 0), 0);
-          setSelectedProfileTotalExpenses(totalExpensesSelected);
-        }
-
-      } catch (error) {
-        console.error("Error processing profiles and invoices:", error);
-        setSelectedProfileIncomeTax(null);
-        setSelectedProfileTotalExpenses(0);
-      }
-    };
-
-    processProfilesAndInvoices();
-
-  }, [invoices, expenses, selectedProfileId, profiles]);
+  }, [invoices]);
   
   const generateMonthlySummaries = (invoicesData: Invoice[]) => {
-    // Group invoices by month
     const monthlyData: Record<string, { totalNetValue: number, totalGrossValue: number, totalVatValue: number }> = {};
     
     invoicesData.forEach(invoice => {
@@ -92,28 +66,21 @@ const Dashboard = () => {
       monthlyData[monthKey].totalVatValue += invoice.totalVatValue || 0;
     });
     
-    // Convert to array for chart
     const formattedSummaries = Object.entries(monthlyData).map(([month, values]) => ({
       month,
       monthLabel: new Date(`${month}-01`).toLocaleString("pl-PL", { month: "short" }),
       ...values
     }));
     
-    // Sort by month
     formattedSummaries.sort((a, b) => a.month.localeCompare(b.month));
-    
     setMonthlySummaries(formattedSummaries);
   };
 
   const totalInvoices = invoices.length;
   const unpaidInvoices = invoices.filter(inv => !inv.isPaid).length;
   
-  // Recalculate totalGross and totalTax by summing up item values,
-  // explicitly handling VAT-exempt items (vatRate === -1)
   const totalGross = invoices.reduce((invoiceSum, invoice) => {
     const invoiceGross = (invoice.items || []).reduce((itemSum, item) => {
-      // For VAT-exempt items, the contribution to gross is just the net value
-      // For other items, use the calculated item's gross value
       const itemGross = item.vatRate === -1 ? (item.totalNetValue || 0) : (item.totalGrossValue || 0);
       return itemSum + Math.max(0, itemGross);
     }, 0);
@@ -122,118 +89,197 @@ const Dashboard = () => {
 
   const totalTax = invoices.reduce((invoiceSum, invoice) => {
     const invoiceVat = (invoice.items || []).reduce((itemSum, item) => {
-      // Only sum VAT for items that are NOT VAT-exempt (vatRate !== -1)
       const itemVat = item.vatRate !== -1 ? (item.totalVatValue || 0) : 0;
       return itemSum + Math.max(0, itemVat);
     }, 0);
     return invoiceSum + invoiceVat;
   }, 0);
 
-  const selectedProfile = profiles?.find(p => p.id === selectedProfileId);
+  const totalExpenses = expenses.reduce((sum, expense) => sum + (expense.amount || 0), 0);
+
+  // Quick action buttons for invoicing
+  const quickActions = [
+    {
+      title: "Nowa Faktura",
+      description: "Wystaw nową fakturę",
+      icon: Plus,
+      path: "/income/new",
+      color: "bg-blue-500 hover:bg-blue-600",
+    },
+    {
+      title: "Nowy Wydatek",
+      description: "Dodaj nowy wydatek",
+      icon: Receipt,
+      path: "/expense/new",
+      color: "bg-green-500 hover:bg-green-600",
+    },
+  ];
+
+  // Management links
+  const managementLinks = [
+    {
+      title: "Klienci",
+      description: "Zarządzaj klientami",
+      icon: Users,
+      path: "/customers",
+    },
+    {
+      title: "Produkty",
+      description: "Katalog produktów",
+      icon: Package,
+      path: "/products",
+    },
+    {
+      title: "Ustawienia",
+      description: "Konfiguracja systemu",
+      icon: Settings,
+      path: "/settings",
+    },
+  ];
+
+  // Premium features
+  const premiumFeatures = [
+    {
+      title: "Księgowość",
+      description: "Profesjonalne księgowanie",
+      icon: Calculator,
+      path: "/accounting",
+      premium: true,
+    },
+    {
+      title: "KSeF",
+      description: "Integracja z KSeF",
+      icon: Building,
+      path: "/ksef",
+      premium: true,
+    },
+  ];
 
   return (
-    <div className="space-y-6 max-w-full pb-20">
+    <div className="space-y-8 max-w-full pb-20">
+      {/* Header */}
       <div className="flex items-center justify-between">
-        <h1 className="text-3xl font-bold">Dashboard</h1>
+        <div>
+          <h1 className="text-3xl font-bold">Dashboard</h1>
+          <p className="text-muted-foreground mt-1">Przegląd Twojej działalności</p>
+        </div>
+        {!isPremium && (
+          <Button 
+            onClick={openPremiumDialog}
+            className="bg-gradient-to-r from-amber-500 to-orange-600 hover:from-amber-600 hover:to-orange-700 text-white"
+          >
+            <Crown className="mr-2 h-4 w-4" />
+            Kup Premium
+          </Button>
+        )}
       </div>
-      
-      {isMobile ? (
-        // Mobile view - combined card for the first two metrics with vertical layout
-        <div className="grid grid-cols-1 gap-3">
-          <Card>
-            <CardContent className="pt-6">
-              <div className="space-y-3">
-                <div className="flex justify-between items-center">
-                  <span className="text-sm font-medium text-muted-foreground">Wszystkie faktury</span>
-                  <span className="text-2xl font-bold">{totalInvoices}</span>
+
+      {/* Premium Banner */}
+      {!isPremium && (
+        <Card className="border-amber-200 bg-gradient-to-r from-amber-50 to-orange-50">
+          <CardContent className="p-6">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center space-x-4">
+                <div className="h-12 w-12 rounded-lg bg-gradient-to-br from-amber-400 to-orange-500 flex items-center justify-center">
+                  <Crown className="h-6 w-6 text-white" />
                 </div>
-                
-                <div className="flex justify-between items-center">
-                  <span className="text-sm font-medium text-muted-foreground">Niezapłacone faktury</span>
-                  <span className="text-2xl font-bold text-amber-500">{unpaidInvoices}</span>
+                <div>
+                  <h3 className="text-lg font-semibold text-amber-900">Odblokuj Pełną Funkcjonalność</h3>
+                  <p className="text-amber-700">Księgowość • JPK-V7M • KSeF • Zarządzanie ZUS</p>
                 </div>
               </div>
-            </CardContent>
-          </Card>
-          
-          <Card>
-            <CardHeader className="pb-2">
-              <CardTitle className="text-sm font-medium text-muted-foreground">
-                Suma brutto
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold truncate">{formatCurrency(totalGross)}</div>
-            </CardContent>
-          </Card>
-          
-          <Card>
-            <CardHeader className="pb-2">
-              <CardTitle className="text-sm font-medium text-muted-foreground">
-                Suma VAT
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold truncate">{formatCurrency(totalTax)}</div>
-            </CardContent>
-          </Card>
- 
-        </div>
-      ) : (
-        // Desktop/Tablet view - original 2x2 grid
-        <div className="grid grid-cols-2 gap-3">
-          <Card>
-            <CardHeader className="pb-2">
-              <CardTitle className="text-sm font-medium text-muted-foreground">
-                Wszystkie faktury
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">{totalInvoices}</div>
-            </CardContent>
-          </Card>
-          
-          <Card>
-            <CardHeader className="pb-2">
-              <CardTitle className="text-sm font-medium text-muted-foreground">
-                Niezapłacone faktury
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold text-amber-500">{unpaidInvoices}</div>
-            </CardContent>
-          </Card>
-          
-          <Card>
-            <CardHeader className="pb-2">
-              <CardTitle className="text-sm font-medium text-muted-foreground">
-                Suma brutto
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold truncate">{formatCurrency(totalGross)}</div>
-            </CardContent>
-          </Card>
-          
-          <Card>
-            <CardHeader className="pb-2">
-              <CardTitle className="text-sm font-medium text-muted-foreground">
-                Suma VAT
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold truncate">{formatCurrency(totalTax)}</div>
-            </CardContent>
-          </Card>
-          
-        </div>
+              <Button 
+                onClick={openPremiumDialog}
+                className="bg-gradient-to-r from-amber-500 to-orange-600 hover:from-amber-600 hover:to-orange-700"
+              >
+                Rozpocznij <ArrowRight className="ml-2 h-4 w-4" />
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
       )}
-      
-      <Card className="col-span-full">
+
+      {/* Quick Actions */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        {quickActions.map((action) => (
+          <Link key={action.path} to={action.path}>
+            <Card className="hover:shadow-lg transition-all duration-200 hover:scale-105 cursor-pointer">
+              <CardContent className="p-6">
+                <div className="flex items-center space-x-4">
+                  <div className={`h-12 w-12 rounded-lg ${action.color} flex items-center justify-center`}>
+                    <action.icon className="h-6 w-6 text-white" />
+                  </div>
+                  <div>
+                    <h3 className="font-semibold text-lg">{action.title}</h3>
+                    <p className="text-muted-foreground">{action.description}</p>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          </Link>
+        ))}
+      </div>
+
+      {/* Stats Overview */}
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+        <Card>
+          <CardContent className="p-6">
+            <div className="flex items-center space-x-2">
+              <FileText className="h-5 w-5 text-blue-500" />
+              <div>
+                <p className="text-sm font-medium text-muted-foreground">Faktury</p>
+                <p className="text-2xl font-bold">{totalInvoices}</p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardContent className="p-6">
+            <div className="flex items-center space-x-2">
+              <TrendingUp className="h-5 w-5 text-amber-500" />
+              <div>
+                <p className="text-sm font-medium text-muted-foreground">Niezapłacone</p>
+                <p className="text-2xl font-bold text-amber-600">{unpaidInvoices}</p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardContent className="p-6">
+            <div className="flex items-center space-x-2">
+              <CreditCard className="h-5 w-5 text-green-500" />
+              <div>
+                <p className="text-sm font-medium text-muted-foreground">Przychody</p>
+                <p className="text-xl font-bold text-green-600">{formatCurrency(totalGross)}</p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardContent className="p-6">
+            <div className="flex items-center space-x-2">
+              <Receipt className="h-5 w-5 text-red-500" />
+              <div>
+                <p className="text-sm font-medium text-muted-foreground">Wydatki</p>
+                <p className="text-xl font-bold text-red-600">{formatCurrency(totalExpenses)}</p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* Chart */}
+      <Card>
         <CardHeader>
-          <CardTitle>Miesięczna sprzedaż</CardTitle>
+          <CardTitle className="flex items-center space-x-2">
+            <BarChart3 className="h-5 w-5" />
+            <span>Miesięczna Sprzedaż</span>
+          </CardTitle>
         </CardHeader>
-        <CardContent className="pt-2">
+        <CardContent>
           <div className={isMobile ? "h-48" : "h-64 md:h-80"}>
             <ResponsiveContainer width="99%" height="100%">
               <BarChart 
@@ -255,7 +301,6 @@ const Dashboard = () => {
                   labelFormatter={(label) => `Miesiąc: ${label}`}
                   contentStyle={{ fontSize: isMobile ? '10px' : '12px' }}
                 />
-                {/* Reduce number of bars on mobile */}
                 {isMobile ? (
                   <Bar dataKey="totalGrossValue" name="Brutto" fill="#1d4ed8" />
                 ) : (
@@ -270,166 +315,117 @@ const Dashboard = () => {
           </div>
         </CardContent>
       </Card>
-      
+
+      {/* Navigation Sections */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+        {/* Management Tools */}
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center space-x-2">
+              <Settings className="h-5 w-5" />
+              <span>Zarządzanie</span>
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-3">
+            {managementLinks.map((link) => (
+              <Link key={link.path} to={link.path}>
+                <div className="flex items-center space-x-3 p-3 rounded-lg hover:bg-muted transition-colors cursor-pointer">
+                  <link.icon className="h-5 w-5 text-blue-500" />
+                  <div>
+                    <p className="font-medium">{link.title}</p>
+                    <p className="text-sm text-muted-foreground">{link.description}</p>
+                  </div>
+                </div>
+              </Link>
+            ))}
+          </CardContent>
+        </Card>
+
+        {/* Premium Features */}
+        <Card className={!isPremium ? "border-amber-200" : ""}>
+          <CardHeader>
+            <CardTitle className="flex items-center space-x-2">
+              {isPremium ? <Shield className="h-5 w-5 text-amber-500" /> : <Crown className="h-5 w-5 text-amber-500" />}
+              <span>Funkcje {isPremium ? 'Premium' : 'Premium'}</span>
+              {!isPremium && <Star className="h-4 w-4 text-amber-500" />}
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-3">
+            {premiumFeatures.map((feature) => (
+              <div key={feature.path} className="relative">
+                {isPremium ? (
+                  <Link to={feature.path}>
+                    <div className="flex items-center space-x-3 p-3 rounded-lg hover:bg-muted transition-colors cursor-pointer">
+                      <feature.icon className="h-5 w-5 text-amber-500" />
+                      <div>
+                        <p className="font-medium">{feature.title}</p>
+                        <p className="text-sm text-muted-foreground">{feature.description}</p>
+                      </div>
+                    </div>
+                  </Link>
+                ) : (
+                  <div 
+                    className="flex items-center space-x-3 p-3 rounded-lg bg-amber-50 border border-amber-200 cursor-pointer"
+                    onClick={openPremiumDialog}
+                  >
+                    <feature.icon className="h-5 w-5 text-amber-600" />
+                    <div className="flex-1">
+                      <p className="font-medium text-amber-900">{feature.title}</p>
+                      <p className="text-sm text-amber-700">{feature.description}</p>
+                    </div>
+                    <Crown className="h-4 w-4 text-amber-600" />
+                  </div>
+                )}
+              </div>
+            ))}
+            {!isPremium && (
+              <Button 
+                onClick={openPremiumDialog}
+                className="w-full bg-gradient-to-r from-amber-500 to-orange-600 hover:from-amber-600 hover:to-orange-700"
+              >
+                <Crown className="mr-2 h-4 w-4" />
+                Kup Premium - Pełen Dostęp
+              </Button>
+            )}
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* Recent Invoices */}
       <Card>
         <CardHeader>
-          <CardTitle>Nawigacja</CardTitle>
+          <div className="flex justify-between items-center">
+            <CardTitle className="flex items-center space-x-2">
+              <FileText className="h-5 w-5" />
+              <span>Ostatnie Faktury</span>
+            </CardTitle>
+            <Button variant="outline" asChild size="sm">
+              <Link to="/income">Zobacz wszystkie</Link>
+            </Button>
+          </div>
         </CardHeader>
         <CardContent>
-          <div className="flex flex-wrap gap-3">
-            <Link to="/products">
-              <Button variant="outline">Produkty</Button>
-            </Link>
-            <Link to="/settings">
-              <Button variant="outline">Ustawienia</Button>
-            </Link>
-            <Link to="/customers">
-              <Button variant="outline">Klienci</Button>
-            </Link>
-          </div>
-        </CardContent>
-      </Card>
-
-      <div className="space-y-4">
-        <div className="flex justify-between items-center">
-          <h2 className="text-xl font-bold">Ostatnie faktury</h2>
-          <Button variant="outline" asChild size="sm">
-            <Link to="/income">Zobacz wszystkie</Link>
-          </Button>
-        </div>
-        
-        {isLoadingInvoices ? (
-          <div className="text-center py-8">
-            <p>Ładowanie...</p>
-          </div>
-        ) : invoices.length === 0 ? (
-          <div className="text-center py-8">
-            <p>Brak faktur</p>
-          </div>
-        ) : (
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            {invoices.slice(0, 4).map((invoice) => (
-              <InvoiceCard key={invoice.id} invoice={invoice} />
-            ))}
-          </div>
-        )}
-      </div>
-      
-      {/* Conditionally render KSeF Status card for premium users */}
-      {/* Conditionally show KSeF Status card for premium users, or a blurred version with message for non-premium */}
-      <Card>
-        <CardHeader>
-          <CardTitle>KSeF Status</CardTitle>
-        </CardHeader>
-        <CardContent className="p-0 relative">
-          {!isPremium && (
-             <div className="absolute inset-0 bg-background/80 backdrop-blur-sm z-10 flex items-center justify-center rounded-md">
-               <p className="text-lg font-semibold text-foreground">Kup Premium na dostęp</p>
-             </div>
-          )}
-          <div className={isPremium ? "" : "pointer-events-none opacity-50"}> {/* Apply styles if not premium */}
-            <div className="overflow-x-auto">
-              <table className="w-full invoice-table">
-                <thead>
-                  <tr>
-                    <th className="w-1/3">{isMobile ? "Nr" : "Nr faktury"}</th>
-                    <th className="w-1/4">{isMobile ? "Data" : "Data wystawienia"}</th>
-                    <th className="w-1/3">Status</th>
-                    {!isMobile && <th>Nr referencyjny</th>}
-                  </tr>
-                </thead>
-                <tbody>
-                  {isLoadingInvoices ? (
-                    <tr>
-                      <td colSpan={isMobile ? 3 : 4} className="text-center py-4">Ładowanie...</td>
-                    </tr>
-                  ) : invoices?.filter(inv => inv.businessProfileId === selectedProfileId).length === 0 ? (
-                    <tr>
-                      <td colSpan={isMobile ? 3 : 4} className="text-center py-4">Brak faktur</td>
-                    </tr>
-                  ) : (
-                    invoices?.filter(inv => inv.businessProfileId === selectedProfileId).slice(0, 5).map((invoice) => (
-                      <tr key={invoice.id}>
-                        <td className="truncate max-w-[80px]">{invoice.number}</td>
-                        <td>{new Date(invoice.issueDate).toLocaleDateString("pl-PL")}</td>
-                        <td>
-                          <span className={`px-1 py-0.5 rounded-full text-xs ${
-                            invoice.ksef?.status === "sent" 
-                              ? "bg-green-100 text-green-800" 
-                              : invoice.ksef?.status === "pending" 
-                                ? "bg-amber-100 text-amber-800" 
-                                : "bg-gray-100 text-gray-800"
-                          }`}>
-                            {invoice.ksef?.status === "sent" 
-                              ? "Wysłano" 
-                              : invoice.ksef?.status === "pending" 
-                                ? "Oczekuje" 
-                                : "Brak"}
-                          </span>
-                        </td>
-                        {!isMobile && <td className="truncate">{invoice.ksef?.referenceNumber || "—"}</td>}
-                      </tr>
-                    ))
-                  )}
-                </tbody>
-              </table>
+          {isLoadingInvoices ? (
+            <div className="text-center py-8">
+              <p>Ładowanie...</p>
             </div>
-          </div>
+          ) : invoices.length === 0 ? (
+            <div className="text-center py-8">
+              <FileText className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
+              <p className="text-muted-foreground">Brak faktur</p>
+              <Button asChild className="mt-4">
+                <Link to="/income/new">Wystaw pierwszą fakturę</Link>
+              </Button>
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              {invoices.slice(0, 4).map((invoice) => (
+                <InvoiceCard key={invoice.id} invoice={invoice} />
+              ))}
+            </div>
+          )}
         </CardContent>
       </Card>
-
-      {/* Section to display tax for all profiles if more than one */}
-      {profiles?.length > 1 && !isLoadingInvoices && !isLoadingExpenses && !isLoadingProfiles ? (
-        <Card className="col-span-full">
-           <CardHeader>
-             <CardTitle>Szacowany Podatek Dochodowy wg Profili</CardTitle>
-           </CardHeader>
-           <CardContent className="pt-2">
-               <div className="space-y-4">
-               {profiles.map(profile => {
-                   // Calculate income and tax for THIS profile again for the list view
-                   const profileInvoices = invoices?.filter(inv => inv.businessProfileId === profile.id) || [];
-                   const totalNetIncome = profileInvoices.reduce((sum, inv) => sum + (inv.totalNetValue || 0), 0);
-                   const estimatedIncomeTax = calculateIncomeTax(totalNetIncome, profile.tax_type);
-
-                   return (
-                       <div key={profile.id} className="border rounded-md p-3">
-                           <div className="font-medium">{profile.name} ({profile.tax_type === 'skala' ? 'Skala' : profile.tax_type === 'liniowy' ? 'Liniowy' : profile.tax_type === 'ryczalt' ? 'Ryczałt' : 'Nieokreślona'})</div>
-                           <div className="text-sm text-muted-foreground">Przychód netto z faktur: {formatCurrency(totalNetIncome)}</div>
-                           <div className="text-lg font-bold mt-1">
-                               Szacowany podatek: {typeof estimatedIncomeTax === 'number' ? formatCurrency(estimatedIncomeTax) : estimatedIncomeTax}
-                           </div>
-                            {profile.tax_type === 'skala' && (
-                                <div className="text-xs text-amber-600 mt-1">
-                                    (Wymaga pełnego obliczenia z uwzględnieniem kosztów, progów podatkowych itp.)
-                                </div>
-                            )}
-                             {profile.tax_type === 'ryczalt' && (
-                                <div className="text-xs text-amber-600 mt-1">
-                                    (Stawka ryczałtu zależy od rodzaju działalności - użyto przykładowej stawki 17% dla przychodu netto)
-                                </div>
-                            )}
-                              {profile.tax_type === 'liniowy' && (
-                                <div className="text-xs text-amber-600 mt-1">
-                                    (Obliczone od przychodu netto - nie uwzględnia kosztów)
-                                </div>
-                            )}
-                       </div>
-                   );
-               })}
-               </div>
-           </CardContent>
-        </Card>
-      ) : profiles?.length > 1 && ( // Show loading state for this section
-          <Card className="col-span-full">
-             <CardHeader>
-              <CardTitle>Szacowany Podatek Dochodowy wg Profili</CardTitle>
-            </CardHeader>
-            <CardContent className="pt-2">
-              <div className="text-center py-4">Ładowanie danych profili...</div>
-            </CardContent>
-           </Card>
-      )}
     </div>
   );
 };
