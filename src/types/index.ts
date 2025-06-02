@@ -1,3 +1,4 @@
+
 export interface BusinessProfile {
   id: string;
   user_id?: string; // Added for RLS, making optional for compatibility
@@ -26,6 +27,7 @@ export interface Customer {
   address: string;
   postalCode: string;
   city: string;
+  country?: string; // Added optional country property
   email?: string;
   phone?: string;
 }
@@ -37,6 +39,7 @@ export interface Product {
   unitPrice: number; // Netto price
   vatRate: number; // VAT percentage, e.g., 23 or -1 for VAT-exempt
   unit: string; // e.g., "szt.", "godz.", etc.
+  description?: string; // Added optional description
 }
 
 import type { TransactionType } from "./common";
@@ -108,12 +111,11 @@ export function getPolishPaymentMethod(method: string | undefined): string {
   return paymentMethodToPolish[method] || method;
 }
 
-
 export interface InvoiceItem {
   id: string;
   productId?: string;
   name: string;
-  description?: string;
+  description: string; // Made required to fix type conflicts
   quantity: number;
   unitPrice: number; // Netto price
   vatRate: number;

@@ -82,58 +82,66 @@ const MobileNavigation = () => {
           <Menu className="h-5 w-5" />
           <span className="text-xs mt-1">Menu</span>
         </SheetTrigger>
-        <SheetContent side="right" className="w-[280px] pt-6">
-          <div className="flex flex-col space-y-6 pt-4">
-            
-            {/* Premium Features Section - Moved to top */}
-            <PremiumSection features={premiumFeatures} />
+        <SheetContent side="right" className="w-[280px] p-0 flex flex-col">
+          {/* Scrollable content area */}
+          <div className="flex-1 overflow-y-auto scrollbar-hide pt-6">
+            <div className="flex flex-col space-y-6 px-6">
+              
+              {/* Premium Features Section - Moved to top */}
+              <PremiumSection features={premiumFeatures} />
 
-            {/* Quick Actions Section */}
-            <div>
-              <h3 className="text-sm font-semibold text-muted-foreground mb-3 px-2">SZYBKIE AKCJE</h3>
-              <div className="space-y-2">
-                {quickActions.map((action) => (
-                  <NavLink
-                    key={action.path}
-                    to={action.path}
-                    className="flex items-center gap-3 px-3 py-3 rounded-lg bg-muted hover:bg-muted/80 transition-colors"
-                  >
-                    <action.icon className={`h-5 w-5 ${action.color}`} />
-                    <span className="font-medium">{action.title}</span>
-                  </NavLink>
-                ))}
+              {/* Quick Actions Section */}
+              <div>
+                <h3 className="text-sm font-semibold text-muted-foreground mb-3 px-2">SZYBKIE AKCJE</h3>
+                <div className="space-y-2">
+                  {quickActions.map((action) => (
+                    <NavLink
+                      key={action.path}
+                      to={action.path}
+                      className="flex items-center gap-3 px-3 py-3 rounded-lg bg-muted hover:bg-muted/80 transition-colors"
+                    >
+                      <action.icon className={`h-5 w-5 ${action.color}`} />
+                      <span className="font-medium">{action.title}</span>
+                    </NavLink>
+                  ))}
+                </div>
               </div>
-            </div>
 
-            {/* Management Section */}
-            <div>
-              <h3 className="text-sm font-semibold text-muted-foreground mb-3 px-2">ZARZĄDZANIE</h3>
-              <div className="space-y-1">
-                {managementItems.map((item) => (
-                  <NavLink
-                    key={item.path}
-                    to={item.path}
-                    className={({ isActive }) => 
-                      cn("flex items-center gap-3 px-3 py-2 rounded-lg transition-colors", 
-                         isActive ? "bg-primary/10 text-primary font-medium" : "text-foreground hover:bg-muted")
-                    }
-                  >
-                    <item.icon className="h-5 w-5" />
-                    <span>{item.title}</span>
-                  </NavLink>
-                ))}
+              {/* Management Section */}
+              <div>
+                <h3 className="text-sm font-semibold text-muted-foreground mb-3 px-2">ZARZĄDZANIE</h3>
+                <div className="space-y-1">
+                  {managementItems.map((item) => (
+                    <NavLink
+                      key={item.path}
+                      to={item.path}
+                      className={({ isActive }) => 
+                        cn("flex items-center gap-3 px-3 py-2 rounded-lg transition-colors", 
+                           isActive ? "bg-primary/10 text-primary font-medium" : "text-foreground hover:bg-muted")
+                      }
+                    >
+                      <item.icon className="h-5 w-5" />
+                      <span>{item.title}</span>
+                    </NavLink>
+                  ))}
+                </div>
               </div>
-            </div>
-            
-            {/* Theme Toggle */}
-            <div className="border-t pt-4">
-              <div className="flex items-center justify-between px-3 py-2">
-                <span className="text-sm font-medium">Motyw</span>
-                <ThemeToggle size="sm" />
+              
+              {/* Theme Toggle */}
+              <div className="border-t pt-4">
+                <div className="flex items-center justify-between px-3 py-2">
+                  <span className="text-sm font-medium">Motyw</span>
+                  <ThemeToggle size="sm" />
+                </div>
               </div>
-            </div>
 
-            {/* User Section */}
+              {/* Extra padding to ensure content doesn't hide behind sticky footer */}
+              <div className="h-20"></div>
+            </div>
+          </div>
+
+          {/* Sticky User Section at bottom */}
+          <div className="sticky bottom-0 bg-background border-t">
             <UserMenuFooter />
           </div>
         </SheetContent>
@@ -206,7 +214,7 @@ const UserMenuFooter = () => {
   if (!user) return null;
   
   return (
-    <div className="border-t pt-4 px-3">
+    <div className="p-6">
       <div className="space-y-2">
         <div className="text-xs text-muted-foreground">Zalogowano jako:</div>
         <div className="text-sm font-medium truncate">{user.email}</div>

@@ -73,7 +73,7 @@ const AppSidebar = () => {
 
   const getNavClassName = (path: string) => {
     return cn(
-      "flex items-center gap-3 px-3 py-2 rounded-lg transition-all duration-200",
+      "flex items-center gap-3 px-3 py-2 rounded-lg transition-all duration-200 w-full justify-start",
       isActive(path) 
         ? "bg-primary text-primary-foreground font-medium shadow-sm" 
         : "hover:bg-muted text-muted-foreground hover:text-foreground"
@@ -97,7 +97,7 @@ const AppSidebar = () => {
       </SidebarHeader>
 
       <SidebarContent className="px-2">
-        {/* Premium Features Section - Moved to top */}
+        {/* Premium Features Section - At the top */}
         <SidebarGroup>
           <div className="flex items-center justify-between px-2 py-2">
             {!isCollapsed && (
@@ -134,14 +134,17 @@ const AppSidebar = () => {
                       onClick={openPremiumDialog}
                       tooltip={isCollapsed ? `${feature.title} (Premium)` : undefined}
                     >
-                      <div className="flex items-center gap-3 px-3 py-2 rounded-lg bg-amber-50 border border-amber-200 hover:bg-amber-100 transition-colors cursor-pointer w-full">
-                        <feature.icon className="h-5 w-5 flex-shrink-0 text-amber-600" />
-                        {!isCollapsed && (
-                          <>
-                            <span className="text-amber-900 font-medium flex-1 text-left">{feature.title}</span>
-                            <Crown className="h-4 w-4 text-amber-600" />
-                          </>
-                        )}
+                      <div className={cn(
+                        "flex items-center gap-3 px-3 py-2 rounded-lg bg-amber-50 border border-amber-200 hover:bg-amber-100 transition-colors cursor-pointer w-full",
+                        isCollapsed ? "justify-center" : "justify-between"
+                      )}>
+                        <div className="flex items-center gap-3">
+                          <feature.icon className="h-5 w-5 flex-shrink-0 text-amber-600" />
+                          {!isCollapsed && (
+                            <span className="text-amber-900 font-medium">{feature.title}</span>
+                          )}
+                        </div>
+                        {!isCollapsed && <Crown className="h-4 w-4 text-amber-600" />}
                       </div>
                     </SidebarMenuButton>
                   )}
@@ -198,7 +201,7 @@ const AppSidebar = () => {
                     asChild
                     tooltip={isCollapsed ? action.title : undefined}
                   >
-                    <NavLink to={action.path} className="flex items-center gap-3 px-3 py-2 rounded-lg bg-muted hover:bg-muted/80 transition-colors">
+                    <NavLink to={action.path} className="flex items-center gap-3 px-3 py-2 rounded-lg bg-muted hover:bg-muted/80 transition-colors w-full justify-start">
                       <action.icon className={`h-5 w-5 flex-shrink-0 ${action.color}`} />
                       {!isCollapsed && <span className="font-medium">{action.title}</span>}
                     </NavLink>
