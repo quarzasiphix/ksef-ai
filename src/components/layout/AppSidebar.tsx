@@ -34,6 +34,7 @@ import {
 } from "@/components/ui/sidebar";
 import { useAuth } from "@/App";
 import { Button } from "@/components/ui/button";
+import { BusinessProfileSwitcher } from "./BusinessProfileSwitcher";
 
 const AppSidebar = () => {
   const { state } = useSidebar();
@@ -102,6 +103,11 @@ const AppSidebar = () => {
       </SidebarHeader>
 
       <SidebarContent className="px-2">
+        {/* Business Profile Switcher */}
+        <div className="py-2 border-b">
+          <BusinessProfileSwitcher isCollapsed={isCollapsed} />
+        </div>
+
         {/* Premium Features Section - At the top */}
         <SidebarGroup>
           <div className="flex items-center justify-between px-2 py-2">
