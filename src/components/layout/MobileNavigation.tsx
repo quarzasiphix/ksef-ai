@@ -1,4 +1,3 @@
-
 import { useState } from 'react';
 import { NavLink, useLocation, useNavigate } from 'react-router-dom';
 import { 
@@ -18,7 +17,8 @@ import {
   LogOut,
   Sun,
   ChevronDown,
-  Monitor
+  Monitor,
+  Shield
 } from 'lucide-react';
 import { useTheme } from '@/components/theme/ThemeProvider';
 import { cn } from '@/lib/utils';
@@ -192,6 +192,45 @@ const MobileNavigation = () => {
                         </button>
                       </div>
                     )}
+                  </div>
+                </div>
+              </div>
+
+              {/* Policies Section */}
+              <div className="border-t pt-4">
+                <div className="px-3">
+                  <h3 className="text-sm font-semibold text-muted-foreground mb-2">POLITYKI</h3>
+                  <div className="space-y-1">
+                    <NavLink
+                      to="/policies/privacy"
+                      className={({ isActive }) => 
+                        cn("flex items-center gap-3 px-3 py-2 rounded-lg transition-colors", 
+                           isActive ? "bg-primary/10 text-primary font-medium" : "text-foreground hover:bg-muted")
+                      }
+                    >
+                      <Shield className="h-5 w-5" />
+                      <span>Polityka Prywatności</span>
+                    </NavLink>
+                    <NavLink
+                      to="/policies/tos"
+                      className={({ isActive }) => 
+                        cn("flex items-center gap-3 px-3 py-2 rounded-lg transition-colors", 
+                           isActive ? "bg-primary/10 text-primary font-medium" : "text-foreground hover:bg-muted")
+                      }
+                    >
+                      <FileText className="h-5 w-5" />
+                      <span>Regulamin</span>
+                    </NavLink>
+                    <NavLink
+                      to="/policies/refunds"
+                      className={({ isActive }) => 
+                        cn("flex items-center gap-3 px-3 py-2 rounded-lg transition-colors", 
+                           isActive ? "bg-primary/10 text-primary font-medium" : "text-foreground hover:bg-muted")
+                      }
+                    >
+                      <CreditCard className="h-5 w-5" />
+                      <span>Polityka Zwrotów</span>
+                    </NavLink>
                   </div>
                 </div>
               </div>

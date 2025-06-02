@@ -44,6 +44,9 @@ import PremiumCheckoutModal from "@/components/PremiumCheckoutModal"; // Import 
 import Accounting from './pages/accounting/Accounting'; // Import Accounting component
 import RequirePremium from './components/auth/RequirePremium'; // Import RequirePremium
 import PremiumSuccessMessage from "@/components/PremiumSuccessMessage"; // Import PremiumSuccessMessage
+import PrivacyPolicy from "./pages/policies/PrivacyPolicy";
+import TOSPolicy from "./pages/policies/TOSPolicy";
+import RefundsPolicy from "./pages/policies/RefundsPolicy";
 
 // Export the query client for use in other files
 export const queryClient = new QueryClient({
@@ -407,51 +410,60 @@ const App = () => (
                       {/* Main routes */}
                       <Route index element={<Dashboard />} />
 
+                      {/* Policy routes */}
+                      <Route path="policies/privacy" element={<PrivacyPolicy />} />
+                      <Route path="policies/tos" element={<TOSPolicy />} />
+                      <Route path="policies/refunds" element={<RefundsPolicy />} />
+
                       {/* Accounting Route - Protected by RequirePremium */}
                       <Route element={<RequirePremium />}>
-                         <Route path="accounting" element={<Accounting />} />
+                        <Route path="accounting" element={<Accounting />} />
                       </Route>
 
                       {/* Invoice routes */}
                       <Route path="invoices/new" element={<NewInvoice />} />
 
                       {/* Income routes */}
-                      <Route path="/income/:id" element={<InvoiceDetail type="income" />} />
-                      <Route path="/income/:id/edit" element={<EditInvoice />} />
+                      <Route path="income/:id" element={<InvoiceDetail type="income" />} />
+                      <Route path="income/:id/edit" element={<EditInvoice />} />
 
                       {/* Expense routes */}
-                      <Route path="/expense/:id" element={<InvoiceDetail type="expense" />} />
-                      <Route path="/expense/:id/edit" element={<EditInvoice />} />
+                      <Route path="expense/:id" element={<InvoiceDetail type="expense" />} />
+                      <Route path="expense/:id/edit" element={<EditInvoice />} />
 
                       {/* Legacy routes for backward compatibility */}
-                      <Route path="/invoices/:id" element={<InvoiceDetail type="income" />} />
+                      <Route path="invoices/:id" element={<InvoiceDetail type="income" />} />
+
                       {/* Customer routes */}
                       <Route path="customers" element={<CustomerList />} />
                       <Route path="customers/new" element={<NewCustomer />} />
                       <Route path="customers/edit/:id" element={<EditCustomer />} />
                       <Route path="customers/:id" element={<CustomerDetail />} />
+
                       {/* Product routes */}
                       <Route path="products" element={<ProductList />} />
                       <Route path="products/new" element={<NewProduct />} />
                       <Route path="products/edit/:id" element={<EditProduct />} />
                       <Route path="products/:id" element={<ProductDetail />} />
+
                       {/* Settings routes */}
-                      <Route path="settings" element={<SettingsMenu />} >
-                        <Route index element={<Navigate to="business-profiles" replace />} /> {/* Set profile as the default nested route */}
-                        <Route path="profile" element={<ProfileSettings />} /> {/* Add the profile settings route */}
+                      <Route path="settings" element={<SettingsMenu />}>
+                        <Route index element={<Navigate to="business-profiles" replace />} />
+                        <Route path="profile" element={<ProfileSettings />} />
+                        <Route path="document" element={<DocumentSettings />} />
                         <Route path="business-profiles" element={<BusinessProfiles />} />
-                        <Route path="business-profiles/new" element={<NewBusinessProfile />} />
-                        <Route path="business-profiles/:id" element={<EditBusinessProfile />} />
-                        <Route path="documents" element={<DocumentSettings />} />
-                        {/* Using Outlet in SettingsMenu will render the nested routes */}
+                        <Route path="new-business-profile" element={<NewBusinessProfile />} />
+                        <Route path="edit-business-profile/:id" element={<EditBusinessProfile />} />
                       </Route>
 
                       {/* New invoice routes */}
                       <Route path="income/new" element={<NewInvoice type={TransactionType.INCOME} />} />
                       <Route path="expense/new" element={<NewInvoice type={TransactionType.EXPENSE} />} />
+
                       {/* Legacy routes for backward compatibility */}
                       <Route path="income" element={<IncomeList />} />
                       <Route path="expense" element={<ExpenseList />} />
+
                       {/* Catch-all for any other routes */}
                       <Route path="*" element={<NotFound />} />
                     </Route>

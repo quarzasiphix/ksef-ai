@@ -8,15 +8,24 @@ const Register = () => {
   const [repeatPassword, setRepeatPassword] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [acceptPrivacyPolicy, setAcceptPrivacyPolicy] = useState(false);
+  const [acceptTOS, setAcceptTOS] = useState(false);
   const navigate = useNavigate();
 
   const handleRegister = async (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
+    
     if (password !== repeatPassword) {
       setError("Hasła muszą być takie same.");
       return;
     }
+
+    if (!acceptPrivacyPolicy || !acceptTOS) {
+      setError("Musisz zaakceptować politykę prywatności i regulamin.");
+      return;
+    }
+
     setLoading(true);
     const { error } = await supabase.auth.signUp({ email, password });
     setLoading(false);
@@ -63,6 +72,32 @@ const Register = () => {
           />
         </div>
         {error && <div className="text-red-400 mb-4">{error}</div>}
+        <div className="mb-4 space-y-3">
+          <label className="flex items-start space-x-2">
+            <input
+              type="checkbox"
+              checked={acceptPrivacyPolicy}
+              onChange={(e) => setAcceptPrivacyPolicy(e.target.checked)}
+              className="mt-1"
+              required
+            />
+            <span className="text-neutral-400 text-sm">
+              Akceptuję <a href="/policies/privacy" target="_blank" className="text-primary hover:underline">Politykę prywatności</a>
+            </span>
+          </label>
+          <label className="flex items-start space-x-2">
+            <input
+              type="checkbox"
+              checked={acceptTOS}
+              onChange={(e) => setAcceptTOS(e.target.checked)}
+              className="mt-1"
+              required
+            />
+            <span className="text-neutral-400 text-sm">
+              Akceptuję <a href="/policies/tos" target="_blank" className="text-primary hover:underline">Regulamin serwisu</a>
+            </span>
+          </label>
+        </div>
         <button
           type="submit"
           className="w-full bg-primary text-white py-2 rounded hover:bg-primary-dark disabled:opacity-60"

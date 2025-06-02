@@ -6,6 +6,7 @@ import AppSidebar from "./AppSidebar";
 import Header from "./Header";
 import MobileNavigation from "./MobileNavigation";
 import { useSidebar } from "@/components/ui/sidebar";
+import Footer from './Footer';
 
 const Layout = () => {
   const isMobile = useIsMobile();
@@ -29,9 +30,7 @@ const Layout = () => {
             <Outlet />
           </div>
         </main>
-        <footer className="border-t p-4 text-sm text-muted-foreground text-center hidden md:block">
-          © {new Date().getFullYear()} Polski System Fakturowy
-        </footer>
+        <Footer />
       </div>
       
       {/* Mobile Navigation */}

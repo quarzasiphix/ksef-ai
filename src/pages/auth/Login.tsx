@@ -2,6 +2,7 @@ import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/App";
+import { LogIn, UserCircle, AlertCircle } from 'lucide-react';
 
 const Login = () => {
   const [email, setEmail] = useState("");
@@ -9,7 +10,6 @@ const Login = () => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const navigate = useNavigate();
-  const { setUser } = useAuth();
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -20,16 +20,20 @@ const Login = () => {
     setLoading(true);
     setError(null);
     try {
-      const { error, data } = await supabase.auth.signInWithPassword({ email, password });
-      if (error) {
-        setError(error.message);
+      const { error: signInError, data } = await supabase.auth.signInWithPassword({ email, password });
+      if (signInError) {
+        if (signInError.message.includes("Invalid login credentials")) {
+          setError("Nieprawidłowy email lub hasło.");
+        } else {
+          setError("Wystąpił błąd podczas logowania. Spróbuj ponownie.");
+        }
+        console.error('Login error details:', signInError);
       } else if (data.session) {
-        // The auth state change handler will handle the rest
         navigate("/");
       }
     } catch (err) {
-      setError('Wystąpił błąd podczas logowania');
-      console.error('Login error:', err);
+      setError('Wystąpił nieoczekiwany błąd. Spróbuj ponownie.');
+      console.error('Unexpected login error:', err);
     } finally {
       setLoading(false);
     }
@@ -40,60 +44,113 @@ const Login = () => {
   };
 
   return (
-    <div className="flex flex-col items-center justify-center min-h-screen bg-neutral-900">
-      <h1 className="text-3xl font-extrabold text-white text-center mb-8">Witam w Ai Faktura</h1>
-      <form onSubmit={handleLogin} className="bg-neutral-800 p-8 rounded shadow-md w-full max-w-sm border border-neutral-700">
-        <h2 className="text-2xl font-bold mb-6 text-center text-white">Zaloguj się</h2>
-        <div className="mb-4">
-          <label className="block mb-1 text-neutral-200">Email</label>
-          <input
-            type="email"
-            className="w-full border border-neutral-700 bg-neutral-900 text-white rounded px-3 py-2 focus:outline-none focus:ring-2 focus:ring-primary"
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-            required
-          />
+    <div className="min-h-screen bg-gradient-to-br from-neutral-900 via-neutral-800 to-neutral-900 flex flex-col items-center justify-center p-4">
+      <div className="w-full max-w-md">
+        <div className="text-center mb-10">
+          <LogIn className="mx-auto text-primary h-16 w-16 mb-4" />
+          <h1 className="text-4xl font-bold text-white">Witaj w Ai Faktura</h1>
+          <p className="text-neutral-400 mt-2">Zaloguj się, aby kontynuować.</p>
         </div>
-        <div className="mb-6">
-          <label className="block mb-1 text-neutral-200">Hasło</label>
-          <input
-            type="password"
-            className="w-full border border-neutral-700 bg-neutral-900 text-white rounded px-3 py-2 focus:outline-none focus:ring-2 focus:ring-primary"
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-            required
-          />
-        </div>
-        {error && <div className="text-red-400 mb-4">{error}</div>}
-        <button
-          type="submit"
-          className="w-full bg-primary text-white py-2 rounded hover:bg-primary-dark disabled:opacity-60"
-          disabled={loading}
+
+        <form 
+          onSubmit={handleLogin} 
+          className="bg-neutral-800/70 backdrop-blur-sm p-8 rounded-xl shadow-2xl border border-neutral-700 space-y-6"
         >
-          {loading ? "Logowanie..." : "Zaloguj się"}
-        </button>
-        <div className="mt-6 text-center">
-          <span className="text-neutral-400">Nie masz konta?</span>
+          <div>
+            <label htmlFor="email" className="block text-sm font-medium text-neutral-300 mb-1.5">
+              Adres Email
+            </label>
+            <div className="relative">
+              <input
+                id="email"
+                type="email"
+                autoComplete="email"
+                className="w-full border border-neutral-700 bg-neutral-900/80 text-white rounded-lg px-4 py-3 focus:outline-none focus:ring-2 focus:ring-primary focus:border-primary transition-shadow duration-200 shadow-sm"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                required
+                placeholder="twoj@email.com"
+              />
+            </div>
+          </div>
+
+          <div>
+            <label htmlFor="password" className="block text-sm font-medium text-neutral-300 mb-1.5">
+              Hasło
+            </label>
+            <div className="relative">
+              <input
+                id="password"
+                type="password"
+                autoComplete="current-password"
+                className="w-full border border-neutral-700 bg-neutral-900/80 text-white rounded-lg px-4 py-3 focus:outline-none focus:ring-2 focus:ring-primary focus:border-primary transition-shadow duration-200 shadow-sm"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                required
+                placeholder="••••••••"
+              />
+            </div>
+          </div>
+
+          {error && (
+            <div className="flex items-center bg-red-500/10 border border-red-500/30 text-red-400 px-4 py-3 rounded-lg text-sm">
+              <AlertCircle className="h-5 w-5 mr-3 flex-shrink-0" />
+              <span>{error}</span>
+            </div>
+          )}
+
           <button
-            type="button"
-            className="ml-2 text-primary hover:underline text-sm"
-            onClick={() => navigate("/auth/register")}
+            type="submit"
+            className="w-full bg-primary hover:bg-primary/90 text-white font-semibold py-3 px-4 rounded-lg shadow-md hover:shadow-lg transition-all duration-300 ease-in-out transform hover:-translate-y-0.5 disabled:opacity-70 disabled:cursor-not-allowed disabled:transform-none disabled:shadow-none flex items-center justify-center"
+            disabled={loading}
           >
-            Załóż konto
+            {loading ? (
+              <>
+                <svg className="animate-spin -ml-1 mr-3 h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                </svg>
+                Logowanie...
+              </>
+            ) : (
+              "Zaloguj się"
+            )}
           </button>
+
+          <div className="text-center">
+            <span className="text-neutral-400 text-sm">Nie masz konta? </span>
+            <button
+              type="button"
+              className="font-medium text-primary hover:text-primary/80 text-sm transition-colors duration-200"
+              onClick={() => navigate("/auth/register")}
+            >
+              Załóż konto
+            </button>
+          </div>
+        </form>
+
+        <div className="mt-8 text-center">
+           <div className="relative my-6">
+            <div className="absolute inset-0 flex items-center" aria-hidden="true">
+              <div className="w-full border-t border-neutral-700"></div>
+            </div>
+            <div className="relative flex justify-center">
+              <span className="bg-neutral-800/70 px-3 text-sm text-neutral-400 rounded-md">Lub</span>
+            </div>
+          </div>
+
+          <button
+            onClick={handleTestAccountLogin}
+            disabled={loading}
+            className="w-full bg-amber-600/80 hover:bg-amber-600 text-white font-semibold py-3 px-4 rounded-lg shadow-md hover:shadow-lg transition-all duration-300 ease-in-out transform hover:-translate-y-0.5 disabled:opacity-70 disabled:cursor-not-allowed disabled:transform-none disabled:shadow-none flex items-center justify-center"
+          >
+            <UserCircle className="h-5 w-5 mr-2" />
+            {loading && email === 'test@quarza.online' ? 'Logowanie...' : 'Kontynuuj jako tester'}
+          </button>
+          <p className="mt-3 text-xs text-neutral-500">
+            Konto testowe zawiera przykładowe dane do demonstracji.
+          </p>
         </div>
-      </form>
-      <div className="mt-8 w-full max-w-sm">
-        <button
-          onClick={handleTestAccountLogin}
-          disabled={loading}
-          className="w-full bg-amber-600 hover:bg-amber-700 text-white font-bold py-3 px-4 rounded-lg shadow-md transition-colors duration-200 disabled:opacity-60"
-        >
-          {loading ? 'Logowanie...' : 'Kontynuuj jako tester'}
-        </button>
-        <p className="mt-2 text-center text-sm text-neutral-400">
-          Konto testowe zawiera przykładowe dane
-        </p>
       </div>
     </div>
   );
