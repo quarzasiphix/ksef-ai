@@ -1,4 +1,3 @@
-
 export enum TransactionType {
   INCOME = 'income',
   EXPENSE = 'expense'
@@ -36,6 +35,7 @@ export interface Invoice {
   user_id: string;
   fakturaBezVAT?: boolean;
   vatExemptionReason?: VatExemptionReason;
+  vat?: boolean;
 }
 
 export interface Company {
@@ -50,7 +50,7 @@ export interface InvoiceItem {
   id: string;
   productId?: string;
   name: string;
-  description: string;
+  description?: string;
   quantity: number;
   unitPrice: number;
   vatType?: VatType;

@@ -204,7 +204,7 @@ const NewInvoice: React.ForwardRefExoticComponent<
           vatExemptionReason: initialData.vatExemptionReason, // Explicitly set reason
         });
       }
-    }, [initialData, type, form]); // Depend on initialData, type, and form instance
+    }, [initialData, type, form]);
 
     // Log items when they change
     useEffect(() => {
@@ -332,6 +332,9 @@ const NewInvoice: React.ForwardRefExoticComponent<
     };
 
     const getDocumentTitle = () => {
+      if (transactionType === TransactionType.EXPENSE) {
+        return "Wydatek faktura";
+      }
       switch (documentType) {
         case InvoiceType.SALES:
           return "Faktura VAT";
@@ -439,6 +442,7 @@ const NewInvoice: React.ForwardRefExoticComponent<
                   title={documentTitle}
                   documentType={documentType}
                   isEditing={isEditing}
+                  transactionType={transactionType}
                 />
                 {/* Transaction Type Toggle - Desktop */}
                 {location.pathname === "/invoices/new" && (
@@ -491,10 +495,6 @@ const NewInvoice: React.ForwardRefExoticComponent<
                 form={form}
                 documentTitle={documentTitle}
               />
-              
-              {/* Log values being passed to InvoiceBasicInfoForm */}
-              {/* console.log('NewInvoice - Passing to InvoiceBasicInfoForm - fakturaBezVAT:', form.watch('fakturaBezVAT')) */}
-              {/* console.log('NewInvoice - Passing to InvoiceBasicInfoForm - vatExemptionReason:', form.watch('vatExemptionReason')) */}
 
               <InvoicePartiesForm 
                 transactionType={transactionType}
@@ -505,9 +505,6 @@ const NewInvoice: React.ForwardRefExoticComponent<
               />
               
               <div>
-                {/* <div style={{ display: 'none' }}>
-                  Debug Info - Items: {JSON.stringify(items, null, 2)}
-                </div> */}
                 <InvoiceItemsForm 
                   items={items}
                   documentType={documentType}

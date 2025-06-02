@@ -27,7 +27,7 @@ export async function getProducts(userId: string, productType?: 'income' | 'expe
     vatRate: item.vat_rate,
     unit: item.unit,
     user_id: item.user_id,
-    product_type: item.product_type
+    product_type: item.product_type as 'income' | 'expense'
   }));
 }
 
@@ -62,7 +62,7 @@ export async function saveProduct(product: Product): Promise<Product> {
       vatRate: data.vat_rate,
       unit: data.unit,
       user_id: data.user_id,
-      product_type: data.product_type
+      product_type: data.product_type as 'income' | 'expense'
     };
   } else {
     // Insert new product
@@ -84,7 +84,7 @@ export async function saveProduct(product: Product): Promise<Product> {
       vatRate: data.vat_rate,
       unit: data.unit,
       user_id: data.user_id,
-      product_type: data.product_type
+      product_type: data.product_type as 'income' | 'expense'
     };
   }
 }

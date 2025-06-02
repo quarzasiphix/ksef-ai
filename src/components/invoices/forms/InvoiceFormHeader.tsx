@@ -1,47 +1,48 @@
+
 import React from "react";
-import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { ArrowLeft } from "lucide-react";
+import { useNavigate } from "react-router-dom";
 import { InvoiceType } from "@/types";
+import { TransactionType } from "@/types/common";
 
 interface InvoiceFormHeaderProps {
   title: string;
   documentType: InvoiceType;
   isEditing: boolean;
-  className?: string;
+  transactionType?: TransactionType;
 }
 
 export const InvoiceFormHeader: React.FC<InvoiceFormHeaderProps> = ({
   title,
   documentType,
   isEditing,
-  className = ''
+  transactionType
 }) => {
   const navigate = useNavigate();
 
-  // Get the document type title
-  const getDocumentTitle = () => {
-    switch(documentType) {
-      case InvoiceType.SALES: return "Faktura VAT";
-      case InvoiceType.RECEIPT: return "Rachunek";
-      case InvoiceType.PROFORMA: return "Faktura proforma";
-      case InvoiceType.CORRECTION: return "Faktura korygująca";
-      default: return "Dokument";
+  const getDisplayTitle = () => {
+    if (transactionType === TransactionType.EXPENSE) {
+      return "Wydatek faktura";
     }
+    return title;
   };
 
   return (
-    !isEditing ? (
-      <div className={`flex items-center justify-between ${className}`.trim()}>
-        <div className="flex items-center gap-2">
-          <Button variant="outline" size="icon" onClick={() => navigate(-1)} type="button">
-            <ArrowLeft className="h-4 w-4" />
-          </Button>
-          <h1 className="text-xl font-bold">
-            {isEditing ? "Edytuj dokument" : `Nowy ${getDocumentTitle().toLowerCase()}`}
-          </h1>
-        </div>
+    <div className="flex items-center gap-4">
+      <Button 
+        variant="ghost" 
+        size="icon"
+        onClick={() => navigate(-1)}
+        className="shrink-0"
+      >
+        <ArrowLeft className="h-4 w-4" />
+      </Button>
+      <div>
+        <h1 className="text-xl font-semibold">
+          {isEditing ? `Edytuj: ${getDisplayTitle()}` : `Nowa: ${getDisplayTitle()}`}
+        </h1>
       </div>
-    ) : null
+    </div>
   );
 };
