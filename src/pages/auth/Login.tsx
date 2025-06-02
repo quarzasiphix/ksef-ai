@@ -13,6 +13,10 @@ const Login = () => {
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
+    await loginWithCredentials(email, password);
+  };
+
+  const loginWithCredentials = async (email: string, password: string) => {
     setLoading(true);
     setError(null);
     try {
@@ -29,6 +33,10 @@ const Login = () => {
     } finally {
       setLoading(false);
     }
+  };
+
+  const handleTestAccountLogin = async () => {
+    await loginWithCredentials('test@quarza.online', 'nigga123');
   };
 
   return (
@@ -75,6 +83,18 @@ const Login = () => {
           </button>
         </div>
       </form>
+      <div className="mt-8 w-full max-w-sm">
+        <button
+          onClick={handleTestAccountLogin}
+          disabled={loading}
+          className="w-full bg-amber-600 hover:bg-amber-700 text-white font-bold py-3 px-4 rounded-lg shadow-md transition-colors duration-200 disabled:opacity-60"
+        >
+          {loading ? 'Logowanie...' : 'Kontynuuj jako tester'}
+        </button>
+        <p className="mt-2 text-center text-sm text-neutral-400">
+          Konto testowe zawiera przykładowe dane
+        </p>
+      </div>
     </div>
   );
 };
