@@ -13,7 +13,9 @@ import {
   Building,
   Crown,
   Shield,
-  Star
+  Star,
+  User,
+  LogOut
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import {
@@ -32,12 +34,11 @@ import {
 } from "@/components/ui/sidebar";
 import { useAuth } from "@/App";
 import { Button } from "@/components/ui/button";
-import { ThemeToggle } from "@/components/theme/ThemeToggle";
 
 const AppSidebar = () => {
   const { state } = useSidebar();
   const location = useLocation();
-  const { isPremium, openPremiumDialog } = useAuth();
+  const { isPremium, openPremiumDialog, user, logout } = useAuth();
   const isCollapsed = state === "collapsed";
 
   // Main navigation items
@@ -78,6 +79,10 @@ const AppSidebar = () => {
         ? "bg-primary text-primary-foreground font-medium shadow-sm" 
         : "hover:bg-muted text-muted-foreground hover:text-foreground"
     );
+  };
+
+  const handleLogout = async () => {
+    await logout();
   };
 
   return (
@@ -237,17 +242,54 @@ const AppSidebar = () => {
       </SidebarContent>
 
       <SidebarFooter className="border-t p-4">
-        {!isCollapsed && (
-          <div className="flex items-center justify-between">
-            <span className="text-sm text-muted-foreground">Motyw</span>
-            <ThemeToggle size="sm" />
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-2 flex-1 min-w-0">
+            <div className="h-8 w-8 rounded-full bg-primary/10 flex items-center justify-center flex-shrink-0">
+              <User className="h-4 w-4" />
+            </div>
+            {!isCollapsed && (
+              <div className="flex flex-col min-w-0 flex-1">
+                <span className="text-sm font-medium">Zalogowano jako</span>
+                <span className={cn(
+                  "text-xs truncate max-w-[150px]",
+                  isPremium ? "text-amber-600 font-semibold" : "text-muted-foreground"
+                )}>
+                  {user?.email}
+                  {isPremium && <Star className="inline h-3 w-3 ml-1" />}
+                </span>
+              </div>
+            )}
           </div>
-        )}
-        {isCollapsed && (
-          <div className="flex justify-center">
-            <ThemeToggle size="sm" />
-          </div>
-        )}
+          {!isCollapsed && (
+            <div className="flex flex-col gap-1">
+              <NavLink
+                to="/settings"
+                className="text-xs text-muted-foreground hover:text-foreground transition-colors"
+              >
+                Profil
+              </NavLink>
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={handleLogout}
+                className="h-6 px-2 text-xs"
+              >
+                <LogOut className="h-3 w-3 mr-1" />
+                Wyloguj
+              </Button>
+            </div>
+          )}
+          {isCollapsed && (
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={handleLogout}
+              className="h-8 w-8"
+            >
+              <LogOut className="h-4 w-4" />
+            </Button>
+          )}
+        </div>
       </SidebarFooter>
     </Sidebar>
   );
