@@ -97,6 +97,73 @@ const AppSidebar = () => {
       </SidebarHeader>
 
       <SidebarContent className="px-2">
+        {/* Premium Features Section - Moved to top */}
+        <SidebarGroup>
+          <div className="flex items-center justify-between px-2 py-2">
+            {!isCollapsed && (
+              <SidebarGroupLabel className="flex items-center gap-2">
+                PREMIUM
+                {isPremium ? (
+                  <Shield className="h-3 w-3 text-amber-500" />
+                ) : (
+                  <Crown className="h-3 w-3 text-amber-500" />
+                )}
+              </SidebarGroupLabel>
+            )}
+          </div>
+          <SidebarGroupContent>
+            <SidebarMenu>
+              {premiumFeatures.map((feature) => (
+                <SidebarMenuItem key={feature.path}>
+                  {isPremium ? (
+                    <SidebarMenuButton
+                      asChild
+                      isActive={isActive(feature.path)}
+                      tooltip={isCollapsed ? feature.title : undefined}
+                    >
+                      <NavLink to={feature.path} className={cn(
+                        getNavClassName(feature.path),
+                        isActive(feature.path) ? "bg-amber-100 text-amber-900" : "hover:bg-amber-50"
+                      )}>
+                        <feature.icon className="h-5 w-5 flex-shrink-0 text-amber-600" />
+                        {!isCollapsed && <span>{feature.title}</span>}
+                      </NavLink>
+                    </SidebarMenuButton>
+                  ) : (
+                    <SidebarMenuButton
+                      onClick={openPremiumDialog}
+                      tooltip={isCollapsed ? `${feature.title} (Premium)` : undefined}
+                    >
+                      <div className="flex items-center gap-3 px-3 py-2 rounded-lg bg-amber-50 border border-amber-200 hover:bg-amber-100 transition-colors cursor-pointer w-full">
+                        <feature.icon className="h-5 w-5 flex-shrink-0 text-amber-600" />
+                        {!isCollapsed && (
+                          <>
+                            <span className="text-amber-900 font-medium flex-1 text-left">{feature.title}</span>
+                            <Crown className="h-4 w-4 text-amber-600" />
+                          </>
+                        )}
+                      </div>
+                    </SidebarMenuButton>
+                  )}
+                </SidebarMenuItem>
+              ))}
+            </SidebarMenu>
+          </SidebarGroupContent>
+          
+          {!isPremium && !isCollapsed && (
+            <div className="px-2 mt-2">
+              <Button 
+                onClick={openPremiumDialog}
+                className="w-full bg-gradient-to-r from-amber-500 to-orange-600 hover:from-amber-600 hover:to-orange-700 text-white"
+                size="sm"
+              >
+                <Crown className="mr-2 h-4 w-4" />
+                Kup Premium
+              </Button>
+            </div>
+          )}
+        </SidebarGroup>
+
         {/* Main Navigation */}
         <SidebarGroup>
           {!isCollapsed && <SidebarGroupLabel>GŁÓWNE</SidebarGroupLabel>}
@@ -163,73 +230,6 @@ const AppSidebar = () => {
               ))}
             </SidebarMenu>
           </SidebarGroupContent>
-        </SidebarGroup>
-
-        {/* Premium Features */}
-        <SidebarGroup>
-          <div className="flex items-center justify-between px-2 py-2">
-            {!isCollapsed && (
-              <SidebarGroupLabel className="flex items-center gap-2">
-                PREMIUM
-                {isPremium ? (
-                  <Shield className="h-3 w-3 text-amber-500" />
-                ) : (
-                  <Crown className="h-3 w-3 text-amber-500" />
-                )}
-              </SidebarGroupLabel>
-            )}
-          </div>
-          <SidebarGroupContent>
-            <SidebarMenu>
-              {premiumFeatures.map((feature) => (
-                <SidebarMenuItem key={feature.path}>
-                  {isPremium ? (
-                    <SidebarMenuButton
-                      asChild
-                      isActive={isActive(feature.path)}
-                      tooltip={isCollapsed ? feature.title : undefined}
-                    >
-                      <NavLink to={feature.path} className={cn(
-                        getNavClassName(feature.path),
-                        isActive(feature.path) ? "bg-amber-100 text-amber-900" : "hover:bg-amber-50"
-                      )}>
-                        <feature.icon className="h-5 w-5 flex-shrink-0 text-amber-600" />
-                        {!isCollapsed && <span>{feature.title}</span>}
-                      </NavLink>
-                    </SidebarMenuButton>
-                  ) : (
-                    <SidebarMenuButton
-                      onClick={openPremiumDialog}
-                      tooltip={isCollapsed ? `${feature.title} (Premium)` : undefined}
-                    >
-                      <div className="flex items-center gap-3 px-3 py-2 rounded-lg bg-amber-50 border border-amber-200 hover:bg-amber-100 transition-colors cursor-pointer w-full">
-                        <feature.icon className="h-5 w-5 flex-shrink-0 text-amber-600" />
-                        {!isCollapsed && (
-                          <>
-                            <span className="text-amber-900 font-medium flex-1 text-left">{feature.title}</span>
-                            <Crown className="h-4 w-4 text-amber-600" />
-                          </>
-                        )}
-                      </div>
-                    </SidebarMenuButton>
-                  )}
-                </SidebarMenuItem>
-              ))}
-            </SidebarMenu>
-          </SidebarGroupContent>
-          
-          {!isPremium && !isCollapsed && (
-            <div className="px-2 mt-2">
-              <Button 
-                onClick={openPremiumDialog}
-                className="w-full bg-gradient-to-r from-amber-500 to-orange-600 hover:from-amber-600 hover:to-orange-700 text-white"
-                size="sm"
-              >
-                <Crown className="mr-2 h-4 w-4" />
-                Kup Premium
-              </Button>
-            </div>
-          )}
         </SidebarGroup>
       </SidebarContent>
 

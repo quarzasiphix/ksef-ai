@@ -1,3 +1,4 @@
+
 // Placeholder file for KSeF generation logic and types
 
 import { Invoice, InvoiceItem, BusinessProfile, Customer } from "@/types";
@@ -119,7 +120,7 @@ export function generateKsefData(invoice: Invoice, businessProfile: BusinessProf
       P_11: item.totalNetValue !== undefined ? item.totalNetValue : (item.quantity || 0) * (item.unitPrice || 0), // Calculate if not available
       P_12: item.vatExempt ? 'zw' : (item.vatRate !== undefined ? String(item.vatRate) : '23'), // Map VAT rate to KSeF codes
       // Map other item fields if needed for schema
-    })),\
+    })),
     Podsumowanie: { // Placeholder mapping for summary totals
       P_13: invoice.totalNetValue !== undefined ? invoice.totalNetValue : 0,
       P_14: invoice.totalVatValue, // totalVatValue is optional in our type

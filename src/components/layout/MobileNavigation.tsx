@@ -85,6 +85,9 @@ const MobileNavigation = () => {
         <SheetContent side="right" className="w-[280px] pt-6">
           <div className="flex flex-col space-y-6 pt-4">
             
+            {/* Premium Features Section - Moved to top */}
+            <PremiumSection features={premiumFeatures} />
+
             {/* Quick Actions Section */}
             <div>
               <h3 className="text-sm font-semibold text-muted-foreground mb-3 px-2">SZYBKIE AKCJE</h3>
@@ -121,9 +124,6 @@ const MobileNavigation = () => {
                 ))}
               </div>
             </div>
-
-            {/* Premium Features Section */}
-            <PremiumSection features={premiumFeatures} />
             
             {/* Theme Toggle */}
             <div className="border-t pt-4">

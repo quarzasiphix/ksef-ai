@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { useAuth } from "@/App";
 import { Button } from "@/components/ui/button";
-import { Star } from "lucide-react";
+import { Star, TrendingUp, TrendingDown, Calendar, Download, AlertTriangle, CheckCircle, Clock, Building } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { useBusinessProfile } from "@/context/BusinessProfileContext";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -12,63 +12,89 @@ import { generateJpckV7Data, generateJpckV7Xml } from "@/integrations/jpk/jpkV7G
 import { useGlobalData } from "@/hooks/use-global-data";
 import { pl } from 'date-fns/locale';
 import { calculateIncomeTax } from "@/utils/taxCalculations";
+import { LineChart, Line, AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, BarChart, Bar } from 'recharts';
 
 const Accounting = () => {
   const { isPremium, openPremiumDialog, user } = useAuth();
   const { profiles, selectedProfileId, selectProfile, isLoadingProfiles } = useBusinessProfile();
 
-  const [selectedPeriod, setSelectedPeriod] = useState<string>('this_month'); // State for selected period
+  const [selectedPeriod, setSelectedPeriod] = useState<string>('this_month');
   const [reportingPeriods, setReportingPeriods] = useState<{
-    period: string; // YYYY-MM format
-    deadline: string; // YYYY-MM-DD format
+    period: string;
+    deadline: string;
     status: 'not-due' | 'due-soon' | 'overdue';
-    estimatedTax?: number; // Added estimated tax for the period
+    estimatedTax?: number;
   }[]>([]);
 
   const { invoices: { data: invoices, isLoading: isLoadingInvoices }, expenses: { data: expenses, isLoading: isLoadingExpenses } } = useGlobalData(selectedPeriod);
   const { invoices: { data: allInvoices, isLoading: isLoadingAllInvoices } } = useGlobalData(undefined, true);
 
-  const loadingData = isLoadingInvoices || isLoadingExpenses; // Combine loading states
+  const loadingData = isLoadingInvoices || isLoadingExpenses;
 
   const [generatedXml, setGeneratedXml] = useState<string | null>(null);
 
-  // Calculate total income and expenses for the selected period
-  const totalIncome = invoices.reduce((sum, invoice) => {
-    const income = invoice.totalGrossValue || 0;
-    console.log(`Calculating income for invoice ${invoice.number}: ${income}, current sum: ${sum}`);
-    return sum + income;
-  }, 0);
+  // Calculate totals
+  const totalIncome = invoices.reduce((sum, invoice) => sum + (invoice.totalGrossValue || 0), 0);
+  const totalExpenses = expenses.reduce((sum, expense) => sum + (expense.amount || 0), 0);
+  const netProfit = totalIncome - totalExpenses;
 
-  const totalExpenses = expenses.reduce((sum, expense) => {
-    const expenseAmount = expense.amount || 0; // Assuming amount is the relevant field for expense value
-    console.log(`Calculating expense for expense item (ID: ${expense.id}): ${expenseAmount}, current sum: ${sum}`); // Added expense ID log
-    return sum + expenseAmount;
-  }, 0);
-
-  // Get the selected business profile to access the tax type
   const selectedProfile = profiles?.find(p => p.id === selectedProfileId);
 
-  // Calculate estimated tax for the selected period
   const estimatedTax = selectedProfile && selectedProfile.tax_type
-    ? calculateIncomeTax(selectedProfile.tax_type, totalIncome, totalExpenses, 0, 0) // Pass tax type, income, expenses, and placeholder ZUS
-    : 0; // Default to 0 if no profile or tax type is selected
+    ? calculateIncomeTax(selectedProfile.tax_type, totalIncome, totalExpenses, 0, 0)
+    : 0;
 
-  // Function to trigger JPK generation for a specific period
+  // Chart data preparation
+  const monthlyData = React.useMemo(() => {
+    const months = [];
+    for (let i = 5; i >= 0; i--) {
+      const date = new Date();
+      date.setMonth(date.getMonth() - i);
+      const monthKey = format(date, 'yyyy-MM');
+      
+      const monthlyIncome = allInvoices
+        .filter(inv => inv.issueDate.startsWith(monthKey))
+        .reduce((sum, inv) => sum + (inv.totalGrossValue || 0), 0);
+      
+      const monthlyExpenses = expenses
+        .filter(exp => exp.date.startsWith(monthKey))
+        .reduce((sum, exp) => sum + (exp.amount || 0), 0);
+
+      months.push({
+        month: format(date, 'MMM', { locale: pl }),
+        przychody: monthlyIncome,
+        wydatki: monthlyExpenses,
+        zysk: monthlyIncome - monthlyExpenses
+      });
+    }
+    return months;
+  }, [allInvoices, expenses]);
+
+  const expenseCategories = React.useMemo(() => {
+    const categories = expenses.reduce((acc, expense) => {
+      const category = expense.category || 'Inne';
+      acc[category] = (acc[category] || 0) + (expense.amount || 0);
+      return acc;
+    }, {} as Record<string, number>);
+
+    return Object.entries(categories).map(([name, value]) => ({ name, value }));
+  }, [expenses]);
+
+  const COLORS = ['#0088FE', '#00C49F', '#FFBB28', '#FF8042', '#8884d8'];
+
+  // Function to trigger JPK generation
   const handleGenerateJpck = (periodToGenerate: string) => {
     if (!selectedProfileId || !profiles) {
       console.error("Cannot generate JPK: Business profile not selected or profiles not loaded.");
-      // Optionally show a user-friendly message
       return;
     }
 
     const selectedProfile = profiles.find(p => p.id === selectedProfileId);
     if (!selectedProfile) {
       console.error("Cannot generate JPK: Selected business profile not found.");
-      // Optionally show a user-friendly message
       return;
     }
 
-    // Get start and end dates for the specified period
     const [year, month] = periodToGenerate.split('-').map(Number);
     const startDate = new Date(year, month - 1, 1);
     const endDate = new Date(year, month, 0);
@@ -77,43 +103,34 @@ const Accounting = () => {
       endDate: format(endDate, 'yyyy-MM-dd'),
     };
 
-    // Filter invoices and expenses for the specific period
     const invoicesForPeriod = allInvoices.filter(invoice => {
       const issueDate = parseISO(invoice.issueDate);
       return isBefore(issueDate, parseISO(periodDates.endDate + 'T23:59:59')) && !isBefore(issueDate, parseISO(periodDates.startDate + 'T00:00:00'));
     });
 
-    // Note: Currently expenses are not filtered by period in useGlobalData when fetchAllInvoices is true.
-    // We would need to adjust useGlobalData or filter expenses here if needed for JPK.
-    // For JPK, we need both income (invoices) and expenses for the period.
-    // Let's assume for now that all expenses fetched by useGlobalData (even with fetchAllInvoices) are relevant, or that we need to adjust useGlobalData to fetch all expenses too.
-    // For accurate JPK, we need expenses only for the given period.
-    // I will filter expenses here temporarily, assuming expenses fetched by useGlobalData are *all* expenses for the profile.
     const expensesForPeriod = expenses.filter(expense => {
       const expenseDate = parseISO(expense.date);
       return isBefore(expenseDate, parseISO(periodDates.endDate + 'T23:59:59')) && !isBefore(expenseDate, parseISO(periodDates.startDate + 'T00:00:00'));
     });
 
-    // Generate the JPK data structure using filtered data
     const jpkData = generateJpckV7Data(invoicesForPeriod, expensesForPeriod, selectedProfile, periodDates);
 
     if (jpkData) {
-      // Generate the XML from the data structure
       const xml = generateJpckV7Xml(jpkData);
       setGeneratedXml(xml);
       console.log("JPK XML Generated for period", periodToGenerate, ":", xml);
-      // Implement download functionality here
+      
       if(xml) {
         const blob = new Blob([xml], { type: 'application/xml' });
         const url = URL.createObjectURL(blob);
         const a = document.createElement('a');
         a.href = url;
         const periodName = periodToGenerate.replace('-', '_');
-        a.download = `JPK_V7_${selectedProfile.taxId || 'firma'}_${periodName}.xml`; // Suggested filename format
+        a.download = `JPK_V7_${selectedProfile.taxId || 'firma'}_${periodName}.xml`;
         document.body.appendChild(a);
         a.click();
         document.body.removeChild(a);
-        URL.revokeObjectURL(url); // Clean up
+        URL.revokeObjectURL(url);
       }
     } else {
       setGeneratedXml(null);
@@ -198,7 +215,7 @@ const Accounting = () => {
         status = 'not-due';
       }
 
-      periods.push({ period, deadline, status, estimatedTax: estimatedTaxForPeriod }); // Add estimatedTax to the period object
+      periods.push({ period, deadline, status, estimatedTax: estimatedTaxForPeriod });
 
       currentPeriodDate = addMonths(currentPeriodDate, 1);
     }
@@ -212,222 +229,284 @@ const Accounting = () => {
   }
 
   return (
-    <div className="space-y-6 pb-20">
-      <h1 className="text-3xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-amber-400 via-amber-500 to-amber-700">
-         Panel Księgowanie
-      </h1>
+    <div className="space-y-6 pb-20 px-4 md:px-6">
+      {/* Header */}
+      <div className="space-y-2">
+        <h1 className="text-2xl md:text-3xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-amber-400 via-amber-500 to-amber-700">
+          Panel Księgowości
+        </h1>
+        <p className="text-muted-foreground">Zarządzaj finansami i rozliczeniami swojej firmy</p>
+      </div>
 
-      {/* Business Profile Selector for Accounting */}
+      {/* Business Profile Selector */}
       <Card>
-        <CardHeader>
-          <CardTitle className="text-lg">Wybierz profil firmowy</CardTitle>
+        <CardHeader className="pb-3">
+          <CardTitle className="text-lg">Profil firmowy</CardTitle>
         </CardHeader>
         <CardContent>
-            {isLoadingProfiles ? (
-                 <span className="text-sm text-muted-foreground">Ładowanie profili...</span>
-             ) : profiles && profiles.length > 0 ? (
-                 <Select value={selectedProfileId || ''} onValueChange={selectProfile}>
-                     <SelectTrigger className="w-full md:w-[250px]">
-                         <SelectValue placeholder="Wybierz profil" />
-                     </SelectTrigger>
-                     <SelectContent>
-                         {profiles.map(profile => (
-                             <SelectItem key={profile.id} value={profile.id}>
-                                 {profile.name}
-                             </SelectItem>
-                         ))}
-                     </SelectContent>
-                 </Select>
-             ) : (
-                  <span className="text-sm text-muted-foreground">Brak dostępnych profili firmowych. Dodaj nowy profil w Ustawieniach.</span>
-             )}
-        </CardContent>
-      </Card>
-
-      {/* General Stats Section */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-lg">Statystyki ogólne ({selectedPeriod.replace('_', ' ')})</CardTitle>
-        </CardHeader>
-        <CardContent className="grid grid-cols-1 md:grid-cols-3 gap-4">
-          {/* Placeholder for Income Stats */}
-          <Card className="bg-muted/50">
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Przychody</CardTitle>
-              <Star className="h-4 w-4 text-muted-foreground" />{/* Placeholder Icon */}
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">{loadingData ? 'Ładowanie...' : totalIncome.toFixed(2)} PLN</div>
-              <p className="text-xs text-muted-foreground">+0.00% od ostatniego miesiąca</p>{/* Placeholder Value */}
-            </CardContent>
-          </Card>
-
-          {/* Placeholder for Expenses Stats */}
-           <Card className="bg-muted/50">
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Wydatki</CardTitle>
-              <Star className="h-4 w-4 text-muted-foreground" />{/* Placeholder Icon */}
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">{loadingData ? 'Ładowanie...' : totalExpenses.toFixed(2)} PLN</div>
-              <p className="text-xs text-muted-foreground">+0.00% od ostatniego miesiąca</p>{/* Placeholder Value */}
-            </CardContent>
-          </Card>
-
-          {/* Placeholder for VAT Stats */}
-           <Card className="bg-muted/50">
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">VAT</CardTitle>
-              <Star className="h-4 w-4 text-muted-foreground" />{/* Placeholder Icon */}
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">{loadingData ? 'Ładowanie...' : estimatedTax.toFixed(2)} PLN</div>{/* Display estimated tax */}
-              <p className="text-xs text-muted-foreground">Szacowany podatek dochodowy ({selectedProfile?.tax_type || '-'})</p>{/* Indicate tax type */}
-            </CardContent>
-          </Card>
-
-        </CardContent>
-      </Card>
-
-
-            {/* Period Selector */}
-            <Card>
-        <CardHeader>
-          <CardTitle className="text-lg">Okres rozliczeniowy i generowanie JPK V7M</CardTitle>
-        </CardHeader>
-        <CardContent className="grid gap-4 md:grid-cols-2 items-start">
-          <div className="space-y-1">
-            <p className="text-sm font-medium leading-none">Okres:</p>
-            <Select value={selectedPeriod} onValueChange={setSelectedPeriod} size="sm">
+          {isLoadingProfiles ? (
+            <div className="animate-pulse h-10 bg-muted rounded-md"></div>
+          ) : profiles && profiles.length > 0 ? (
+            <Select value={selectedProfileId || ''} onValueChange={selectProfile}>
               <SelectTrigger className="w-full">
-                <SelectValue placeholder="Wybierz" />
+                <SelectValue placeholder="Wybierz profil" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="this_month">Bieżący miesiąc</SelectItem>
-                <SelectItem value="last_month">Poprzedni miesiąc</SelectItem>
-                <SelectItem value="this_quarter">Bieżący kwartał</SelectItem>
-                <SelectItem value="last_quarter">Poprzedni kwartał</SelectItem>
-                <SelectItem value="this_year">Bieżący rok</SelectItem>
-                <SelectItem value="last_year">Poprzedni rok</SelectItem>
+                {profiles.map(profile => (
+                  <SelectItem key={profile.id} value={profile.id}>
+                    {profile.name}
+                  </SelectItem>
+                ))}
               </SelectContent>
             </Select>
-          </div>
+          ) : (
+            <p className="text-sm text-muted-foreground">Brak dostępnych profili firmowych. Dodaj nowy profil w Ustawieniach.</p>
+          )}
+        </CardContent>
+      </Card>
 
-          <div className="space-y-1">
-            <p className="text-sm font-medium leading-none">JPK V7M:</p>
-            <p className="text-muted-foreground text-sm">Pobierz plik JPK V7M.</p>
-            <Button onClick={() => handleGenerateJpck(selectedPeriod)} disabled={!selectedProfileId || loadingData || !isPremium} className="w-full md:w-auto" size="sm">Pobierz XML</Button>
+      {/* Financial Overview Cards */}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Przychody</CardTitle>
+            <TrendingUp className="h-4 w-4 text-green-600" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold text-green-600">
+              {loadingData ? '...' : `${totalIncome.toLocaleString('pl-PL')} PLN`}
+            </div>
+            <p className="text-xs text-muted-foreground">w wybranym okresie</p>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Wydatki</CardTitle>
+            <TrendingDown className="h-4 w-4 text-red-600" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold text-red-600">
+              {loadingData ? '...' : `${totalExpenses.toLocaleString('pl-PL')} PLN`}
+            </div>
+            <p className="text-xs text-muted-foreground">w wybranym okresie</p>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Zysk netto</CardTitle>
+            <Star className="h-4 w-4 text-blue-600" />
+          </CardHeader>
+          <CardContent>
+            <div className={`text-2xl font-bold ${netProfit >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+              {loadingData ? '...' : `${netProfit.toLocaleString('pl-PL')} PLN`}
+            </div>
+            <p className="text-xs text-muted-foreground">w wybranym okresie</p>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Szacowany podatek</CardTitle>
+            <Calendar className="h-4 w-4 text-amber-600" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold text-amber-600">
+              {loadingData ? '...' : `${estimatedTax.toLocaleString('pl-PL')} PLN`}
+            </div>
+            <p className="text-xs text-muted-foreground">{selectedProfile?.tax_type || 'Nie wybrano'}</p>
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* Charts Section */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        {/* Monthly Trends Chart */}
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-lg">Trendy miesięczne</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="h-[300px] w-full">
+              <ResponsiveContainer width="100%" height="100%">
+                <LineChart data={monthlyData}>
+                  <CartesianGrid strokeDasharray="3 3" />
+                  <XAxis dataKey="month" />
+                  <YAxis />
+                  <Tooltip formatter={(value) => [`${Number(value).toLocaleString('pl-PL')} PLN`]} />
+                  <Line type="monotone" dataKey="przychody" stroke="#10b981" strokeWidth={2} name="Przychody" />
+                  <Line type="monotone" dataKey="wydatki" stroke="#ef4444" strokeWidth={2} name="Wydatki" />
+                  <Line type="monotone" dataKey="zysk" stroke="#3b82f6" strokeWidth={2} name="Zysk" />
+                </LineChart>
+              </ResponsiveContainer>
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Expense Categories Chart */}
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-lg">Kategorie wydatków</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="h-[300px] w-full">
+              {expenseCategories.length > 0 ? (
+                <ResponsiveContainer width="100%" height="100%">
+                  <PieChart>
+                    <Pie
+                      data={expenseCategories}
+                      cx="50%"
+                      cy="50%"
+                      outerRadius={80}
+                      fill="#8884d8"
+                      dataKey="value"
+                      label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`}
+                    >
+                      {expenseCategories.map((entry, index) => (
+                        <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                      ))}
+                    </Pie>
+                    <Tooltip formatter={(value) => [`${Number(value).toLocaleString('pl-PL')} PLN`]} />
+                  </PieChart>
+                </ResponsiveContainer>
+              ) : (
+                <div className="flex items-center justify-center h-full text-muted-foreground">
+                  Brak danych o wydatkach
+                </div>
+              )}
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* Period Selector and JPK Generation */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-lg">Generowanie JPK V7M</CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="space-y-2">
+              <label className="text-sm font-medium">Okres rozliczeniowy:</label>
+              <Select value={selectedPeriod} onValueChange={setSelectedPeriod}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Wybierz okres" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="this_month">Bieżący miesiąc</SelectItem>
+                  <SelectItem value="last_month">Poprzedni miesiąc</SelectItem>
+                  <SelectItem value="this_quarter">Bieżący kwartał</SelectItem>
+                  <SelectItem value="last_quarter">Poprzedni kwartał</SelectItem>
+                  <SelectItem value="this_year">Bieżący rok</SelectItem>
+                  <SelectItem value="last_year">Poprzedni rok</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-2">
+              <label className="text-sm font-medium">Akcje:</label>
+              <Button 
+                onClick={() => handleGenerateJpck(selectedPeriod)} 
+                disabled={!selectedProfileId || loadingData} 
+                className="w-full md:w-auto"
+              >
+                <Download className="mr-2 h-4 w-4" />
+                Pobierz JPK XML
+              </Button>
+            </div>
           </div>
         </CardContent>
       </Card>
 
-
-      {/* Required JPK Reports Section */}
+      {/* Required Reports Status */}
       <Card>
         <CardHeader>
-          <CardTitle className="text-lg">Wymagane Raporty JPK</CardTitle>
+          <CardTitle className="text-lg">Status raportów JPK</CardTitle>
         </CardHeader>
         <CardContent>
           {isLoadingAllInvoices ? (
-             <span className="text-sm text-muted-foreground">Ładowanie danych do raportów...</span>
-           ) : reportingPeriods.length === 0 ? (
-             <span className="text-sm text-muted-foreground">Brak danych do wygenerowania raportów. Dodaj pierwszą fakturę.</span>
-           ) : (
-             <div className="overflow-x-auto">
-               <table className="w-full table-auto">
-                 <thead>
-                   <tr className="border-b">
-                     <th className="px-4 py-2 text-left">Okres</th>
-                     <th className="px-4 py-2 text-left">Termin złożenia</th>
-                     <th className="px-4 py-2 text-left">Status</th>
-                     <th className="px-4 py-2 text-left">Szacowany Podatek Doch.</th>
-                     <th className="px-4 py-2 text-left">Akcje</th>
-                   </tr>
-                 </thead>
-                 <tbody>
-                   {reportingPeriods.map(({ period, deadline, status }) => {
-                     // Determine row styling based on status
-                     let rowClass = '';
-                     let statusText = '';
-                     switch (status) {
-                       case 'overdue':
-                         rowClass = 'bg-red-100'; // Light red background
-                         statusText = 'Zaległy';
-                         break;
-                       case 'due-soon':
-                         rowClass = 'bg-yellow-100'; // Light yellow background
-                         statusText = 'Termin wkrótce';
-                         break;
-                       case 'not-due':
-                         rowClass = 'bg-green-100'; // Light green background
-                         statusText = 'Do złożenia'; // Or 'Złożony' if we add filing status tracking
-                         break;
-                     }
-                     const periodFormatted = format(parseISO(`${period}-01`), 'MMMM yyyy', { locale: pl });
-                     const deadlineFormatted = format(parseISO(deadline), 'dd.MM.yyyy');
-                     const isCurrentOrUpcomingPeriod = period === format(new Date(), 'yyyy-MM') || isBefore(parseISO(`${period}-01`), addMonths(new Date(), 1));
-                     const showGenerateButton = isCurrentOrUpcomingPeriod && (status === 'not-due' || status === 'due-soon'); // Show button for current/upcoming and not yet filed (based on status placeholder)
+            <div className="space-y-3">
+              {[1,2,3].map(i => (
+                <div key={i} className="animate-pulse h-12 bg-muted rounded-md"></div>
+              ))}
+            </div>
+          ) : reportingPeriods.length === 0 ? (
+            <div className="text-center py-8 text-muted-foreground">
+              <Calendar className="mx-auto h-12 w-12 mb-4 opacity-50" />
+              <p>Brak danych do wygenerowania raportów</p>
+              <p className="text-sm">Dodaj pierwszą fakturę, aby rozpocząć</p>
+            </div>
+          ) : (
+            <div className="space-y-3">
+              {reportingPeriods.slice(0, 6).map(({ period, deadline, status }) => {
+                const periodFormatted = format(parseISO(`${period}-01`), 'MMMM yyyy', { locale: pl });
+                const deadlineFormatted = format(parseISO(deadline), 'dd.MM.yyyy');
+                
+                let statusIcon, statusColor, statusText;
+                switch (status) {
+                  case 'overdue':
+                    statusIcon = <AlertTriangle className="h-4 w-4" />;
+                    statusColor = 'text-red-600 bg-red-50 border-red-200';
+                    statusText = 'Zaległy';
+                    break;
+                  case 'due-soon':
+                    statusIcon = <Clock className="h-4 w-4" />;
+                    statusColor = 'text-amber-600 bg-amber-50 border-amber-200';
+                    statusText = 'Termin wkrótce';
+                    break;
+                  default:
+                    statusIcon = <CheckCircle className="h-4 w-4" />;
+                    statusColor = 'text-green-600 bg-green-50 border-green-200';
+                    statusText = 'Do złożenia';
+                }
 
-                     return (
-                       <tr key={period} className={`border-b ${rowClass}`}>
-                         <td className="px-4 py-2">{periodFormatted}</td>
-                         <td className="px-4 py-2">{deadlineFormatted}</td>
-                         <td className="px-4 py-2">{statusText}</td>
-                         <td className="px-4 py-2">{estimatedTax?.toFixed(2) || '-'} PLN</td>
-                         <td className="px-4 py-2">
-                           {showGenerateButton && (
-                             // Pass the current period to handleGenerateJpck
-                             <Button size="sm" onClick={() => handleGenerateJpck(period)} disabled={!selectedProfileId || loadingData || !isPremium}>
-                               Generuj JPK
-                             </Button>
-                           )}
-                           {/* TODO: Add button to view/download previously generated JPKs if we implement storage */}
-                         </td>
-                       </tr>
-                     );
-                   })}
-                 </tbody>
-               </table>
-             </div>
-           )}
+                return (
+                  <div key={period} className={`flex items-center justify-between p-4 rounded-lg border ${statusColor}`}>
+                    <div className="flex items-center gap-3">
+                      {statusIcon}
+                      <div>
+                        <p className="font-medium">{periodFormatted}</p>
+                        <p className="text-sm opacity-75">Termin: {deadlineFormatted}</p>
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-3">
+                      <span className="text-sm font-medium">{statusText}</span>
+                      <Button 
+                        size="sm" 
+                        onClick={() => handleGenerateJpck(period)}
+                        disabled={!selectedProfileId || loadingData}
+                      >
+                        Generuj
+                      </Button>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
         </CardContent>
       </Card>
 
-      {/* KSeF Status Section */}
+      {/* KSeF Integration */}
       <Card>
         <CardHeader>
-          <CardTitle className="text-lg">Status KSeF</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <p className="text-muted-foreground">Status integracji z KSeF będzie dostępny wkrótce.</p>
-          {/* Placeholder for KSeF status display and actions */}
-        </CardContent>
-
-      {/* KSeF Generation Section */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-lg">Generowanie i wysyłka KSeF</CardTitle>
+          <CardTitle className="text-lg">Integracja KSeF</CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
-           <p className="text-muted-foreground">Generuj i wyślij faktury do Krajowego Systemu e-Faktur (KSeF) dla wybranego okresu rozliczeniowego i profilu firmowego.</p>
-           {/* TODO: Implement KSeF generation and sending logic */}
-           <Button onClick={() => console.log('Generate and Send KSeF clicked')} disabled={!selectedProfileId || loadingData || !isPremium} className="w-full md:w-auto">Generuj i Wyślij KSeF</Button>
+          <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+            <div className="flex items-center gap-2 mb-2">
+              <Building className="h-5 w-5 text-blue-600" />
+              <h3 className="font-medium text-blue-900">Krajowy System e-Faktur</h3>
+            </div>
+            <p className="text-sm text-blue-700 mb-4">
+              Automatyczne generowanie i wysyłka faktur do systemu KSeF będzie dostępna wkrótce.
+            </p>
+            <Button variant="secondary" disabled>
+              Konfiguruj integrację (Wkrótce)
+            </Button>
+          </div>
         </CardContent>
       </Card>
-      </Card>
-
-      {/* JPK and Tax Section */}
-       <Card>
-        <CardHeader>
-          <CardTitle className="text-lg">Podatki</CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-4">
-           <p className="text-muted-foreground">Funkcje obliczeń podatkowych będą dostępne wkrótce.</p>
-           {/* Placeholder for tax calculation features */}
-           <Button variant="secondary" disabled>Oblicz Podatek Dochodowy (Wkrótce)</Button>
-        </CardContent>
-      </Card>
-
     </div>
   );
 };
