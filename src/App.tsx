@@ -390,7 +390,7 @@ const RequireAuth: React.FC<{ children?: React.ReactNode }> = ({ children }) => 
 };
 
 const App = () => (
-  <ThemeProvider defaultTheme="dark">
+  <ThemeProvider defaultTheme="system">
     <QueryClientProvider client={queryClient}>
       <TooltipProvider>
         <Toaster />

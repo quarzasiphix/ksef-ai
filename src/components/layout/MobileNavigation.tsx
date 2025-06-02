@@ -1,6 +1,6 @@
 
-import React, { useState } from "react";
-import { NavLink, useLocation, useNavigate } from "react-router-dom";
+import { useState } from 'react';
+import { NavLink, useLocation, useNavigate } from 'react-router-dom';
 import { 
   BarChart, 
   FileText, 
@@ -16,17 +16,21 @@ import {
   Crown,
   User,
   LogOut,
-  Sun
-} from "lucide-react";
-import { cn } from "@/lib/utils";
-import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
-import { ThemeToggle } from "@/components/theme/ThemeToggle";
-import { useAuth } from "@/App";
-import { Button } from "@/components/ui/button";
-import { BusinessProfileSwitcher } from "./BusinessProfileSwitcher";
-import { useBusinessProfile } from "@/context/BusinessProfileContext";
+  Sun,
+  ChevronDown,
+  Monitor
+} from 'lucide-react';
+import { useTheme } from '@/components/theme/ThemeProvider';
+import { cn } from '@/lib/utils';
+import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet';
+import { Button } from '@/components/ui/button';
+import { useAuth } from '@/App';
+import { BusinessProfileSwitcher } from './BusinessProfileSwitcher';
+import { useBusinessProfile } from '@/context/BusinessProfileContext';
 
 const MobileNavigation = () => {
+  const { theme, setTheme } = useTheme();
+  const [isDropdownOpen, setIsDropdownOpen] = useState(false);
   // Main bottom navigation items - most used features
   const mainNavItems = [
     { title: "Dashboard", path: "/", icon: BarChart },
@@ -140,14 +144,54 @@ const MobileNavigation = () => {
               <div className="border-t pt-4">
                 <div className="px-3">
                   <h3 className="text-sm font-semibold text-muted-foreground mb-2">MOTYW</h3>
-                  <div className="flex items-center justify-between p-3 rounded-lg bg-muted">
-                    <div className="flex items-center gap-3">
-                      <div className="p-1.5 rounded-md bg-background">
-                        <Sun className="h-4 w-4 text-amber-500 dark:text-amber-400" />
+                  <div className="relative">
+                    <button
+                      onClick={() => setIsDropdownOpen(!isDropdownOpen)}
+                      className="flex items-center justify-between w-full p-3 rounded-lg bg-muted hover:bg-muted/80 transition-colors text-left"
+                    >
+                      <div className="flex items-center gap-3">
+                        <div className="p-1.5 rounded-md bg-background">
+                          <Sun className="h-4 w-4 text-amber-500 dark:text-amber-400" />
+                        </div>
+                        <span className="text-sm font-medium">Motyw</span>
                       </div>
-                      <span className="text-sm font-medium">Motyw</span>
-                    </div>
-                    <ThemeToggle size="sm" variant="ghost" showLabel={false} />
+                      <ChevronDown className={`h-4 w-4 text-muted-foreground transition-transform ${isDropdownOpen ? 'rotate-180' : ''}`} />
+                    </button>
+                    
+                    {isDropdownOpen && (
+                      <div className="absolute z-50 w-full mt-1 bg-popover rounded-md shadow-lg border border-border overflow-hidden">
+                        <button
+                          onClick={() => {
+                            setTheme('light');
+                            setIsDropdownOpen(false);
+                          }}
+                          className={`flex items-center w-full px-4 py-2 text-sm hover:bg-accent hover:text-accent-foreground ${theme === 'light' ? 'bg-accent' : ''}`}
+                        >
+                          <Sun className="mr-2 h-4 w-4" />
+                          <span>Jasny</span>
+                        </button>
+                        <button
+                          onClick={() => {
+                            setTheme('dark');
+                            setIsDropdownOpen(false);
+                          }}
+                          className={`flex items-center w-full px-4 py-2 text-sm hover:bg-accent hover:text-accent-foreground ${theme === 'dark' ? 'bg-accent' : ''}`}
+                        >
+                          <Moon className="mr-2 h-4 w-4" />
+                          <span>Ciemny</span>
+                        </button>
+                        <button
+                          onClick={() => {
+                            setTheme('system');
+                            setIsDropdownOpen(false);
+                          }}
+                          className={`flex items-center w-full px-4 py-2 text-sm hover:bg-accent hover:text-accent-foreground ${theme === 'system' ? 'bg-accent' : ''}`}
+                        >
+                          <Monitor className="mr-2 h-4 w-4" />
+                          <span>Systemowy</span>
+                        </button>
+                      </div>
+                    )}
                   </div>
                 </div>
               </div>

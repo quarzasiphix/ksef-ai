@@ -35,6 +35,7 @@ import {
 import { useAuth } from "@/App";
 import { Button } from "@/components/ui/button";
 import { BusinessProfileSwitcher } from "./BusinessProfileSwitcher";
+import { ThemeToggle } from "@/components/theme/ThemeToggle";
 
 const AppSidebar = () => {
   const { state } = useSidebar();
@@ -78,7 +79,7 @@ const AppSidebar = () => {
       "flex items-center gap-3 px-3 py-2 rounded-lg transition-all duration-200 w-full justify-start",
       isActive(path) 
         ? "bg-primary text-primary-foreground font-medium shadow-sm" 
-        : "hover:bg-muted text-muted-foreground hover:text-foreground"
+        : "hover:bg-muted text-foreground/80 hover:text-foreground dark:text-foreground/90 dark:hover:text-foreground"
     );
   };
 
@@ -98,7 +99,10 @@ const AppSidebar = () => {
               <p className="text-xs text-muted-foreground">Fakturowy</p>
             </div>
           )}
-          <SidebarTrigger />
+          <div className="flex items-center gap-1">
+            <ThemeToggle size="sm" variant="ghost" showLabel={false} />
+            <SidebarTrigger />
+          </div>
         </div>
       </SidebarHeader>
 
@@ -212,9 +216,9 @@ const AppSidebar = () => {
                     asChild
                     tooltip={isCollapsed ? action.title : undefined}
                   >
-                    <NavLink to={action.path} className="flex items-center gap-3 px-3 py-2 rounded-lg bg-muted hover:bg-muted/80 transition-colors w-full justify-start">
-                      <action.icon className={`h-5 w-5 flex-shrink-0 ${action.color}`} />
-                      {!isCollapsed && <span className="font-medium">{action.title}</span>}
+                    <NavLink to={action.path} className="flex items-center gap-3 px-3 py-2 rounded-lg bg-muted hover:bg-muted/80 transition-colors w-full justify-start dark:bg-muted/50 dark:hover:bg-muted/70">
+                      <action.icon className={`h-5 w-5 flex-shrink-0 ${action.color} dark:opacity-90`} />
+                      {!isCollapsed && <span className="font-medium text-foreground/90 dark:text-foreground">{action.title}</span>}
                     </NavLink>
                   </SidebarMenuButton>
                 </SidebarMenuItem>

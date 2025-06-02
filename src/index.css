@@ -2,6 +2,27 @@
 @tailwind components;
 @tailwind utilities;
 
+/* Prevent theme flickering */
+html {
+  color-scheme: light;
+}
+
+html.dark {
+  color-scheme: dark;
+}
+
+/* Hide content until theme is loaded to prevent flash of unstyled content */
+body:not(.theme-loaded) {
+  visibility: hidden;
+  opacity: 0;
+  transition: opacity 0.2s ease-in-out;
+}
+
+body.theme-loaded {
+  visibility: visible;
+  opacity: 1;
+}
+
 /* Prevent horizontal scrollbar during sidebar transitions */
 html.sidebar-transition {
   overflow-x: hidden;
