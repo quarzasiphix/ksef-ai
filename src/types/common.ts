@@ -1,5 +1,8 @@
 
-export type TransactionType = 'income' | 'expense';
+export enum TransactionType {
+  INCOME = 'income',
+  EXPENSE = 'expense'
+}
 
 export enum PaymentMethodDb {
   TRANSFER = 'transfer',

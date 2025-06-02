@@ -1,5 +1,4 @@
-
-import { BusinessProfile, Customer, Product, Invoice, InvoiceType, PaymentMethodDb, InvoiceItem } from "@/types";
+import { BusinessProfile, Customer, Product, Invoice, InvoiceType, PaymentMethodDb, InvoiceItem, TransactionType } from "@/types";
 import { generateKsefXml } from "@/integrations/ksef/ksefGenerator";
 
 // Mock Business Profiles
@@ -134,7 +133,7 @@ export const mockInvoices: Invoice[] = [
     user_id: "user-123",
     number: "FV/2024/001",
     type: InvoiceType.SALES,
-    transactionType: "income",
+    transactionType: TransactionType.INCOME,
     issueDate: "2024-01-15",
     dueDate: "2024-01-29",
     sellDate: "2024-01-15",
@@ -176,7 +175,7 @@ export const mockInvoices: Invoice[] = [
     user_id: "user-123", 
     number: "FV/2024/002",
     type: InvoiceType.SALES,
-    transactionType: "income",
+    transactionType: TransactionType.INCOME,
     issueDate: "2024-01-20",
     dueDate: "2024-02-03", 
     sellDate: "2024-01-20",

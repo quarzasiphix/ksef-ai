@@ -1,3 +1,4 @@
+
 import React from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -59,7 +60,7 @@ export const InvoiceItemMobileCard: React.FC<InvoiceItemMobileCardProps> = ({
                 id: item.productId,
                 name: item.name,
                 unitPrice: item.unitPrice,
-                vatRate: item.vatRate,
+                vatRate: Number(item.vatRate),
                 unit: item.unit
               }}
               documentType={documentType}
@@ -67,7 +68,7 @@ export const InvoiceItemMobileCard: React.FC<InvoiceItemMobileCardProps> = ({
                 onUpdateItem(item.id, {
                   name: product.name,
                   unitPrice: product.unitPrice,
-                  vatRate: product.vatRate,
+                  vatRate: Number(product.vatRate),
                   unit: product.unit
                 });
               }}

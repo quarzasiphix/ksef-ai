@@ -42,7 +42,10 @@ export interface Product {
   description?: string; // Added optional description
 }
 
-export type TransactionType = 'income' | 'expense';
+export enum TransactionType {
+  INCOME = 'income',
+  EXPENSE = 'expense'
+}
 
 export enum InvoiceType {
   SALES = "sales", // Faktura sprzedaży
@@ -52,7 +55,7 @@ export enum InvoiceType {
 }
 
 // For database storage
-export enum PaymentMethodDb { // Changed to enum
+export enum PaymentMethodDb {
   TRANSFER = 'transfer',
   CASH = 'cash',
   CARD = 'card',

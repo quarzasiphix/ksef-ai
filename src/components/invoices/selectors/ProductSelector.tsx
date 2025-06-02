@@ -11,7 +11,7 @@ import { Button } from "@/components/ui/button";
 import { useNavigate } from "react-router-dom";
 import { Plus } from "lucide-react";
 import { Product, InvoiceItem, InvoiceType } from "@/types";
-import { getProducts } from "@/integrations/supabase/repositories/productRepository";
+import { useAuth } from "@/App";
 
 interface ProductSelectorProps {
   onAddProduct: (product: InvoiceItem) => void;
@@ -26,13 +26,34 @@ export const ProductSelector: React.FC<ProductSelectorProps> = ({
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [selectedProductId, setSelectedProductId] = useState<string>("");
+  const { user } = useAuth();
   const navigate = useNavigate();
 
   useEffect(() => {
     const loadProducts = async () => {
       try {
-        const data = await getProducts();
-        setProducts(data);
+        // Mock products for now
+        const mockProducts: Product[] = [
+          {
+            id: "1",
+            user_id: user?.id || "",
+            name: "Konsultacje IT",
+            unitPrice: 200,
+            vatRate: 23,
+            unit: "godz.",
+            description: "Konsultacje informatyczne"
+          },
+          {
+            id: "2",
+            user_id: user?.id || "",
+            name: "Projekt strony internetowej",
+            unitPrice: 5000,
+            vatRate: 23,
+            unit: "szt.",
+            description: "Projekt i wykonanie strony internetowej"
+          }
+        ];
+        setProducts(mockProducts);
       } catch (err) {
         console.error("Error loading products:", err);
         setError("Nie udało się załadować produktów");
@@ -42,7 +63,7 @@ export const ProductSelector: React.FC<ProductSelectorProps> = ({
     };
 
     loadProducts();
-  }, []);
+  }, [user?.id]);
 
   const handleAddProductToInvoice = () => {
     if (!selectedProductId) return;
@@ -65,6 +86,7 @@ export const ProductSelector: React.FC<ProductSelectorProps> = ({
       id: crypto.randomUUID(), // Temporary ID
       productId: product.id,
       name: product.name,
+      description: product.description,
       quantity,
       unitPrice,
       vatRate,
