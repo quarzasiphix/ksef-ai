@@ -33,19 +33,43 @@ export function ThemeProvider({
   useEffect(() => {
     const root = window.document.documentElement;
     
+    // Remove all theme classes
     root.classList.remove("light", "dark");
     
-    if (theme === "system") {
-      const systemTheme = window.matchMedia("(prefers-color-scheme: dark)")
-        .matches
-        ? "dark"
-        : "light";
-      
-      root.classList.add(systemTheme);
-      return;
+    // Get the effective theme (either direct or system preference)
+    const effectiveTheme = theme === "system" 
+      ? window.matchMedia("(prefers-color-scheme: dark)").matches 
+        ? "dark" 
+        : "light"
+      : theme;
+    
+    // Add the appropriate theme class
+    root.classList.add(effectiveTheme);
+    
+    // Add/remove dark class for Tailwind's dark mode
+    if (effectiveTheme === 'dark') {
+      root.classList.add('dark');
+    } else {
+      root.classList.remove('dark');
     }
     
-    root.classList.add(theme);
+    // Listen for system theme changes when in 'system' mode
+    if (theme === 'system') {
+      const mediaQuery = window.matchMedia('(prefers-color-scheme: dark)');
+      const handleChange = () => {
+        const systemTheme = mediaQuery.matches ? 'dark' : 'light';
+        root.classList.remove('light', 'dark');
+        root.classList.add(systemTheme);
+        if (systemTheme === 'dark') {
+          root.classList.add('dark');
+        } else {
+          root.classList.remove('dark');
+        }
+      };
+      
+      mediaQuery.addEventListener('change', handleChange);
+      return () => mediaQuery.removeEventListener('change', handleChange);
+    }
   }, [theme]);
 
   const value = {

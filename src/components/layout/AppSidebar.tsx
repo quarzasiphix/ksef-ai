@@ -255,7 +255,7 @@ const AppSidebar = () => {
             </div>
             {!isCollapsed && (
               <div className="flex flex-col min-w-0 flex-1">
-                <span className="text-sm font-medium">Zalogowano jako</span>
+                <span className="text-xs font-small">Zalogowano jako</span>
                 <span className={cn(
                   "text-xs truncate max-w-[150px]",
                   isPremium ? "text-amber-600 font-semibold" : "text-muted-foreground"

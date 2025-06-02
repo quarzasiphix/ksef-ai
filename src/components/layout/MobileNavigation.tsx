@@ -12,13 +12,19 @@ import {
   Plus,
   Calculator,
   Building,
-  Crown
+  Moon,
+  Crown,
+  User,
+  LogOut,
+  Sun
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 import { ThemeToggle } from "@/components/theme/ThemeToggle";
 import { useAuth } from "@/App";
 import { Button } from "@/components/ui/button";
+import { BusinessProfileSwitcher } from "./BusinessProfileSwitcher";
+import { useBusinessProfile } from "@/context/BusinessProfileContext";
 
 const MobileNavigation = () => {
   // Main bottom navigation items - most used features
@@ -48,6 +54,9 @@ const MobileNavigation = () => {
   ];
 
   const getNavClassName = ({ isActive }: { isActive: boolean }) => {
+    const { profiles, selectedProfileId, isLoadingProfiles } = useBusinessProfile();
+    const { user, isPremium } = useAuth();
+
     return cn(
       "flex flex-col items-center justify-center px-4 py-2",
       isActive ? "text-primary" : "text-muted-foreground"
@@ -129,9 +138,17 @@ const MobileNavigation = () => {
               
               {/* Theme Toggle */}
               <div className="border-t pt-4">
-                <div className="flex items-center justify-between px-3 py-2">
-                  <span className="text-sm font-medium">Motyw</span>
-                  <ThemeToggle size="sm" />
+                <div className="px-3">
+                  <h3 className="text-sm font-semibold text-muted-foreground mb-2">MOTYW</h3>
+                  <div className="flex items-center justify-between p-3 rounded-lg bg-muted">
+                    <div className="flex items-center gap-3">
+                      <div className="p-1.5 rounded-md bg-background">
+                        <Sun className="h-4 w-4 text-amber-500 dark:text-amber-400" />
+                      </div>
+                      <span className="text-sm font-medium">Motyw</span>
+                    </div>
+                    <ThemeToggle size="sm" variant="ghost" showLabel={false} />
+                  </div>
                 </div>
               </div>
 
@@ -208,26 +225,51 @@ const PremiumSection = ({ features }: { features: any[] }) => {
 };
 
 const UserMenuFooter = () => {
-  const { user, setUser } = useAuth();
+  const { user, logout, isPremium } = useAuth();
   const navigate = useNavigate();
-  
+  const { profiles, selectedProfileId } = useBusinessProfile();
+
   if (!user) return null;
   
   return (
-    <div className="p-6">
-      <div className="space-y-2">
-        <div className="text-xs text-muted-foreground">Zalogowano jako:</div>
-        <div className="text-sm font-medium truncate">{user.email}</div>
-        <button
-          className="text-xs text-red-500 hover:underline"
-          onClick={() => {
-            localStorage.removeItem("sb_session");
-            setUser(null);
-            navigate("/auth/login");
-          }}
-        >
-          Wyloguj się
-        </button>
+    <div className="p-4 border-t">
+      {/* Business Profile Switcher */}
+      <div className="mb-3">
+        <BusinessProfileSwitcher isCollapsed={false} />
+      </div>
+      
+      {/* User Info */}
+      <div className="flex items-center gap-3">
+        <div className="flex-shrink-0">
+          <div className={`relative w-10 h-10 rounded-full flex items-center justify-center ${isPremium ? 'bg-gradient-to-br from-amber-500 to-amber-700' : 'bg-muted'}`}>
+            <User className="h-5 w-5 text-white" />
+            {isPremium && (
+              <div className="absolute -top-1 -right-1 bg-amber-500 rounded-full p-0.5">
+                <Crown className="h-3 w-3 text-white" />
+              </div>
+            )}
+          </div>
+        </div>
+        <div className="flex-1 min-w-0">
+          <div className="flex items-center gap-2">
+            <p className="text-sm font-medium truncate">
+              {user.email}
+            </p>
+            {isPremium && (
+              <span className="inline-flex items-center gap-1 bg-gradient-to-r from-amber-500 to-amber-600 text-white text-[10px] px-1.5 py-0.5 rounded-full">
+                <Crown className="h-2.5 w-2.5" />
+                <span>PREMIUM</span>
+              </span>
+            )}
+          </div>
+          <button
+            onClick={logout}
+            className="text-xs text-muted-foreground hover:text-foreground mt-0.5 flex items-center gap-1"
+          >
+            <LogOut className="h-3 w-3" />
+            Wyloguj się
+          </button>
+        </div>
       </div>
     </div>
   );
