@@ -83,7 +83,7 @@ const Accounting = () => {
   const COLORS = ['#0088FE', '#00C49F', '#FFBB28', '#FF8042', '#8884d8'];
 
   // Function to trigger JPK generation
-  const handleGenerateJpck = (periodToGenerate: string) => {
+  const handleGenerateJpck = (periodType: string) => {
     if (!selectedProfileId || !profiles) {
       console.error("Cannot generate JPK: Business profile not selected or profiles not loaded.");
       return;
@@ -95,13 +95,53 @@ const Accounting = () => {
       return;
     }
 
-    const [year, month] = periodToGenerate.split('-').map(Number);
-    const startDate = new Date(year, month - 1, 1);
-    const endDate = new Date(year, month, 0);
+    // Get the current date
+    const now = new Date();
+    let startDate: Date;
+    let endDate: Date;
+
+    // Determine the date range based on the period type
+    switch (periodType) {
+      case 'this_month':
+        startDate = new Date(now.getFullYear(), now.getMonth(), 1);
+        endDate = new Date(now.getFullYear(), now.getMonth() + 1, 0);
+        break;
+      case 'last_month':
+        startDate = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+        endDate = new Date(now.getFullYear(), now.getMonth(), 0);
+        break;
+      case 'this_quarter':
+        const currentQuarter = Math.floor(now.getMonth() / 3) + 1;
+        startDate = new Date(now.getFullYear(), (currentQuarter - 1) * 3, 1);
+        endDate = new Date(now.getFullYear(), currentQuarter * 3, 0);
+        break;
+      case 'last_quarter':
+        const lastQuarter = Math.floor(now.getMonth() / 3) === 0 ? 4 : Math.floor(now.getMonth() / 3);
+        const year = lastQuarter === 4 ? now.getFullYear() - 1 : now.getFullYear();
+        startDate = new Date(year, (lastQuarter - 1) * 3, 1);
+        endDate = new Date(year, lastQuarter * 3, 0);
+        break;
+      case 'this_year':
+        startDate = new Date(now.getFullYear(), 0, 1);
+        endDate = new Date(now.getFullYear(), 11, 31);
+        break;
+      case 'last_year':
+        startDate = new Date(now.getFullYear() - 1, 0, 1);
+        endDate = new Date(now.getFullYear() - 1, 11, 31);
+        break;
+      default:
+        // Default to current month if period is not recognized
+        startDate = new Date(now.getFullYear(), now.getMonth(), 1);
+        endDate = new Date(now.getFullYear(), now.getMonth() + 1, 0);
+    }
+
     const periodDates = {
       startDate: format(startDate, 'yyyy-MM-dd'),
       endDate: format(endDate, 'yyyy-MM-dd'),
+      periodName: format(startDate, 'yyyy-MM')
     };
+
+    console.log(`Generating JPK for period: ${periodDates.startDate} to ${periodDates.endDate}`);
 
     const invoicesForPeriod = allInvoices.filter(invoice => {
       const issueDate = parseISO(invoice.issueDate);
@@ -118,15 +158,14 @@ const Accounting = () => {
     if (jpkData) {
       const xml = generateJpckV7Xml(jpkData);
       setGeneratedXml(xml);
-      console.log("JPK XML Generated for period", periodToGenerate, ":", xml);
+      console.log("JPK XML Generated for period", periodDates.periodName, ":", xml);
       
       if(xml) {
         const blob = new Blob([xml], { type: 'application/xml' });
         const url = URL.createObjectURL(blob);
         const a = document.createElement('a');
         a.href = url;
-        const periodName = periodToGenerate.replace('-', '_');
-        a.download = `JPK_V7_${selectedProfile.taxId || 'firma'}_${periodName}.xml`;
+        a.download = `JPK_V7_${selectedProfile.taxId || 'firma'}_${periodDates.periodName}.xml`;
         document.body.appendChild(a);
         a.click();
         document.body.removeChild(a);
@@ -134,7 +173,7 @@ const Accounting = () => {
       }
     } else {
       setGeneratedXml(null);
-      console.error("JPK data generation failed for period", periodToGenerate);
+      console.error("JPK data generation failed for period", periodType);
     }
   };
 
@@ -381,16 +420,17 @@ const Accounting = () => {
       </div>
 
       {/* Period Selector and JPK Generation */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-lg">Generowanie JPK V7M</CardTitle>
+      <Card className="mb-6">
+        <CardHeader className="pb-4">
+          <CardTitle className="text-lg font-semibold">Generowanie JPK V7M</CardTitle>
+          <p className="text-sm text-muted-foreground">Wybierz okres i pobierz plik JPK XML</p>
         </CardHeader>
-        <CardContent className="space-y-4">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div className="space-y-2">
-              <label className="text-sm font-medium">Okres rozliczeniowy:</label>
+        <CardContent>
+          <div className="flex flex-col space-y-4 md:flex-row md:items-end md:space-x-4 md:space-y-0">
+            <div className="flex-1 space-y-2">
+              <label className="text-sm font-medium text-foreground/80">Okres rozliczeniowy</label>
               <Select value={selectedPeriod} onValueChange={setSelectedPeriod}>
-                <SelectTrigger>
+                <SelectTrigger className="w-full">
                   <SelectValue placeholder="Wybierz okres" />
                 </SelectTrigger>
                 <SelectContent>
@@ -403,12 +443,12 @@ const Accounting = () => {
                 </SelectContent>
               </Select>
             </div>
-            <div className="space-y-2">
-              <label className="text-sm font-medium">Akcje:</label>
+            <div className="pt-2">
               <Button 
                 onClick={() => handleGenerateJpck(selectedPeriod)} 
-                disabled={!selectedProfileId || loadingData} 
+                disabled={!selectedProfileId || loadingData}
                 className="w-full md:w-auto"
+                size="lg"
               >
                 <Download className="mr-2 h-4 w-4" />
                 Pobierz JPK XML
