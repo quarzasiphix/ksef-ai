@@ -1,12 +1,19 @@
+
 import { supabase } from "../client";
 import type { Product, VatType } from "@/types";
 
-export async function getProducts(userId: string): Promise<Product[]> {
-  const { data, error } = await supabase
+export async function getProducts(userId: string, productType?: 'income' | 'expense'): Promise<Product[]> {
+  let query = supabase
     .from("products")
-    .select("id, name, unit_price, vat_rate, unit, user_id")
+    .select("id, name, unit_price, vat_rate, unit, user_id, product_type")
     .eq("user_id", userId)
     .order("name");
+
+  if (productType) {
+    query = query.eq("product_type", productType);
+  }
+
+  const { data, error } = await query;
 
   if (error) {
     console.error("Error fetching products:", error);
@@ -16,11 +23,11 @@ export async function getProducts(userId: string): Promise<Product[]> {
   return (data || []).map(item => ({
     id: item.id,
     name: item.name,
-    description: item.description,
     unitPrice: Number(item.unit_price),
     vatRate: item.vat_rate,
     unit: item.unit,
-    user_id: item.user_id
+    user_id: item.user_id,
+    product_type: item.product_type
   }));
 }
 
@@ -30,7 +37,8 @@ export async function saveProduct(product: Product): Promise<Product> {
     unit_price: product.unitPrice,
     vat_rate: product.vatRate,
     unit: product.unit,
-    user_id: product.user_id // Always include user_id for RLS
+    user_id: product.user_id,
+    product_type: product.product_type
   };
 
   if (product.id) {
@@ -52,7 +60,9 @@ export async function saveProduct(product: Product): Promise<Product> {
       name: data.name,
       unitPrice: Number(data.unit_price),
       vatRate: data.vat_rate,
-      unit: data.unit
+      unit: data.unit,
+      user_id: data.user_id,
+      product_type: data.product_type
     };
   } else {
     // Insert new product
@@ -72,7 +82,9 @@ export async function saveProduct(product: Product): Promise<Product> {
       name: data.name,
       unitPrice: Number(data.unit_price),
       vatRate: data.vat_rate,
-      unit: data.unit
+      unit: data.unit,
+      user_id: data.user_id,
+      product_type: data.product_type
     };
   }
 }

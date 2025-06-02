@@ -1,3 +1,4 @@
+
 export enum TransactionType {
   INCOME = 'income',
   EXPENSE = 'expense'
@@ -32,7 +33,7 @@ export interface Invoice {
   customerId?: string;
   businessName?: string;
   businessProfileId?: string;
-  user_id?: string;
+  user_id: string;
   fakturaBezVAT?: boolean;
   vatExemptionReason?: VatExemptionReason;
 }
@@ -67,9 +68,37 @@ export interface Product {
   name: string;
   description?: string;
   unitPrice: number;
-  vatRate: number; // VAT rate as number (e.g., 23, 8, 5, 0) or -1 for VAT-exempt
+  vatRate: number;
   unit: string;
   user_id: string;
+  product_type: 'income' | 'expense';
+}
+
+export interface Customer {
+  id: string;
+  user_id: string;
+  name: string;
+  taxId?: string;
+  address: string;
+  postalCode: string;
+  city: string;
+  country?: string;
+  email?: string;
+  phone?: string;
+}
+
+export interface Expense {
+  id: string;
+  userId: string;
+  businessProfileId: string;
+  issueDate: string;
+  amount: number;
+  currency: string;
+  description?: string;
+  createdAt?: string;
+  transactionType: TransactionType;
+  date: string;
+  category?: string;
 }
 
 export enum VatType {
@@ -87,6 +116,11 @@ export enum VatExemptionReason {
 }
 
 export enum PaymentMethod {
+  CASH = 'cash',
+  TRANSFER = 'transfer'
+}
+
+export enum PaymentMethodDb {
   CASH = 'cash',
   TRANSFER = 'transfer'
 }
@@ -114,5 +148,5 @@ export interface BusinessProfile {
   created_at?: string;
   updated_at?: string;
   user_id?: string;
-  tax_type?: string | null; // Added tax_type to interface
+  tax_type?: string | null;
 }

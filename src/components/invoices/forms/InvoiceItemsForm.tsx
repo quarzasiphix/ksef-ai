@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from "react";
 import { CardHeader, CardTitle, CardContent, Card } from "@/components/ui/card";
 import { EditableInvoiceItemsTable } from "@/components/invoices/EditableInvoiceItemsTable";
@@ -29,11 +30,13 @@ export const InvoiceItemsForm: React.FC<InvoiceItemsFormProps> = ({
   const [products, setProducts] = useState<Product[]>([]);
   const [productsLoading, setProductsLoading] = useState(true);
 
-  // Refetch products
+  // Refetch products based on transaction type
   const refetchProducts = async () => {
     setProductsLoading(true);
     try {
-      const productData = await getProducts(userId);
+      // For sales invoices, get income products; for expense invoices, get expense products
+      const productType = transactionType === TransactionType.INCOME ? 'income' : 'expense';
+      const productData = await getProducts(userId, productType);
       setProducts(productData);
     } catch (error) {
       console.error("Error loading products:", error);
@@ -43,13 +46,10 @@ export const InvoiceItemsForm: React.FC<InvoiceItemsFormProps> = ({
     }
   };
 
-  // Load products on mount
+  // Load products on mount and when transaction type changes
   useEffect(() => {
     refetchProducts();
-    // eslint-disable-next-line
-  }, []);
-
-
+  }, [userId, transactionType]);
 
   const handleAddItem = (newItem: InvoiceItem) => {
     onItemsChange([...items, newItem]);
@@ -64,7 +64,6 @@ export const InvoiceItemsForm: React.FC<InvoiceItemsFormProps> = ({
       item.id === id ? calculateItemValues({ ...item, ...updates }) : item
     ));
   };
-
 
   return (
     <Card>

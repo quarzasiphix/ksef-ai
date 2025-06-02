@@ -358,6 +358,7 @@ export type Database = {
           created_at: string
           id: string
           name: string
+          product_type: string
           unit: string
           unit_price: number
           updated_at: string
@@ -369,6 +370,7 @@ export type Database = {
           created_at?: string
           id?: string
           name: string
+          product_type?: string
           unit: string
           unit_price: number
           updated_at?: string
@@ -380,6 +382,7 @@ export type Database = {
           created_at?: string
           id?: string
           name?: string
+          product_type?: string
           unit?: string
           unit_price?: number
           updated_at?: string

@@ -1,55 +1,31 @@
-import React from "react";
-import { useQueryClient } from "@tanstack/react-query";
+
+import React, { useState, useEffect } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { z } from "zod";
-import { toast } from "sonner";
+import * as z from "zod";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import {
-  Form,
-  FormControl,
-  FormField,
-  FormItem,
-  FormLabel,
-  FormMessage,
-} from "@/components/ui/form";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
-import { Product, VatType } from "@/types";
+import { Label } from "@/components/ui/label";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
+import { Product } from "@/types";
 import { saveProduct } from "@/integrations/supabase/repositories/productRepository";
+import { toast } from "sonner";
 import { useAuth } from "@/App";
-import {
-  Sheet,
-  SheetContent,
-  SheetHeader,
-  SheetTitle,
-} from "@/components/ui/sheet";
-import { ArrowLeft } from "lucide-react";
 
-const VAT_RATES = [
-  { label: "23%", value: 23 },
-  { label: "8%", value: 8 },
-  { label: "5%", value: 5 },
-  { label: "0%", value: 0 },
-  { label: "Zwolniony", value: -1 },
-];
-
-const UNITS = ["szt.", "godz.", "usł.", "kg", "m", "m²", "m³", "l", "komplet"];
-
-const formSchema = z.object({
-  name: z.string().min(1, "Nazwa jest wymagana"),
-  unitPrice: z.coerce.number().min(0, "Cena musi być większa lub równa 0"),
-  vatRate: z.coerce.number().refine(val => val === -1 || (val >= 0 && val <= 100), {
-    message: "Stawka VAT musi być liczbą od 0 do 100 lub -1 dla zwolnionych",
-  }),
+const productSchema = z.object({
+  name: z.string().min(1, "Nazwa produktu jest wymagana"),
+  unitPrice: z.number().min(0, "Cena musi być większa lub równa 0"),
+  vatRate: z.number().min(-1, "Stawka VAT musi być poprawna"),
   unit: z.string().min(1, "Jednostka jest wymagana"),
+  product_type: z.enum(['income', 'expense'], {
+    required_error: "Typ produktu jest wymagany",
+  }),
 });
+
+type ProductFormData = z.infer<typeof productSchema>;
 
 interface ProductFormProps {
   initialData?: Product;
@@ -58,191 +34,239 @@ interface ProductFormProps {
   onSuccess: (product: Product) => void;
 }
 
-const ProductForm = ({
+const ProductForm: React.FC<ProductFormProps> = ({
   initialData,
   isOpen,
   onClose,
   onSuccess,
-}: ProductFormProps) => {
+}) => {
   const { user } = useAuth();
-  const queryClient = useQueryClient();
-  const isEditing = !!initialData?.id;
+  const [isLoading, setIsLoading] = useState(false);
 
-  const form = useForm<z.infer<typeof formSchema>>({
-    resolver: zodResolver(formSchema),
+  const form = useForm<ProductFormData>({
+    resolver: zodResolver(productSchema),
     defaultValues: {
       name: initialData?.name || "",
       unitPrice: initialData?.unitPrice || 0,
-      vatRate: initialData?.vatRate ?? 23,
+      vatRate: initialData?.vatRate || 23,
       unit: initialData?.unit || "szt.",
+      product_type: initialData?.product_type || "income",
     },
   });
 
-  const onSubmit = async (values: z.infer<typeof formSchema>) => {
+  useEffect(() => {
+    if (initialData) {
+      form.reset({
+        name: initialData.name,
+        unitPrice: initialData.unitPrice,
+        vatRate: initialData.vatRate,
+        unit: initialData.unit,
+        product_type: initialData.product_type,
+      });
+    }
+  }, [initialData, form]);
+
+  const onSubmit = async (data: ProductFormData) => {
+    if (!user?.id) {
+      toast.error("Musisz być zalogowany");
+      return;
+    }
+
+    setIsLoading(true);
     try {
-      // Ensure all required fields are present
-      if (!user?.id) {
-        toast.error("Brak informacji o użytkowniku. Zaloguj się ponownie.");
-        return;
-      }
-      const product: Product = {
+      const productData: Product = {
         id: initialData?.id || "",
-        name: values.name,
-        unitPrice: values.unitPrice,
-        vatRate: values.vatRate,
-        unit: values.unit,
-        user_id: user.id, // Enforce RLS: always include user_id
+        name: data.name,
+        unitPrice: data.unitPrice,
+        vatRate: data.vatRate,
+        unit: data.unit,
+        user_id: user.id,
+        product_type: data.product_type,
       };
 
-      const savedProduct = await saveProduct(product);
+      const savedProduct = await saveProduct(productData);
       toast.success(
-        isEditing ? "Produkt zaktualizowany" : "Produkt utworzony"
+        initialData ? "Produkt został zaktualizowany" : "Produkt został utworzony"
       );
-      // Update the products cache instantly
-      queryClient.setQueryData(["products"], (old: Product[] = []) => {
-        if (isEditing) {
-          // Replace the edited product
-          return old.map(p => p.id === savedProduct.id ? savedProduct : p);
-        } else {
-          // Add the new product
-          return [...old, savedProduct];
-        }
-      });
       onSuccess(savedProduct);
+      onClose();
     } catch (error) {
       console.error("Error saving product:", error);
       toast.error("Wystąpił błąd podczas zapisywania produktu");
+    } finally {
+      setIsLoading(false);
     }
   };
 
+  const vatOptions = [
+    { value: 23, label: "23%" },
+    { value: 8, label: "8%" },
+    { value: 5, label: "5%" },
+    { value: 0, label: "0%" },
+    { value: -1, label: "Zwolniony (zw)" },
+  ];
+
+  const unitOptions = [
+    "szt.",
+    "godz.",
+    "kg",
+    "l",
+    "m",
+    "m²",
+    "m³",
+    "usługa",
+    "komplet",
+    "opakowanie",
+  ];
+
   return (
-    <Sheet open={isOpen} onOpenChange={onClose}>
-      <SheetContent side="right" className="w-full sm:max-w-xl md:max-w-2xl p-0 gap-0">
-        <div className="flex flex-col h-full">
-          <div className="border-b p-4">
-            <div className="flex items-center gap-2">
-              <Button variant="outline" size="icon" onClick={onClose}>
-                <ArrowLeft className="h-4 w-4" />
-              </Button>
-              <SheetHeader className="flex-1">
-                <SheetTitle className="text-left">
-                  {isEditing ? "Edytuj produkt" : "Dodaj nowy produkt"}
-                </SheetTitle>
-              </SheetHeader>
-            </div>
-          </div>
+    <Dialog open={isOpen} onOpenChange={onClose}>
+      <DialogContent className="sm:max-w-[425px]">
+        <DialogHeader>
+          <DialogTitle>
+            {initialData ? "Edytuj produkt" : "Nowy produkt"}
+          </DialogTitle>
+          <DialogDescription>
+            {initialData
+              ? "Edytuj szczegóły produktu"
+              : "Dodaj nowy produkt do swojego katalogu"}
+          </DialogDescription>
+        </DialogHeader>
 
-          <div className="flex-1 overflow-auto p-4">
-            <Form {...form}>
-              <form
-                onSubmit={form.handleSubmit(onSubmit)}
-                className="space-y-6"
-              >
-                <FormField
-                  control={form.control}
-                  name="name"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Nazwa</FormLabel>
+        <Form {...form}>
+          <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+            <FormField
+              control={form.control}
+              name="product_type"
+              render={({ field }) => (
+                <FormItem className="space-y-3">
+                  <FormLabel>Typ produktu</FormLabel>
+                  <FormControl>
+                    <RadioGroup
+                      onValueChange={field.onChange}
+                      value={field.value}
+                      className="flex flex-col space-y-1"
+                    >
+                      <div className="flex items-center space-x-2">
+                        <RadioGroupItem value="income" id="income" />
+                        <Label htmlFor="income" className="cursor-pointer">
+                          Sprzedaż (przychody)
+                        </Label>
+                      </div>
+                      <div className="flex items-center space-x-2">
+                        <RadioGroupItem value="expense" id="expense" />
+                        <Label htmlFor="expense" className="cursor-pointer">
+                          Wydatki (koszty)
+                        </Label>
+                      </div>
+                    </RadioGroup>
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+
+            <FormField
+              control={form.control}
+              name="name"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Nazwa produktu</FormLabel>
+                  <FormControl>
+                    <Input placeholder="Nazwa produktu/usługi" {...field} />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+
+            <div className="grid grid-cols-2 gap-4">
+              <FormField
+                control={form.control}
+                name="unitPrice"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Cena netto</FormLabel>
+                    <FormControl>
+                      <Input
+                        type="number"
+                        step="0.01"
+                        placeholder="0.00"
+                        {...field}
+                        onChange={(e) => field.onChange(parseFloat(e.target.value) || 0)}
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              <FormField
+                control={form.control}
+                name="vatRate"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Stawka VAT</FormLabel>
+                    <Select
+                      onValueChange={(value) => field.onChange(parseInt(value))}
+                      value={field.value?.toString()}
+                    >
                       <FormControl>
-                        <Input placeholder="Nazwa produktu lub usługi" {...field} />
+                        <SelectTrigger>
+                          <SelectValue placeholder="Wybierz VAT" />
+                        </SelectTrigger>
                       </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                  <FormField
-                    control={form.control}
-                    name="unitPrice"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Cena netto</FormLabel>
-                        <FormControl>
-                          <Input
-                            type="number"
-                            placeholder="0.00"
-                            step="0.01"
-                            min="0"
-                            {...field}
-                          />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                  <FormField
-                    control={form.control}
-                    name="vatRate"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Stawka VAT</FormLabel>
-                        <Select
-                          onValueChange={(value) => field.onChange(value === 'zw' ? -1 : Number(value))}
-                          value={field.value === -1 ? 'zw' : (field.value?.toString() || '23')}
-                        >
-                          <FormControl>
-                            <SelectTrigger>
-                              <SelectValue placeholder="Wybierz stawkę VAT" />
-                            </SelectTrigger>
-                          </FormControl>
-                          <SelectContent>
-                            <SelectItem value="23">23%</SelectItem>
-                            <SelectItem value="8">8%</SelectItem>
-                            <SelectItem value="5">5%</SelectItem>
-                            <SelectItem value="0">0%</SelectItem>
-                            <SelectItem value="zw">Zwolniony</SelectItem>
-                          </SelectContent>
-                        </Select>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                </div>
-                <FormField
-                  control={form.control}
-                  name="unit"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Jednostka</FormLabel>
-                      <Select
-                        onValueChange={field.onChange}
-                        defaultValue={field.value}
-                      >
-                        <FormControl>
-                          <SelectTrigger>
-                            <SelectValue placeholder="Wybierz jednostkę" />
-                          </SelectTrigger>
-                        </FormControl>
-                        <SelectContent>
-                          {UNITS.map((unit) => (
-                            <SelectItem key={unit} value={unit}>
-                              {unit}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
+                      <SelectContent>
+                        {vatOptions.map((option) => (
+                          <SelectItem key={option.value} value={option.value.toString()}>
+                            {option.label}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+            </div>
 
-                <div className="sticky bottom-0  border-t p-4 mt-auto">
-                  <div className="flex justify-end gap-2">
-                    <Button type="button" variant="outline" onClick={onClose}>
-                      Anuluj
-                    </Button>
-                    <Button type="submit">
-                      {isEditing ? "Aktualizuj" : "Dodaj produkt"}
-                    </Button>
-                  </div>
-                </div>
-              </form>
-            </Form>
-          </div>
-        </div>
-      </SheetContent>
-    </Sheet>
+            <FormField
+              control={form.control}
+              name="unit"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Jednostka</FormLabel>
+                  <Select onValueChange={field.onChange} value={field.value}>
+                    <FormControl>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Wybierz jednostkę" />
+                      </SelectTrigger>
+                    </FormControl>
+                    <SelectContent>
+                      {unitOptions.map((unit) => (
+                        <SelectItem key={unit} value={unit}>
+                          {unit}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+
+            <DialogFooter>
+              <Button type="button" variant="outline" onClick={onClose}>
+                Anuluj
+              </Button>
+              <Button type="submit" disabled={isLoading}>
+                {isLoading ? "Zapisywanie..." : initialData ? "Zaktualizuj" : "Dodaj"}
+              </Button>
+            </DialogFooter>
+          </form>
+        </Form>
+      </DialogContent>
+    </Dialog>
   );
 };
 
