@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { formatCurrency } from "@/lib/invoice-utils";
@@ -9,7 +8,7 @@ import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { useGlobalData } from "@/hooks/use-global-data";
-import { useAuth } from "@/App";
+import { useAuth } from "@/hooks/useAuth";
 import { calculateIncomeTax } from "@/lib/tax-utils";
 import { useBusinessProfile } from "@/context/BusinessProfileContext";
 import { 

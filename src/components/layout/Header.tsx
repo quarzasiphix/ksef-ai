@@ -22,7 +22,7 @@ const Header = () => {
       <div className="flex items-center">
         <SidebarTrigger className="mr-4 hidden md:flex" />
         <h1 className={`font-bold text-invoice ${isMobile ? "text-base" : "text-lg"}`}>
-          {isMobile ? "AiFaktura" : "System Fakturowy"}
+          {isMobile ? "KsiegaI" : "KsiegaI"}
         </h1>
       </div>
       <div className="flex items-center gap-4">

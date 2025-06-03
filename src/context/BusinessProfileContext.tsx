@@ -2,7 +2,7 @@ import React, { createContext, useContext, useState, useEffect } from 'react';
 import type { BusinessProfile } from '@/types';
 import { getBusinessProfiles } from '@/integrations/supabase/repositories/businessProfileRepository';
 import { useQuery } from '@tanstack/react-query';
-import { useAuth } from '@/App';
+import { useAuth } from '@/hooks/useAuth';
 
 interface BusinessProfileContextType {
   selectedProfileId: string | null;

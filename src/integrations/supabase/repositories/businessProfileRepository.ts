@@ -1,6 +1,6 @@
 import { supabase } from "../client";
-import type { BusinessProfile } from "@/types";
-import { queryClient } from "@/App";
+import type { BusinessProfile } from "../../../types";
+import { queryClient } from "../../../lib/queryClient";
 
 export async function getBusinessProfiles(userId: string): Promise<BusinessProfile[]> {
   if (!userId) {

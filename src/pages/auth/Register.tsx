@@ -38,7 +38,7 @@ const Register = () => {
 
   return (
     <div className="flex flex-col items-center justify-center min-h-screen bg-neutral-900">
-      <h1 className="text-3xl font-extrabold text-white text-center mb-8">Witam w Ai Faktura</h1>
+      <h1 className="text-3xl font-extrabold text-white text-center mb-8">Witam w KsiegaI</h1>
       <form onSubmit={handleRegister} className="bg-neutral-800 p-8 rounded shadow-md w-full max-w-sm border border-neutral-700">
         <h2 className="text-2xl font-bold mb-6 text-center text-white">Załóż konto</h2>
         <div className="mb-4">

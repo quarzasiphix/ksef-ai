@@ -4,7 +4,7 @@ import { getBusinessProfiles } from "@/integrations/supabase/repositories/busine
 import { getCustomers } from "@/integrations/supabase/repositories/customerRepository";
 import { getProducts } from "@/integrations/supabase/repositories/productRepository";
 import { getExpenses } from "@/integrations/supabase/repositories/expenseRepository";
-import { useAuth } from "@/App";
+import { useAuth } from "@/hooks/useAuth";
 import React, { useEffect, useRef } from "react";
 import { useBusinessProfile } from "@/context/BusinessProfileContext";
 

@@ -7,7 +7,7 @@ const Footer = () => {
       <div className="container mx-auto px-4">
         <div className="flex flex-col md:flex-row justify-between items-center">
           <div className="text-neutral-400 text-sm mb-4 md:mb-0">
-            © {new Date().getFullYear()} Ai Faktura. Wszelkie prawa zastrzeżone.
+            © {new Date().getFullYear()} KsiegaI. Wszelkie prawa zastrzeżone.
           </div>
           <div className="flex flex-wrap justify-center gap-6">
             <Link to="/policies/privacy" className="text-neutral-400 hover:text-white text-sm">

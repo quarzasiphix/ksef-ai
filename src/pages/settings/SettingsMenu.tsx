@@ -3,11 +3,12 @@ import { Link, Outlet, useSearchParams, useNavigate } from 'react-router-dom';
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Settings, Building2, Star, User } from "lucide-react";
-import { useAuth } from "@/App";
+import { useAuth } from "@/hooks/useAuth";
 import { toast } from "sonner";
 import { motion } from "framer-motion";
 import { cn } from "@/lib/utils";
 import PremiumSuccessMessage from "@/components/PremiumSuccessMessage";
+import SupportFooter from "@/components/SupportFooter";
 
 const SettingsMenu = () => {
   const { isPremium, openPremiumDialog, isShowingPremiumSuccess, hidePremiumSuccess } = useAuth();
@@ -65,7 +66,7 @@ const SettingsMenu = () => {
       </div>
 
       <Outlet />
-
+      <SupportFooter />
     </div>
   );
 };

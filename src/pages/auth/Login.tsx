@@ -1,7 +1,7 @@
 import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
-import { useAuth } from "@/App";
+import { useAuth } from "@/hooks/useAuth";
 import { LogIn, UserCircle, AlertCircle } from 'lucide-react';
 
 const Login = () => {
@@ -48,7 +48,7 @@ const Login = () => {
       <div className="w-full max-w-md">
         <div className="text-center mb-10">
           <LogIn className="mx-auto text-primary h-16 w-16 mb-4" />
-          <h1 className="text-4xl font-bold text-white">Witaj w Ai Faktura</h1>
+          <h1 className="text-4xl font-bold text-white">Witaj w KsiegaI</h1>
           <p className="text-neutral-400 mt-2">Zaloguj się, aby kontynuować.</p>
         </div>
 
