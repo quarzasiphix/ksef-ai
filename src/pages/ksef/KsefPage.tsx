@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -17,7 +16,7 @@ import {
 import { Invoice } from "@/types";
 import { mockInvoices } from "@/data/mockData";
 import { generateKsefXml, generateKsefData } from "@/integrations/ksef/ksefGenerator";
-import { useAuth } from "@/App";
+import { useAuth } from "@/context/AuthContext";
 import { RequirePremium } from "@/components/auth/RequirePremium";
 
 const KsefPage = () => {

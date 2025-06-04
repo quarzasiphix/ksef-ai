@@ -1,5 +1,5 @@
 import React, { useEffect } from 'react';
-import { useAuth } from "@/App";
+import { useAuth } from "@/context/AuthContext";
 import { Navigate, Outlet, useLocation, useNavigate } from 'react-router-dom';
 
 const RequirePremium: React.FC = () => {

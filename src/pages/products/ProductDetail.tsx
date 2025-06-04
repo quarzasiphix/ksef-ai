@@ -6,7 +6,7 @@ import { Product } from "@/types";
 import { getProducts, deleteProduct } from "@/integrations/supabase/repositories/productRepository";
 import ProductForm from "@/components/products/ProductForm";
 import { toast } from "sonner";
-import { useAuth } from "@/App";
+import { useAuth } from "@/context/AuthContext";
 import { getInvoices } from "@/integrations/supabase/repositories/invoiceRepository";
 import { Invoice } from "@/types";
 import InvoiceCard from "@/components/invoices/InvoiceCard";

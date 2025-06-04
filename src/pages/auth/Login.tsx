@@ -31,7 +31,17 @@ const Login = () => {
   };
 
   const handleTestAccountLogin = async () => {
-    await login('test@quarza.online', 'nigga123');
+    setLoading(true);
+    setError(null);
+    try {
+      await login('test@quarza.online', 'nigga123');
+      navigate("/dashboard");
+    } catch (err: any) {
+      setError("Nie udało się zalogować na konto testowe.");
+      console.error('Test account login error:', err);
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (

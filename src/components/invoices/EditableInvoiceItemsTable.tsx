@@ -1,4 +1,3 @@
-
 import React, { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -16,6 +15,7 @@ interface EditableInvoiceItemsTableProps {
   onUpdateItem: (id: string, updates: Partial<InvoiceItem>) => void;
   onAddItem: (item: InvoiceItem) => void;
   documentType: InvoiceType;
+  transactionType: TransactionType;
   refetchProducts: () => Promise<void>;
   userId: string;
   fakturaBezVAT?: boolean;
@@ -29,6 +29,7 @@ export const EditableInvoiceItemsTable: React.FC<EditableInvoiceItemsTableProps>
   onUpdateItem,
   onAddItem,
   documentType,
+  transactionType,
   refetchProducts,
   userId,
   fakturaBezVAT,
@@ -44,12 +45,11 @@ export const EditableInvoiceItemsTable: React.FC<EditableInvoiceItemsTableProps>
   });
 
   // Filter products based on document type
-  const documentTransactionType = 
-    documentType === InvoiceType.SALES || documentType === InvoiceType.PROFORMA || documentType === InvoiceType.RECEIPT 
-      ? 'income' 
-      : 'expense';
-      
-  const filteredProducts = products.filter(product => product.product_type === documentTransactionType);
+  const filteredProducts = products.filter(product => product.product_type === transactionType);
+
+  // Debug logs
+  console.log('EditableInvoiceItemsTable products:', products);
+  console.log('EditableInvoiceItemsTable filteredProducts:', filteredProducts);
 
   const handleAddManualItem = () => {
     if (!newItem.name || !newItem.quantity || !newItem.unitPrice) return;
@@ -140,15 +140,15 @@ export const EditableInvoiceItemsTable: React.FC<EditableInvoiceItemsTableProps>
 
       {/* Mobile View */}
       <div className="block md:hidden space-y-4">
-        {items.map((item) => (
+        {items.map((item, index) => (
           <InvoiceItemMobileCard
             key={item.id}
             item={item}
-            onUpdate={(updates) => onUpdateItem(item.id, updates)}
-            onRemove={() => onRemoveItem(item.id)}
+            index={index}
+            isReceipt={documentType === InvoiceType.RECEIPT}
             documentType={documentType}
-            products={filteredProducts}
-            refetchProducts={refetchProducts}
+            onRemoveItem={onRemoveItem}
+            onUpdateItem={onUpdateItem}
             fakturaBezVAT={fakturaBezVAT}
             vatExemptionReason={vatExemptionReason}
           />
@@ -158,9 +158,9 @@ export const EditableInvoiceItemsTable: React.FC<EditableInvoiceItemsTableProps>
       {/* Desktop Table */}
       <div className="hidden md:block">
         <div className="overflow-x-auto">
-          <table className="w-full border-collapse">
+          <table className="w-full border-collapse bg-[#181C27] text-white">
             <thead>
-              <tr className="border-b">
+              <tr className="border-b border-gray-700">
                 <th className="text-left p-2 font-medium">Nazwa</th>
                 <th className="text-left p-2 font-medium">Ilość</th>
                 <th className="text-left p-2 font-medium">Jedn.</th>
@@ -174,12 +174,12 @@ export const EditableInvoiceItemsTable: React.FC<EditableInvoiceItemsTableProps>
             </thead>
             <tbody>
               {items.map((item) => (
-                <tr key={item.id} className="border-b">
+                <tr key={item.id} className="border-b border-gray-700 bg-[#181C27]">
                   <td className="p-2">
                     <Input
                       value={item.name}
                       onChange={(e) => onUpdateItem(item.id, { name: e.target.value })}
-                      className="min-w-[150px]"
+                      className="min-w-[150px] bg-[#23283A] text-white border-gray-700"
                     />
                   </td>
                   <td className="p-2">
@@ -187,7 +187,7 @@ export const EditableInvoiceItemsTable: React.FC<EditableInvoiceItemsTableProps>
                       type="number"
                       value={item.quantity}
                       onChange={(e) => onUpdateItem(item.id, { quantity: Number(e.target.value) })}
-                      className="w-20"
+                      className="w-20 bg-[#23283A] text-white border-gray-700"
                       min="0"
                       step="0.01"
                     />
@@ -196,7 +196,7 @@ export const EditableInvoiceItemsTable: React.FC<EditableInvoiceItemsTableProps>
                     <Input
                       value={item.unit}
                       onChange={(e) => onUpdateItem(item.id, { unit: e.target.value })}
-                      className="w-16"
+                      className="w-16 bg-[#23283A] text-white border-gray-700"
                     />
                   </td>
                   <td className="p-2">
@@ -204,7 +204,7 @@ export const EditableInvoiceItemsTable: React.FC<EditableInvoiceItemsTableProps>
                       type="number"
                       value={item.unitPrice}
                       onChange={(e) => onUpdateItem(item.id, { unitPrice: Number(e.target.value) })}
-                      className="w-24"
+                      className="w-24 bg-[#23283A] text-white border-gray-700"
                       min="0"
                       step="0.01"
                     />
@@ -214,10 +214,10 @@ export const EditableInvoiceItemsTable: React.FC<EditableInvoiceItemsTableProps>
                       value={item.vatRate?.toString()}
                       onValueChange={(value) => onUpdateItem(item.id, { vatRate: Number(value) })}
                     >
-                      <SelectTrigger className="w-20">
+                      <SelectTrigger className="w-20 bg-[#23283A] text-white border-gray-700">
                         <SelectValue />
                       </SelectTrigger>
-                      <SelectContent>
+                      <SelectContent className="bg-[#23283A] text-white">
                         <SelectItem value="23">23%</SelectItem>
                         <SelectItem value="8">8%</SelectItem>
                         <SelectItem value="5">5%</SelectItem>
@@ -243,13 +243,13 @@ export const EditableInvoiceItemsTable: React.FC<EditableInvoiceItemsTableProps>
               ))}
 
               {/* Add new item row */}
-              <tr className="border-b bg-gray-50">
+              <tr className="border-b border-gray-700 bg-[#23283A]">
                 <td className="p-2">
                   <Input
                     placeholder="Nazwa produktu"
                     value={newItem.name || ""}
                     onChange={(e) => setNewItem({ ...newItem, name: e.target.value })}
-                    className="min-w-[150px]"
+                    className="min-w-[150px] bg-[#23283A] text-white border-gray-700"
                   />
                 </td>
                 <td className="p-2">
@@ -258,7 +258,7 @@ export const EditableInvoiceItemsTable: React.FC<EditableInvoiceItemsTableProps>
                     placeholder="1"
                     value={newItem.quantity || ""}
                     onChange={(e) => setNewItem({ ...newItem, quantity: Number(e.target.value) })}
-                    className="w-20"
+                    className="w-20 bg-[#23283A] text-white border-gray-700"
                     min="0"
                     step="0.01"
                   />
@@ -268,7 +268,7 @@ export const EditableInvoiceItemsTable: React.FC<EditableInvoiceItemsTableProps>
                     placeholder="szt."
                     value={newItem.unit || ""}
                     onChange={(e) => setNewItem({ ...newItem, unit: e.target.value })}
-                    className="w-16"
+                    className="w-16 bg-[#23283A] text-white border-gray-700"
                   />
                 </td>
                 <td className="p-2">
@@ -277,7 +277,7 @@ export const EditableInvoiceItemsTable: React.FC<EditableInvoiceItemsTableProps>
                     placeholder="0.00"
                     value={newItem.unitPrice || ""}
                     onChange={(e) => setNewItem({ ...newItem, unitPrice: Number(e.target.value) })}
-                    className="w-24"
+                    className="w-24 bg-[#23283A] text-white border-gray-700"
                     min="0"
                     step="0.01"
                   />
@@ -287,10 +287,10 @@ export const EditableInvoiceItemsTable: React.FC<EditableInvoiceItemsTableProps>
                     value={newItem.vatRate?.toString()}
                     onValueChange={(value) => setNewItem({ ...newItem, vatRate: Number(value) })}
                   >
-                    <SelectTrigger className="w-20">
+                    <SelectTrigger className="w-20 bg-[#23283A] text-white border-gray-700">
                       <SelectValue />
                     </SelectTrigger>
-                    <SelectContent>
+                    <SelectContent className="bg-[#23283A] text-white">
                       <SelectItem value="23">23%</SelectItem>
                       <SelectItem value="8">8%</SelectItem>
                       <SelectItem value="5">5%</SelectItem>
@@ -320,7 +320,7 @@ export const EditableInvoiceItemsTable: React.FC<EditableInvoiceItemsTableProps>
 
       {/* Summary */}
       {items.length > 0 && (
-        <div className="bg-gray-50 p-4 rounded-lg space-y-2">
+        <div className="bg-gray-900 p-4 rounded-lg space-y-2 text-white">
           <div className="flex justify-between">
             <span>Suma netto:</span>
             <span className="font-medium">{totalNet.toFixed(2)} zł</span>

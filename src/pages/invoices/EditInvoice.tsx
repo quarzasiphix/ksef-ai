@@ -20,7 +20,7 @@ import {
 } from "@/components/ui/alert-dialog";
 import { useSidebar } from "@/components/ui/sidebar";
 import { cn } from "@/lib/utils";
-import { useAuth } from "@/App";
+import { useAuth } from "@/context/AuthContext";
 import { InvoiceFormActions } from "@/components/invoices/forms/InvoiceFormActions";
 
 const EditInvoice = () => {
@@ -34,14 +34,18 @@ const EditInvoice = () => {
   const { user } = useAuth();
   const newInvoiceRef = useRef<{ handleSubmit: (onValid: (data: any) => Promise<void>) => (e?: React.BaseSyntheticEvent) => Promise<void>; } | null>(null);
 
-  useEffect(() => {
-    const fetchInvoice = async () => {
-      if (!id) {
-        setError("Brak identyfikatora faktury");
-        setLoading(false);
-        return;
-      }
+  // If id is 'new', render the NewInvoice form directly
+  if (id === 'new') {
+    return <NewInvoice />;
+  }
 
+  useEffect(() => {
+    if (!id || id === 'new') {
+      setLoading(false);
+      return;
+    }
+
+    const fetchInvoice = async () => {
       try {
         console.log('Fetching invoice with ID:', id);
         const invoiceData = await getInvoice(id);

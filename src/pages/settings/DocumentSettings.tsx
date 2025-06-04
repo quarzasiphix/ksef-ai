@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import {
@@ -12,6 +11,7 @@ import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { toast } from "sonner";
 import { useIsMobile } from "@/hooks/use-mobile";
+import { useAuth } from "@/context/AuthContext";
 
 // These would ideally be stored in the database
 interface DocumentTypeSetting {
@@ -135,7 +135,6 @@ const DocumentSettings = () => {
   );
 };
 
-import { useAuth } from "@/App";
 import { useNavigate } from "react-router-dom";
 const UserMenuFooter = () => {
   const { user, setUser } = useAuth();

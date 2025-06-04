@@ -1,4 +1,3 @@
-
 import React, { useEffect, useState, useRef } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { Invoice, InvoiceType } from "@/types";
@@ -21,8 +20,9 @@ import { useIsMobile } from "@/hooks/use-mobile";
 import { Capacitor } from '@capacitor/core';
 import { toast } from "sonner";
 import { saveInvoice } from "@/integrations/supabase/repositories/invoiceRepository";
-import { useAuth } from "@/App";
+import { useAuth } from "@/context/AuthContext";
 import PremiumCheckoutModal from '@/components/PremiumCheckoutModal';
+import NewInvoice from "@/pages/invoices/NewInvoice";
 
 interface InvoiceDetailProps {
   type: 'income' | 'expense';
@@ -44,23 +44,28 @@ const InvoiceDetail: React.FC<InvoiceDetailProps> = ({ type }) => {
   // Refs
   const printRef = useRef<HTMLDivElement>(null);
 
-  // Fetch data
+  // If id is 'new', render the NewInvoice form directly
+  if (id === 'new') {
+    return <NewInvoice />;
+  }
+
+  // Fetch data only if id is not 'new'
   const { data: selectedInvoice, isLoading: isLoadingInvoice, error: invoiceError } = useQuery({
     queryKey: ['invoice', id],
     queryFn: () => getInvoice(id!),
-    enabled: !!id
+    enabled: !!id && id !== 'new',
   });
 
   const { data: sellerProfile, isLoading: isLoadingSeller, error: sellerError } = useQuery({
-    queryKey: ['businessProfile', selectedInvoice?.businessProfileId],
-    queryFn: () => getBusinessProfileById(selectedInvoice!.businessProfileId!),
-    enabled: !!selectedInvoice?.businessProfileId,
+    queryKey: ['businessProfile', (selectedInvoice as Invoice | undefined)?.businessProfileId],
+    queryFn: () => getBusinessProfileById((selectedInvoice as Invoice).businessProfileId!),
+    enabled: !!(selectedInvoice as Invoice | undefined)?.businessProfileId,
   });
 
   const { data: buyerCustomer, isLoading: isLoadingBuyer, error: buyerError } = useQuery({
-    queryKey: ['customer', selectedInvoice?.customerId],
-    queryFn: () => getCustomerById(selectedInvoice!.customerId!),
-    enabled: !!selectedInvoice?.customerId,
+    queryKey: ['customer', (selectedInvoice as Invoice | undefined)?.customerId],
+    queryFn: () => getCustomerById((selectedInvoice as Invoice).customerId!),
+    enabled: !!(selectedInvoice as Invoice | undefined)?.customerId,
   });
 
   const isLoading = isLoadingInvoice || isLoadingSeller || isLoadingBuyer;
@@ -157,7 +162,7 @@ const InvoiceDetail: React.FC<InvoiceDetailProps> = ({ type }) => {
     
     setPdfLoading(true);
     try {
-      const fileName = getInvoiceFileName(selectedInvoice);
+      const fileName = getInvoiceFileName(selectedInvoice as Invoice);
       const success = await generateElementPdf(printRef.current, { filename: fileName });
       return success ? fileName : null;
     } catch (error) {
@@ -173,7 +178,7 @@ const InvoiceDetail: React.FC<InvoiceDetailProps> = ({ type }) => {
     
     setPdfLoading(true);
     try {
-      const fileName = getInvoiceFileName(selectedInvoice);
+      const fileName = getInvoiceFileName(selectedInvoice as Invoice);
       
       if (Capacitor.isNativePlatform()) {
         const success = await generateElementPdf(printRef.current, { filename: fileName });
@@ -356,7 +361,7 @@ const InvoiceDetail: React.FC<InvoiceDetailProps> = ({ type }) => {
         }}
       >
         <InvoicePdfTemplate
-          invoice={selectedInvoice}
+          invoice={selectedInvoice as Invoice}
           businessProfile={sellerProfile || {
             id: selectedInvoice.businessProfileId,
             name: selectedInvoice.businessName || '',

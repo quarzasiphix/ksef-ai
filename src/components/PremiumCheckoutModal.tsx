@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogTrigger, DialogFooter, DialogClose } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Star } from "lucide-react";
-import { useAuth } from "@/App";
+import { useAuth } from "@/context/AuthContext";
 import { toast } from "sonner";
 
 interface PremiumCheckoutModalProps {

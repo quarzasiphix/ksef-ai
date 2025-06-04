@@ -65,7 +65,7 @@ export const BusinessProfileSwitcher: React.FC<BusinessProfileSwitcherProps> = (
           <Button
             variant="ghost"
             className={cn(
-              "w-full justify-between text-left font-normal",
+              "w-full justify-between text-left font-normal bg-muted border border-muted-foreground/10 hover:bg-muted/80 cursor-pointer shadow-sm",
               isCollapsed ? "px-2" : "px-3"
             )}
           >

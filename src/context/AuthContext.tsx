@@ -10,6 +10,7 @@ export interface AuthContextType {
   register: (email: string, password: string) => Promise<{ user: User | null; session: Session | null }>;
   logout: () => Promise<void>;
   isPremium: boolean;
+  setIsPremium: (value: boolean) => void;
   openPremiumDialog: () => void;
   supabase: typeof supabase;
 }
@@ -40,11 +41,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     
     if (session?.user) {
       setUser(session.user);
-      localStorage.setItem("sb_session", JSON.stringify(session));
       await queryClient.invalidateQueries();
     } else {
       setUser(null);
-      localStorage.removeItem("sb_session");
       queryClient.clear();
     }
     
@@ -60,12 +59,29 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         const { data: { session } } = await supabase.auth.getSession();
         if (session) {
           await handleAuthStateChange('INITIAL_SESSION', session);
+          // Check premium status once on initial load
+          const { data, error } = await supabase
+            .from("premium_subscriptions")
+            .select("id,ends_at,is_active")
+            .eq("user_id", session.user.id)
+            .eq("is_active", true)
+            .order("ends_at", { ascending: false })
+            .limit(1)
+            .maybeSingle();
+          if (error) {
+            setIsPremium(false);
+          } else if (data && data.is_active && (!data.ends_at || new Date(data.ends_at) > new Date())) {
+            setIsPremium(true);
+          } else {
+            setIsPremium(false);
+          }
         } else {
           setUser(null);
-          localStorage.removeItem("sb_session");
+          setIsPremium(false);
         }
       } catch (error) {
         console.error("Auth check failed:", error);
+        setIsPremium(false);
       } finally {
         setLoading(false);
       }
@@ -97,12 +113,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     const { error } = await supabase.auth.signOut();
     if (error) throw error;
     setUser(null);
-    localStorage.removeItem("sb_session");
     queryClient.clear();
   };
 
   return (
-    <AuthContext.Provider value={{ user, loading, login, register, logout, isPremium, openPremiumDialog, supabase }}>
+    <AuthContext.Provider value={{ user, loading, login, register, logout, isPremium, setIsPremium, openPremiumDialog, supabase }}>
       {children}
     </AuthContext.Provider>
   );

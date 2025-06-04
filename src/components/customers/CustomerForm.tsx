@@ -15,7 +15,7 @@ import {
 } from "@/components/ui/form";
 import { Customer } from "@/types";
 import { saveCustomer } from "@/integrations/supabase/repositories/customerRepository";
-import { useAuth } from "@/App";
+import { useAuth } from "@/context/AuthContext";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 
 const formSchema = z.object({

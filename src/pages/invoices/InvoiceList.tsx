@@ -1,4 +1,3 @@
-
 import React, { useEffect, useState, useMemo } from "react";
 import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
@@ -22,7 +21,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { useAuth } from "@/App";
+import { useAuth } from "@/context/AuthContext";
 
 // Helper function to translate invoice type to Polish
 const translateInvoiceType = (type: string): string => {

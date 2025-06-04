@@ -1,4 +1,3 @@
-
 import React, { useEffect, useState } from "react";
 import { 
   Select,
@@ -11,7 +10,8 @@ import { Button } from "@/components/ui/button";
 import { useNavigate } from "react-router-dom";
 import { Plus } from "lucide-react";
 import { Product, InvoiceItem, InvoiceType } from "@/types";
-import { useAuth } from "@/App";
+import { useAuth } from "@/context/AuthContext";
+import { getProducts } from "@/integrations/supabase/repositories/productRepository";
 
 interface ProductSelectorProps {
   onAddProduct: (product: InvoiceItem) => void;
@@ -31,31 +31,23 @@ export const ProductSelector: React.FC<ProductSelectorProps> = ({
 
   useEffect(() => {
     const loadProducts = async () => {
+      if (!user?.id) return;
+      setLoading(true);
       try {
-        // Mock products for now
-        const mockProducts: Product[] = [
-          {
-            id: "1",
-            user_id: user?.id || "",
-            name: "Konsultacje IT",
-            unitPrice: 200,
-            vatRate: 23,
-            unit: "godz.",
-            description: "Konsultacje informatyczne"
-          },
-          {
-            id: "2",
-            user_id: user?.id || "",
-            name: "Projekt strony internetowej",
-            unitPrice: 5000,
-            vatRate: 23,
-            unit: "szt.",
-            description: "Projekt i wykonanie strony internetowej"
-          }
-        ];
-        setProducts(mockProducts);
+        // Determine product type based on documentType
+        let productType: 'income' | 'expense' | undefined = undefined;
+        if (
+          documentType === InvoiceType.RECEIPT ||
+          documentType === InvoiceType.SALES ||
+          documentType === InvoiceType.PROFORMA
+        ) {
+          productType = 'income';
+        } else if (documentType === InvoiceType.EXPENSE) {
+          productType = 'expense';
+        }
+        const products = await getProducts(user.id, productType);
+        setProducts(products);
       } catch (err) {
-        console.error("Error loading products:", err);
         setError("Nie udało się załadować produktów");
       } finally {
         setLoading(false);
@@ -63,7 +55,7 @@ export const ProductSelector: React.FC<ProductSelectorProps> = ({
     };
 
     loadProducts();
-  }, [user?.id]);
+  }, [user?.id, documentType]);
 
   const handleAddProductToInvoice = () => {
     if (!selectedProductId) return;

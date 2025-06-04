@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback, forwardRef, useImperativeHandle } from "react";
-import { useAuth } from "@/App";
+import { useAuth } from "@/context/AuthContext";
 import { useSearchParams, useNavigate, useLocation } from "react-router-dom";
 import { useQueryClient } from "@tanstack/react-query";
 import { Invoice, InvoiceType, InvoiceItem, VatType, VatExemptionReason, Company } from "@/types";
@@ -120,7 +120,7 @@ const NewInvoice: React.ForwardRefExoticComponent<
         dueDate: initialData?.dueDate || today,
         paymentMethod: initialData?.paymentMethod
           ? toPaymentMethodUi(initialData.paymentMethod as PaymentMethodDb)
-          : "TRANSFER",
+          : "przelew",
         comments: initialData?.comments || "",
         transactionType: transactionType,
         customerId: initialData?.customerId || "",
@@ -189,13 +189,14 @@ const NewInvoice: React.ForwardRefExoticComponent<
         setItems(initialData.items || []); // Ensure items are updated when initialData changes
 
         // Explicitly reset form values based on initialData
+        const { paymentMethod: _pm, ...restValues } = form.getValues();
         form.reset({
-          ...form.getValues(), // Keep current form values not from initialData
+          ...restValues, // Keep current form values not from initialData, except paymentMethod
           number: initialData.number,
           issueDate: initialData.issueDate,
           sellDate: initialData.sellDate,
           dueDate: initialData.dueDate,
-          paymentMethod: initialData.paymentMethod ? toPaymentMethodUi(initialData.paymentMethod as PaymentMethodDb) : "TRANSFER",
+          paymentMethod: initialData.paymentMethod ? toPaymentMethodUi(initialData.paymentMethod as PaymentMethodDb) : "przelew",
           comments: initialData.comments || "",
           transactionType: initialData.transactionType || type,
           customerId: initialData.customerId || "",

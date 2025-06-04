@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from "react";
 import { Link, useParams, useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
@@ -8,7 +7,7 @@ import { getCustomers } from "@/integrations/supabase/repositories/customerRepos
 import { getInvoices } from "@/integrations/supabase/repositories/invoiceRepository";
 import { ArrowLeft, User, Mail, Phone, MapPin, Building, FileText, Edit, Plus } from "lucide-react";
 import InvoiceCard from "@/components/invoices/InvoiceCard";
-import { useAuth } from "@/App";
+import { useAuth } from "@/context/AuthContext";
 
 const CustomerDetail = () => {
   const { id } = useParams<{ id: string }>();

@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
@@ -10,7 +9,7 @@ import { Plus, Search, Package, CircleDollarSign, Percent, ShoppingCart, Receipt
 import { formatCurrency } from "@/lib/invoice-utils";
 import { Badge } from "@/components/ui/badge";
 import { getProducts } from "@/integrations/supabase/repositories/productRepository";
-import { useAuth } from "@/App";
+import { useAuth } from "@/context/AuthContext";
 import { toast } from "sonner";
 import ProductForm from "@/components/products/ProductForm";
 

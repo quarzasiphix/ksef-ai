@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from "react";
 import { CardHeader, CardTitle, CardContent, Card } from "@/components/ui/card";
 import { EditableInvoiceItemsTable } from "@/components/invoices/EditableInvoiceItemsTable";
@@ -51,6 +50,13 @@ export const InvoiceItemsForm: React.FC<InvoiceItemsFormProps> = ({
     refetchProducts();
   }, [userId, transactionType]);
 
+  // Debug: log loaded products
+  useEffect(() => {
+    if (!productsLoading) {
+      console.log('InvoiceItemsForm loaded products:', products);
+    }
+  }, [products, productsLoading]);
+
   const handleAddItem = (newItem: InvoiceItem) => {
     onItemsChange([...items, newItem]);
   };
@@ -81,6 +87,7 @@ export const InvoiceItemsForm: React.FC<InvoiceItemsFormProps> = ({
             onUpdateItem={handleUpdateItem}
             onAddItem={handleAddItem}
             documentType={documentType}
+            transactionType={transactionType}
             refetchProducts={refetchProducts}
             userId={userId}
             fakturaBezVAT={fakturaBezVAT}

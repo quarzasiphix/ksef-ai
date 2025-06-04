@@ -151,7 +151,7 @@ const AppSidebar = () => {
                       tooltip={isCollapsed ? `${feature.title} (Premium)` : undefined}
                     >
                       <div className={cn(
-                        "flex items-center gap-3 px-3 py-2 rounded-lg bg-amber-50 border border-amber-200 hover:bg-amber-100 transition-colors cursor-pointer w-full",
+                        "flex items-center gap-3 px-3 py-2 rounded-lg bg-white border border-gray-200 hover:bg-gray-50 transition-colors cursor-pointer w-full",
                         isCollapsed ? "justify-center" : "justify-between"
                       )}>
                         <div className="flex items-center gap-3">

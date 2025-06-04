@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -13,7 +12,7 @@ import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "
 import { Product } from "@/types";
 import { saveProduct } from "@/integrations/supabase/repositories/productRepository";
 import { toast } from "sonner";
-import { useAuth } from "@/App";
+import { useAuth } from "@/context/AuthContext";
 
 const productSchema = z.object({
   name: z.string().min(1, "Nazwa produktu jest wymagana"),
