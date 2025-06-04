@@ -1,6 +1,5 @@
-
 import React from "react";
-import { NavLink, useLocation } from "react-router-dom";
+import { NavLink, useLocation, useNavigate } from "react-router-dom";
 import { 
   BarChart, 
   FileText, 
@@ -32,7 +31,7 @@ import {
   SidebarTrigger,
   useSidebar,
 } from "@/components/ui/sidebar";
-import { useAuth } from "@/App";
+import { useAuth } from "@/hooks/useAuth";
 import { Button } from "@/components/ui/button";
 import { BusinessProfileSwitcher } from "./BusinessProfileSwitcher";
 import { ThemeToggle } from "@/components/theme/ThemeToggle";
@@ -42,6 +41,7 @@ const AppSidebar = () => {
   const location = useLocation();
   const { isPremium, openPremiumDialog, user, logout } = useAuth();
   const isCollapsed = state === "collapsed";
+  const navigate = useNavigate();
 
   // Main navigation items
   const mainNavItems = [
@@ -85,6 +85,7 @@ const AppSidebar = () => {
 
   const handleLogout = async () => {
     await logout();
+    navigate("/auth/login");
   };
 
   return (

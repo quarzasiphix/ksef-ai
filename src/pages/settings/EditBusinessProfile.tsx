@@ -5,7 +5,7 @@ import { Link, useParams } from 'react-router-dom';
 import BusinessProfileForm from './BusinessProfileForm';
 import { getBusinessProfileById } from '@/integrations/supabase/repositories/businessProfileRepository';
 import { BusinessProfile } from '@/types';
-import { useAuth } from '@/App';
+import { useAuth } from '@/hooks/useAuth';
 
 const EditBusinessProfile = () => {
   const { id } = useParams();

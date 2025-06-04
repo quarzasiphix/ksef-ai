@@ -1,5 +1,5 @@
 import { Button } from "@/components/ui/button";
-import { useNavigate } from "react-router-dom";
+import { Link } from "react-router-dom";
 import { ArrowRight, CheckCircle2, Bot, FileText, Mail, Calculator } from "lucide-react";
 
 const features = [
@@ -35,8 +35,6 @@ const premiumFeatures = [
 ];
 
 export default function Home() {
-  const navigate = useNavigate();
-
   return (
     <div className="min-h-screen bg-gradient-to-b from-neutral-900 to-neutral-800">
       {/* Hero Section */}
@@ -52,21 +50,23 @@ export default function Home() {
             Oszczędzaj czas i eliminuj błędy dzięki naszemu inteligentnemu systemowi.
           </p>
           <div className="flex gap-4 justify-center">
-            <Button 
-              size="lg" 
-              onClick={() => navigate("/auth/login")}
-              className="bg-blue-600 hover:bg-blue-700"
-            >
-              Zaloguj się
-            </Button>
-            <Button 
-              size="lg" 
-              variant="outline"
-              onClick={() => navigate("/auth/register")}
-              className="text-white border-white hover:bg-white/10"
-            >
-              Zarejestruj się
-            </Button>
+            <Link to="/auth/login">
+              <Button 
+                size="lg" 
+                className="bg-blue-600 hover:bg-blue-700"
+              >
+                Zaloguj się
+              </Button>
+            </Link>
+            <Link to="/auth/register">
+              <Button 
+                size="lg" 
+                variant="outline"
+                className="text-white border-white hover:bg-white/10"
+              >
+                Zarejestruj się
+              </Button>
+            </Link>
           </div>
         </div>
       </div>
@@ -117,14 +117,15 @@ export default function Home() {
                 <span className="text-4xl font-bold text-white">99 zł</span>
                 <span className="text-neutral-400">/miesiąc</span>
               </div>
-              <Button 
-                size="lg"
-                className="bg-blue-600 hover:bg-blue-700 w-full md:w-auto"
-                onClick={() => navigate("/auth/register")}
-              >
-                Rozpocznij teraz
-                <ArrowRight className="ml-2 w-4 h-4" />
-              </Button>
+              <Link to="/auth/register">
+                <Button 
+                  size="lg"
+                  className="bg-blue-600 hover:bg-blue-700 w-full md:w-auto"
+                >
+                  Rozpocznij teraz
+                  <ArrowRight className="ml-2 w-4 h-4" />
+                </Button>
+              </Link>
             </div>
           </div>
         </div>

@@ -1,4 +1,3 @@
-
 import React from 'react';
 import { ChevronDown, Plus, Building2, Crown } from 'lucide-react';
 import {
@@ -10,7 +9,7 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { Button } from '@/components/ui/button';
 import { useBusinessProfile } from '@/context/BusinessProfileContext';
-import { useAuth } from '@/App';
+import { useAuth } from '@/hooks/useAuth';
 import { cn } from '@/lib/utils';
 
 interface BusinessProfileSwitcherProps {

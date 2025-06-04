@@ -24,7 +24,7 @@ import { useTheme } from '@/components/theme/ThemeProvider';
 import { cn } from '@/lib/utils';
 import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet';
 import { Button } from '@/components/ui/button';
-import { useAuth } from '@/App';
+import { useAuth } from '@/hooks/useAuth';
 import { BusinessProfileSwitcher } from './BusinessProfileSwitcher';
 import { useBusinessProfile } from '@/context/BusinessProfileContext';
 

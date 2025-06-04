@@ -1,8 +1,7 @@
 import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
-import { LogIn, UserCircle, AlertCircle } from 'lucide-react';
+import { LogIn, AlertCircle, UserCircle } from 'lucide-react';
 
 const Login = () => {
   const [email, setEmail] = useState("");
@@ -10,37 +9,29 @@ const Login = () => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const navigate = useNavigate();
+  const { login } = useAuth();
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
-    await loginWithCredentials(email, password);
-  };
-
-  const loginWithCredentials = async (email: string, password: string) => {
     setLoading(true);
     setError(null);
     try {
-      const { error: signInError, data } = await supabase.auth.signInWithPassword({ email, password });
-      if (signInError) {
-        if (signInError.message.includes("Invalid login credentials")) {
-          setError("Nieprawidłowy email lub hasło.");
-        } else {
-          setError("Wystąpił błąd podczas logowania. Spróbuj ponownie.");
-        }
-        console.error('Login error details:', signInError);
-      } else if (data.session) {
-        navigate("/");
+      await login(email, password);
+      navigate("/dashboard");
+    } catch (err: any) {
+      if (err.message.includes("Invalid login credentials")) {
+        setError("Nieprawidłowy email lub hasło.");
+      } else {
+        setError("Wystąpił błąd podczas logowania. Spróbuj ponownie.");
       }
-    } catch (err) {
-      setError('Wystąpił nieoczekiwany błąd. Spróbuj ponownie.');
-      console.error('Unexpected login error:', err);
+      console.error('Login error details:', err);
     } finally {
       setLoading(false);
     }
   };
 
   const handleTestAccountLogin = async () => {
-    await loginWithCredentials('test@quarza.online', 'nigga123');
+    await login('test@quarza.online', 'nigga123');
   };
 
   return (

@@ -1,73 +1,101 @@
-# Welcome to your Lovable project
+# KsiegaI - Nowoczesny System Fakturowania i Księgowości
 
-## Project info
+KsiegaI to kompleksowe rozwiązanie dla przedsiębiorców i księgowych, łączące w sobie funkcje fakturowania, zarządzania wydatkami i zaawansowanej księgowości w jednym, intuicyjnym interfejsie.
 
-**URL**: https://lovable.dev/projects/acb1e1f3-f27f-4348-84b0-5259e7775e1a
+## 🌟 Kluczowe Funkcje
 
-## How can I edit this code?
+### Dla Wszystkich Użytkowników
+- **Profesjonalne Fakturowanie**
+  - Tworzenie i zarządzanie fakturami w kilka kliknięć
+  - Automatyczne generowanie numerów faktur
+  - Wysyłka faktur bezpośrednio do klientów
+  - Archiwizacja dokumentów w chmurze
 
-There are several ways of editing your application.
+- **Zarządzanie Wydatkami**
+  - Śledzenie wszystkich kosztów działalności
+  - Kategoryzacja wydatków
+  - Skanowanie i archiwizacja dokumentów
+  - Raporty finansowe w czasie rzeczywistym
 
-**Use Lovable**
+- **CRM i Zarządzanie Klientami**
+  - Baza danych klientów
+  - Historia transakcji
+  - Automatyczne przypomnienia o płatnościach
+  - Profilowanie klientów
 
-Simply visit the [Lovable Project](https://lovable.dev/projects/acb1e1f3-f27f-4348-84b0-5259e7775e1a) and start prompting.
+### Funkcje Premium
+- **Integracja z KSeF**
+  - Automatyczne wysyłanie faktur do Krajowego Systemu e-Faktur
+  - Synchronizacja z systemem podatkowym
+  - Generowanie JPK-V7M
 
-Changes made via Lovable will be committed automatically to this repo.
+- **Zaawansowana Księgowość**
+  - Automatyczne rozliczenia podatkowe
+  - Generowanie deklaracji PIT
+  - Profesjonalne raporty księgowe
+  - Wsparcie dla różnych form opodatkowania
 
-**Use your preferred IDE**
+- **AI i Automatyzacja**
+  - Automatyczne rozpoznawanie dokumentów
+  - Inteligentne kategoryzowanie transakcji
+  - Asystent księgowy oparty na AI
+  - Automatyczne przypomnienia o obowiązkach
 
-If you want to work locally using your own IDE, you can clone this repo and push changes. Pushed changes will also be reflected in Lovable.
+- **Integracja Bankowa**
+  - Monitorowanie transakcji w czasie rzeczywistym
+  - Automatyczne dopasowywanie płatności
+  - Synchronizacja z kontem firmowym
+  - Alerty o nowych transakcjach
 
-The only requirement is having Node.js & npm installed - [install with nvm](https://github.com/nvm-sh/nvm#installing-and-updating)
+## 🚀 Technologie
 
-Follow these steps:
+- **Frontend**
+  - React
+  - TypeScript
+  - Tailwind CSS
+  - shadcn/ui
+
+- **Backend**
+  - Supabase
+  - PostgreSQL
+  - Node.js
+
+## 💻 Rozwój Lokalny
 
 ```sh
-# Step 1: Clone the repository using the project's Git URL.
-git clone <YOUR_GIT_URL>
+# 1. Sklonuj repozytorium
+git clone <URL_REPOZYTORIUM>
 
-# Step 2: Navigate to the project directory.
-cd <YOUR_PROJECT_NAME>
+# 2. Przejdź do katalogu projektu
+cd ksef-ai
 
-# Step 3: Install the necessary dependencies.
-npm i
+# 3. Zainstaluj zależności
+npm install
 
-# Step 4: Start the development server with auto-reloading and an instant preview.
+# 4. Uruchom serwer deweloperski
 npm run dev
 ```
 
-**Edit a file directly in GitHub**
+## 📱 Dostępność
 
-- Navigate to the desired file(s).
-- Click the "Edit" button (pencil icon) at the top right of the file view.
-- Make your changes and commit the changes.
+Aplikacja jest dostępna jako:
+- Aplikacja webowa
+- Aplikacja mobilna (wkrótce)
+- Integracja z popularnymi systemami księgowymi
 
-**Use GitHub Codespaces**
+## 🔒 Bezpieczeństwo
 
-- Navigate to the main page of your repository.
-- Click on the "Code" button (green button) near the top right.
-- Select the "Codespaces" tab.
-- Click on "New codespace" to launch a new Codespace environment.
-- Edit files directly within the Codespace and commit and push your changes once you're done.
+- Szyfrowanie danych end-to-end
+- Regularne kopie zapasowe
+- Zgodność z RODO
+- Certyfikacja bezpieczeństwa
 
-## What technologies are used for this project?
+## 📞 Wsparcie
 
-This project is built with:
+- Email: support@ksiegai.pl
+- Telefon: +48 123 456 789
+- Dokumentacja: docs.ksiegai.pl
 
-- Vite
-- TypeScript
-- React
-- shadcn-ui
-- Tailwind CSS
+## 📄 Licencja
 
-## How can I deploy this project?
-
-Simply open [Lovable](https://lovable.dev/projects/acb1e1f3-f27f-4348-84b0-5259e7775e1a) and click on Share -> Publish.
-
-## Can I connect a custom domain to my Lovable project?
-
-Yes, you can!
-
-To connect a domain, navigate to Project > Settings > Domains and click Connect Domain.
-
-Read more here: [Setting up a custom domain](https://docs.lovable.dev/tips-tricks/custom-domain#step-by-step-guide)
+© 2024 KsiegaI. Wszelkie prawa zastrzeżone.
