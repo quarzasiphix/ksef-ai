@@ -8,10 +8,11 @@ import { Product } from "@/types";
 import { Plus, Search, Package, CircleDollarSign, Percent, ShoppingCart, Receipt } from "lucide-react";
 import { formatCurrency } from "@/lib/invoice-utils";
 import { Badge } from "@/components/ui/badge";
-import { getProducts } from "@/integrations/supabase/repositories/productRepository";
+import { getProducts, deleteProduct } from "@/integrations/supabase/repositories/productRepository";
 import { useAuth } from "@/context/AuthContext";
 import { toast } from "sonner";
 import ProductForm from "@/components/products/ProductForm";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 
 const ProductCard = ({ product }: { product: Product }) => {
   return (
@@ -66,6 +67,10 @@ const ProductList = () => {
   const [searchTerm, setSearchTerm] = useState("");
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [activeTab, setActiveTab] = useState("income");
+  const [contextMenu, setContextMenu] = useState<{visible: boolean, x: number, y: number, product: Product | null}>({visible: false, x: 0, y: 0, product: null});
+  const [productToDelete, setProductToDelete] = useState<Product | null>(null);
+  const [isDeleting, setIsDeleting] = useState(false);
+  const menuRef = React.useRef<HTMLDivElement>(null);
 
   const loadProducts = async () => {
     if (!user?.id) return;
@@ -104,6 +109,47 @@ const ProductList = () => {
     setIsFormOpen(false);
   };
 
+  // Right-click handler for product card
+  const handleContextMenu = (e: React.MouseEvent, product: Product) => {
+    e.preventDefault();
+    setContextMenu({
+      visible: true,
+      x: e.clientX,
+      y: e.clientY,
+      product,
+    });
+  };
+
+  // Close menu when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (menuRef.current && !menuRef.current.contains(event.target as Node)) {
+        setContextMenu({...contextMenu, visible: false});
+      }
+    };
+    if (contextMenu.visible) {
+      document.addEventListener('mousedown', handleClickOutside);
+    }
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, [contextMenu]);
+
+  const confirmDelete = async () => {
+    if (!productToDelete) return;
+    setIsDeleting(true);
+    try {
+      await deleteProduct(productToDelete.id);
+      toast.success('Produkt został usunięty');
+      setProductToDelete(null);
+      loadProducts();
+    } catch (error) {
+      toast.error('Nie udało się usunąć produktu');
+    } finally {
+      setIsDeleting(false);
+    }
+  };
+
   const ProductGrid = ({ products, emptyMessage }: { products: Product[], emptyMessage: string }) => (
     <div>
       {isLoading ? (
@@ -113,7 +159,13 @@ const ProductList = () => {
       ) : (
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
           {products.map(product => (
-            <ProductCard key={product.id} product={product} />
+            <div
+              key={product.id}
+              className="relative"
+              onContextMenu={e => handleContextMenu(e, product)}
+            >
+              <ProductCard product={product} />
+            </div>
           ))}
         </div>
       )}
@@ -121,7 +173,7 @@ const ProductList = () => {
   );
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 relative">
       <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
         <div>
           <h1 className="text-3xl font-bold">Produkty</h1>
@@ -185,11 +237,43 @@ const ProductList = () => {
         </CardContent>
       </Card>
 
+      {/* Context Menu - Rendered at the root level */}
+      {contextMenu.visible && contextMenu.product && (
+        <div
+          ref={menuRef}
+          className="fixed bg-white shadow-lg rounded-md border border-gray-200 z-50 py-1 w-48"
+          style={{ left: `${contextMenu.x}px`, top: `${contextMenu.y}px` }}
+          onClick={e => e.stopPropagation()}
+        >
+          <button
+            className="w-full text-left px-4 py-2 text-sm text-red-600 hover:bg-gray-100 flex items-center"
+            onClick={() => {
+              setProductToDelete(contextMenu.product);
+              setContextMenu({...contextMenu, visible: false});
+            }}
+          >
+            Usuń produkt
+          </button>
+        </div>
+      )}
+      {/* Delete confirmation dialog */}
       <ProductForm
         isOpen={isFormOpen}
         onClose={() => setIsFormOpen(false)}
         onSuccess={handleProductSaved}
       />
+      <Dialog open={!!productToDelete} onOpenChange={open => !open && setProductToDelete(null)}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Usuń produkt</DialogTitle>
+          </DialogHeader>
+          <div className="py-4">Czy na pewno chcesz usunąć produkt <b>{productToDelete?.name}</b>? Tej operacji nie można cofnąć.</div>
+          <div className="flex gap-2 justify-end">
+            <Button variant="outline" onClick={() => setProductToDelete(null)} disabled={isDeleting}>Anuluj</Button>
+            <Button variant="destructive" onClick={confirmDelete} disabled={isDeleting}>Usuń</Button>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };
