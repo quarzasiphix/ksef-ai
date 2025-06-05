@@ -16,7 +16,16 @@ import { useGlobalData } from "@/hooks/use-global-data";
 import { Loader2 } from "lucide-react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { deleteCustomer } from '@/integrations/supabase/repositories/customerRepository';
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import {
+  AlertDialog,
+  AlertDialogContent,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogCancel,
+  AlertDialogAction,
+} from "@/components/ui/alert-dialog";
 import { toast } from "sonner";
 
 const CLIENT_TYPE_LABELS: Record<string, string> = {
@@ -254,18 +263,29 @@ const CustomerList = () => {
         </div>
       )}
       {/* Delete confirmation dialog */}
-      <Dialog open={!!customerToDelete} onOpenChange={open => !open && setCustomerToDelete(null)}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Usuń klienta</DialogTitle>
-          </DialogHeader>
-          <div className="py-4">Czy na pewno chcesz usunąć klienta <b>{customerToDelete?.name}</b>? Tej operacji nie można cofnąć.</div>
-          <div className="flex gap-2 justify-end">
-            <Button variant="outline" onClick={() => setCustomerToDelete(null)} disabled={isDeleting}>Anuluj</Button>
-            <Button variant="destructive" onClick={confirmDelete} disabled={isDeleting}>Usuń</Button>
-          </div>
-        </DialogContent>
-      </Dialog>
+      <AlertDialog open={!!customerToDelete} onOpenChange={open => !open && setCustomerToDelete(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Usuń klienta</AlertDialogTitle>
+            <AlertDialogDescription>
+              Czy na pewno chcesz usunąć klienta <b>{customerToDelete?.name}</b>? Tej operacji nie można cofnąć.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={isDeleting}>Anuluj</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={async (e) => {
+                e.preventDefault();
+                await confirmDelete();
+              }}
+              disabled={isDeleting}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              Usuń
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 };

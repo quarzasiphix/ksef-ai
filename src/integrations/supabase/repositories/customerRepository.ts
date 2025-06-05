@@ -2,6 +2,11 @@ import { supabase } from "../client";
 import type { Customer } from "@/types";
 
 export async function getCustomers(): Promise<Customer[]> {
+  const reverseTypeMap = {
+    buyer: 'odbiorca',
+    supplier: 'sprzedawca',
+    both: 'both',
+  };
   const { data, error } = await supabase
     .from("customers")
     .select("*") // Will add user_id after DB update
@@ -13,7 +18,7 @@ export async function getCustomers(): Promise<Customer[]> {
   }
 
   return data.map(item => {
-    // Type assertion to handle missing user_id and customer_type in the database
+    // Type assertion to handle missing user_id and client_type in the database
     const itemWithAny = item as any;
     return {
       id: item.id,
@@ -25,12 +30,17 @@ export async function getCustomers(): Promise<Customer[]> {
       email: item.email || undefined,
       phone: item.phone || undefined,
       user_id: itemWithAny.user_id,
-      customerType: itemWithAny.customer_type || 'odbiorca',
+      customerType: reverseTypeMap[itemWithAny.client_type] || 'odbiorca',
     };
   });
 }
 
 export async function saveCustomer(customer: Customer): Promise<Customer> {
+  const typeMap = {
+    odbiorca: 'buyer',
+    sprzedawca: 'supplier',
+    both: 'both',
+  };
   const payload = {
     name: customer.name,
     tax_id: customer.taxId || null,
@@ -39,7 +49,8 @@ export async function saveCustomer(customer: Customer): Promise<Customer> {
     city: customer.city,
     email: customer.email || null,
     phone: customer.phone || null,
-    user_id: customer.user_id // Always include user_id for RLS
+    user_id: customer.user_id, // Always include user_id for RLS
+    client_type: typeMap[customer.customerType] || 'buyer',
   };
 
   if (customer.id) {
@@ -66,7 +77,7 @@ export async function saveCustomer(customer: Customer): Promise<Customer> {
       email: data.email || undefined,
       phone: data.phone || undefined,
       user_id: data.user_id,
-      customerType: (data as any).customer_type || 'odbiorca',
+      customerType: (data as any).client_type || 'odbiorca',
     };
   } else {
     // Insert new customer
@@ -91,7 +102,7 @@ export async function saveCustomer(customer: Customer): Promise<Customer> {
       email: data.email || undefined,
       phone: data.phone || undefined,
       user_id: data.user_id,
-      customerType: (data as any).customer_type || 'odbiorca',
+      customerType: (data as any).client_type || 'odbiorca',
     };
   }
 }
@@ -124,7 +135,7 @@ export async function getCustomerById(id: string): Promise<Customer | null> {
     email: data.email || undefined,
     phone: data.phone || undefined,
     user_id: data.user_id,
-    customerType: (data as any).customer_type || 'odbiorca',
+    customerType: (data as any).client_type || 'odbiorca',
   } as Customer; // Cast to Customer type
 }
 

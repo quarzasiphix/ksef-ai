@@ -33,7 +33,7 @@ const formSchema = z.object({
   city: z.string().min(1, "Miasto jest wymagane"),
   email: z.string().email("Niepoprawny format email").optional().or(z.literal("")),
   phone: z.string().optional(),
-  customerType: z.enum(['odbiorca', 'sprzedawca'], { required_error: "Typ klienta jest wymagany" }),
+  customerType: z.enum(['odbiorca', 'sprzedawca', 'both'], { required_error: "Typ klienta jest wymagany" }),
 });
 
 interface CustomerFormProps {
@@ -265,7 +265,7 @@ const CustomerForm = ({
               render={({ field }) => (
                 <FormItem>
                   <FormLabel>Typ klienta</FormLabel>
-                  <Select onValueChange={field.onChange} defaultValue={field.value}>
+                  <Select value={field.value} onValueChange={field.onChange}>
                     <FormControl>
                       <SelectTrigger>
                         <SelectValue placeholder="Wybierz typ klienta" />
@@ -274,6 +274,7 @@ const CustomerForm = ({
                     <SelectContent>
                       <SelectItem value="odbiorca">Odbiorca</SelectItem>
                       <SelectItem value="sprzedawca">Sprzedawca</SelectItem>
+                      <SelectItem value="both">Oba</SelectItem>
                     </SelectContent>
                   </Select>
                   <FormMessage />

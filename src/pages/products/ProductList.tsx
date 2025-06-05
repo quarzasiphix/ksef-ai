@@ -12,7 +12,16 @@ import { getProducts, deleteProduct } from "@/integrations/supabase/repositories
 import { useAuth } from "@/context/AuthContext";
 import { toast } from "sonner";
 import ProductForm from "@/components/products/ProductForm";
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import {
+  AlertDialog,
+  AlertDialogContent,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogCancel,
+  AlertDialogAction,
+} from "@/components/ui/alert-dialog";
 
 const ProductCard = ({ product }: { product: Product }) => {
   return (
@@ -257,23 +266,34 @@ const ProductList = () => {
         </div>
       )}
       {/* Delete confirmation dialog */}
+      <AlertDialog open={!!productToDelete} onOpenChange={open => !open && setProductToDelete(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Usuń produkt</AlertDialogTitle>
+            <AlertDialogDescription>
+              Czy na pewno chcesz usunąć produkt <b>{productToDelete?.name}</b>? Tej operacji nie można cofnąć.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={isDeleting}>Anuluj</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={async (e) => {
+                e.preventDefault();
+                await confirmDelete();
+              }}
+              disabled={isDeleting}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              Usuń
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
       <ProductForm
         isOpen={isFormOpen}
         onClose={() => setIsFormOpen(false)}
         onSuccess={handleProductSaved}
       />
-      <Dialog open={!!productToDelete} onOpenChange={open => !open && setProductToDelete(null)}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Usuń produkt</DialogTitle>
-          </DialogHeader>
-          <div className="py-4">Czy na pewno chcesz usunąć produkt <b>{productToDelete?.name}</b>? Tej operacji nie można cofnąć.</div>
-          <div className="flex gap-2 justify-end">
-            <Button variant="outline" onClick={() => setProductToDelete(null)} disabled={isDeleting}>Anuluj</Button>
-            <Button variant="destructive" onClick={confirmDelete} disabled={isDeleting}>Usuń</Button>
-          </div>
-        </DialogContent>
-      </Dialog>
     </div>
   );
 };
