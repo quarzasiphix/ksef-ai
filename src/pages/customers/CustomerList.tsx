@@ -1,4 +1,3 @@
-
 import React, { useState } from "react";
 import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
@@ -15,6 +14,12 @@ import { Plus, Search, User, MapPin, Phone, Mail } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { useGlobalData } from "@/hooks/use-global-data";
 import { Loader2 } from "lucide-react";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+
+const CLIENT_TYPE_LABELS: Record<string, string> = {
+  odbiorca: "Odbiorca",
+  sprzedawca: "Dostawca",
+};
 
 const CustomerCard = ({ customer }: { customer: Customer }) => {
   return (
@@ -22,9 +27,14 @@ const CustomerCard = ({ customer }: { customer: Customer }) => {
       <div className="bg-[#1A1F2C] text-white rounded-lg p-4 shadow-md hover:shadow-lg transition-all h-full">
         <div className="flex justify-between items-center mb-2">
           <h3 className="font-bold text-base truncate">{customer.name}</h3>
+          <div className="flex gap-2 items-center">
           {customer.taxId && (
-            <Badge variant="outline" className="text-white border-whitetext-xs">NIP: {customer.taxId}</Badge>
+              <Badge variant="outline" className="text-white border-white text-xs">NIP: {customer.taxId}</Badge>
+            )}
+            {customer.customerType && (
+              <Badge variant="outline" className={`text-xs ${customer.customerType === 'odbiorca' ? 'border-green-400 text-green-400' : customer.customerType === 'sprzedawca' ? 'border-blue-400 text-blue-400' : 'border-yellow-400 text-yellow-400'}`}>{CLIENT_TYPE_LABELS[customer.customerType]}</Badge>
           )}
+          </div>
         </div>
         
         <div className="space-y-2 text-sm">
@@ -56,6 +66,7 @@ const CustomerList = () => {
   const { customers: { data: customers, isLoading }, refreshAllData } = useGlobalData();
   const [searchTerm, setSearchTerm] = useState("");
   const [isUpdating, setIsUpdating] = useState(false);
+  const [activeTab, setActiveTab] = useState("all");
 
   // Expose this function for triggering a customer refresh from outside (edit/new)
   React.useEffect(() => {
@@ -66,13 +77,17 @@ const CustomerList = () => {
     };
   }, [refreshAllData]);
 
-  // Filter customers based on search term
-  const filteredCustomers = customers.filter(
-    (customer) =>
+  // Filter customers based on search term and active tab
+  const filteredCustomers = customers.filter((customer) => {
+    const matchesSearch =
       customer.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
       (customer.taxId || "").toLowerCase().includes(searchTerm.toLowerCase()) ||
-      customer.city.toLowerCase().includes(searchTerm.toLowerCase())
-  );
+      customer.city.toLowerCase().includes(searchTerm.toLowerCase());
+    if (activeTab === "all") return matchesSearch;
+    if (activeTab === "odbiorca") return matchesSearch && customer.customerType === "odbiorca";
+    if (activeTab === "sprzedawca") return matchesSearch && customer.customerType === "sprzedawca";
+    return matchesSearch;
+  });
   
   return (
     <div className="space-y-6">
@@ -109,6 +124,16 @@ const CustomerList = () => {
                 onChange={(e) => setSearchTerm(e.target.value)}
               />
             </div>
+          </div>
+          {/* Tabs for client type */}
+          <div className="mt-4">
+            <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
+              <TabsList className="grid w-full grid-cols-3">
+                <TabsTrigger value="all">Wszyscy</TabsTrigger>
+                <TabsTrigger value="odbiorca">Odbiorcy (sprzedaż)</TabsTrigger>
+                <TabsTrigger value="sprzedawca">Dostawcy (zakup)</TabsTrigger>
+              </TabsList>
+            </Tabs>
           </div>
         </CardHeader>
         <CardContent>

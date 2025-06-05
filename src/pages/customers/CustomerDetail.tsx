@@ -91,13 +91,20 @@ const CustomerDetail = () => {
             {customer.taxId && <p className="text-muted-foreground">NIP: {customer.taxId}</p>}
           </div>
         </div>
-        
-        <Button asChild>
-          <Link to={`/customers/edit/${customer.id}`}>
-            <Edit className="mr-2 h-4 w-4" />
-            Edytuj klienta
-          </Link>
-        </Button>
+        <div className="flex gap-2">
+          <Button asChild variant="secondary">
+            <Link to={`/invoices/new?customerId=${customer.id}`}>
+              <FileText className="mr-2 h-4 w-4" />
+              Wystaw fakturę dla klienta
+            </Link>
+          </Button>
+          <Button asChild>
+            <Link to={`/customers/edit/${customer.id}`}>
+              <Edit className="mr-2 h-4 w-4" />
+              Edytuj klienta
+            </Link>
+          </Button>
+        </div>
       </div>
       
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">

@@ -17,6 +17,13 @@ import { Customer } from "@/types";
 import { saveCustomer } from "@/integrations/supabase/repositories/customerRepository";
 import { useAuth } from "@/context/AuthContext";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 
 const formSchema = z.object({
   name: z.string().min(1, "Nazwa jest wymagana"),
@@ -26,6 +33,7 @@ const formSchema = z.object({
   city: z.string().min(1, "Miasto jest wymagane"),
   email: z.string().email("Niepoprawny format email").optional().or(z.literal("")),
   phone: z.string().optional(),
+  customerType: z.enum(['odbiorca', 'sprzedawca'], { required_error: "Typ klienta jest wymagany" }),
 });
 
 interface CustomerFormProps {
@@ -54,6 +62,7 @@ const CustomerForm = ({
       city: initialData?.city || "",
       email: initialData?.email || "",
       phone: initialData?.phone || "",
+      customerType: initialData?.customerType || 'odbiorca',
     },
   });
 
@@ -73,6 +82,7 @@ const CustomerForm = ({
         city: values.city,          // Required field from form
         email: values.email || "",  // Optional field
         phone: values.phone || "",  // Optional field
+        customerType: values.customerType,
         user_id: user.id, // Enforce RLS: always include user_id
       };
 
@@ -243,6 +253,27 @@ const CustomerForm = ({
                   <FormControl>
                     <Input placeholder="Telefon" {...field} />
                   </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+            <FormField
+              control={form.control}
+              name="customerType"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Typ klienta</FormLabel>
+                  <Select onValueChange={field.onChange} defaultValue={field.value}>
+                    <FormControl>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Wybierz typ klienta" />
+                      </SelectTrigger>
+                    </FormControl>
+                    <SelectContent>
+                      <SelectItem value="odbiorca">Odbiorca</SelectItem>
+                      <SelectItem value="sprzedawca">Sprzedawca</SelectItem>
+                    </SelectContent>
+                  </Select>
                   <FormMessage />
                 </FormItem>
               )}

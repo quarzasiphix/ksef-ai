@@ -94,7 +94,9 @@ const Dashboard = () => {
     return invoiceSum + invoiceVat;
   }, 0);
 
-  const totalExpenses = expenses.reduce((sum, expense) => sum + (expense.amount || 0), 0);
+  const totalExpenses = (invoices as any[])
+    .filter(inv => inv.transactionType === 'expense')
+    .reduce((sum, inv) => sum + (inv.totalGrossValue || 0), 0);
 
   // Quick action buttons for invoicing
   const quickActions = [
@@ -270,50 +272,6 @@ const Dashboard = () => {
         </Card>
       </div>
 
-      {/* Chart */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center space-x-2">
-            <BarChart3 className="h-5 w-5" />
-            <span>Miesięczna Sprzedaż</span>
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className={isMobile ? "h-48" : "h-64 md:h-80"}>
-            <ResponsiveContainer width="99%" height="100%">
-              <BarChart 
-                data={monthlySummaries}
-                margin={isMobile ? { top: 5, right: 0, left: -30, bottom: 0 } : { top: 5, right: 10, left: 0, bottom: 0 }}
-              >
-                <XAxis 
-                  dataKey="monthLabel" 
-                  fontSize={isMobile ? 9 : 12}
-                  tickMargin={5}
-                />
-                <YAxis 
-                  fontSize={isMobile ? 9 : 12} 
-                  width={isMobile ? 30 : 60}
-                  tickFormatter={(value) => isMobile ? value.toLocaleString('pl-PL', {notation: 'compact'}) : value.toLocaleString('pl-PL')}
-                />
-                <Tooltip
-                  formatter={(value: number) => formatCurrency(value)}
-                  labelFormatter={(label) => `Miesiąc: ${label}`}
-                  contentStyle={{ fontSize: isMobile ? '10px' : '12px' }}
-                />
-                {isMobile ? (
-                  <Bar dataKey="totalGrossValue" name="Brutto" fill="#1d4ed8" />
-                ) : (
-                  <>
-                    <Bar dataKey="totalNetValue" name="Netto" fill="#93c5fd" />
-                    <Bar dataKey="totalVatValue" name="VAT" fill="#3b82f6" />
-                    <Bar dataKey="totalGrossValue" name="Brutto" fill="#1d4ed8" />
-                  </>
-                )}
-              </BarChart>
-            </ResponsiveContainer>
-          </div>
-        </CardContent>
-      </Card>
 
       {/* Navigation Sections */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -390,6 +348,52 @@ const Dashboard = () => {
         </Card>
       </div>
 
+
+      {/* Chart */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center space-x-2">
+            <BarChart3 className="h-5 w-5" />
+            <span>Miesięczna Sprzedaż</span>
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className={isMobile ? "h-48" : "h-64 md:h-80"}>
+            <ResponsiveContainer width="99%" height="100%">
+              <BarChart 
+                data={monthlySummaries}
+                margin={isMobile ? { top: 5, right: 0, left: -30, bottom: 0 } : { top: 5, right: 10, left: 0, bottom: 0 }}
+              >
+                <XAxis 
+                  dataKey="monthLabel" 
+                  fontSize={isMobile ? 9 : 12}
+                  tickMargin={5}
+                />
+                <YAxis 
+                  fontSize={isMobile ? 9 : 12} 
+                  width={isMobile ? 30 : 60}
+                  tickFormatter={(value) => isMobile ? value.toLocaleString('pl-PL', {notation: 'compact'}) : value.toLocaleString('pl-PL')}
+                />
+                <Tooltip
+                  formatter={(value: number) => formatCurrency(value)}
+                  labelFormatter={(label) => `Miesiąc: ${label}`}
+                  contentStyle={{ fontSize: isMobile ? '10px' : '12px' }}
+                />
+                {isMobile ? (
+                  <Bar dataKey="totalGrossValue" name="Brutto" fill="#1d4ed8" />
+                ) : (
+                  <>
+                    <Bar dataKey="totalNetValue" name="Netto" fill="#93c5fd" />
+                    <Bar dataKey="totalVatValue" name="VAT" fill="#3b82f6" />
+                    <Bar dataKey="totalGrossValue" name="Brutto" fill="#1d4ed8" />
+                  </>
+                )}
+              </BarChart>
+            </ResponsiveContainer>
+          </div>
+        </CardContent>
+      </Card>
+
       {/* Recent Invoices */}
       <Card>
         <CardHeader>
@@ -419,9 +423,53 @@ const Dashboard = () => {
           ) : (
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               {invoices.slice(0, 4).map((invoice) => (
-                <InvoiceCard key={invoice.id} invoice={invoice} />
+                <InvoiceCard key={invoice.id} invoice={invoice as any} />
               ))}
             </div>
+          )}
+        </CardContent>
+      </Card>
+
+      {/* Recent Expenses */}
+      <Card>
+        <CardHeader>
+          <div className="flex justify-between items-center">
+            <CardTitle className="flex items-center space-x-2">
+              <Receipt className="h-5 w-5 text-red-500" />
+              <span>Ostatnie Wydatki</span>
+            </CardTitle>
+            <Button variant="outline" asChild size="sm">
+              <Link to="/expense">Zobacz wszystkie</Link>
+            </Button>
+          </div>
+        </CardHeader>
+        <CardContent>
+          {isLoadingInvoices ? (
+            <div className="text-center py-8">
+              <p>Ładowanie...</p>
+            </div>
+          ) : (
+            (() => {
+              const recentExpenses = (invoices as any[]).filter(inv => inv.transactionType === 'expense');
+              if (recentExpenses.length === 0) {
+                return (
+                  <div className="text-center py-8">
+                    <Receipt className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
+                    <p className="text-muted-foreground">Brak wydatków</p>
+                    <Button asChild className="mt-4">
+                      <Link to="/expense/new">Dodaj pierwszy wydatek</Link>
+                    </Button>
+                  </div>
+                );
+              }
+              return (
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  {recentExpenses.slice(0, 4).map((invoice) => (
+                    <InvoiceCard key={invoice.id} invoice={invoice as any} />
+                  ))}
+                </div>
+              );
+            })()
           )}
         </CardContent>
       </Card>

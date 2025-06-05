@@ -113,6 +113,52 @@ const AppSidebar = () => {
           <BusinessProfileSwitcher isCollapsed={isCollapsed} />
         </div>
 
+                {/* Quick Actions */}
+                <SidebarGroup>
+          {!isCollapsed && <SidebarGroupLabel>SZYBKIE AKCJE</SidebarGroupLabel>}
+          <SidebarGroupContent>
+            <SidebarMenu>
+              {quickActions.map((action) => (
+                <SidebarMenuItem key={action.path}>
+                  <SidebarMenuButton
+                    asChild
+                    tooltip={isCollapsed ? action.title : undefined}
+                  >
+                    <NavLink to={action.path} className="flex items-center gap-3 px-3 py-2 rounded-lg bg-muted hover:bg-muted/80 transition-colors w-full justify-start dark:bg-muted/50 dark:hover:bg-muted/70">
+                      <action.icon className={`h-5 w-5 flex-shrink-0 ${action.color} dark:opacity-90`} />
+                      {!isCollapsed && <span className="font-medium text-foreground/90 dark:text-foreground">{action.title}</span>}
+                    </NavLink>
+                  </SidebarMenuButton>
+                </SidebarMenuItem>
+              ))}
+            </SidebarMenu>
+          </SidebarGroupContent>
+        </SidebarGroup>
+
+
+        {/* Main Navigation */}
+        <SidebarGroup>
+          {!isCollapsed && <SidebarGroupLabel>GŁÓWNE</SidebarGroupLabel>}
+          <SidebarGroupContent>
+            <SidebarMenu>
+              {mainNavItems.map((item) => (
+                <SidebarMenuItem key={item.path}>
+                  <SidebarMenuButton
+                    asChild
+                    isActive={isActive(item.path)}
+                    tooltip={isCollapsed ? item.title : undefined}
+                  >
+                    <NavLink to={item.path} className={getNavClassName(item.path)}>
+                      <item.icon className="h-5 w-5 flex-shrink-0" />
+                      {!isCollapsed && <span>{item.title}</span>}
+                    </NavLink>
+                  </SidebarMenuButton>
+                </SidebarMenuItem>
+              ))}
+            </SidebarMenu>
+          </SidebarGroupContent>
+        </SidebarGroup>
+        
         {/* Premium Features Section - At the top */}
         <SidebarGroup>
           <div className="flex items-center justify-between px-2 py-2">
@@ -181,51 +227,6 @@ const AppSidebar = () => {
               </Button>
             </div>
           )}
-        </SidebarGroup>
-
-        {/* Main Navigation */}
-        <SidebarGroup>
-          {!isCollapsed && <SidebarGroupLabel>GŁÓWNE</SidebarGroupLabel>}
-          <SidebarGroupContent>
-            <SidebarMenu>
-              {mainNavItems.map((item) => (
-                <SidebarMenuItem key={item.path}>
-                  <SidebarMenuButton
-                    asChild
-                    isActive={isActive(item.path)}
-                    tooltip={isCollapsed ? item.title : undefined}
-                  >
-                    <NavLink to={item.path} className={getNavClassName(item.path)}>
-                      <item.icon className="h-5 w-5 flex-shrink-0" />
-                      {!isCollapsed && <span>{item.title}</span>}
-                    </NavLink>
-                  </SidebarMenuButton>
-                </SidebarMenuItem>
-              ))}
-            </SidebarMenu>
-          </SidebarGroupContent>
-        </SidebarGroup>
-
-        {/* Quick Actions */}
-        <SidebarGroup>
-          {!isCollapsed && <SidebarGroupLabel>SZYBKIE AKCJE</SidebarGroupLabel>}
-          <SidebarGroupContent>
-            <SidebarMenu>
-              {quickActions.map((action) => (
-                <SidebarMenuItem key={action.path}>
-                  <SidebarMenuButton
-                    asChild
-                    tooltip={isCollapsed ? action.title : undefined}
-                  >
-                    <NavLink to={action.path} className="flex items-center gap-3 px-3 py-2 rounded-lg bg-muted hover:bg-muted/80 transition-colors w-full justify-start dark:bg-muted/50 dark:hover:bg-muted/70">
-                      <action.icon className={`h-5 w-5 flex-shrink-0 ${action.color} dark:opacity-90`} />
-                      {!isCollapsed && <span className="font-medium text-foreground/90 dark:text-foreground">{action.title}</span>}
-                    </NavLink>
-                  </SidebarMenuButton>
-                </SidebarMenuItem>
-              ))}
-            </SidebarMenu>
-          </SidebarGroupContent>
         </SidebarGroup>
 
         {/* Management */}

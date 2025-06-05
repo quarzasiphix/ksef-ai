@@ -1,7 +1,7 @@
 import React from "react";
 import { SidebarTrigger } from "@/components/ui/sidebar";
 import { Button } from "@/components/ui/button";
-import { Plus } from "lucide-react";
+import { Plus, ArrowDownCircle, ArrowUpCircle, PiggyBank, UserPlus, PackagePlus } from "lucide-react";
 import { useNavigate, Link } from "react-router-dom";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { ThemeToggle } from "@/components/theme/ThemeToggle";
@@ -10,7 +10,9 @@ import {
   DropdownMenuContent,
   DropdownMenuGroup,
   DropdownMenuItem,
-  DropdownMenuTrigger
+  DropdownMenuTrigger,
+  DropdownMenuLabel,
+  DropdownMenuSeparator
 } from "@/components/ui/dropdown-menu";
 
 const Header = () => {
@@ -34,25 +36,63 @@ const Header = () => {
             </Button>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end">
+            {/* Income Section */}
+            <DropdownMenuLabel className="flex items-center gap-2 text-green-700 dark:text-green-400">
+              <ArrowDownCircle className="h-4 w-4" /> Nowy przychód
+            </DropdownMenuLabel>
             <DropdownMenuGroup>
               <DropdownMenuItem asChild>
-                <Link to="/invoices/new?type=sales">
-                  Faktura VAT
+                <Link to="/income/new?type=sales">Faktura VAT</Link>
+              </DropdownMenuItem>
+              <DropdownMenuItem asChild>
+                <Link to="/income/new?type=receipt">Rachunek</Link>
+              </DropdownMenuItem>
+              <DropdownMenuItem asChild>
+                <Link to="/income/new?type=proforma">Faktura proforma</Link>
+              </DropdownMenuItem>
+              <DropdownMenuItem asChild>
+                <Link to="/income/new?type=correction">Faktura korygująca</Link>
+              </DropdownMenuItem>
+            </DropdownMenuGroup>
+            <DropdownMenuSeparator />
+            {/* Expense Section */}
+            <DropdownMenuLabel className="flex items-center gap-2 text-blue-700 dark:text-blue-400">
+              <ArrowUpCircle className="h-4 w-4" /> Nowy wydatek
+            </DropdownMenuLabel>
+            <DropdownMenuGroup>
+              <DropdownMenuItem asChild>
+                <Link to="/expense/new?type=sales">Faktura kosztowa</Link>
+              </DropdownMenuItem>
+              <DropdownMenuItem asChild>
+                <Link to="/expense/new?type=receipt">Rachunek</Link>
+              </DropdownMenuItem>
+              <DropdownMenuItem asChild>
+                <Link to="/expense/new?type=proforma">Faktura proforma</Link>
+              </DropdownMenuItem>
+              <DropdownMenuItem asChild>
+                <Link to="/expense/new?type=correction">Faktura korygująca</Link>
+              </DropdownMenuItem>
+            </DropdownMenuGroup>
+            <DropdownMenuSeparator />
+            {/* ZUS Option */}
+            <DropdownMenuLabel className="flex items-center gap-2 text-amber-700 dark:text-amber-400">
+              <PiggyBank className="h-4 w-4" /> Inne
+            </DropdownMenuLabel>
+            <DropdownMenuItem asChild>
+              <Link to="/expense/new?type=sales&zus=1">Dodaj ZUS</Link>
+            </DropdownMenuItem>
+            <DropdownMenuSeparator />
+            {/* Add Client/Product Section */}
+            <DropdownMenuLabel className="text-muted-foreground">Skróty</DropdownMenuLabel>
+            <DropdownMenuGroup>
+              <DropdownMenuItem asChild>
+                <Link to="/customers/new" className="flex items-center gap-2">
+                  <UserPlus className="h-4 w-4 mr-2 text-blue-600" /> Dodaj klienta
                 </Link>
               </DropdownMenuItem>
               <DropdownMenuItem asChild>
-                <Link to="/invoices/new?type=receipt">
-                  Rachunek
-                </Link>
-              </DropdownMenuItem>
-              <DropdownMenuItem asChild>
-                <Link to="/invoices/new?type=proforma">
-                  Faktura proforma
-                </Link>
-              </DropdownMenuItem>
-              <DropdownMenuItem asChild>
-                <Link to="/invoices/new?type=correction">
-                  Faktura korygująca
+                <Link to="/products/new" className="flex items-center gap-2">
+                  <PackagePlus className="h-4 w-4 mr-2 text-green-600" /> Dodaj produkt
                 </Link>
               </DropdownMenuItem>
             </DropdownMenuGroup>

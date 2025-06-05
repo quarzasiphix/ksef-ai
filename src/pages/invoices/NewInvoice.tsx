@@ -24,6 +24,7 @@ import { InvoiceFormActions } from "@/components/invoices/forms/InvoiceFormActio
 import { Button } from "@/components/ui/button";
 import { useSidebar } from "@/components/ui/sidebar";
 import { cn } from "@/lib/utils";
+import { PaymentMethod } from "@/types";
 
 // Schema
 const invoiceFormSchema = z.object({
@@ -68,13 +69,27 @@ const NewInvoice: React.ForwardRefExoticComponent<
     const isExpenseRoute = location.pathname === "/expense/new" || location.pathname.startsWith("/expense/edit/");
     const hideTransactionButtons = isIncomeRoute || isExpenseRoute || location.pathname === "/invoices/new";
 
-    const [transactionType, setTransactionType] = useState<TransactionType>(() => {
+    // --- NEW: Transaction type prompt logic ---
+    const [showTransactionTypePrompt, setShowTransactionTypePrompt] = useState(() => {
+      // Only skip prompt if on /income/new or /expense/new or initialData has transactionType
+      return !(
+        isIncomeRoute ||
+        isExpenseRoute ||
+        (initialData && initialData.transactionType)
+      );
+    });
+
+    // --- NEW: Prefill customer/product logic ---
+    const urlCustomerId = searchParams.get("customerId") || "";
+    const urlProductId = searchParams.get("productId") || "";
+    const [prefilled, setPrefilled] = useState(false);
+
+    // --- Transaction type state ---
+    const [transactionType, setTransactionType] = useState<TransactionType | undefined>(() => {
       if (initialData?.transactionType) return initialData.transactionType;
-      // For new invoices on the generic route, default to INCOME
-      if (!initialData && location.pathname === "/invoices/new") return TransactionType.INCOME;
       if (isIncomeRoute) return TransactionType.INCOME;
       if (isExpenseRoute) return TransactionType.EXPENSE;
-      return type; // Fallback to default prop (should not be reached for new invoices on dedicated routes)
+      return undefined;
     });
     const [documentType, setDocumentType] = useState<InvoiceType>(
       initialData?.type || InvoiceType.SALES
@@ -83,8 +98,10 @@ const NewInvoice: React.ForwardRefExoticComponent<
     const [documentSettingsLoaded, setDocumentSettingsLoaded] = useState(false);
     const [isLoading, setIsLoading] = useState(false);
     const [items, setItems] = useState<InvoiceItem[]>(() => {
-      console.log('Initializing items state with:', initialData?.items);
-      return initialData?.items || [];
+      // If initialData has items, use them
+      if (initialData?.items) return initialData.items;
+      // If productId in URL, prefill with that product (will be handled in useEffect)
+      return [];
     });
 
     // Update items when initialData changes
@@ -120,7 +137,7 @@ const NewInvoice: React.ForwardRefExoticComponent<
         dueDate: initialData?.dueDate || today,
         paymentMethod: initialData?.paymentMethod
           ? toPaymentMethodUi(initialData.paymentMethod as PaymentMethodDb)
-          : "przelew",
+          : PaymentMethod.TRANSFER,
         comments: initialData?.comments || "",
         transactionType: transactionType,
         customerId: initialData?.customerId || "",
@@ -214,6 +231,41 @@ const NewInvoice: React.ForwardRefExoticComponent<
       console.log('Form vatExemptionReason value:', form.getValues().vatExemptionReason);
       console.log('Form transactionType value:', form.getValues().transactionType); // Added log
     }, [items, form.getValues().fakturaBezVAT, form.getValues().vatExemptionReason, form.getValues().transactionType]); // Depend on items and form values
+
+    // Prefill customer/product on mount (only once)
+    useEffect(() => {
+      if (prefilled) return;
+      let changed = false;
+      // Prefill customer
+      if (urlCustomerId && !form.getValues().customerId) {
+        form.setValue('customerId', urlCustomerId);
+        changed = true;
+      }
+      // Prefill product (fetch product and add as item)
+      if (urlProductId && items.length === 0 && user?.id) {
+        import('@/integrations/supabase/repositories/productRepository').then(async mod => {
+          const allProducts = await mod.getProducts(user.id);
+          const found = allProducts.find(p => p.id === urlProductId);
+          if (found) {
+            setItems([{
+              id: crypto.randomUUID(),
+              productId: found.id,
+              name: found.name,
+              description: found.name,
+              quantity: 1,
+              unitPrice: found.unitPrice,
+              vatRate: found.vatRate,
+              unit: found.unit,
+              totalNetValue: found.unitPrice,
+              totalVatValue: found.vatRate === -1 ? 0 : found.unitPrice * (found.vatRate / 100),
+              totalGrossValue: found.vatRate === -1 ? found.unitPrice : found.unitPrice * (1 + found.vatRate / 100)
+            }]);
+          }
+        });
+        changed = true;
+      }
+      if (changed) setPrefilled(true);
+    }, [urlCustomerId, urlProductId, form, items.length, user, prefilled]);
 
     useImperativeHandle(ref, () => ({
       handleSubmit: form.handleSubmit,
@@ -425,6 +477,37 @@ const NewInvoice: React.ForwardRefExoticComponent<
         setCustomerName(name);
       }
     };
+
+    // --- Transaction type prompt modal ---
+    if (showTransactionTypePrompt && !transactionType) {
+      return (
+        <div className="flex flex-col items-center justify-center min-h-[40vh] p-8">
+          <div className="bg-card rounded-lg shadow-lg p-8 max-w-md w-full text-center border">
+            <h2 className="text-xl font-bold mb-4">Jaki rodzaj faktury chcesz wystawić?</h2>
+            <div className="flex flex-col gap-4">
+              <Button
+                className="bg-green-600 hover:bg-green-700 text-white text-lg py-3"
+                onClick={() => {
+                  setTransactionType(TransactionType.INCOME);
+                  setShowTransactionTypePrompt(false);
+                }}
+              >
+                Przychód
+              </Button>
+              <Button
+                className="bg-blue-600 hover:bg-blue-700 text-white text-lg py-3"
+                onClick={() => {
+                  setTransactionType(TransactionType.EXPENSE);
+                  setShowTransactionTypePrompt(false);
+                }}
+              >
+                Wydatek
+              </Button>
+            </div>
+          </div>
+        </div>
+      );
+    }
 
     return (
       <div className="space-y-4 pb-24 md:pb-4">

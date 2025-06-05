@@ -85,6 +85,7 @@ export interface Customer {
   country?: string;
   email?: string;
   phone?: string;
+  customerType: 'odbiorca' | 'sprzedawca';
 }
 
 export interface Expense {
