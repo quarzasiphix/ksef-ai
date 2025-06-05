@@ -21,7 +21,7 @@ import { Capacitor } from '@capacitor/core';
 import { toast } from "sonner";
 import { saveInvoice } from "@/integrations/supabase/repositories/invoiceRepository";
 import { useAuth } from "@/context/AuthContext";
-import PremiumCheckoutModal from '@/components/PremiumCheckoutModal';
+import PremiumCheckoutModal from '@/components/premium/PremiumCheckoutModal';
 import NewInvoice from "@/pages/invoices/NewInvoice";
 
 interface InvoiceDetailProps {

@@ -6,8 +6,8 @@ import { BrowserRouter as Router, Routes, Route, Navigate, useLocation } from "r
 import { ThemeProvider } from "./components/theme/ThemeProvider";
 import Login from "./pages/auth/Login";
 import Register from "./pages/auth/Register";
-import Home from "./pages/Home";
-import PublicLayout from "./components/layout/PublicLayout";
+import Home from "./pages/public/Home";
+import PublicLayout from "./components/public/PublicLayout";
 import Dashboard from "./pages/Dashboard";
 import PrivacyPolicy from "./pages/policies/PrivacyPolicy";
 import TOSPolicy from "./pages/policies/TOSPolicy";
@@ -45,15 +45,31 @@ import EditInvoice from "./pages/invoices/EditInvoice";
 import SettingsMenu from "./pages/settings/SettingsMenu";
 import ProfileSettings from "./pages/settings/ProfileSettings";
 import { AuthChangeEvent, Session, User, SupabaseClient, Subscription } from '@supabase/supabase-js';
-import PremiumCheckoutModal from "@/components/PremiumCheckoutModal";
+import PremiumCheckoutModal from "@/components/premium/PremiumCheckoutModal";
 import Accounting from './pages/accounting/Accounting';
 import RequirePremium from './components/auth/RequirePremium';
-import PremiumSuccessMessage from "@/components/PremiumSuccessMessage";
+import PremiumSuccessMessage from "@/components/premium/PremiumSuccessMessage";
+import React from "react";
+
+const AppLoadingScreen = ({ loading, checkingPremium }: { loading: boolean, checkingPremium: boolean }) => (
+  <div className={`fixed inset-0 z-50 flex flex-col items-center justify-center bg-background/90 transition-colors ${checkingPremium ? 'text-amber-500' : 'text-primary'}`}>
+    <div className="text-2xl font-bold animate-pulse">
+      {checkingPremium ? 'Checking for premium...' : ':loading in app'}
+    </div>
+    {checkingPremium && (
+      <div className="mt-2 text-sm font-medium text-amber-600">Ładowanie premium...</div>
+    )}
+  </div>
+);
 
 // Protected route wrapper component
 const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
-  const { user } = useAuth();
+  const { user, loading, isPremium } = useAuth();
   
+  if (loading) {
+    // Show gold if premium is being checked (loading && user exists but isPremium is still falsey)
+    return <AppLoadingScreen loading={true} checkingPremium={!!user && loading} />;
+  }
   if (!user) {
     return <Navigate to="/auth/login" replace />;
   }
@@ -69,9 +85,13 @@ const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
 
 // Public route wrapper component
 const PublicRoute = ({ children }: { children: React.ReactNode }) => {
-  const { user } = useAuth();
+  const { user, loading, isPremium } = useAuth();
   const location = useLocation();
   
+  if (loading) {
+    // Show gold if premium is being checked (loading && user exists but isPremium is still falsey)
+    return <AppLoadingScreen loading={true} checkingPremium={!!user && loading} />;
+  }
   // Only redirect to dashboard if on home page and user is logged in
   if (user && location.pathname === '/') {
     return <Navigate to="/dashboard" replace />;

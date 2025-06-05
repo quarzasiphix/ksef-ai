@@ -36,6 +36,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     console.log('Opening premium dialog');
   };
 
+  // Helper for minimum loading time
+  const minDelay = (ms: number) => new Promise(res => setTimeout(res, ms));
+
   const handleAuthStateChange = async (event: string, session: Session | null) => {
     console.log("Auth state changed:", event, session);
     
@@ -55,6 +58,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   useEffect(() => {
     // Check for existing session
     const checkAuth = async () => {
+      const start = Date.now();
       try {
         const { data: { session } } = await supabase.auth.getSession();
         if (session) {
@@ -83,6 +87,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         console.error("Auth check failed:", error);
         setIsPremium(false);
       } finally {
+        // Ensure loading is visible for at least 500ms
+        const elapsed = Date.now() - start;
+        if (elapsed < 500) {
+          await minDelay(500 - elapsed);
+        }
         setLoading(false);
       }
     };

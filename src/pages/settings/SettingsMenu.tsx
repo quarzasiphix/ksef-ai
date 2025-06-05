@@ -7,8 +7,8 @@ import { useAuth } from "@/hooks/useAuth";
 import { toast } from "sonner";
 import { motion } from "framer-motion";
 import { cn } from "@/lib/utils";
-import PremiumSuccessMessage from "@/components/PremiumSuccessMessage";
-import SupportFooter from "@/components/SupportFooter";
+import PremiumSuccessMessage from "@/components/premium/PremiumSuccessMessage";
+import SupportFooter from "@/components/layout/SupportFooter";
 
 const SettingsMenu = () => {
   const { isPremium, openPremiumDialog, isShowingPremiumSuccess, hidePremiumSuccess } = useAuth();
