@@ -77,22 +77,21 @@ export const InvoiceItemsForm: React.FC<InvoiceItemsFormProps> = ({
         <CardTitle className="text-lg">Pozycje dokumentu</CardTitle>
       </CardHeader>
       <CardContent className="space-y-4">
-        {productsLoading ? (
+        <EditableInvoiceItemsTable
+          items={items}
+          products={productsLoading ? [] : products}
+          onRemoveItem={handleRemoveItem}
+          onUpdateItem={handleUpdateItem}
+          onAddItem={handleAddItem}
+          documentType={documentType}
+          transactionType={transactionType}
+          refetchProducts={refetchProducts}
+          userId={userId}
+          fakturaBezVAT={fakturaBezVAT}
+          vatExemptionReason={vatExemptionReason}
+        />
+        {productsLoading && (
           <div className="text-sm text-muted-foreground">Ładowanie produktów...</div>
-        ) : (
-          <EditableInvoiceItemsTable
-            items={items}
-            products={products}
-            onRemoveItem={handleRemoveItem}
-            onUpdateItem={handleUpdateItem}
-            onAddItem={handleAddItem}
-            documentType={documentType}
-            transactionType={transactionType}
-            refetchProducts={refetchProducts}
-            userId={userId}
-            fakturaBezVAT={fakturaBezVAT}
-            vatExemptionReason={vatExemptionReason}
-          />
         )}
       </CardContent>
     </Card>

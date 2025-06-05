@@ -23,7 +23,7 @@ import GlobalDataLoader from "./components/layout/GlobalDataLoader";
 import InvoiceList from "./pages/invoices/InvoiceList";
 import InvoiceDetail from "./pages/invoices/InvoiceDetail";
 import NewInvoice from "./pages/invoices/NewInvoice";
-import { TransactionType } from "./common-types";
+import { TransactionType } from "@/types";
 import BusinessProfiles from "./pages/settings/BusinessProfiles";
 import NewBusinessProfile from "./pages/settings/NewBusinessProfile";
 import EditBusinessProfile from "./pages/settings/EditBusinessProfile";
@@ -194,9 +194,14 @@ const App = () => {
                     <ExpenseList />
                   </ProtectedRoute>
                 } />
+                <Route path="/expense/new" element={
+                  <ProtectedRoute>
+                    <NewInvoice type={TransactionType.EXPENSE} />
+                  </ProtectedRoute>
+                } />
                 <Route path="/expense/:id" element={
                   <ProtectedRoute>
-                    <ExpenseDetail />
+                    <InvoiceDetail type={TransactionType.EXPENSE} />
                   </ProtectedRoute>
                 } />
                 <Route path="/income" element={

@@ -41,6 +41,7 @@ interface CustomerFormProps {
   isOpen: boolean;
   onClose: () => void;
   onSuccess: (customer: Customer) => void;
+  defaultCustomerType?: 'odbiorca' | 'sprzedawca';
 }
 
 const CustomerForm = ({
@@ -48,6 +49,7 @@ const CustomerForm = ({
   isOpen,
   onClose,
   onSuccess,
+  defaultCustomerType,
 }: CustomerFormProps) => {
   const { user } = useAuth();
   const isEditing = !!initialData?.id;
@@ -62,7 +64,7 @@ const CustomerForm = ({
       city: initialData?.city || "",
       email: initialData?.email || "",
       phone: initialData?.phone || "",
-      customerType: initialData?.customerType || 'odbiorca',
+      customerType: initialData?.customerType || defaultCustomerType || 'odbiorca',
     },
   });
 

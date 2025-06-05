@@ -102,6 +102,98 @@ export const getExpenses = async (userId: string, businessProfileId?: string, pe
   }));
 };
 
+export const saveExpense = async (expense: Omit<Expense, 'id' | 'createdAt'> & { id?: string }) => {
+  const payload = {
+    user_id: expense.userId,
+    business_profile_id: expense.businessProfileId,
+    issue_date: expense.issueDate,
+    amount: expense.amount,
+    currency: expense.currency || 'PLN',
+    description: expense.description || '',
+    // Add other fields as needed
+  };
+
+  let expenseId = expense.id;
+  let data;
+
+  if (expense.id) {
+    // Update existing expense
+    const updateRes = await supabase
+      .from('expenses')
+      .update(payload)
+      .eq('id', expense.id)
+      .select()
+      .single();
+    if (updateRes.error) throw updateRes.error;
+    data = updateRes.data;
+    expenseId = data.id;
+    // Remove old items
+    await supabase.from('expense_items').delete().eq('expense_id', expenseId);
+  } else {
+    // Insert new expense
+    const insertRes = await supabase
+      .from('expenses')
+      .insert(payload)
+      .select()
+      .single();
+    if (insertRes.error) throw insertRes.error;
+    data = insertRes.data;
+    expenseId = data.id;
+  }
+
+  // Insert items if provided
+  if (expense.items && expense.items.length > 0) {
+    const itemsPayload = expense.items.map(item => ({
+      expense_id: expenseId,
+      product_id: item.productId || null,
+      name: item.name,
+      quantity: item.quantity,
+      unit_price: item.unitPrice,
+      vat_rate: item.vatRate ?? 0,
+      unit: item.unit || 'szt.',
+      total_net_value: item.totalNetValue ?? 0,
+      total_gross_value: item.totalGrossValue ?? 0,
+      total_vat_value: item.totalVatValue ?? 0,
+      vat_exempt: item.vatExempt ?? false,
+      user_id: expense.userId,
+    }));
+    const { error: itemsError } = await supabase.from('expense_items').insert(itemsPayload);
+    if (itemsError) throw itemsError;
+  }
+
+  return data;
+};
+
+export const getExpense = async (id: string) => {
+  const { data, error } = await supabase
+    .from('expenses')
+    .select('*')
+    .eq('id', id)
+    .single();
+  if (error) throw error;
+  return data;
+};
+
+export const updateExpense = async (id: string, updates: Partial<Expense>) => {
+  const { data, error } = await supabase
+    .from('expenses')
+    .update(updates)
+    .eq('id', id)
+    .select()
+    .single();
+  if (error) throw error;
+  return data;
+};
+
+export const deleteExpense = async (id: string) => {
+  const { error } = await supabase
+    .from('expenses')
+    .delete()
+    .eq('id', id);
+  if (error) throw error;
+  return true;
+};
+
 // You would also need functions for saving, getting a single, and deleting expenses
 // based on your application's requirements, similar to invoiceRepository.
 

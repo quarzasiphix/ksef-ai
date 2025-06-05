@@ -13,7 +13,7 @@ export async function getCustomers(): Promise<Customer[]> {
   }
 
   return data.map(item => {
-    // Type assertion to handle missing user_id in the database
+    // Type assertion to handle missing user_id and customer_type in the database
     const itemWithAny = item as any;
     return {
       id: item.id,
@@ -24,7 +24,8 @@ export async function getCustomers(): Promise<Customer[]> {
       city: item.city,
       email: item.email || undefined,
       phone: item.phone || undefined,
-      user_id: itemWithAny.user_id // Type assertion for now, will be fixed after DB update
+      user_id: itemWithAny.user_id,
+      customerType: itemWithAny.customer_type || 'odbiorca',
     };
   });
 }
@@ -64,7 +65,8 @@ export async function saveCustomer(customer: Customer): Promise<Customer> {
       city: data.city,
       email: data.email || undefined,
       phone: data.phone || undefined,
-      user_id: data.user_id // Always include user_id for RLS
+      user_id: data.user_id,
+      customerType: (data as any).customer_type || 'odbiorca',
     };
   } else {
     // Insert new customer
@@ -88,7 +90,8 @@ export async function saveCustomer(customer: Customer): Promise<Customer> {
       city: data.city,
       email: data.email || undefined,
       phone: data.phone || undefined,
-      user_id: data.user_id // Include user_id in the response
+      user_id: data.user_id,
+      customerType: (data as any).customer_type || 'odbiorca',
     };
   }
 }
@@ -120,6 +123,15 @@ export async function getCustomerById(id: string): Promise<Customer | null> {
     city: data.city,
     email: data.email || undefined,
     phone: data.phone || undefined,
-    user_id: data.user_id // user_id should be directly on the data object
+    user_id: data.user_id,
+    customerType: (data as any).customer_type || 'odbiorca',
   } as Customer; // Cast to Customer type
+}
+
+export async function deleteCustomer(id: string): Promise<void> {
+  const { error } = await supabase
+    .from("customers")
+    .delete()
+    .eq("id", id);
+  if (error) throw error;
 }

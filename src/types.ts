@@ -100,6 +100,8 @@ export interface Expense {
   transactionType: TransactionType;
   date: string;
   category?: string;
+  items?: InvoiceItem[];
+  customerId?: string;
 }
 
 export enum VatType {

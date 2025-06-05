@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { Invoice, InvoiceType } from '@/types';
 import { format } from 'date-fns';
 import { pl } from 'date-fns/locale';
@@ -8,6 +8,10 @@ import { Plus, FileText } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
 import { useGlobalData } from '@/hooks/use-global-data';
 import { useBusinessProfile } from "@/context/BusinessProfileContext";
+import { Button } from "@/components/ui/button";
+
+const ZUS_NIP = "5220005994";
+const ZUS_NAME = "ZAKŁAD UBEZPIECZEŃ SPOŁECZNYCH";
 
 // ExpenseList component for displaying a list of expenses
 export default function ExpenseList() {
@@ -16,6 +20,7 @@ export default function ExpenseList() {
 
   const { invoices: { data: allInvoices, isLoading: isLoadingInvoices }, expenses: { data: allExpenses, isLoading: isLoadingExpenses } } = useGlobalData();
   const { selectedProfileId } = useBusinessProfile();
+  const navigate = useNavigate();
 
   useEffect(() => {
     if (allInvoices) {
@@ -49,6 +54,15 @@ export default function ExpenseList() {
   
   const isLoading = isLoadingInvoices || isLoadingExpenses;
 
+  const handleAddZus = () => {
+    const today = new Date();
+    const month = String(today.getMonth() + 1).padStart(2, '0');
+    const year = today.getFullYear();
+    const desc = `ZUS składka ${month}/${year}`;
+    const date = today.toISOString().slice(0, 10);
+    navigate(`/expense/new?zus=1&desc=${encodeURIComponent(desc)}&date=${date}`);
+  };
+
   if (isLoading) {
     return (
       <div className="flex items-center justify-center h-64">
@@ -67,13 +81,18 @@ export default function ExpenseList() {
           </p>
         </div>
         <div className="flex gap-2">
-          <Link
-            to="/expense/new?type=sales"
-            className="bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded transition-colors flex items-center gap-2"
-          >
-            <Plus className="h-4 w-4" />
-            Nowy wydatek
-          </Link>
+          <Button asChild>
+            <Link
+              to="/expense/new"
+              className="bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded transition-colors flex items-center gap-2"
+            >
+              <Plus className="h-4 w-4" />
+              Nowy wydatek
+            </Link>
+          </Button>
+          <Button variant="outline" onClick={handleAddZus}>
+            Dodaj ZUS
+          </Button>
         </div>
       </div>
 
