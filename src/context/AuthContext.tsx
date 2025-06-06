@@ -41,14 +41,55 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   // Helper for minimum loading time
   const minDelay = (ms: number) => new Promise(res => setTimeout(res, ms));
 
+  // Check premium status function
+  const checkPremiumStatus = async (userId: string) => {
+    console.log("Checking premium status for user:", userId);
+    try {
+      const { data, error } = await supabase
+        .from("premium_subscriptions")
+        .select("id, ends_at, is_active")
+        .eq("user_id", userId)
+        .eq("is_active", true)
+        .order("ends_at", { ascending: false })
+        .limit(1)
+        .maybeSingle();
+
+      if (error) {
+        console.error("Error checking premium status:", error);
+        setIsPremium(false);
+        return false;
+      }
+
+      if (data && data.is_active && (!data.ends_at || new Date(data.ends_at) > new Date())) {
+        console.log("User has active premium subscription");
+        setIsPremium(true);
+        return true;
+      } else {
+        console.log("User does not have active premium subscription");
+        setIsPremium(false);
+        return false;
+      }
+    } catch (error) {
+      console.error("Premium status check failed:", error);
+      setIsPremium(false);
+      return false;
+    }
+  };
+
   const handleAuthStateChange = async (event: string, session: Session | null) => {
     console.log("Auth state changed:", event, session);
     
     if (session?.user) {
       setUser(session.user);
+      
+      // Check premium status FIRST before invalidating queries
+      await checkPremiumStatus(session.user.id);
+      
+      // Then invalidate queries to load other data
       await queryClient.invalidateQueries();
     } else {
       setUser(null);
+      setIsPremium(false);
       queryClient.clear();
     }
     
@@ -64,23 +105,13 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       try {
         const { data: { session } } = await supabase.auth.getSession();
         if (session) {
+          setUser(session.user);
+          
+          // Check premium status FIRST
+          await checkPremiumStatus(session.user.id);
+          
+          // Then handle other auth state changes
           await handleAuthStateChange('INITIAL_SESSION', session);
-          // Check premium status once on initial load
-          const { data, error } = await supabase
-            .from("premium_subscriptions")
-            .select("id,ends_at,is_active")
-            .eq("user_id", session.user.id)
-            .eq("is_active", true)
-            .order("ends_at", { ascending: false })
-            .limit(1)
-            .maybeSingle();
-          if (error) {
-            setIsPremium(false);
-          } else if (data && data.is_active && (!data.ends_at || new Date(data.ends_at) > new Date())) {
-            setIsPremium(true);
-          } else {
-            setIsPremium(false);
-          }
         } else {
           setUser(null);
           setIsPremium(false);
@@ -124,6 +155,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     const { error } = await supabase.auth.signOut();
     if (error) throw error;
     setUser(null);
+    setIsPremium(false);
     queryClient.clear();
   };
 
