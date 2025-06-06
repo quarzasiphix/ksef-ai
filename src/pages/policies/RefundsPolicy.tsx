@@ -7,44 +7,73 @@ const RefundsPolicy = () => {
       
       <div className="prose prose-invert max-w-none">
         <section className="mb-8">
-          <h2 className="text-2xl font-semibold mb-4 text-white">1. Informacje o Usługodawcy</h2>
+          <h2 className="text-2xl font-semibold mb-4 text-white">1. Postanowienia ogólne</h2>
           <p className="text-neutral-300">
-            Właścicielem i operatorem serwisu ksiegai.pl jest ALPINALD WIKTOR BRZEZIŃSKI, GAJÓWKA-KOLONIA 23, 99-205 GAJÓWKA-KOLONIA, NIP: 7322212639, e-mail: contact@ksiegai.pl.
+            Niniejsza polityka zwrotów określa zasady i procedury związane ze zwrotami środków za usługi premium świadczone przez Ai Faktura.
           </p>
         </section>
 
         <section className="mb-8">
           <h2 className="text-2xl font-semibold mb-4 text-white">2. Prawo do odstąpienia od umowy</h2>
           <p className="text-neutral-300">
-            Użytkownik ma prawo do odstąpienia od umowy w ciągu 7 dni od zakupu, pod warunkiem, że nie rozpoczął korzystania z usługi premium. Po rozpoczęciu korzystania z usługi (logowanie, generowanie dokumentów) zwrot nie przysługuje, zgodnie z przepisami dotyczącymi usług cyfrowych.
+            Użytkownik ma prawo do odstąpienia od umowy w ciągu 14 dni od jej zawarcia bez podawania przyczyny. Odstąpienie od umowy nie wymaga zachowania szczególnej formy.
           </p>
         </section>
 
         <section className="mb-8">
           <h2 className="text-2xl font-semibold mb-4 text-white">3. Wyjątki od prawa odstąpienia</h2>
           <p className="text-neutral-300">
-            Prawo do zwrotu nie przysługuje, jeśli Użytkownik rozpoczął korzystanie z usługi premium przed upływem 7 dni od zakupu lub jeśli usługa została w pełni wykonana za zgodą Użytkownika.
+            Prawo odstąpienia nie przysługuje w przypadku:
           </p>
+          <ul className="list-disc pl-6 mt-2 text-neutral-300">
+            <li>Rozpoczęcia korzystania z usługi premium przed upływem terminu do odstąpienia</li>
+            <li>Usług świadczonych jednorazowo</li>
+            <li>Usług, których wykonanie rozpoczęło się za wyraźną zgodą Użytkownika</li>
+          </ul>
         </section>
 
         <section className="mb-8">
           <h2 className="text-2xl font-semibold mb-4 text-white">4. Procedura zwrotu</h2>
           <p className="text-neutral-300">
-            Aby uzyskać zwrot, Użytkownik powinien skontaktować się z nami na adres e-mail: contact@ksiegai.pl, podając dane niezbędne do identyfikacji płatności oraz powód żądania zwrotu.
+            Aby dokonać zwrotu, Użytkownik powinien:
           </p>
+          <ul className="list-disc pl-6 mt-2 text-neutral-300">
+            <li>Złożyć wniosek o zwrot poprzez formularz kontaktowy</li>
+            <li>Podając dane niezbędne do identyfikacji płatności</li>
+            <li>Określić przyczynę zwrotu</li>
+          </ul>
         </section>
 
         <section className="mb-8">
           <h2 className="text-2xl font-semibold mb-4 text-white">5. Terminy zwrotu</h2>
           <p className="text-neutral-300">
-            Zwrot środków zostanie dokonany w terminie do 14 dni od pozytywnego rozpatrzenia wniosku. Środki zostaną zwrócone tą samą metodą płatności, którą dokonano płatności (Stripe, BLIK, Przelewy24).
+            Zwrot środków zostanie dokonany w terminie 14 dni od otrzymania wniosku o zwrot. Środki zostaną zwrócone tą samą metodą płatności, którą dokonano płatności.
           </p>
         </section>
 
         <section className="mb-8">
-          <h2 className="text-2xl font-semibold mb-4 text-white">6. Reklamacje</h2>
+          <h2 className="text-2xl font-semibold mb-4 text-white">6. Częściowe zwroty</h2>
           <p className="text-neutral-300">
-            Reklamacje dotyczące zwrotów rozpatrywane są w terminie 14 dni od ich otrzymania. O rozstrzygnięciu reklamacji Użytkownik zostanie powiadomiony e-mailowo.
+            W przypadku częściowego korzystania z usługi premium, zwrotowi podlega proporcjonalna część opłaty, pomniejszona o koszty już świadczonych usług.
+          </p>
+        </section>
+
+        <section className="mb-8">
+          <h2 className="text-2xl font-semibold mb-4 text-white">7. Kontakt w sprawie zwrotów</h2>
+          <p className="text-neutral-300">
+            W sprawach związanych ze zwrotami można kontaktować się z nami:
+          </p>
+          <ul className="list-disc pl-6 mt-2 text-neutral-300">
+            <li>Email: refunds@ksiegai.pl</li>
+            <li>Telefon: +48 XXX XXX XXX</li>
+            <li>Formularz kontaktowy na stronie</li>
+          </ul>
+        </section>
+
+        <section className="mb-8">
+          <h2 className="text-2xl font-semibold mb-4 text-white">8. Reklamacje</h2>
+          <p className="text-neutral-300">
+            Reklamacje dotyczące zwrotów rozpatrywane są w terminie 14 dni od ich otrzymania. O rozstrzygnięciu reklamacji Użytkownik zostanie powiadomiony w sposób wybrany przy składaniu reklamacji.
           </p>
         </section>
       </div>
