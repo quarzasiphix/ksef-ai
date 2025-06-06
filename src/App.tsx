@@ -49,7 +49,7 @@ import PremiumCheckoutModal from "@/components/premium/PremiumCheckoutModal";
 import Accounting from './pages/accounting/Accounting';
 import RequirePremium from './components/auth/RequirePremium';
 import PremiumSuccessMessage from "@/components/premium/PremiumSuccessMessage";
-import React from "react";
+import React, { useEffect } from "react";
 
 const AppLoadingScreen = ({ loading, checkingPremium }: { loading: boolean, checkingPremium: boolean }) => (
   <div className={`fixed inset-0 z-50 flex flex-col items-center justify-center bg-background/90 transition-colors ${checkingPremium ? 'text-amber-500' : 'text-primary'}`}>
@@ -100,155 +100,186 @@ const PublicRoute = ({ children }: { children: React.ReactNode }) => {
   return <PublicLayout>{children}</PublicLayout>;
 };
 
+const premiumFeatures = [
+  "Tworzenie wielu profili firmowych",
+  "Generowanie faktur bez limitu",
+  "Pełny dostęp do statystyk i raportów",
+  "Wsparcie KSeF (wkrótce)",
+  "Priorytetowe wsparcie techniczne",
+];
+
 const App = () => {
+  const {
+    isPremiumModalOpen,
+    closePremiumDialog,
+    isPremiumSuccessOpen,
+    hidePremiumSuccess,
+    showPremiumSuccess,
+  } = useAuth();
+  const location = useLocation();
+
+  // Show success message if ?status=success is in the URL
+  useEffect(() => {
+    const params = new URLSearchParams(location.search);
+    if (params.get('status') === 'success') {
+      showPremiumSuccess();
+      // Remove the status param from the URL
+      window.history.replaceState({}, document.title, location.pathname);
+    }
+  }, [location, showPremiumSuccess]);
+
   return (
-    <ThemeProvider defaultTheme="system">
-      <QueryClientProvider client={queryClient}>
-        <TooltipProvider>
-          <Toaster />
-          <Sonner position="top-center" offset={10} />
-          <AuthProvider>
-            <HeartbeatHandler />
-            <Router>
-              <Routes>
-                {/* Public routes */}
-                <Route path="/" element={
-                  <PublicRoute>
-                    <Home />
-                  </PublicRoute>
-                } />
-                <Route path="/auth/login" element={
-                  <PublicRoute>
-                    <Login />
-                  </PublicRoute>
-                } />
-                <Route path="/auth/register" element={
-                  <PublicRoute>
-                    <Register />
-                  </PublicRoute>
-                } />
-                <Route path="/policies/privacy" element={
-                  <PublicRoute>
-                    <PrivacyPolicy />
-                  </PublicRoute>
-                } />
-                <Route path="/policies/tos" element={
-                  <PublicRoute>
-                    <TOSPolicy />
-                  </PublicRoute>
-                } />
-                <Route path="/policies/refunds" element={
-                  <PublicRoute>
-                    <RefundsPolicy />
-                  </PublicRoute>
-                } />
+    <>
+      <PremiumCheckoutModal isOpen={isPremiumModalOpen} onClose={closePremiumDialog} />
+      <PremiumSuccessMessage isOpen={isPremiumSuccessOpen} onClose={hidePremiumSuccess} premiumFeatures={premiumFeatures} />
+      <ThemeProvider defaultTheme="system">
+        <QueryClientProvider client={queryClient}>
+          <TooltipProvider>
+            <Toaster />
+            <Sonner position="top-center" offset={10} />
+            <AuthProvider>
+              <HeartbeatHandler />
+              <Router>
+                <Routes>
+                  {/* Public routes */}
+                  <Route path="/" element={
+                    <PublicRoute>
+                      <Home />
+                    </PublicRoute>
+                  } />
+                  <Route path="/auth/login" element={
+                    <PublicRoute>
+                      <Login />
+                    </PublicRoute>
+                  } />
+                  <Route path="/auth/register" element={
+                    <PublicRoute>
+                      <Register />
+                    </PublicRoute>
+                  } />
+                  <Route path="/policies/privacy" element={
+                    <PublicRoute>
+                      <PrivacyPolicy />
+                    </PublicRoute>
+                  } />
+                  <Route path="/policies/tos" element={
+                    <PublicRoute>
+                      <TOSPolicy />
+                    </PublicRoute>
+                  } />
+                  <Route path="/policies/refunds" element={
+                    <PublicRoute>
+                      <RefundsPolicy />
+                    </PublicRoute>
+                  } />
 
-                {/* Protected routes */}
-                <Route path="/dashboard" element={
-                  <ProtectedRoute>
-                    <Dashboard />
-                  </ProtectedRoute>
-                } />
-                <Route path="/customers" element={
-                  <ProtectedRoute>
-                    <CustomerList />
-                  </ProtectedRoute>
-                } />
-                <Route path="/customers/new" element={
-                  <ProtectedRoute>
-                    <NewCustomer />
-                  </ProtectedRoute>
-                } />
-                <Route path="/customers/edit/:id" element={
-                  <ProtectedRoute>
-                    <EditCustomer />
-                  </ProtectedRoute>
-                } />
-                <Route path="/customers/:id" element={
-                  <ProtectedRoute>
-                    <CustomerDetail />
-                  </ProtectedRoute>
-                } />
-                <Route path="/products" element={
-                  <ProtectedRoute>
-                    <ProductList />
-                  </ProtectedRoute>
-                } />
-                <Route path="/products/new" element={
-                  <ProtectedRoute>
-                    <NewProduct />
-                  </ProtectedRoute>
-                } />
-                <Route path="/products/edit/:id" element={
-                  <ProtectedRoute>
-                    <EditProduct />
-                  </ProtectedRoute>
-                } />
-                <Route path="/products/:id" element={
-                  <ProtectedRoute>
-                    <ProductDetail />
-                  </ProtectedRoute>
-                } />
-                <Route path="/expense" element={
-                  <ProtectedRoute>
-                    <ExpenseList />
-                  </ProtectedRoute>
-                } />
-                <Route path="/expense/new" element={
-                  <ProtectedRoute>
-                    <NewInvoice type={TransactionType.EXPENSE} />
-                  </ProtectedRoute>
-                } />
-                <Route path="/expense/:id" element={
-                  <ProtectedRoute>
-                    <InvoiceDetail type={TransactionType.EXPENSE} />
-                  </ProtectedRoute>
-                } />
-                <Route path="/income" element={
-                  <ProtectedRoute>
-                    <IncomeList />
-                  </ProtectedRoute>
-                } />
-                <Route path="/income/:id" element={
-                  <ProtectedRoute>
-                    <IncomeDetail />
-                  </ProtectedRoute>
-                } />
-                <Route path="/income/:id/edit" element={
-                  <ProtectedRoute>
-                    <EditInvoice />
-                  </ProtectedRoute>
-                } />
-                <Route path="/expense/:id/edit" element={
-                  <ProtectedRoute>
-                    <EditInvoice />
-                  </ProtectedRoute>
-                } />
-                <Route path="/settings/*" element={
-                  <ProtectedRoute>
-                    <SettingsMenu />
-                  </ProtectedRoute>
-                } />
-                <Route path="/accounting/*" element={
-                  <ProtectedRoute>
-                    <Accounting />
-                  </ProtectedRoute>
-                } />
-                <Route path="/ksef/*" element={
-                  <ProtectedRoute>
-                    {/* <KsefPage /> */}
-                    <h1> KSEF COMING SOON</h1>
-                  </ProtectedRoute>
-                } />
+                  {/* Protected routes */}
+                  <Route path="/dashboard" element={
+                    <ProtectedRoute>
+                      <Dashboard />
+                    </ProtectedRoute>
+                  } />
+                  <Route path="/customers" element={
+                    <ProtectedRoute>
+                      <CustomerList />
+                    </ProtectedRoute>
+                  } />
+                  <Route path="/customers/new" element={
+                    <ProtectedRoute>
+                      <NewCustomer />
+                    </ProtectedRoute>
+                  } />
+                  <Route path="/customers/edit/:id" element={
+                    <ProtectedRoute>
+                      <EditCustomer />
+                    </ProtectedRoute>
+                  } />
+                  <Route path="/customers/:id" element={
+                    <ProtectedRoute>
+                      <CustomerDetail />
+                    </ProtectedRoute>
+                  } />
+                  <Route path="/products" element={
+                    <ProtectedRoute>
+                      <ProductList />
+                    </ProtectedRoute>
+                  } />
+                  <Route path="/products/new" element={
+                    <ProtectedRoute>
+                      <NewProduct />
+                    </ProtectedRoute>
+                  } />
+                  <Route path="/products/edit/:id" element={
+                    <ProtectedRoute>
+                      <EditProduct />
+                    </ProtectedRoute>
+                  } />
+                  <Route path="/products/:id" element={
+                    <ProtectedRoute>
+                      <ProductDetail />
+                    </ProtectedRoute>
+                  } />
+                  <Route path="/expense" element={
+                    <ProtectedRoute>
+                      <ExpenseList />
+                    </ProtectedRoute>
+                  } />
+                  <Route path="/expense/new" element={
+                    <ProtectedRoute>
+                      <NewInvoice type={TransactionType.EXPENSE} />
+                    </ProtectedRoute>
+                  } />
+                  <Route path="/expense/:id" element={
+                    <ProtectedRoute>
+                      <InvoiceDetail type={TransactionType.EXPENSE} />
+                    </ProtectedRoute>
+                  } />
+                  <Route path="/income" element={
+                    <ProtectedRoute>
+                      <IncomeList />
+                    </ProtectedRoute>
+                  } />
+                  <Route path="/income/:id" element={
+                    <ProtectedRoute>
+                      <IncomeDetail />
+                    </ProtectedRoute>
+                  } />
+                  <Route path="/income/:id/edit" element={
+                    <ProtectedRoute>
+                      <EditInvoice />
+                    </ProtectedRoute>
+                  } />
+                  <Route path="/expense/:id/edit" element={
+                    <ProtectedRoute>
+                      <EditInvoice />
+                    </ProtectedRoute>
+                  } />
+                  <Route path="/settings/*" element={
+                    <ProtectedRoute>
+                      <SettingsMenu />
+                    </ProtectedRoute>
+                  } />
+                  <Route path="/accounting/*" element={
+                    <ProtectedRoute>
+                      <Accounting />
+                    </ProtectedRoute>
+                  } />
+                  <Route path="/ksef/*" element={
+                    <ProtectedRoute>
+                      {/* <KsefPage /> */}
+                      <h1> KSEF COMING SOON</h1>
+                    </ProtectedRoute>
+                  } />
 
-                {/* Catch all route */}
-                <Route path="*" element={<NotFound />} />
-              </Routes>
-            </Router>
-          </AuthProvider>
-        </TooltipProvider>
-      </QueryClientProvider>
-    </ThemeProvider>
+                  {/* Catch all route */}
+                  <Route path="*" element={<NotFound />} />
+                </Routes>
+              </Router>
+            </AuthProvider>
+          </TooltipProvider>
+        </QueryClientProvider>
+      </ThemeProvider>
+    </>
   );
 };
 
