@@ -3,6 +3,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useQueryClient } from "@tanstack/react-query";
 import { User, Session } from "@supabase/supabase-js";
 import PremiumCheckoutModal from "@/components/premium/PremiumCheckoutModal";
+import { checkPremiumStatus } from "@/integrations/supabase/repositories/PremiumRepository";
 
 export interface AuthContextType {
   user: User | null;
@@ -33,84 +34,60 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [showPremiumModal, setShowPremiumModal] = useState(false);
   const queryClient = useQueryClient();
 
-  const openPremiumDialog = () => setShowPremiumModal(true);
+  const openPremiumDialog = () => {
+    setShowPremiumModal(true);
+  };
 
   // Helper for minimum loading time
   const minDelay = (ms: number) => new Promise(res => setTimeout(res, ms));
 
-  // Check premium status function
-  const checkPremiumStatus = async (userId: string) => {
-    const { data, error } = await supabase
-      .from("premium_subscriptions")
-      .select("id, ends_at, is_active")
-      .eq("user_id", userId)
-      .eq("is_active", true)
-      .order("ends_at", { ascending: false })
-      .limit(1)
-      .maybeSingle();
-    if (error) {
-      setIsPremium(false);
-      return false;
-    }
-    if (data && data.is_active && (!data.ends_at || new Date(data.ends_at) > new Date())) {
-      setIsPremium(true);
-      return true;
-    } else {
-      setIsPremium(false);
-      return false;
-    }
-  };
-
-  // Handles both initial session and auth state changes
   const handleAuthStateChange = async (event: string, session: Session | null) => {
+    console.log("Auth state changed:", event, session);
+    
     if (session?.user) {
       setUser(session.user);
-      // Check premium status FIRST
-      await checkPremiumStatus(session.user.id);
-      // Then invalidate queries to load other data
       await queryClient.invalidateQueries();
     } else {
       setUser(null);
-      setIsPremium(false);
       queryClient.clear();
     }
-    setLoading(false);
+    
+    if (loading) {
+      setLoading(false);
+    }
   };
 
   useEffect(() => {
-    const checkAuthAndPremium = async () => {
-      setLoading(true);
-      const start = Date.now();
-      try {
-        const { data: { session } } = await supabase.auth.getSession();
-        if (session) {
-          setUser(session.user);
-          // Check premium status BEFORE setting loading to false
-          await checkPremiumStatus(session.user.id);
-        } else {
-          setUser(null);
-          setIsPremium(false);
-        }
-      } catch (error) {
+    let checkedInitial = false;
+
+    const checkAndSetPremium = async (session: Session | null) => {
+      if (session && session.user) {
+        setUser(session.user);
+        const premium = await checkPremiumStatus(session.user.id);
+        setIsPremium(premium);
+      } else {
+        setUser(null);
         setIsPremium(false);
-      } finally {
-        // Ensure loading is visible for at least 500ms
-        const elapsed = Date.now() - start;
-        if (elapsed < 500) {
-          await minDelay(500 - elapsed);
-        }
-        setLoading(false);
       }
+      setLoading(false);
     };
 
-    checkAuthAndPremium();
+    // 1. Initial check
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      checkedInitial = true;
+      checkAndSetPremium(session);
+    });
 
-    // Listen for auth state changes
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(handleAuthStateChange);
+    // 2. Listen for session restoration or login
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+      // Only run if we haven't already checked, or if session changes
+      if (!checkedInitial || event === 'SIGNED_IN' || event === 'INITIAL_SESSION') {
+        setLoading(true);
+        checkAndSetPremium(session);
+      }
+    });
 
-    return () => {
-      subscription.unsubscribe();
-    };
+    return () => subscription.unsubscribe();
   }, []);
 
   const login = async (email: string, password: string) => {
