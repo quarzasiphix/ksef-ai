@@ -33,7 +33,7 @@ const PremiumCheckoutModal: React.FC<PremiumCheckoutModalProps> = ({ isOpen, onC
       id: 'monthly',
       name: 'Miesięczny',
       price: '19 zł',
-      priceId: 'price_1RUC3sQdcZQu3wLBGkQywvga',
+      priceId: 'price_1RX4WAQdcZQu3wLBkwQMj47D',
       productId: 'prod_SP03iOrYwe0qGH',
       interval: 'miesiąc',
     },
