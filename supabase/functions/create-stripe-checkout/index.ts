@@ -13,7 +13,7 @@ serve(async (req)=>{
     return new Response('ok', { headers: corsHeaders });
   }
 
-  const stripeSecretKey = Deno.env.get('STRIPE_SECRET_KEY');
+  const stripeSecretKey = Deno.env.get('STRIPE_SECRET_KEY_PROD');
   if (!stripeSecretKey) {
     return new Response(JSON.stringify({
       error: "Stripe secret key not configured"

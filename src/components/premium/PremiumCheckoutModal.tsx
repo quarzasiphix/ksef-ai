@@ -33,16 +33,24 @@ const PremiumCheckoutModal: React.FC<PremiumCheckoutModalProps> = ({ isOpen, onC
       id: 'monthly',
       name: 'Miesięczny',
       price: '19 zł',
-      priceId: 'price_1RX4WAQdcZQu3wLBkwQMj47D',
-      productId: 'prod_SP03iOrYwe0qGH',
+      //test product
+      //priceId: 'price_1RX4WAQdcZQu3wLBkwQMj47D',
+      //productId: 'prod_SP03iOrYwe0qGH',
+      // live product
+      priceId: 'price_1RWw1eHFbUxWftPsIEZ4PhhH',
+      productId: 'prod_SRphekdFtboZQs',
       interval: 'miesiąc',
     },
     {
       id: 'annual',
       name: 'Roczny',
       price: '150 zł',
-      priceId: 'price_1RWwhWQdcZQu3wLBnCkEmFgg',
-      productId: 'prod_SRqOToD9rHiYPJ',
+      // test price
+      //priceId: 'price_1RWwhWQdcZQu3wLBnCkEmFgg'
+      //productId: 'prod_SRqOToD9rHiYPJ',
+      // live price
+      productId: 'prod_SRphekdFtboZQs',
+      priceId: 'price_1RX4m0HFbUxWftPsK1uBmUM6',
       interval: 'rok',
       savings: 'Oszczędzasz 78 zł',
       popular: true,

@@ -228,7 +228,13 @@ const App = () => {
                   <ProtectedRoute>
                     <SettingsMenu />
                   </ProtectedRoute>
-                } />
+                }>
+                  <Route path="profile" element={<ProfileSettings />} />
+                  <Route path="business-profiles" element={<BusinessProfiles />} />
+                  <Route path="business-profiles/new" element={<NewBusinessProfile />} />
+                  <Route path="business-profiles/:id" element={<EditBusinessProfile />} />
+                  <Route path="documents" element={<DocumentSettings />} />
+                </Route>
                 <Route path="/accounting/*" element={
                   <ProtectedRoute>
                     <Accounting />

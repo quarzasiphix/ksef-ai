@@ -3,7 +3,7 @@ import Stripe from "https://esm.sh/stripe@14.25.0?target=deno";
 
 // Initialize Stripe with your secret key
 // Ensure STRIPE_SECRET_KEY is set in your Supabase secrets
-const stripe = new Stripe(Deno.env.get('STRIPE_SECRET_KEY') as string, {
+const stripe = new Stripe(Deno.env.get('STRIPE_SECRET_KEY_PROD') as string, {
   apiVersion: '2024-04-10',
   typescript: true,
 });

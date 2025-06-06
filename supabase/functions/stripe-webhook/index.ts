@@ -17,7 +17,7 @@ serve(async (req) => {
     return new Response('ok', { headers: corsHeaders })
   }
 
-  const stripeWebhookSecret = Deno.env.get('STRIPE_WEBHOOK_SECRET');
+  const stripeWebhookSecret = Deno.env.get('STRIPE_WEBHOOK_SECRET_PROD');
   const supabaseServiceRoleKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
 
   if (!stripeWebhookSecret || !supabaseServiceRoleKey) {
@@ -31,7 +31,7 @@ serve(async (req) => {
   // Initialize Stripe (using the Secret Key, NOT the webhook secret)
   // This might not be strictly needed for just webhook verification,
   // but good to have if you expand function logic.
-  const stripe = new Stripe(Deno.env.get('STRIPE_SECRET_KEY') as string, {
+  const stripe = new Stripe(Deno.env.get('STRIPE_SECRET_KEY_PROD') as string, {
     apiVersion: '2024-04-10',
     typescript: true,
   });

@@ -1,5 +1,4 @@
-
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Link, Outlet, useSearchParams, useNavigate, useLocation } from 'react-router-dom';
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -11,11 +10,14 @@ import { cn } from "@/lib/utils";
 import PremiumCheckoutModal from "@/components/premium/PremiumCheckoutModal";
 import PremiumSuccessMessage from "@/components/premium/PremiumSuccessMessage";
 import SupportFooter from "@/components/layout/SupportFooter";
+import { useHeartbeat } from "@/hooks/useHeartbeat";
 
 const SettingsMenu = () => {
   const { isPremium, openPremiumDialog } = useAuth();
   const [searchParams, setSearchParams] = useSearchParams();
   const [showPremiumModal, setShowPremiumModal] = useState(false);
+  const [showSuccessModal, setShowSuccessModal] = useState(false);
+  const lastPremium = useRef<boolean | null>(null);
   const navigate = useNavigate();
   const location = useLocation();
 
@@ -24,13 +26,28 @@ const SettingsMenu = () => {
     
     if (status) {
       if (status === 'success') {
-        toast.success("Płatność zakończona sukcesem! Twoja subskrypcja Premium jest aktywna.");
+        setShowSuccessModal(true);
       } else if (status === 'cancelled') {
         toast.info("Płatność anulowana. Możesz spróbować ponownie.");
       }
       setSearchParams({});
     }
   }, [searchParams, setSearchParams]);
+
+  // Heartbeat: show success only on transition from false to true
+  useHeartbeat({
+    onStatus: (status) => {
+      if (lastPremium.current === null) {
+        // First heartbeat, just set the value, don't show modal
+        lastPremium.current = status.premium;
+        return;
+      }
+      if (lastPremium.current === false && status.premium === true) {
+        setShowSuccessModal(true);
+      }
+      lastPremium.current = status.premium;
+    }
+  });
 
   const isNestedRoute = location.pathname !== '/settings';
 
@@ -145,6 +162,19 @@ const SettingsMenu = () => {
       <PremiumCheckoutModal 
         isOpen={showPremiumModal} 
         onClose={() => setShowPremiumModal(false)} 
+      />
+
+      <PremiumSuccessMessage
+        isOpen={showSuccessModal}
+        onClose={() => setShowSuccessModal(false)}
+        premiumFeatures={[
+          "Nieograniczone profile firmowe",
+          "Nieograniczone faktury i dokumenty",
+          "Zaawansowane raporty i statystyki",
+          "Eksport danych (JPK, KSeF)",
+          "Priorytetowe wsparcie techniczne",
+          "Backup i synchronizacja danych"
+        ]}
       />
 
       <SupportFooter />
