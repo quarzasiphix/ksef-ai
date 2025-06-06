@@ -82,6 +82,7 @@ export type Database = {
         Row: {
           address: string
           city: string
+          client_type: string
           created_at: string
           email: string | null
           id: string
@@ -95,6 +96,7 @@ export type Database = {
         Insert: {
           address: string
           city: string
+          client_type?: string
           created_at?: string
           email?: string | null
           id?: string
@@ -108,6 +110,7 @@ export type Database = {
         Update: {
           address?: string
           city?: string
+          client_type?: string
           created_at?: string
           email?: string | null
           id?: string
@@ -119,6 +122,75 @@ export type Database = {
           user_id?: string
         }
         Relationships: []
+      }
+      expense_items: {
+        Row: {
+          created_at: string | null
+          expense_id: string
+          id: string
+          name: string
+          product_id: string | null
+          quantity: number
+          total_gross_value: number
+          total_net_value: number
+          total_vat_value: number
+          unit: string
+          unit_price: number
+          updated_at: string | null
+          user_id: string | null
+          vat_exempt: boolean | null
+          vat_rate: number
+        }
+        Insert: {
+          created_at?: string | null
+          expense_id: string
+          id?: string
+          name: string
+          product_id?: string | null
+          quantity: number
+          total_gross_value: number
+          total_net_value: number
+          total_vat_value: number
+          unit: string
+          unit_price: number
+          updated_at?: string | null
+          user_id?: string | null
+          vat_exempt?: boolean | null
+          vat_rate: number
+        }
+        Update: {
+          created_at?: string | null
+          expense_id?: string
+          id?: string
+          name?: string
+          product_id?: string | null
+          quantity?: number
+          total_gross_value?: number
+          total_net_value?: number
+          total_vat_value?: number
+          unit?: string
+          unit_price?: number
+          updated_at?: string | null
+          user_id?: string | null
+          vat_exempt?: boolean | null
+          vat_rate?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "expense_items_expense_id_fkey"
+            columns: ["expense_id"]
+            isOneToOne: false
+            referencedRelation: "expenses"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "expense_items_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "products"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       expenses: {
         Row: {

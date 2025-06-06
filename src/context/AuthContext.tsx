@@ -1,7 +1,9 @@
+
 import React, { createContext, useState, useEffect, useContext } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useQueryClient } from "@tanstack/react-query";
 import { User, Session } from "@supabase/supabase-js";
+import PremiumCheckoutModal from "@/components/premium/PremiumCheckoutModal";
 
 export interface AuthContextType {
   user: User | null;
@@ -29,11 +31,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
   const [isPremium, setIsPremium] = useState(false);
+  const [showPremiumModal, setShowPremiumModal] = useState(false);
   const queryClient = useQueryClient();
 
   const openPremiumDialog = () => {
-    // Add your premium dialog logic here
-    console.log('Opening premium dialog');
+    setShowPremiumModal(true);
   };
 
   // Helper for minimum loading time
@@ -128,6 +130,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   return (
     <AuthContext.Provider value={{ user, loading, login, register, logout, isPremium, setIsPremium, openPremiumDialog, supabase }}>
       {children}
+      <PremiumCheckoutModal 
+        isOpen={showPremiumModal} 
+        onClose={() => setShowPremiumModal(false)} 
+      />
     </AuthContext.Provider>
   );
-}; 
+};
