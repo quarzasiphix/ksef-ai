@@ -1,4 +1,3 @@
-
 import { serve } from "https://deno.land/std@0.178.0/http/server.ts";
 import Stripe from "https://esm.sh/stripe@12.11.0?target=deno"; // Using esm.sh for Deno compatibility
 
@@ -33,7 +32,7 @@ serve(async (req)=>{
     port: 443
   });
   try {
-    const { priceId, userId, paymentMethod } = await req.json(); // Added paymentMethod
+    const { priceId, userId, paymentMethod, email } = await req.json(); // Added email
     if (!priceId || !userId) {
       return new Response(JSON.stringify({
         error: "Missing priceId or userId"
@@ -59,8 +58,10 @@ serve(async (req)=>{
       cancel_url: `${req.headers.get('origin')}/settings?status=cancelled`,
       metadata: {
         user_id: userId,
-        payment_method: paymentMethod || 'card'
-      }
+        payment_method: paymentMethod || 'card',
+        ...(email ? { email } : {})
+      },
+      ...(email ? { customer_email: email } : {}),
     };
 
     // For BLIK payments, we can add specific payment method types

@@ -73,6 +73,7 @@ serve(async (req) => {
 
       // Get user_id from metadata
       const userId = session.metadata?.user_id;
+      const email = session.customer_details?.email || session.customer_email || session.metadata?.email || null;
 
       console.log(`Attempting to update premium_subscriptions for user ID: ${userId}`);
 
@@ -113,9 +114,30 @@ serve(async (req) => {
              // For now, we'll leave ends_at as null if it's invalid
          }
 
-        console.log(`Attempting Supabase upsert for user ${userId} with subscription ${subscription.id} and endsAt ${endsAt}.`);
+        // --- Insert into transactions table ---
+        const transactionPayload = {
+          user_id: userId,
+          email: email,
+          transaction_id: session.id, // Stripe session id
+          transaction_type: 'premium_subscription',
+          payment_system: 'stripe',
+          amount: session.amount_total ? session.amount_total / 100 : null,
+          currency: session.currency || null,
+          status: session.payment_status || 'unknown',
+          metadata: session.metadata ? JSON.stringify(session.metadata) : null,
+        };
+        const { data: transactionData, error: transactionError } = await supabase
+          .from('transactions')
+          .insert([transactionPayload])
+          .select()
+          .maybeSingle();
+        if (transactionError) {
+          console.error('Error inserting transaction:', transactionError);
+          return new Response(JSON.stringify({ error: 'Transaction insert failed.' }), { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+        }
+        const newTransactionId = transactionData?.id?.toString() || session.id;
 
-        // Insert or update the premium_subscriptions table
+        // --- Upsert premium_subscriptions with transaction_id ---
         const { data, error } = await supabase
           .from('premium_subscriptions')
           .upsert(
@@ -124,18 +146,28 @@ serve(async (req) => {
               is_active: true, // Sets to true on completion
               ends_at: endsAt, // Uses calculated end date (can be null)
               stripe_subscription_id: subscription.id, // Stores the Stripe subscription ID
-              // Add any other relevant fields you have in premium_subscriptions table
+              transaction_id: newTransactionId, // Link to transaction
             },
             { onConflict: 'user_id' } // Upserts based on user_id
           );
 
         if (error) {
           console.error("Error updating premium_subscriptions table:", error);
-          // Depending on the error, you might want to handle retries or alerts
           return new Response(JSON.stringify({ error: "Database update failed." }), { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } });
         }
 
-        console.log(`Successfully updated premium_subscriptions for user: ${userId}`);
+        // --- Broadcast realtime event for transactions (optional, for instant UI updates) ---
+        // This is not strictly necessary if you use Supabase Realtime on the client,
+        // but you can use the broadcast API if you want to push a custom event.
+        // Example (uncomment if you want to use it):
+        // await supabase.channel('transactions')
+        //   .send({
+        //     type: 'broadcast',
+        //     event: 'new_transaction',
+        //     payload: { ...transactionData },
+        //   });
+
+        console.log(`Successfully updated premium_subscriptions for user: ${userId} and inserted transaction.`);
 
       } catch (dbError) {
          console.error("Error processing checkout.session.completed event or updating DB:", dbError);
