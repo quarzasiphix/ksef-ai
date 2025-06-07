@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogTrigger, DialogFooter, DialogClose } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
@@ -9,6 +8,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Label } from "@/components/ui/label";
+import { BlikPaymentModal } from "./BlikPaymentModal";
 
 interface PremiumCheckoutModalProps {
   isOpen: boolean;
@@ -33,6 +33,7 @@ const PremiumCheckoutModal: React.FC<PremiumCheckoutModalProps> = ({ isOpen, onC
   const [selectedPlan, setSelectedPlan] = useState<PlanDetails | null>(null);
   const [paymentMethod, setPaymentMethod] = useState<'card' | 'blik'>('card');
   const [step, setStep] = useState<'plan' | 'payment'>('plan');
+  const [showBlikModal, setShowBlikModal] = useState(false);
 
   const plans: PlanDetails[] = [
     {
@@ -68,7 +69,12 @@ const PremiumCheckoutModal: React.FC<PremiumCheckoutModalProps> = ({ isOpen, onC
 
   const handleCheckout = async () => {
     if (!selectedPlan) return;
-    
+
+    if (paymentMethod === 'blik') {
+      setShowBlikModal(true);
+      return;
+    }
+
     if (!user?.id) {
       console.error("User not logged in.");
       toast.error("Musisz być zalogowany, aby kupić subskrypcję.");
@@ -84,15 +90,14 @@ const PremiumCheckoutModal: React.FC<PremiumCheckoutModalProps> = ({ isOpen, onC
     setIsLoading(selectedPlan.id);
 
     try {
-      // Choose the appropriate price ID based on payment method
-      const priceId = paymentMethod === 'card' ? selectedPlan.cardPriceId : selectedPlan.blikPriceId;
-      
+      // Only card payments go through Stripe Checkout
+      const priceId = selectedPlan.cardPriceId;
       const { data, error } = await supabase.functions.invoke('create-stripe-checkout', {
         method: 'POST',
         body: {
           priceId: priceId,
           userId: user.id,
-          paymentMethod: paymentMethod, // Send payment method info
+          paymentMethod: 'card',
         },
       });
 
@@ -267,6 +272,14 @@ const PremiumCheckoutModal: React.FC<PremiumCheckoutModalProps> = ({ isOpen, onC
               </Button>
             </div>
           </div>
+        )}
+
+        {step === 'payment' && selectedPlan && (
+          <BlikPaymentModal
+            isOpen={showBlikModal}
+            onClose={() => setShowBlikModal(false)}
+            amount={selectedPlan ? parseInt(selectedPlan.price) * 100 : 0}
+          />
         )}
 
         <DialogFooter>
