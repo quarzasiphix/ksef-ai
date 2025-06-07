@@ -144,13 +144,13 @@ const PremiumCheckoutModal: React.FC<PremiumCheckoutModalProps> = ({ isOpen, onC
 
   return (
     <Dialog open={isOpen} onOpenChange={handleClose}>
-      <DialogContent className="max-w-4xl">
-        <DialogHeader>
-          <DialogTitle className="flex items-center text-2xl">
-            <Star className="mr-2 h-6 w-6 text-amber-500" fill="currentColor"/>
+      <DialogContent className="max-w-2xl w-[95vw] sm:w-[90vw] md:w-[80vw] lg:w-[600px]">
+        <DialogHeader className="space-y-1">
+          <DialogTitle className="flex items-center text-lg sm:text-xl">
+            <Star className="mr-2 h-4 w-4 sm:h-5 sm:w-5 text-amber-500" fill="currentColor"/>
             {step === 'plan' ? 'Wybierz Plan Premium' : 'Wybierz metodę płatności'}
           </DialogTitle>
-          <DialogDescription>
+          <DialogDescription className="text-xs sm:text-sm">
             {step === 'plan' 
               ? 'Odblokuj pełne możliwości aplikacji dzięki subskrypcji Premium!'
               : `Wybrany plan: ${selectedPlan?.name} (${selectedPlan?.price}/${selectedPlan?.interval})`
@@ -160,29 +160,29 @@ const PremiumCheckoutModal: React.FC<PremiumCheckoutModalProps> = ({ isOpen, onC
 
         {step === 'plan' && (
           <>
-            <div className="grid md:grid-cols-2 gap-6 py-6">
+            <div className="grid md:grid-cols-2 gap-3 py-3">
               {plans.map((plan) => (
                 <Card key={plan.id} className={`relative ${plan.popular ? 'border-amber-500 shadow-lg' : ''}`}>
                   {plan.popular && (
-                    <Badge className="absolute -top-3 left-1/2 transform -translate-x-1/2 bg-amber-500 text-white">
+                    <Badge className="absolute -top-2 left-1/2 transform -translate-x-1/2 bg-amber-500 text-white text-xs">
                       Najpopularniejszy
                     </Badge>
                   )}
-                  <CardHeader className="text-center">
-                    <CardTitle className="text-xl">{plan.name}</CardTitle>
-                    <div className="mt-4">
-                      <span className="text-3xl font-bold">{plan.price}</span>
-                      <span className="text-muted-foreground">/{plan.interval}</span>
+                  <CardHeader className="text-center p-3">
+                    <CardTitle className="text-base sm:text-lg">{plan.name}</CardTitle>
+                    <div className="mt-1">
+                      <span className="text-xl sm:text-2xl font-bold">{plan.price}</span>
+                      <span className="text-muted-foreground text-xs">/{plan.interval}</span>
                     </div>
                     {plan.savings && (
-                      <p className="text-sm text-green-600 font-medium">{plan.savings}</p>
+                      <p className="text-xs text-green-600 font-medium">{plan.savings}</p>
                     )}
                   </CardHeader>
-                  <CardContent>
+                  <CardContent className="p-3 pt-0">
                     <Button
                       onClick={() => handlePlanSelect(plan)}
                       disabled={!!isLoading}
-                      className={`w-full mb-4 ${plan.popular ? 'bg-amber-500 hover:bg-amber-600' : ''}`}
+                      className={`w-full text-sm ${plan.popular ? 'bg-amber-500 hover:bg-amber-600' : ''}`}
                     >
                       Wybierz Plan
                     </Button>
@@ -191,12 +191,12 @@ const PremiumCheckoutModal: React.FC<PremiumCheckoutModalProps> = ({ isOpen, onC
               ))}
             </div>
 
-            <div className="bg-muted p-4 rounded-lg">
-              <h4 className="font-semibold mb-3">Co otrzymasz z Premium:</h4>
-              <div className="grid md:grid-cols-2 gap-2">
+            <div className="bg-muted p-2 rounded-lg">
+              <h4 className="font-semibold mb-1.5 text-xs sm:text-sm">Co otrzymasz z Premium:</h4>
+              <div className="grid md:grid-cols-2 gap-1">
                 {features.map((feature, index) => (
-                  <div key={index} className="flex items-center text-sm">
-                    <Check className="h-4 w-4 text-green-500 mr-2 flex-shrink-0" />
+                  <div key={index} className="flex items-center text-xs">
+                    <Check className="h-3 w-3 text-green-500 mr-1.5 flex-shrink-0" />
                     <span>{feature}</span>
                   </div>
                 ))}
@@ -206,30 +206,30 @@ const PremiumCheckoutModal: React.FC<PremiumCheckoutModalProps> = ({ isOpen, onC
         )}
 
         {step === 'payment' && selectedPlan && (
-          <div className="py-6 space-y-6">
+          <div className="py-2 space-y-3">
             <Card>
-              <CardHeader>
-                <CardTitle className="text-lg">Wybierz metodę płatności</CardTitle>
+              <CardHeader className="p-3">
+                <CardTitle className="text-sm sm:text-base">Wybierz metodę płatności</CardTitle>
               </CardHeader>
-              <CardContent>
+              <CardContent className="p-3 pt-0">
                 <RadioGroup value={paymentMethod} onValueChange={(value: 'card' | 'blik') => setPaymentMethod(value)}>
-                  <div className="flex items-center space-x-2 p-4 border rounded-lg hover:bg-muted/50 transition-colors">
+                  <div className="flex items-center space-x-2 p-2 border rounded-lg hover:bg-muted/50 transition-colors">
                     <RadioGroupItem value="card" id="card" />
                     <Label htmlFor="card" className="flex items-center cursor-pointer flex-1">
-                      <CreditCard className="h-5 w-5 mr-3 text-blue-600" />
+                      <CreditCard className="h-4 w-4 mr-2 text-blue-600" />
                       <div>
-                        <div className="font-medium">Karta płatnicza</div>
-                        <div className="text-sm text-muted-foreground">Subskrypcja automatyczna - można anulować w każdej chwili</div>
+                        <div className="font-medium text-xs sm:text-sm">Karta płatnicza</div>
+                        <div className="text-xs text-muted-foreground">Subskrypcja automatyczna</div>
                       </div>
                     </Label>
                   </div>
-                  <div className="flex items-center space-x-2 p-4 border rounded-lg hover:bg-muted/50 transition-colors">
+                  <div className="flex items-center space-x-2 p-2 border rounded-lg hover:bg-muted/50 transition-colors">
                     <RadioGroupItem value="blik" id="blik" />
                     <Label htmlFor="blik" className="flex items-center cursor-pointer flex-1">
-                      <Smartphone className="h-5 w-5 mr-3 text-pink-600" />
+                      <Smartphone className="h-4 w-4 mr-2 text-pink-600" />
                       <div>
-                        <div className="font-medium">BLIK</div>
-                        <div className="text-sm text-muted-foreground">Jednorazowa płatność - dostęp na {selectedPlan.interval}</div>
+                        <div className="font-medium text-xs sm:text-sm">BLIK</div>
+                        <div className="text-xs text-muted-foreground">Jednorazowa płatność</div>
                       </div>
                     </Label>
                   </div>
@@ -237,9 +237,9 @@ const PremiumCheckoutModal: React.FC<PremiumCheckoutModalProps> = ({ isOpen, onC
               </CardContent>
             </Card>
 
-            <div className="bg-muted p-4 rounded-lg">
-              <h4 className="font-semibold mb-3">Szczegóły płatności:</h4>
-              <div className="space-y-2 text-sm">
+            <div className="bg-muted p-2 rounded-lg">
+              <h4 className="font-semibold mb-1.5 text-xs sm:text-sm">Szczegóły płatności:</h4>
+              <div className="space-y-1 text-xs">
                 <div className="flex justify-between">
                   <span>Plan:</span>
                   <span>{selectedPlan.name}</span>
@@ -249,24 +249,24 @@ const PremiumCheckoutModal: React.FC<PremiumCheckoutModalProps> = ({ isOpen, onC
                   <span>{selectedPlan.price}</span>
                 </div>
                 <div className="flex justify-between">
-                  <span>Metoda płatności:</span>
-                  <span>{paymentMethod === 'card' ? 'Karta płatnicza' : 'BLIK'}</span>
+                  <span>Metoda:</span>
+                  <span>{paymentMethod === 'card' ? 'Karta' : 'BLIK'}</span>
                 </div>
                 <div className="flex justify-between">
                   <span>Typ:</span>
-                  <span>{paymentMethod === 'card' ? 'Subskrypcja automatyczna' : 'Jednorazowa płatność'}</span>
+                  <span>{paymentMethod === 'card' ? 'Subskrypcja' : 'Jednorazowa'}</span>
                 </div>
               </div>
             </div>
 
-            <div className="flex gap-3">
-              <Button variant="outline" onClick={handleBack} className="flex-1">
-                Wróć do wyboru planu
+            <div className="flex gap-2">
+              <Button variant="outline" onClick={handleBack} className="flex-1 text-xs sm:text-sm">
+                Wróć
               </Button>
               <Button 
                 onClick={handleCheckout} 
                 disabled={!!isLoading}
-                className="flex-1"
+                className="flex-1 text-xs sm:text-sm"
               >
                 {isLoading ? "Przekierowanie..." : "Przejdź do płatności"}
               </Button>
@@ -282,9 +282,9 @@ const PremiumCheckoutModal: React.FC<PremiumCheckoutModalProps> = ({ isOpen, onC
           />
         )}
 
-        <DialogFooter>
+        <DialogFooter className="mt-1">
           <DialogClose asChild>
-            <Button variant="outline" onClick={handleClose}>Anuluj</Button>
+            <Button variant="outline" onClick={handleClose} className="text-xs sm:text-sm">Anuluj</Button>
           </DialogClose>
         </DialogFooter>
       </DialogContent>

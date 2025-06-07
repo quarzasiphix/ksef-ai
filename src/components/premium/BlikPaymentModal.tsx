@@ -45,10 +45,10 @@ export function BlikPaymentModal({ isOpen, onClose, amount }) {
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="max-w-md bg-gradient-to-br from-pink-50 via-white to-amber-50 border-amber-200 shadow-xl">
+      <DialogContent className="max-w-md bg-background border-border shadow-xl">
         <DialogHeader>
-          <DialogTitle className="flex items-center gap-2 text-2xl text-amber-700">
-            <Smartphone className="h-7 w-7 text-pink-600" />
+          <DialogTitle className="flex items-center gap-2 text-2xl text-white">
+            <Smartphone className="h-7 w-7 text-blue-400" />
             Płatność BLIK
           </DialogTitle>
         </DialogHeader>
@@ -58,13 +58,13 @@ export function BlikPaymentModal({ isOpen, onClose, amount }) {
           </Elements>
         ) : (
           <div className="flex flex-col items-center justify-center py-8">
-            <Smartphone className="h-12 w-12 text-pink-400 animate-pulse mb-2" />
-            <div className="text-amber-700 font-semibold">Ładowanie formularza płatności...</div>
+            <Smartphone className="h-12 w-12 text-blue-400 animate-pulse mb-2" />
+            <div className="text-white font-semibold">Ładowanie formularza płatności...</div>
           </div>
         )}
         <DialogFooter>
           <DialogClose asChild>
-            <Button variant="outline" onClick={onClose} className="border-amber-300 text-amber-700">Anuluj</Button>
+            <Button variant="outline" onClick={onClose} className="border-border text-white hover:text-white hover:bg-blue-500/10">Anuluj</Button>
           </DialogClose>
         </DialogFooter>
       </DialogContent>
@@ -100,17 +100,19 @@ function BlikPaymentForm({ onClose }) {
 
   return (
     <form onSubmit={handleSubmit} className="space-y-6">
-      <div className="rounded-lg border border-pink-200 bg-white/80 p-4 flex flex-col items-center">
+      <div className="rounded-lg border border-border bg-background/50 p-4 flex flex-col items-center">
         <div className="flex items-center gap-2 mb-2">
-          <Smartphone className="h-6 w-6 text-pink-600" />
-          <span className="font-semibold text-pink-700">Kod BLIK</span>
+          <Smartphone className="h-6 w-6 text-blue-400" />
+          <span className="font-semibold text-white">Kod BLIK</span>
         </div>
-        <PaymentElement options={{ layout: "tabs" }} />
+        <div className="w-full bg-white rounded-lg p-4">
+          <PaymentElement options={{ layout: "tabs" }} />
+        </div>
       </div>
       <Button
         type="submit"
         disabled={!stripe || submitting}
-        className="w-full bg-pink-600 hover:bg-pink-700 text-white font-bold shadow-md"
+        className="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold shadow-md"
       >
         {submitting ? "Przetwarzanie..." : "Zapłać BLIK"}
       </Button>
