@@ -40,11 +40,16 @@ const PremiumCheckoutModal: React.FC<PremiumCheckoutModalProps> = ({ isOpen, onC
       id: 'monthly',
       name: 'Miesięczny',
       price: '19 zł',
+      // production ids
       // Card payments (recurring subscription)
-      cardPriceId: 'price_1RWw1eHFbUxWftPsIEZ4PhhH',
+      //cardPriceId: 'price_1RWw1eHFbUxWftPsIEZ4PhhH',
       // BLIK payments (one-off)
-      blikPriceId: 'price_1RXInCHFbUxWftPsZfJCiZKM',
-      productId: 'prod_SRphekdFtboZQs',
+      //blikPriceId: 'price_1RXInCHFbUxWftPsZfJCiZKM',
+      //productId: 'prod_SRphekdFtboZQs',
+      // test ids
+      cardPriceId: 'price_1RX4WAQdcZQu3wLBkwQMj47D',
+      blikPriceId: 'price_1RXLGXQdcZQu3wLBpxNbBFB2',
+      productId: 'prod_SP03iOrYwe0qGH',
       interval: 'miesiąc',
     },
     {
@@ -52,10 +57,14 @@ const PremiumCheckoutModal: React.FC<PremiumCheckoutModalProps> = ({ isOpen, onC
       name: 'Roczny',
       price: '150 zł',
       // Card payments (recurring subscription)
-      cardPriceId: 'price_1RX4m0HFbUxWftPsK1uBmUM6',
+      //cardPriceId: 'price_1RX4m0HFbUxWftPsK1uBmUM6',
       // BLIK payments (one-off)
-      blikPriceId: 'price_1RXInbHFbUxWftPsP3u34dst',
-      productId: 'prod_SRphekdFtboZQs',
+      //blikPriceId: 'price_1RXInbHFbUxWftPsP3u34dst',
+      //productId: 'prod_SRphekdFtboZQs',
+      // test ids
+      cardPriceId: 'price_1RXLGGQdcZQu3wLBdMFWy1JK',
+      blikPriceId: 'price_1RXLGiQdcZQu3wLBdKf27OiR',
+      productId: 'prod_SP03iOrYwe0qGH',
       interval: 'rok',
       savings: 'Oszczędzasz 78 zł',
       popular: true,
