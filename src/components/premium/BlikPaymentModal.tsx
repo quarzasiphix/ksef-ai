@@ -8,8 +8,7 @@ import { toast } from "sonner";
 import { Smartphone } from "lucide-react";
 
 // Use the provided live publishable key
-//const stripePromise = loadStripe("pk_live_51RUBwrHFbUxWftPspR2XyfylCIr3dI8bCKWrWeQZBXs65KV8dJ3JWdu4okrOxjBhwuuwTjCQFlWzJG5191mrHALL00i7TOuLbP");
-const stripePromise = loadStripe("pk_test_51RUBx5QdcZQu3wLB6qp3PLQ0BprsIhofkASWU5fvJzYEUEsBQgzNlgDdRqaoRi5lg1oowjo5ecm0mWmQG3aCWuif00yMSheFZR");
+const stripePromise = loadStripe("pk_live_51RUBwrHFbUxWftPspR2XyfylCIr3dI8bCKWrWeQZBXs65KV8dJ3JWdu4okrOxjBhwuuwTjCQFlWzJG5191mrHALL00i7TOuLbP");
 
 
 // Use env or fallback to Supabase project ref

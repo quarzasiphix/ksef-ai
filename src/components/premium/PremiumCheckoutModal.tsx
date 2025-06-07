@@ -63,7 +63,6 @@ const PremiumCheckoutModal: React.FC<PremiumCheckoutModalProps> = ({ isOpen, onC
       // production ids
       // Card payments (recurring subscription)
       cardPriceId: 'price_1RX4m0HFbUxWftPsK1uBmUM6',
-      // BLIK payments (one-off)
       blikPriceId: 'price_1RXInbHFbUxWftPsP3u34dst',
       productId: 'prod_SRphekdFtboZQs',
       
