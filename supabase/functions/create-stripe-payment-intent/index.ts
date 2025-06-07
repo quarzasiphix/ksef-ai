@@ -27,7 +27,7 @@ serve(async (req) => {
     port: 443
   });
   try {
-    const { amount, userId, currency = 'pln', description } = await req.json();
+    const { amount, userId, currency = 'pln', description, email } = await req.json();
     if (!amount || !userId) {
       return new Response(JSON.stringify({
         error: "Missing amount or userId"
@@ -44,8 +44,10 @@ serve(async (req) => {
       metadata: {
         user_id: userId,
         description: description || '',
+        ...(email ? { email } : {})
       },
       description: description || undefined,
+      ...(email ? { receipt_email: email } : {}),
     });
 
     return new Response(JSON.stringify({
