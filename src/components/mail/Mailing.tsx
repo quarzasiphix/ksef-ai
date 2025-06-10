@@ -26,7 +26,7 @@ export async function sendInvoiceEmail({
     formData.append('subject', subject);
     formData.append('message', message);
     formData.append('file', pdfBlob, filename);
-    const response = await fetch('https://n8n.tovernet.nl/webhook-test/send-mail', {
+    const response = await fetch('https://n8n.tovernet.nl/webhook/send-mail', {
       method: 'POST',
       body: formData,
     });

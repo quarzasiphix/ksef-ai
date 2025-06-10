@@ -234,6 +234,10 @@ const InvoiceDetail: React.FC<InvoiceDetailProps> = ({ type }) => {
 
   // Handler to send invoice by mail
   const handleSendInvoiceByMail = async () => {
+    if (!isPremium) {
+      setIsPremiumModalOpen(true);
+      return;
+    }
     if (!buyerCustomer?.email) {
       toast.error('Dodaj adres e-mail do klienta, aby wysłać fakturę.');
       return;
