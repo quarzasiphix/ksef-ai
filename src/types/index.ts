@@ -1,4 +1,3 @@
-
 export interface BusinessProfile {
   id: string;
   user_id?: string; // Added for RLS, making optional for compatibility
@@ -17,6 +16,7 @@ export interface BusinessProfile {
   tax_type?: "skala" | "liniowy" | "ryczalt"; // Added tax type
   monthlySocialSecurity?: number; // Monthly social security contribution amount
   monthlyHealthInsurance?: number; // Monthly health insurance contribution amount
+  accountant_email?: string; // Email for accountant
 }
 
 export interface Customer {

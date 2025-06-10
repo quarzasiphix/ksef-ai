@@ -1,6 +1,6 @@
 import React, { useEffect, useState, useRef } from "react";
 import { useParams, useNavigate } from "react-router-dom";
-import { Invoice, InvoiceType } from "@/types";
+import { Invoice, InvoiceType, VatExemptionReason, Customer, BusinessProfile } from "@/types/index";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { getInvoice } from "@/integrations/supabase/repositories/invoiceRepository";
 import { getBusinessProfileById } from "@/integrations/supabase/repositories/businessProfileRepository";
@@ -14,8 +14,8 @@ import TotalsSummary from "@/components/invoices/detail/TotalsSummary";
 import { CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { ArrowLeft, Plus, Check, CheckCircle } from "lucide-react";
-import { generateElementPdf, getInvoiceFileName } from '@/lib/pdf-utils';
-import { calculateInvoiceTotals } from '@/lib/invoice-utils';
+import { generateElementPdf, getInvoiceFileName, generateElementPdfBlob } from '@/lib/pdf-utils';
+import { calculateInvoiceTotals, formatCurrency } from '@/lib/invoice-utils';
 import { useIsMobile } from "@/hooks/use-mobile";
 import { Capacitor } from '@capacitor/core';
 import { toast } from "sonner";
@@ -23,6 +23,7 @@ import { saveInvoice } from "@/integrations/supabase/repositories/invoiceReposit
 import { useAuth } from "@/context/AuthContext";
 import PremiumCheckoutModal from '@/components/premium/PremiumCheckoutModal';
 import NewInvoice from "@/pages/invoices/NewInvoice";
+import { sendInvoiceEmail } from '@/components/mail/Mailing';
 
 interface InvoiceDetailProps {
   type: 'income' | 'expense';
@@ -231,6 +232,79 @@ const InvoiceDetail: React.FC<InvoiceDetailProps> = ({ type }) => {
     }
   };
 
+  // Handler to send invoice by mail
+  const handleSendInvoiceByMail = async () => {
+    if (!buyerCustomer?.email) {
+      toast.error('Dodaj adres e-mail do klienta, aby wysłać fakturę.');
+      return;
+    }
+    if (!printRef.current) {
+      toast.error('Nie można wygenerować PDF.');
+      return;
+    }
+    setPdfLoading(true);
+    try {
+      // Generate PDF as Blob
+      const pdfBlob = await generateElementPdfBlob(printRef.current, { filename: getInvoiceFileName(selectedInvoice) });
+      if (!pdfBlob) {
+        toast.error('Nie udało się wygenerować PDF.');
+        setPdfLoading(false);
+        return;
+      }
+      // Subject: invoice name + first 2 words of business profile
+      const businessName = (sellerProfile?.name || '').split(' ').slice(0, 2).join(' ');
+      const fullBusinessName = sellerProfile?.name || '';
+      const invoiceName = selectedInvoice.number;
+      const subject = `${invoiceName} ${businessName}`;
+      // Polish HTML message
+      const totalGross = formatCurrency(selectedInvoice.totalGrossValue ?? 0);
+      const businessEmail = sellerProfile?.email || '';
+      const buyerName = buyerCustomer?.name || '';
+      // Payment method info
+      let paymentInfo = '';
+      const paymentMethod = selectedInvoice.paymentMethod;
+      const bankAccount = sellerProfile?.bankAccount || '';
+      if ((paymentMethod === 'transfer' || paymentMethod === 'przelew') && bankAccount) {
+        paymentInfo = `<p><strong>Numer rachunku bankowego:</strong> <span style='font-family:monospace;'>${bankAccount}</span></p>`;
+      } else if (paymentMethod === 'cash' || paymentMethod === 'gotówka') {
+        paymentInfo = `<p><strong>Płatność gotówkowa</strong></p>`;
+      }
+      const message = `
+        <div style="font-family: Arial, sans-serif; color: #222; font-size: 16px;">
+          <h2 style="color: #2563eb; margin-bottom: 0.5em;">Faktura: ${invoiceName}</h2>
+          <p><strong>Wystawca (sprzedawca):</strong> ${fullBusinessName}${businessEmail ? ` (<a href='mailto:${businessEmail}' style='color:#2563eb;'>${businessEmail}</a>)` : ''}</p>
+          <p><strong>Odbiorca (klient):</strong> ${buyerName}</p>
+          <p><strong>Data wystawienia:</strong> ${selectedInvoice.issueDate}</p>
+          <p><strong>Kwota do zapłaty:</strong> <span style="font-size:18px; color:#16a34a; font-weight:bold;">${totalGross}</span></p>
+          ${paymentInfo}
+          <hr style="margin: 2em 0; border: none; border-top: 1px solid #eee;" />
+          <p>W załączniku znajdziesz fakturę w formacie PDF.</p>
+          <div style="margin-top:2em; font-size:14px; color:#888;">
+            Wygenerowano i wysłano automatycznie przez <a href="https://ksiegai.pl" style="color:#2563eb; text-decoration:none;">ksiegai.pl</a> – najlepszy polski system księgowy.
+          </div>
+        </div>
+      `;
+      // Use the reusable email sender
+      const ok = await sendInvoiceEmail({
+        mail: buyerCustomer.email,
+        subject,
+        message,
+        pdfBlob,
+        filename: getInvoiceFileName(selectedInvoice),
+      });
+      if (ok) {
+        toast.success('Faktura została wysłana e-mailem!');
+      } else {
+        toast.error('Nie udało się wysłać faktury e-mailem.');
+      }
+    } catch (error) {
+      console.error('Error sending invoice by mail:', error);
+      toast.error('Wystąpił błąd podczas wysyłania faktury e-mailem.');
+    } finally {
+      setPdfLoading(false);
+    }
+  };
+
   // Calculate totals
   const totals = selectedInvoice ? calculateInvoiceTotals(selectedInvoice.items) : {
     totalNetValue: 0,
@@ -275,6 +349,17 @@ const InvoiceDetail: React.FC<InvoiceDetailProps> = ({ type }) => {
           </Button>
         </div>
       )}
+      {/* Send by Mail Button */}
+      <div className="mb-6">
+        <Button
+          onClick={handleSendInvoiceByMail}
+          disabled={pdfLoading}
+          className="w-full sm:w-auto bg-blue-600 hover:bg-blue-700 text-white font-medium"
+          size={isMobile ? "default" : "lg"}
+        >
+          {pdfLoading ? 'Wysyłanie...' : 'Wyślij fakturę e-mailem'}
+        </Button>
+      </div>
 
       {/* Content */}
       <div className="flex-1 overflow-y-auto space-y-6 pb-6">
@@ -361,7 +446,10 @@ const InvoiceDetail: React.FC<InvoiceDetailProps> = ({ type }) => {
         }}
       >
         <InvoicePdfTemplate
-          invoice={selectedInvoice as Invoice}
+          invoice={{
+            ...(selectedInvoice as any),
+            totalGrossValue: (selectedInvoice as any).totalGrossValue ?? 0,
+          } as any}
           businessProfile={sellerProfile || {
             id: selectedInvoice.businessProfileId,
             name: selectedInvoice.businessName || '',
@@ -370,15 +458,16 @@ const InvoiceDetail: React.FC<InvoiceDetailProps> = ({ type }) => {
             postalCode: '',
             city: '',
             user_id: selectedInvoice.user_id
-          }}
+          } as any}
           customer={buyerCustomer || {
             id: selectedInvoice.customerId || '',
             name: selectedInvoice.customerName || '',
             address: '',
             postalCode: '',
             city: '',
-            user_id: selectedInvoice.user_id
-          }}
+            user_id: selectedInvoice.user_id,
+            customerType: 'odbiorca',
+          } as any}
         />
       </div>
 

@@ -39,6 +39,7 @@ const formSchema = z.object({
   phone: z.string().optional().or(z.literal("")),
   isDefault: z.boolean().default(false),
   tax_type: z.enum(["skala", "liniowy", "ryczalt"]).optional(),
+  accountant_email: z.string().email("Niepoprawny format email").optional().or(z.literal("")),
 });
 
 interface BusinessProfileFormProps {
@@ -68,7 +69,8 @@ const BusinessProfileForm = ({
       email: initialData?.email || "",
       phone: initialData?.phone || "",
       isDefault: initialData?.isDefault || false,
-      tax_type: initialData?.tax_type || "skala",
+      tax_type: initialData?.tax_type,
+      accountant_email: initialData?.accountant_email || "",
     },
   });
 
@@ -94,6 +96,7 @@ const BusinessProfileForm = ({
         logo: initialData?.logo || "", // Preserve existing logo if any
         user_id: user.id, // Enforce RLS: always include user_id
         tax_type: values.tax_type,
+        accountant_email: values.accountant_email || "",
       };
 
       await saveBusinessProfile(profile);
@@ -320,6 +323,20 @@ const BusinessProfileForm = ({
                     <SelectItem value="ryczalt">Ryczałt ewidencjonowany</SelectItem>
                   </SelectContent>
                 </Select>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+
+          <FormField
+            control={form.control}
+            name="accountant_email"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>Email księgowej/księgowego (opcjonalnie)</FormLabel>
+                <FormControl>
+                  <Input placeholder="Email księgowej/księgowego" {...field} />
+                </FormControl>
                 <FormMessage />
               </FormItem>
             )}

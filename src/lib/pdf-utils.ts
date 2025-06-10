@@ -119,3 +119,47 @@ export const getInvoiceFileName = (invoice: Invoice): string => {
   const sanitizedNumber = number.replace(/[/\\?%*:|"<>]/g, '_');
   return `${prefix}_${sanitizedNumber}.pdf`;
 };
+
+// Generate PDF from an element and return a Blob (for email attachment)
+export const generateElementPdfBlob = async (
+  element: HTMLElement,
+  options: PdfOptions = {}
+): Promise<Blob | null> => {
+  try {
+    // Web browser implementation only
+    const canvas = await html2canvas(element, {
+      scale: 2,
+      useCORS: true,
+      logging: false,
+      backgroundColor: '#ffffff',
+      width: element.offsetWidth,
+      height: element.offsetHeight,
+    });
+
+    const { jsPDF } = await import('jspdf');
+    const pdf = new jsPDF({
+      orientation: 'portrait',
+      unit: 'px',
+      format: 'a4',
+    });
+
+    const imgWidth = pdf.internal.pageSize.getWidth();
+    const imgHeight = (canvas.height * imgWidth) / canvas.width;
+
+    pdf.addImage(
+      canvas.toDataURL('image/jpeg', 1.0),
+      'JPEG',
+      0,
+      0,
+      imgWidth,
+      imgHeight
+    );
+
+    // Get the PDF as a Blob
+    const blob = pdf.output('blob');
+    return blob;
+  } catch (error) {
+    console.error('Error generating PDF blob:', error);
+    return null;
+  }
+};

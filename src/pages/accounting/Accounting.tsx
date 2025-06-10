@@ -13,6 +13,9 @@ import { useGlobalData } from "@/hooks/use-global-data";
 import { pl } from 'date-fns/locale';
 import { calculateIncomeTax } from "@/utils/taxCalculations";
 import { LineChart, Line, AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, BarChart, Bar } from 'recharts';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
+import { Input } from '@/components/ui/input';
+import { toast } from 'sonner';
 
 const Accounting = () => {
   const { isPremium, openPremiumDialog, user } = useAuth();
@@ -262,6 +265,25 @@ const Accounting = () => {
     setReportingPeriods(periods);
 
   }, [allInvoices, selectedProfileId, profiles, expenses]); // Add expenses and profiles to dependencies
+
+  const [sendToAccountantOpen, setSendToAccountantOpen] = useState(false);
+  const [accountantEmail, setAccountantEmail] = useState(selectedProfile?.accountant_email || '');
+  const [selectedInvoiceIds, setSelectedInvoiceIds] = useState<string[]>([]);
+
+  useEffect(() => {
+    setAccountantEmail(selectedProfile?.accountant_email || '');
+  }, [selectedProfile]);
+
+  useEffect(() => {
+    // By default, select all invoices for the current period
+    setSelectedInvoiceIds(invoices.map(inv => inv.id));
+  }, [invoices]);
+
+  const handleSendToAccountant = async () => {
+    // Mock: show a toast with the intended action
+    toast.info(`Wysłano ${selectedInvoiceIds.length} faktur do księgowej: ${accountantEmail}`);
+    setSendToAccountantOpen(false);
+  };
 
   if (!isPremium) {
     return null;
@@ -547,6 +569,82 @@ const Accounting = () => {
           </div>
         </CardContent>
       </Card>
+
+      {/* Send to Accountant Section */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-lg">Wyślij faktury do księgowej/księgowego</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="flex flex-col gap-4">
+            <div className="flex items-center gap-4">
+              <Input
+                type="email"
+                value={accountantEmail}
+                onChange={e => setAccountantEmail(e.target.value)}
+                placeholder="Email księgowej/księgowego"
+                className="max-w-xs"
+              />
+              <Button onClick={() => setSendToAccountantOpen(true)} disabled={!accountantEmail}>
+                Wyślij faktury
+              </Button>
+            </div>
+            <div className="text-sm text-muted-foreground">
+              Wybierz faktury do wysłania (domyślnie wszystkie z bieżącego okresu).
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Modal for sending invoices to accountant */}
+      <Dialog open={sendToAccountantOpen} onOpenChange={setSendToAccountantOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Wyślij faktury do księgowej/księgowego</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div>
+              <label className="block text-sm font-medium mb-1">Email księgowej/księgowego</label>
+              <Input
+                type="email"
+                value={accountantEmail}
+                onChange={e => setAccountantEmail(e.target.value)}
+                placeholder="Email księgowej/księgowego"
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium mb-1">Faktury do wysłania</label>
+              <div className="max-h-40 overflow-y-auto border rounded p-2 bg-muted">
+                {invoices.length === 0 ? (
+                  <div className="text-muted-foreground text-sm">Brak faktur w bieżącym okresie.</div>
+                ) : (
+                  invoices.map(inv => (
+                    <div key={inv.id} className="flex items-center gap-2 py-1">
+                      <input
+                        type="checkbox"
+                        checked={selectedInvoiceIds.includes(inv.id)}
+                        onChange={e => {
+                          if (e.target.checked) {
+                            setSelectedInvoiceIds(ids => [...ids, inv.id]);
+                          } else {
+                            setSelectedInvoiceIds(ids => ids.filter(id => id !== inv.id));
+                          }
+                        }}
+                      />
+                      <span>{inv.number} - {inv.customerName || inv.buyer?.name || 'Nabywca'} - {inv.totalGrossValue?.toLocaleString('pl-PL')} PLN</span>
+                    </div>
+                  ))
+                )}
+              </div>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button onClick={handleSendToAccountant} disabled={!accountantEmail || selectedInvoiceIds.length === 0}>
+              Wyślij {selectedInvoiceIds.length} faktur
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };
