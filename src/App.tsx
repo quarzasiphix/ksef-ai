@@ -237,6 +237,7 @@ const App = () => {
                   <Route path="business-profiles" element={<BusinessProfiles />} />
                   <Route path="business-profiles/new" element={<NewBusinessProfile />} />
                   <Route path="business-profiles/:id" element={<EditBusinessProfile />} />
+                  <Route path="business-profiles/:id/edit" element={<EditBusinessProfile />} />
                   <Route path="documents" element={<DocumentSettings />} />
                 </Route>
                 <Route path="/accounting/*" element={
