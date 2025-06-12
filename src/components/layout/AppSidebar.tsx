@@ -321,24 +321,21 @@ const SidebarUserInfo = ({
   return (
     <div className="w-full">
       <div className="flex items-center gap-3">
-        <NavLink to="/settings" className="flex items-center gap-3 flex-1 min-w-0 group">
+        <NavLink to="/settings" className="flex items-center gap-3 flex-1 min-w-0 group" aria-label="Ustawienia profilu">
           {Avatar}
           <div className="flex-1 min-w-0">
-            <div className="flex items-center gap-2">
-              <p className="text-sm font-medium truncate group-hover:underline">
-                {user.email}
-              </p>
-              {isPremium && (
-                <span className="inline-flex items-center gap-1 bg-gradient-to-r from-amber-500 to-amber-600 text-white text-[10px] px-1.5 py-0.5 rounded-full">
-                  <Crown className="h-2.5 w-2.5" />
-                  <span>PREMIUM</span>
-                </span>
-              )}
-            </div>
+            <p className="text-sm font-medium truncate group-hover:underline">
+              {user.email}
+            </p>
+            {isPremium && (
+              <span className="inline-flex items-center gap-1 bg-gradient-to-r from-amber-500 to-amber-600 text-white text-[10px] px-1.5 py-0.5 rounded-full">
+                <Crown className="h-2.5 w-2.5" />
+                <span>PREMIUM</span>
+              </span>
+            )}
           </div>
         </NavLink>
 
-        {/* Logout button */}
         <Button
           variant="ghost"
           size="icon"
