@@ -2,12 +2,14 @@ import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/hooks/useAuth";
 import { LogIn, AlertCircle, UserCircle } from 'lucide-react';
+import { getBusinessProfiles } from '@/integrations/supabase/repositories/businessProfileRepository';
 
 const Login = () => {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [checkingOnboarding, setCheckingOnboarding] = useState(false);
   const navigate = useNavigate();
   const { login } = useAuth();
 
@@ -16,8 +18,16 @@ const Login = () => {
     setLoading(true);
     setError(null);
     try {
-      await login(email, password);
-      navigate("/dashboard");
+      const { user } = await login(email, password);
+      setCheckingOnboarding(true);
+      // Check onboarding status (business profile)
+      const profiles = user ? await getBusinessProfiles(user.id) : [];
+      setCheckingOnboarding(false);
+      if (profiles.length === 0) {
+        navigate("/welcome");
+      } else {
+        navigate("/dashboard");
+      }
     } catch (err: any) {
       if (err.message.includes("Invalid login credentials")) {
         setError("Nieprawidłowy email lub hasło.");
@@ -34,8 +44,15 @@ const Login = () => {
     setLoading(true);
     setError(null);
     try {
-      await login('test@quarza.online', 'nigga123');
-      navigate("/dashboard");
+      const { user } = await login('test@quarza.online', 'nigga123');
+      setCheckingOnboarding(true);
+      const profiles = user ? await getBusinessProfiles(user.id) : [];
+      setCheckingOnboarding(false);
+      if (profiles.length === 0) {
+        navigate("/welcome");
+      } else {
+        navigate("/dashboard");
+      }
     } catch (err: any) {
       setError("Nie udało się zalogować na konto testowe.");
       console.error('Test account login error:', err);
@@ -52,6 +69,16 @@ const Login = () => {
           <h1 className="text-4xl font-bold text-white">Witaj w KsiegaI</h1>
           <p className="text-neutral-400 mt-2">Zaloguj się, aby kontynuować.</p>
         </div>
+
+        {checkingOnboarding && (
+          <div className="flex items-center justify-center py-8">
+            <svg className="animate-spin -ml-1 mr-3 h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+              <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+              <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+            </svg>
+            <span className="text-white">Sprawdzanie konfiguracji konta...</span>
+          </div>
+        )}
 
         <form 
           onSubmit={handleLogin} 

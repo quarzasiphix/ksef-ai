@@ -1,6 +1,23 @@
 import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from '@/hooks/useAuth';
+
+// Helper to get email provider link
+const getEmailProviderLink = (email: string) => {
+  if (!email.includes("@")) return "https://mail.google.com";
+  const domain = email.split("@")[1].toLowerCase();
+  if (domain.includes("gmail.com")) return "https://mail.google.com";
+  if (domain.includes("outlook.com") || domain.includes("hotmail.com") || domain.includes("live.com")) return "https://outlook.live.com";
+  if (domain.includes("yahoo.com")) return "https://mail.yahoo.com";
+  if (domain.includes("icloud.com") || domain.includes("me.com")) return "https://www.icloud.com/mail";
+  if (domain.includes("wp.pl")) return "https://poczta.wp.pl";
+  if (domain.includes("o2.pl")) return "https://poczta.o2.pl";
+  if (domain.includes("interia.pl")) return "https://poczta.interia.pl";
+  if (domain.includes("onet.pl")) return "https://poczta.onet.pl";
+  // Default to Gmail
+  return "https://mail.google.com";
+};
 
 const Register = () => {
   const [email, setEmail] = useState("");
@@ -10,7 +27,15 @@ const Register = () => {
   const [error, setError] = useState<string | null>(null);
   const [acceptPrivacyPolicy, setAcceptPrivacyPolicy] = useState(false);
   const [acceptTOS, setAcceptTOS] = useState(false);
+  const [registered, setRegistered] = useState(false);
   const navigate = useNavigate();
+  const { login } = useAuth();
+
+  // Store credentials in sessionStorage after registration
+  const storeCredentials = (email: string, password: string) => {
+    sessionStorage.setItem("pendingEmail", email);
+    sessionStorage.setItem("pendingPassword", password);
+  };
 
   const handleRegister = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -32,90 +57,134 @@ const Register = () => {
     if (error) {
       setError(error.message);
     } else {
-      navigate("/auth/login");
+      storeCredentials(email, password);
+      setRegistered(true);
+    }
+  };
+
+  // Handler for 'Proceed, email verified' button
+  const handleProceed = async () => {
+    setError(null);
+    const pendingEmail = sessionStorage.getItem("pendingEmail") || email;
+    const pendingPassword = sessionStorage.getItem("pendingPassword") || password;
+    try {
+      setLoading(true);
+      await login(pendingEmail, pendingPassword);
+      sessionStorage.removeItem("pendingEmail");
+      sessionStorage.removeItem("pendingPassword");
+      navigate("/welcome");
+    } catch (err: any) {
+      setError("Nie udało się zalogować. Upewnij się, że zweryfikowałeś adres e-mail i spróbuj ponownie.");
+    } finally {
+      setLoading(false);
     }
   };
 
   return (
     <div className="flex flex-col items-center justify-center min-h-screen bg-neutral-900">
       <h1 className="text-3xl font-extrabold text-white text-center mb-8">Witam w KsiegaI</h1>
-      <form onSubmit={handleRegister} className="bg-neutral-800 p-8 rounded shadow-md w-full max-w-sm border border-neutral-700">
-        <h2 className="text-2xl font-bold mb-6 text-center text-white">Załóż konto</h2>
-        <div className="mb-4">
-          <label className="block mb-1 text-neutral-200">Email</label>
-          <input
-            type="email"
-            className="w-full border border-neutral-700 bg-neutral-900 text-white rounded px-3 py-2 focus:outline-none focus:ring-2 focus:ring-primary"
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-            required
-          />
-        </div>
-        <div className="mb-4">
-          <label className="block mb-1 text-neutral-200">Hasło</label>
-          <input
-            type="password"
-            className="w-full border border-neutral-700 bg-neutral-900 text-white rounded px-3 py-2 focus:outline-none focus:ring-2 focus:ring-primary"
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-            required
-          />
-        </div>
-        <div className="mb-6">
-          <label className="block mb-1 text-neutral-200">Powtórz hasło</label>
-          <input
-            type="password"
-            className="w-full border border-neutral-700 bg-neutral-900 text-white rounded px-3 py-2 focus:outline-none focus:ring-2 focus:ring-primary"
-            value={repeatPassword}
-            onChange={(e) => setRepeatPassword(e.target.value)}
-            required
-          />
-        </div>
-        {error && <div className="text-red-400 mb-4">{error}</div>}
-        <div className="mb-4 space-y-3">
-          <label className="flex items-start space-x-2">
-            <input
-              type="checkbox"
-              checked={acceptPrivacyPolicy}
-              onChange={(e) => setAcceptPrivacyPolicy(e.target.checked)}
-              className="mt-1"
-              required
-            />
-            <span className="text-neutral-400 text-sm">
-              Akceptuję <a href="/policies/privacy" target="_blank" className="text-primary hover:underline">Politykę prywatności</a>
-            </span>
-          </label>
-          <label className="flex items-start space-x-2">
-            <input
-              type="checkbox"
-              checked={acceptTOS}
-              onChange={(e) => setAcceptTOS(e.target.checked)}
-              className="mt-1"
-              required
-            />
-            <span className="text-neutral-400 text-sm">
-              Akceptuję <a href="/policies/tos" target="_blank" className="text-primary hover:underline">Regulamin serwisu</a>
-            </span>
-          </label>
-        </div>
-        <button
-          type="submit"
-          className="w-full bg-primary text-white py-2 rounded hover:bg-primary-dark disabled:opacity-60"
-          disabled={loading}
-        >
-          {loading ? "Zakładanie..." : "Załóż konto"}
-        </button>
-        <div className="mt-6 text-center">
-          <span className="text-neutral-400">Masz już konto?</span>
-          <button
-            type="button"
-            className="ml-2 text-primary hover:underline text-sm"
-            onClick={() => navigate("/auth/login")}
+      {registered ? (
+        <div className="bg-neutral-800 p-8 rounded shadow-md w-full max-w-sm border border-neutral-700 text-center">
+          <h2 className="text-2xl font-bold mb-6 text-white">Potwierdź swój adres e-mail</h2>
+          <p className="mb-4 text-neutral-300">
+            Na podany adres e-mail <span className="font-semibold text-white">{email}</span> wysłaliśmy link aktywacyjny.<br />
+            Kliknij w link, aby aktywować konto i zalogować się.
+          </p>
+          <a
+            href={getEmailProviderLink(email)}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="w-full block bg-primary text-white py-2 rounded hover:bg-primary-dark disabled:opacity-60 mt-2 mb-4"
           >
-            Zaloguj się
+            Otwórz skrzynkę pocztową
+          </a>
+          <button
+            className="w-full bg-green-600 text-white py-2 rounded hover:bg-green-700 disabled:opacity-60 mt-2"
+            onClick={handleProceed}
+            disabled={loading}
+          >
+            {loading ? "Logowanie..." : "Kontynuuj, e-mail zweryfikowany"}
           </button>
         </div>
-      </form>
+      ) : (
+        <form onSubmit={handleRegister} className="bg-neutral-800 p-8 rounded shadow-md w-full max-w-sm border border-neutral-700">
+          <h2 className="text-2xl font-bold mb-6 text-center text-white">Załóż konto</h2>
+          <div className="mb-4">
+            <label className="block mb-1 text-neutral-200">Email</label>
+            <input
+              type="email"
+              className="w-full border border-neutral-700 bg-neutral-900 text-white rounded px-3 py-2 focus:outline-none focus:ring-2 focus:ring-primary"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              required
+            />
+          </div>
+          <div className="mb-4">
+            <label className="block mb-1 text-neutral-200">Hasło</label>
+            <input
+              type="password"
+              className="w-full border border-neutral-700 bg-neutral-900 text-white rounded px-3 py-2 focus:outline-none focus:ring-2 focus:ring-primary"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              required
+            />
+          </div>
+          <div className="mb-6">
+            <label className="block mb-1 text-neutral-200">Powtórz hasło</label>
+            <input
+              type="password"
+              className="w-full border border-neutral-700 bg-neutral-900 text-white rounded px-3 py-2 focus:outline-none focus:ring-2 focus:ring-primary"
+              value={repeatPassword}
+              onChange={(e) => setRepeatPassword(e.target.value)}
+              required
+            />
+          </div>
+          {error && <div className="text-red-400 mb-4">{error}</div>}
+          <div className="mb-4 space-y-3">
+            <label className="flex items-start space-x-2">
+              <input
+                type="checkbox"
+                checked={acceptPrivacyPolicy}
+                onChange={(e) => setAcceptPrivacyPolicy(e.target.checked)}
+                className="mt-1"
+                required
+              />
+              <span className="text-neutral-400 text-sm">
+                Akceptuję <a href="/policies/privacy" target="_blank" className="text-primary hover:underline">Politykę prywatności</a>
+              </span>
+            </label>
+            <label className="flex items-start space-x-2">
+              <input
+                type="checkbox"
+                checked={acceptTOS}
+                onChange={(e) => setAcceptTOS(e.target.checked)}
+                className="mt-1"
+                required
+              />
+              <span className="text-neutral-400 text-sm">
+                Akceptuję <a href="/policies/tos" target="_blank" className="text-primary hover:underline">Regulamin serwisu</a>
+              </span>
+            </label>
+          </div>
+          <button
+            type="submit"
+            className="w-full bg-primary text-white py-2 rounded hover:bg-primary-dark disabled:opacity-60"
+            disabled={loading}
+          >
+            {loading ? "Zakładanie..." : "Załóż konto"}
+          </button>
+          <div className="mt-6 text-center">
+            <span className="text-neutral-400">Masz już konto?</span>
+            <button
+              type="button"
+              className="ml-2 text-primary hover:underline text-sm"
+              onClick={() => navigate("/auth/login")}
+            >
+              Zaloguj się
+            </button>
+          </div>
+        </form>
+      )}
     </div>
   );
 };

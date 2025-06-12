@@ -153,7 +153,8 @@ const PremiumCheckoutModal: React.FC<PremiumCheckoutModalProps> = ({ isOpen, onC
     "Zaawansowane raporty i statystyki",
     "Eksport danych (JPK, KSeF)",
     "Priorytetowe wsparcie techniczne",
-    "Backup i synchronizacja danych"
+    "Backup i synchronizacja danych",
+    "Automyczne wysyłanie faktur na e-mail"
   ];
 
   return (

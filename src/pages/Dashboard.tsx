@@ -28,6 +28,7 @@ import {
   Star,
   ArrowRight
 } from "lucide-react";
+import AccountOnboardingWidget from '@/components/welcome/AccountOnboardingWidget';
 
 const Dashboard = () => {
   const [monthlySummaries, setMonthlySummaries] = useState<any[]>([]);
@@ -156,8 +157,12 @@ const Dashboard = () => {
     },
   ];
 
+  const showOnboardingWidget = invoices.length === 0;
   return (
     <div className="space-y-8 max-w-full pb-20">
+      {showOnboardingWidget && (
+        <AccountOnboardingWidget mode="inline" />
+      )}
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>

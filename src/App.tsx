@@ -50,6 +50,7 @@ import Accounting from './pages/accounting/Accounting';
 import RequirePremium from './components/auth/RequirePremium';
 import PremiumSuccessMessage from "@/components/premium/PremiumSuccessMessage";
 import React from "react";
+import Welcome from "@/components/welcome/Welcome";
 
 const AppLoadingScreen = ({ loading, checkingPremium }: { loading: boolean, checkingPremium: boolean }) => (
   <div className={`fixed inset-0 z-50 flex flex-col items-center justify-center bg-background/90 transition-colors ${checkingPremium ? 'text-amber-500' : 'text-primary'}`}>
@@ -143,7 +144,10 @@ const App = () => {
                   </PublicRoute>
                 } />
 
-                {/* Protected routes */}
+                {/* Welcome route OUTSIDE main app layout */}
+                <Route path="/welcome" element={<Welcome />} />
+
+                {/* Protected routes (main app shell) */}
                 <Route path="/dashboard" element={
                   <ProtectedRoute>
                     <Dashboard />

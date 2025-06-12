@@ -3,7 +3,7 @@ import { useParams, useNavigate } from "react-router-dom";
 import { toast } from "sonner";
 import { ArrowLeft, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Invoice } from "@/types";
+import type { Invoice, Company, InvoiceItem } from "@/types";
 import { getInvoice, deleteInvoice, saveInvoice } from "@/integrations/supabase/repositories/invoiceRepository";
 import NewInvoice from "./NewInvoice";
 import { useQueryClient } from "@tanstack/react-query";
@@ -22,6 +22,7 @@ import { useSidebar } from "@/components/ui/sidebar";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/context/AuthContext";
 import { InvoiceFormActions } from "@/components/invoices/forms/InvoiceFormActions";
+import { Switch } from '@/components/ui/switch';
 
 const EditInvoice = () => {
   const { id } = useParams<{ id: string }>();
@@ -130,6 +131,55 @@ const EditInvoice = () => {
     }
   };
 
+  // Add handler to mark as unpaid
+  const handleMarkAsUnpaid = async () => {
+    if (!invoice || !id) return;
+    try {
+      // Prepare the payload for saveInvoice, matching its expected type
+      const updatedData = {
+        ...invoice,
+        isPaid: false,
+        id: id,
+        user_id: user?.id,
+        // Remove fields that are not part of the saveInvoice input type if needed
+        // Ensure all required fields are present
+        businessProfileId: invoice.businessProfileId || '',
+        customerId: invoice.customerId || '',
+        items: invoice.items as InvoiceItem[],
+        number: invoice.number,
+        type: invoice.type,
+        transactionType: invoice.transactionType,
+        issueDate: invoice.issueDate,
+        dueDate: invoice.dueDate,
+        sellDate: invoice.sellDate,
+        paymentMethod: invoice.paymentMethod,
+        status: invoice.status,
+        comments: invoice.comments || '',
+        totalNetValue: invoice.totalNetValue || 0,
+        totalVatValue: invoice.totalVatValue || 0,
+        totalGrossValue: invoice.totalGrossValue || 0,
+        vat: invoice.vat,
+        vatExemptionReason: invoice.vatExemptionReason,
+      };
+      await saveInvoice(updatedData as any);
+      await queryClient.invalidateQueries({ queryKey: ['invoices'] });
+      await queryClient.invalidateQueries({ queryKey: ['invoice', id] });
+      toast.success('Faktura oznaczona jako nieopłacona');
+      setInvoice((prev) => {
+        if (!prev) return prev;
+        return {
+          ...prev,
+          isPaid: false,
+          totalGrossValue: typeof prev.totalGrossValue === 'number' ? prev.totalGrossValue : 0,
+          totalNetValue: typeof prev.totalNetValue === 'number' ? prev.totalNetValue : 0,
+          totalVatValue: typeof prev.totalVatValue === 'number' ? prev.totalVatValue : 0,
+        };
+      });
+    } catch (error) {
+      toast.error('Wystąpił błąd podczas oznaczania jako nieopłacona');
+    }
+  };
+
   if (loading) {
     return (
       <div className="flex items-center justify-center h-64">
@@ -223,28 +273,36 @@ const EditInvoice = () => {
           </Button>
           <h1 className="text-2xl font-bold">Edycja dokumentu</h1>
         </div>
-        <AlertDialog>
-          <AlertDialogTrigger asChild>
-            <Button variant="destructive" size="sm">
-              <Trash2 className="mr-2 h-4 w-4" />
-              Usuń dokument
+        <div className="flex items-center gap-2">
+          {/* Show mark as unpaid if invoice is paid */}
+          {invoice.isPaid && (
+            <Button variant="secondary" size="sm" onClick={handleMarkAsUnpaid}>
+              Oznacz jako nieopłacona
             </Button>
-          </AlertDialogTrigger>
-          <AlertDialogContent>
-            <AlertDialogHeader>
-              <AlertDialogTitle>Czy na pewno chcesz usunąć ten dokument?</AlertDialogTitle>
-              <AlertDialogDescription>
-                Ta operacja jest nieodwracalna. Po usunięciu dokumentu nie będzie możliwości jego odzyskania.
-              </AlertDialogDescription>
-            </AlertDialogHeader>
-            <AlertDialogFooter>
-              <AlertDialogCancel>Anuluj</AlertDialogCancel>
-              <AlertDialogAction onClick={handleDelete} className="bg-red-600 hover:bg-red-700">
-                Usuń
-              </AlertDialogAction>
-            </AlertDialogFooter>
-          </AlertDialogContent>
-        </AlertDialog>
+          )}
+          <AlertDialog>
+            <AlertDialogTrigger asChild>
+              <Button variant="destructive" size="sm">
+                <Trash2 className="mr-2 h-4 w-4" />
+                Usuń dokument
+              </Button>
+            </AlertDialogTrigger>
+            <AlertDialogContent>
+              <AlertDialogHeader>
+                <AlertDialogTitle>Czy na pewno chcesz usunąć ten dokument?</AlertDialogTitle>
+                <AlertDialogDescription>
+                  Ta operacja jest nieodwracalna. Po usunięciu dokumentu nie będzie możliwości jego odzyskania.
+                </AlertDialogDescription>
+              </AlertDialogHeader>
+              <AlertDialogFooter>
+                <AlertDialogCancel>Anuluj</AlertDialogCancel>
+                <AlertDialogAction onClick={handleDelete} className="bg-red-600 hover:bg-red-700">
+                  Usuń
+                </AlertDialogAction>
+              </AlertDialogFooter>
+            </AlertDialogContent>
+          </AlertDialog>
+        </div>
       </div>
 
       {/* Main Content Area - Flex column to contain form and static bar */}

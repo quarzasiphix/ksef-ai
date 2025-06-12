@@ -11,6 +11,7 @@ import PremiumCheckoutModal from "@/components/premium/PremiumCheckoutModal";
 import PremiumSuccessMessage from "@/components/premium/PremiumSuccessMessage";
 import SupportFooter from "@/components/layout/SupportFooter";
 import { useHeartbeat } from "@/hooks/useHeartbeat";
+import AccountOnboardingWidget from '@/components/welcome/AccountOnboardingWidget';
 
 const SettingsMenu = () => {
   const { isPremium, openPremiumDialog } = useAuth();
@@ -20,6 +21,7 @@ const SettingsMenu = () => {
   const lastPremium = useRef<boolean | null>(null);
   const navigate = useNavigate();
   const location = useLocation();
+  const [showOnboardingWidget, setShowOnboardingWidget] = React.useState(true);
 
   useEffect(() => {
     const status = searchParams.get('status');
@@ -48,6 +50,14 @@ const SettingsMenu = () => {
       lastPremium.current = status.premium;
     }
   });
+
+  // Check if onboarding widget should show (no invoices)
+  // This is a placeholder; you may want to use a global data hook or prop
+  React.useEffect(() => {
+    // You should replace this with a real check for invoices
+    const invoices = window.__INVOICES__ || [];
+    setShowOnboardingWidget(invoices.length === 0);
+  }, []);
 
   const isNestedRoute = location.pathname !== '/settings';
 
@@ -178,6 +188,12 @@ const SettingsMenu = () => {
       />
 
       <SupportFooter />
+
+      {showOnboardingWidget && (
+        <div className="mt-8">
+          <AccountOnboardingWidget mode="inline" forceShow={true} />
+        </div>
+      )}
     </div>
   );
 };
