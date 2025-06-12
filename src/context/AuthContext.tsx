@@ -82,11 +82,13 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
     // 2. Listen for session restoration or login
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
-      // Only run if we haven't already checked, or if session changes
-      if (!checkedInitial || event === 'SIGNED_IN' || event === 'INITIAL_SESSION') {
+      // Only show global loading overlay while app is boot-strapping or right after an explicit SIGNED_IN event (fresh login).
+      if (!checkedInitial) {
         setLoading(true);
-        checkAndSetPremium(session);
       }
+
+      // Always update user/premium status in background, but avoid toggling the loading flag after bootstrap.
+      checkAndSetPremium(session);
     });
 
     return () => subscription.unsubscribe();

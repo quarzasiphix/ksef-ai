@@ -40,13 +40,22 @@ const Dashboard = () => {
   
   const isLoading = isLoadingInvoices || isLoadingExpenses || isLoadingProfiles;
   
+  // Prevent flicker: mark when all data finished first load
+  const [dataReady, setDataReady] = useState(false);
+
+  useEffect(() => {
+    if (!isLoading) {
+      setDataReady(true);
+    }
+  }, [isLoading]);
+
   useEffect(() => {
     if (invoices?.length > 0) {
       generateMonthlySummaries(invoices);
     }
   }, [invoices]);
   
-  const generateMonthlySummaries = (invoicesData: Invoice[]) => {
+  const generateMonthlySummaries = (invoicesData: any[]) => {
     const monthlyData: Record<string, { totalNetValue: number, totalGrossValue: number, totalVatValue: number }> = {};
     
     invoicesData.forEach(invoice => {
@@ -157,7 +166,7 @@ const Dashboard = () => {
     },
   ];
 
-  const showOnboardingWidget = invoices.length === 0;
+  const showOnboardingWidget = dataReady && invoices.length === 0;
   return (
     <div className="space-y-8 max-w-full pb-20">
       {showOnboardingWidget && (

@@ -1,7 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Link, Outlet, useSearchParams, useNavigate, useLocation } from 'react-router-dom';
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
 import { Settings, Building2, Star, User, CreditCard, FileText, Crown } from "lucide-react";
 import { useAuth } from "@/context/AuthContext";
 import { toast } from "sonner";
@@ -12,6 +10,7 @@ import PremiumSuccessMessage from "@/components/premium/PremiumSuccessMessage";
 import SupportFooter from "@/components/layout/SupportFooter";
 import { useHeartbeat } from "@/hooks/useHeartbeat";
 import AccountOnboardingWidget from '@/components/welcome/AccountOnboardingWidget';
+import SettingCategory from "@/components/settings/SettingCategory";
 
 const SettingsMenu = () => {
   const { isPremium, openPremiumDialog } = useAuth();
@@ -55,7 +54,7 @@ const SettingsMenu = () => {
   // This is a placeholder; you may want to use a global data hook or prop
   React.useEffect(() => {
     // You should replace this with a real check for invoices
-    const invoices = window.__INVOICES__ || [];
+    const invoices = (window as any).__INVOICES__ || [];
     setShowOnboardingWidget(invoices.length === 0);
   }, []);
 
@@ -108,7 +107,7 @@ const SettingsMenu = () => {
   ];
 
   return (
-    <div className="space-y-6 pb-20">
+    <div className="space-y-6 pb-20 max-w-6xl mx-auto">
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <h1 className="text-2xl font-bold">Ustawienia</h1>
         
@@ -125,47 +124,9 @@ const SettingsMenu = () => {
         ) : null}
       </div>
 
-      <div className="grid gap-6">
-        {settingsCategories.map((category, categoryIndex) => (
-          <Card key={categoryIndex}>
-            <CardHeader>
-              <CardTitle className="flex items-center text-lg">
-                <category.icon className="mr-2 h-5 w-5" />
-                {category.title}
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="grid gap-3">
-                {category.items.map((item, itemIndex) => (
-                  <div key={itemIndex} className="flex items-center justify-between p-3 rounded-lg border hover:bg-muted/50 transition-colors">
-                    <div>
-                      <h3 className="font-medium flex items-center">
-                        {item.title}
-                        {item.premium && isPremium && (
-                          <Star className="ml-2 h-4 w-4 text-amber-500" fill="currentColor" />
-                        )}
-                      </h3>
-                      <p className="text-sm text-muted-foreground">{item.description}</p>
-                    </div>
-                    {item.href ? (
-                      <Button variant="outline" size="sm" asChild>
-                        <Link to={item.href}>Otwórz</Link>
-                      </Button>
-                    ) : item.action ? (
-                      <Button 
-                        variant={item.premium && !isPremium ? "default" : "outline"} 
-                        size="sm" 
-                        onClick={item.action}
-                        className={item.premium && !isPremium ? "bg-amber-500 hover:bg-amber-600 text-white" : ""}
-                      >
-                        {item.premium && !isPremium ? "Upgrade" : "Zarządzaj"}
-                      </Button>
-                    ) : null}
-                  </div>
-                ))}
-              </div>
-            </CardContent>
-          </Card>
+      <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+        {settingsCategories.map((cat) => (
+          <SettingCategory key={cat.title} {...cat} isPremium={isPremium} />
         ))}
       </div>
 
