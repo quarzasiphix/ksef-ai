@@ -72,7 +72,7 @@ const SettingsMenu = () => {
   }
 
   return (
-    <div className="space-y-8 pb-20 max-w-6xl mx-auto">
+    <div className="space-y-8 pb-32 md:pb-24 max-w-6xl mx-auto">
       {/* Header */}
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <h1 className="text-3xl font-bold">Ustawienia</h1>
