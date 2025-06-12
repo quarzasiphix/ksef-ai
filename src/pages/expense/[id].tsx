@@ -12,6 +12,7 @@ import { useGlobalData } from "@/hooks/use-global-data";
 import { ArrowLeft } from "lucide-react";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import CustomerForm from "@/components/customers/CustomerForm";
+import { BusinessProfileSelector } from "@/components/invoices/selectors/BusinessProfileSelector";
 
 const ZUS_NIP = "5220005994";
 const ZUS_NAME = "ZAKŁAD UBEZPIECZEŃ SPOŁECZNYCH";
@@ -67,6 +68,10 @@ const NewExpense = () => {
       toast.error("Musisz być zalogowany");
       return;
     }
+    if (!businessProfileId) {
+      toast.error("Wybierz profil biznesowy (nabywcę)");
+      return;
+    }
     if (!date || items.length === 0) {
       toast.error("Wypełnij wszystkie pola i dodaj co najmniej jedną pozycję");
       return;
@@ -75,7 +80,7 @@ const NewExpense = () => {
     try {
       await saveExpense({
         userId: user.id,
-        businessProfileId: businessProfileId || null,
+        businessProfileId,
         issueDate: date,
         date: date,
         amount: items.reduce((sum, item) => sum + (item.totalGrossValue || 0), 0),
@@ -157,7 +162,13 @@ const NewExpense = () => {
                   defaultCustomerType="sprzedawca"
                 />
               </div>
-              {/* Optionally add business profile selector here if needed */}
+              <div>
+                <label className="block mb-1 font-medium">Nabywca (Twój profil)</label>
+                <BusinessProfileSelector
+                  value={businessProfileId}
+                  onChange={(id) => setBusinessProfileId(id)}
+                />
+              </div>
             </div>
           </CardContent>
         </Card>

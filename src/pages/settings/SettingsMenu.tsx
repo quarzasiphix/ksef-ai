@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Link, Outlet, useSearchParams, useNavigate, useLocation } from 'react-router-dom';
+import { Outlet, useSearchParams, useLocation } from 'react-router-dom';
 import { Settings, Building2, Star, User, CreditCard, FileText, Crown } from "lucide-react";
 import { useAuth } from "@/context/AuthContext";
 import { toast } from "sonner";
@@ -13,12 +13,11 @@ import AccountOnboardingWidget from '@/components/welcome/AccountOnboardingWidge
 import SettingCategory from "@/components/settings/SettingCategory";
 
 const SettingsMenu = () => {
-  const { isPremium, openPremiumDialog } = useAuth();
+  const { isPremium } = useAuth();
   const [searchParams, setSearchParams] = useSearchParams();
   const [showPremiumModal, setShowPremiumModal] = useState(false);
   const [showSuccessModal, setShowSuccessModal] = useState(false);
   const lastPremium = useRef<boolean | null>(null);
-  const navigate = useNavigate();
   const location = useLocation();
   const [showOnboardingWidget, setShowOnboardingWidget] = React.useState(true);
 

@@ -16,6 +16,7 @@ import {
   toPaymentMethodUi,
 } from "@/lib/invoice-utils";
 import { saveInvoice } from "@/integrations/supabase/repositories/invoiceRepository";
+import { saveExpense } from "@/integrations/supabase/repositories/expenseRepository";
 import { InvoiceFormHeader } from "@/components/invoices/forms/InvoiceFormHeader";
 import { InvoiceBasicInfoForm } from "@/components/invoices/forms/InvoiceBasicInfoForm";
 import { InvoicePartiesForm } from "@/components/invoices/forms/InvoicePartiesForm";
@@ -301,7 +302,9 @@ const NewInvoice: React.ForwardRefExoticComponent<
         console.log('Starting form submission...');
         setIsLoading(true);
         
-        const invoicePayload = { // Prepare payload for saveInvoice
+        const invoiceTotals = calculateInvoiceTotals(items);
+
+        const invoicePayload = { // Prepare payload for saveInvoice (income)
           ...formData,
           user_id: user.id,
           transactionType: formData.transactionType, // Ensure transactionType is included
@@ -330,9 +333,9 @@ const NewInvoice: React.ForwardRefExoticComponent<
             };
           }),
           // Ensure total values are numbers
-           totalNetValue: calculateInvoiceTotals(items).totalNetValue,
-           totalGrossValue: calculateInvoiceTotals(items).totalGrossValue,
-           totalVatValue: calculateInvoiceTotals(items).totalVatValue,
+           totalNetValue: invoiceTotals.totalNetValue,
+           totalGrossValue: invoiceTotals.totalGrossValue,
+           totalVatValue: invoiceTotals.totalVatValue,
           isPaid: (initialData as any)?.isPaid || false, // Preserve or default isPaid
            // Handle vat and vatExemptionReason based on fakturaBezVAT
           vat: !formData.fakturaBezVAT, // If fakturaBezVAT is true, vat is false
@@ -351,7 +354,7 @@ const NewInvoice: React.ForwardRefExoticComponent<
            customerId: formData.customerId || null, // Ensure customerId is null if empty string
         };
 
-        console.log('Invoice Payload being sent to saveInvoice:', invoicePayload);
+        console.log('Invoice/Expense form payload prepared.');
 
         // Use onSave prop if provided (for use in other components like EditInvoice)
         if (onSave) {
@@ -359,21 +362,39 @@ const NewInvoice: React.ForwardRefExoticComponent<
           // When using onSave, we pass the original form data and items, as the parent component handles the final save structure
           await onSave({...formData, items: items});
         } else {
-           console.log('Using internal saveInvoice function.');
-          // Call the saveInvoice function from the repository
-          // Cast the payload to match the expected type of saveInvoice more closely
-          const savedInvoice = await saveInvoice(invoicePayload as any);
-           console.log('Invoice saved successfully:', savedInvoice);
+          if (formData.transactionType === TransactionType.EXPENSE) {
+            console.log('Saving as expense...');
+            const expensePayload = {
+              userId: user.id,
+              businessProfileId: formData.businessProfileId,
+              issueDate: formData.issueDate,
+              date: formData.sellDate || formData.issueDate,
+              amount: invoiceTotals.totalGrossValue,
+              currency: 'PLN',
+              description: formData.comments || '',
+              transactionType: TransactionType.EXPENSE,
+              items,
+              customerId: formData.customerId || null,
+            } as any;
 
-          // Invalidate queries to refresh data
-          queryClient.invalidateQueries({ queryKey: ['invoices'] });
-          queryClient.invalidateQueries({ queryKey: ['invoice', savedInvoice.id] });
+            const savedExpense = await saveExpense(expensePayload);
+            console.log('Expense saved successfully:', savedExpense);
 
-          // Redirect to the detail page of the newly created/updated invoice
-          const detailRoute = savedInvoice.transactionType === TransactionType.EXPENSE ? '/expense' : '/income';
-          navigate(`${detailRoute}/${savedInvoice.id}`);
+            // Invalidate expense queries
+            queryClient.invalidateQueries({ queryKey: ['expenses'] });
+            navigate(`/expense/${savedExpense.id}`);
+            toast.success('Wydatek zapisany pomyślnie');
+          } else {
+            console.log('Saving as income invoice...');
+            const savedInvoice = await saveInvoice(invoicePayload as any);
+            console.log('Invoice saved successfully:', savedInvoice);
 
-          toast.success(`Dokument ${savedInvoice.number} zapisany pomyślnie`);
+            queryClient.invalidateQueries({ queryKey: ['invoices'] });
+            queryClient.invalidateQueries({ queryKey: ['invoice', savedInvoice.id] });
+
+            navigate(`/income/${savedInvoice.id}`);
+            toast.success(`Dokument ${savedInvoice.number} zapisany pomyślnie`);
+          }
         }
         
         setIsLoading(false);

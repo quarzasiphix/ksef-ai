@@ -103,15 +103,18 @@ export const getExpenses = async (userId: string, businessProfileId?: string, pe
 };
 
 export const saveExpense = async (expense: Omit<Expense, 'id' | 'createdAt'> & { id?: string }) => {
-  const payload = {
+  const payload: any = {
     user_id: expense.userId,
-    business_profile_id: expense.businessProfileId,
     issue_date: expense.issueDate,
     amount: expense.amount,
     currency: expense.currency || 'PLN',
     description: expense.description || '',
-    // Add other fields as needed
+    // Additional optional fields below
   };
+
+  if (expense.businessProfileId) {
+    payload.business_profile_id = expense.businessProfileId;
+  }
 
   let expenseId = expense.id;
   let data;
@@ -149,7 +152,7 @@ export const saveExpense = async (expense: Omit<Expense, 'id' | 'createdAt'> & {
       name: item.name,
       quantity: item.quantity,
       unit_price: item.unitPrice,
-      vat_rate: item.vatRate ?? 0,
+      vat_rate: Number(item.vatRate) ?? 0,
       unit: item.unit || 'szt.',
       total_net_value: item.totalNetValue ?? 0,
       total_gross_value: item.totalGrossValue ?? 0,
@@ -157,7 +160,7 @@ export const saveExpense = async (expense: Omit<Expense, 'id' | 'createdAt'> & {
       vat_exempt: item.vatExempt ?? false,
       user_id: expense.userId,
     }));
-    const { error: itemsError } = await supabase.from('expense_items').insert(itemsPayload);
+    const { error: itemsError } = await supabase.from('expense_items').insert(itemsPayload as any);
     if (itemsError) throw itemsError;
   }
 
