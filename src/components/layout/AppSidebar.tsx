@@ -12,7 +12,6 @@ import {
   Building,
   Crown,
   Shield,
-  Star,
   User,
   LogOut
 } from "lucide-react";
@@ -267,56 +266,90 @@ const AppSidebar = () => {
       
       {/* beginning of footer */}
       <SidebarFooter className="border-t p-4">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-2 flex-1 min-w-0">
-            <div className="h-8 w-8 rounded-full bg-primary/10 flex items-center justify-center flex-shrink-0">
-              <User className="h-4 w-4" />
-            </div>
-            {!isCollapsed && (
-              <div className="flex flex-col min-w-0 flex-1">
-                <span className="text-xs font-small">Zalogowano jako</span>
-                <span className={cn(
-                  "text-xs truncate max-w-[150px]",
-                  isPremium ? "text-amber-600 font-semibold" : "text-muted-foreground"
-                )}>
-                  {user?.email}
-                  {isPremium && <Star className="inline h-3 w-3 ml-1" />}
-                </span>
-              </div>
-            )}
-          </div>
-          {!isCollapsed && (
-            <div className="flex flex-col gap-1">
-              <NavLink
-                to="/settings"
-                className="text-xs text-muted-foreground hover:text-foreground transition-colors"
-              >
-                Profil
-              </NavLink>
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={handleLogout}
-                className="h-6 px-2 text-xs"
-              >
-                <LogOut className="h-3 w-3 mr-1" />
-                Wyloguj
-              </Button>
-            </div>
-          )}
-          {isCollapsed && (
-            <Button
-              variant="ghost"
-              size="icon"
-              onClick={handleLogout}
-              className="h-8 w-8"
-            >
-              <LogOut className="h-4 w-4" />
-            </Button>
-          )}
-        </div>
+        <SidebarUserInfo isCollapsed={isCollapsed} user={user} isPremium={isPremium} handleLogout={handleLogout} />
       </SidebarFooter>
     </Sidebar>
+  );
+};
+
+// Desktop sidebar user info styled like mobile
+const SidebarUserInfo = ({
+  isCollapsed,
+  user,
+  isPremium,
+  handleLogout,
+}: {
+  isCollapsed: boolean;
+  user: { email?: string } | null;
+  isPremium: boolean;
+  handleLogout: () => void;
+}) => {
+  if (!user) return null;
+
+  // Shared avatar markup to reuse between collapsed & expanded views
+  const Avatar = (
+    <div
+      className={`relative w-10 h-10 rounded-full flex items-center justify-center ${isPremium ? "bg-gradient-to-br from-amber-500 to-amber-700" : "bg-muted"}`}
+    >
+      <User className="h-5 w-5 text-white" />
+      {isPremium && (
+        <div className="absolute -top-1 -right-1 bg-amber-500 rounded-full p-0.5">
+          <Crown className="h-3 w-3 text-white" />
+        </div>
+      )}
+    </div>
+  );
+
+  if (isCollapsed) {
+    return (
+      <div className="flex items-center justify-center w-full">
+        <NavLink to="/settings" className="flex-shrink-0" aria-label="Ustawienia profilu">
+          {Avatar}
+        </NavLink>
+        <Button
+          variant="ghost"
+          size="icon"
+          onClick={handleLogout}
+          className="ml-2 h-8 w-8"
+        >
+          <LogOut className="h-4 w-4" />
+        </Button>
+      </div>
+    );
+  }
+
+  return (
+    <div className="w-full">
+      <div className="flex items-center gap-3">
+        <NavLink to="/settings" className="flex items-center gap-3 flex-1 min-w-0 group">
+          {Avatar}
+          <div className="flex-1 min-w-0">
+            <div className="flex items-center gap-2">
+              <p className="text-sm font-medium truncate group-hover:underline">
+                {user.email}
+              </p>
+              {isPremium && (
+                <span className="inline-flex items-center gap-1 bg-gradient-to-r from-amber-500 to-amber-600 text-white text-[10px] px-1.5 py-0.5 rounded-full">
+                  <Crown className="h-2.5 w-2.5" />
+                  <span>PREMIUM</span>
+                </span>
+              )}
+            </div>
+          </div>
+        </NavLink>
+
+        {/* Logout button */}
+        <Button
+          variant="ghost"
+          size="icon"
+          onClick={handleLogout}
+          className="h-8 w-8"
+          aria-label="Wyloguj"
+        >
+          <LogOut className="h-4 w-4" />
+        </Button>
+      </div>
+    </div>
   );
 };
 

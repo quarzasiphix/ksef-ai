@@ -107,10 +107,31 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   };
 
   const logout = async () => {
-    const { error } = await supabase.auth.signOut();
-    if (error) throw error;
-    setUser(null);
-    queryClient.clear();
+    try {
+      // Use local scope to avoid requiring a "global" sign-out which may fail for non-privileged sessions.
+      const { error } = await supabase.auth.signOut({ scope: "local" });
+
+      // Fallback to the default behaviour if local scope is not supported (older clients)
+      if (error?.message?.includes("scope")) {
+        const fallback = await supabase.auth.signOut();
+        if (fallback.error) throw fallback.error;
+      } else if (error) {
+        throw error;
+      }
+
+      setUser(null);
+      queryClient.clear();
+    } catch (err) {
+      console.error("Logout failed", err);
+      // Notify the user that something went wrong.
+      import("@/hooks/use-toast").then(({ toast }) => {
+        toast({
+          title: "Błąd wylogowania",
+          description: "Nie udało się wylogować. Spróbuj ponownie później.",
+          variant: "destructive",
+        });
+      });
+    }
   };
 
   return (

@@ -314,6 +314,11 @@ const UserMenuFooter = () => {
 
   if (!user) return null;
   
+  const handleLogout = async () => {
+    await logout();
+    navigate("/auth/login");
+  };
+
   return (
     <div className="p-4 border-t">
       {/* Business Profile Switcher */}
@@ -334,8 +339,8 @@ const UserMenuFooter = () => {
           </div>
         </div>
         <div className="flex-1 min-w-0">
-          <div className="flex items-center gap-2">
-            <p className="text-sm font-medium truncate">
+          <NavLink to="/settings" className="flex items-center gap-2 group">
+            <p className="text-sm font-medium truncate group-hover:underline">
               {user.email}
             </p>
             {isPremium && (
@@ -344,9 +349,9 @@ const UserMenuFooter = () => {
                 <span>PREMIUM</span>
               </span>
             )}
-          </div>
+          </NavLink>
           <button
-            onClick={logout}
+            onClick={handleLogout}
             className="text-xs text-muted-foreground hover:text-foreground mt-0.5 flex items-center gap-1"
           >
             <LogOut className="h-3 w-3" />
