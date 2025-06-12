@@ -1,239 +1,38 @@
-import React, { useState } from "react";
-import { useNavigate, Link } from "react-router-dom";
-import { toast } from "sonner";
-import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
-import { Edit, Plus, MoreVertical, Building2, Star } from "lucide-react";
-import type { BusinessProfile } from "@/types";
-import { useIsMobile } from "@/hooks/use-mobile";
-import { useGlobalData } from "@/hooks/use-global-data";
-import { calculateIncomeTax } from "@/lib/tax-utils";
-import { formatCurrency } from "@/lib/invoice-utils";
+
+import React from 'react';
+import { useNavigate } from 'react-router-dom';
+import { Button } from '@/components/ui/button';
+import { ArrowLeft, Building2 } from 'lucide-react';
 
 const BusinessProfiles = () => {
   const navigate = useNavigate();
-  const { businessProfiles: { data: profiles, isLoading, error } } = useGlobalData();
-  const { invoices: { data: invoices, isLoading: isLoadingInvoices } } = useGlobalData();
-  const [profilesWithTaxDetails, setProfilesWithTaxDetails] = useState<Array<BusinessProfile & { totalNetIncome: number; estimatedIncomeTax: number | string }>>([]);
-
-  const isMobile = useIsMobile();
-
-  // Show error toast if there's an issue fetching the data
-  React.useEffect(() => {
-    if (error) {
-      toast.error("Nie udało się pobrać profili firm");
-      console.error("Error fetching business profiles:", error);
-    }
-  }, [error]);
-
-  // Calculate tax details when profiles or invoices change
-  React.useEffect(() => {
-    if (profiles && invoices) {
-      const profilesWithCalcs = profiles.map(profile => {
-        const profileInvoices = invoices.filter(inv => inv.businessProfileId === profile.id);
-        const totalNetIncome = profileInvoices.reduce((sum, inv) => sum + (inv.totalNetValue || 0), 0);
-        const estimatedIncomeTax = calculateIncomeTax(totalNetIncome, profile.tax_type);
-        return { ...profile, totalNetIncome, estimatedIncomeTax };
-      });
-      setProfilesWithTaxDetails(profilesWithCalcs);
-    } else {
-      // Handle cases where profiles or invoices are not loaded yet or error occurred
-      if (profiles) {
-        setProfilesWithTaxDetails(profiles.map(p => ({ ...p, totalNetIncome: 0, estimatedIncomeTax: "Ładowanie/Brak danych" })));
-      } else {
-        setProfilesWithTaxDetails([]);
-      }
-    }
-
-  }, [profiles, invoices]); // Depend on profiles and invoices
 
   return (
-    <div className="space-y-6">
-      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-        <div>
-          <h1 className="text-2xl font-bold">Profile Firmowe</h1>
-          <p className="text-muted-foreground">
-            Zarządzaj swoimi profilami firmowymi.
-          </p>
-        </div>
-        {/* Link to Personal Profile Settings */}
-        <div className="mt-6">
-          <span className="text-muted-foreground text-sm mr-2">Szukasz ustawień konta?</span>
-          <Link to="/settings/profile" className="text-blue-600 hover:underline text-sm">
-            Przejdź do profilu osobistego
-          </Link>
-        </div>
-        <Button onClick={() => navigate("/settings/business-profiles/new")}>
-          <Plus className="mr-2 h-4 w-4" />
-          Nowy profil
+    <div className="max-w-4xl mx-auto space-y-6">
+      {/* Header with back button */}
+      <div className="flex items-center gap-4">
+        <Button
+          variant="outline"
+          size="icon"
+          onClick={() => navigate('/settings')}
+          className="flex-shrink-0"
+        >
+          <ArrowLeft className="h-4 w-4" />
         </Button>
+        <div>
+          <h1 className="text-2xl font-bold">Profile biznesowe</h1>
+          <p className="text-muted-foreground">Zarządzaj profilami swoich firm</p>
+        </div>
       </div>
 
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center">
-            <Building2 className="mr-2 h-5 w-5" />
-            Twoje profile firmowe
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          {(isLoading || isLoadingInvoices) ? (
-            <div className="flex justify-center py-8">Ładowanie...</div>
-          ) : profilesWithTaxDetails.length === 0 ? (
-            <div className="text-center py-8">
-              <p className="text-muted-foreground mb-4">
-                Nie masz jeszcze żadnych profili firmowych.
-              </p>
-              <Button
-                onClick={() => navigate("/settings/business-profiles/new")}
-              >
-                Dodaj pierwszy profil
-              </Button>
-            </div>
-          ) : isMobile ? (
-            // Mobile view with cards
-            <div className="space-y-4">
-              {profilesWithTaxDetails.map((profile) => (
-                <Card key={profile.id} className="overflow-hidden">
-                  <CardContent className="p-4">
-                    <div className="flex justify-between items-start">
-                      <div className="space-y-2">
-                        <div className="flex items-center">
-                          <h3 className="font-medium">{profile.name}</h3>
-                          {profile.isDefault && (
-                            <Star className="ml-2 h-4 w-4 text-yellow-500" />
-                          )}
-                        </div>
-                        <div className="text-sm text-muted-foreground">
-                          <p>NIP: {profile.taxId}</p>
-                          <p>
-                            {profile.address}, {profile.postalCode} {profile.city}
-                          </p>
-                          <p>Forma opodatkowania: {profile.tax_type === 'skala' ? 'Skala' : profile.tax_type === 'liniowy' ? 'Liniowy' : profile.tax_type === 'ryczalt' ? 'Ryczałt' : 'Nieokreślona'}</p>
-                          <p>Przychód netto z faktur: {formatCurrency(profile.totalNetIncome)}</p>
-                          <p className="font-medium">Szacowany podatek: {typeof profile.estimatedIncomeTax === 'number' ? formatCurrency(profile.estimatedIncomeTax) : profile.estimatedIncomeTax}</p>
-                          {profile.tax_type === 'skala' && (
-                            <div className="text-xs text-amber-600 mt-1">
-                              (Wymaga pełnego obliczenia z uwzględnieniem kosztów, progów podatkowych itp.)
-                            </div>
-                          )}
-                          {profile.tax_type === 'ryczalt' && (
-                            <div className="text-xs text-amber-600 mt-1">
-                              (Stawka ryczałtu zależy od rodzaju działalności - użyto przykładowej stawki 17% dla przychodu netto)
-                            </div>
-                          )}
-                          {profile.tax_type === 'liniowy' && (
-                            <div className="text-xs text-amber-600 mt-1">
-                              (Obliczone od przychodu netto - nie uwzględnia kosztów)
-                            </div>
-                          )}
-                        </div>
-                      </div>
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        onClick={() => navigate(`/settings/business-profiles/${profile.id}`)}
-                      >
-                        <Edit className="h-4 w-4" />
-                      </Button>
-                    </div>
-                  </CardContent>
-                </Card>
-              ))}
-            </div>
-          ) : (
-            // Desktop view with table
-            <div className="overflow-x-auto">
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Nazwa</TableHead>
-                    <TableHead>NIP</TableHead>
-                    <TableHead>Adres</TableHead>
-                    <TableHead>Forma opodatkowania</TableHead>
-                    <TableHead>Przychód netto (faktury)</TableHead>
-                    <TableHead>Szacowany podatek</TableHead>
-                    <TableHead className="w-10"></TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {profilesWithTaxDetails.map((profile) => (
-                    <TableRow key={profile.id}>
-                      <TableCell className="font-medium">
-                        <div className="flex items-center">
-                          {profile.name}
-                          {profile.isDefault && (
-                            <Star className="ml-2 h-4 w-4 text-yellow-500" />
-                          )}
-                        </div>
-                      </TableCell>
-                      <TableCell>{profile.taxId}</TableCell>
-                      <TableCell>
-                        {profile.address}, {profile.postalCode} {profile.city}
-                      </TableCell>
-                      <TableCell>{profile.tax_type === 'skala' ? 'Skala' : profile.tax_type === 'liniowy' ? 'Liniowy' : profile.tax_type === 'ryczalt' ? 'Ryczałt' : 'Nieokreślona'}</TableCell>
-                      <TableCell>{formatCurrency(profile.totalNetIncome)}</TableCell>
-                      <TableCell>
-                        {typeof profile.estimatedIncomeTax === 'number' ? formatCurrency(profile.estimatedIncomeTax) : profile.estimatedIncomeTax}
-                        {profile.tax_type === 'skala' && (
-                          <div className="text-xs text-amber-600 mt-1">
-                            (Wymaga pełnego obliczenia z uwzględnieniem kosztów, progów podatkowych itp.)
-                          </div>
-                        )}
-                        {profile.tax_type === 'ryczalt' && (
-                          <div className="text-xs text-amber-600 mt-1">
-                            (Stawka ryczałtu zależy od rodzaju działalności - użyto przykładowej stawki 17% dla przychodu netto)
-                          </div>
-                        )}
-                        {profile.tax_type === 'liniowy' && (
-                          <div className="text-xs text-amber-600 mt-1">
-                            (Obliczone od przychodu netto - nie uwzględnia kosztów)
-                          </div>
-                        )}
-                      </TableCell>
-                      <TableCell>
-                        <DropdownMenu>
-                          <DropdownMenuTrigger asChild>
-                            <Button
-                              variant="ghost"
-                              className="h-8 w-8 p-0"
-                              aria-label="Open menu"
-                            >
-                              <MoreVertical className="h-4 w-4" />
-                            </Button>
-                          </DropdownMenuTrigger>
-                          <DropdownMenuContent align="end">
-                            <DropdownMenuItem
-                              onClick={() => navigate(`/settings/business-profiles/${profile.id}`)}
-                            >
-                              <Edit className="mr-2 h-4 w-4" />
-                              Edytuj
-                            </DropdownMenuItem>
-                          </DropdownMenuContent>
-                        </DropdownMenu>
-                      </TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
-            </div>
-          )}
-        </CardContent>
-      </Card>
+      {/* Content will be handled by the main settings page now */}
+      <div className="text-center py-8">
+        <Building2 className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
+        <p className="text-muted-foreground">Ta strona została przeniesiona do głównych ustawień</p>
+        <Button onClick={() => navigate('/settings')} className="mt-4">
+          Wróć do ustawień
+        </Button>
+      </div>
     </div>
   );
 };
