@@ -92,7 +92,7 @@ const Welcome = () => {
           </p>
           <OnboardingProfileForm onSuccess={() => setStep(2)} />
           <StepNavigation
-            canGoBack
+            canGoBack={true}
             onBack={() => setStep(0)}
             onNext={() => setStep(2)}
             nextDisabled={false}
@@ -122,7 +122,7 @@ const Welcome = () => {
             }}
           />
           <StepNavigation
-            canGoBack
+            canGoBack={true}
             onBack={() => setStep(1)}
             onNext={() => setStep(3)}
             nextDisabled={!hasBusinessProfile}
@@ -144,7 +144,7 @@ const Welcome = () => {
           </p>
           <OnboardingCustomerForm onSuccess={() => setHasClient(true)} />
           <StepNavigation
-            canGoBack
+            canGoBack={true}
             onBack={() => setStep(2)}
             onNext={() => setStep(4)}
             nextDisabled={!hasClient}
@@ -168,7 +168,7 @@ const Welcome = () => {
             onSkip={() => setStep(5)}
           />
           <StepNavigation
-            canGoBack
+            canGoBack={true}
             onBack={() => setStep(3)}
             onNext={() => setStep(5)}
             nextDisabled={!hasProduct}
@@ -191,12 +191,6 @@ const Welcome = () => {
           <Button className="mb-6" onClick={() => navigate('/income/new')}>
             Wystaw fakturę
           </Button>
-          <StepNavigation
-            canGoBack
-            onBack={() => setStep(4)}
-            onNext={() => setStep(6)}
-            nextDisabled={false}
-          />
         </>
       ),
     },

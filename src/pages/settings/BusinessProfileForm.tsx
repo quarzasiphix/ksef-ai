@@ -95,8 +95,7 @@ const BusinessProfileForm = ({
         isDefault: values.isDefault,
         logo: initialData?.logo || "", // Preserve existing logo if any
         user_id: user.id, // Enforce RLS: always include user_id
-        tax_type: values.tax_type,
-        accountant_email: values.accountant_email || "",
+        tax_type: values.tax_type as ('skala' | 'liniowy' | 'ryczalt') | undefined,
       };
 
       await saveBusinessProfile(profile);
@@ -361,22 +360,24 @@ const BusinessProfileForm = ({
           />
         </div>
         
-        <div
-      className="fixed bottom-0 left-0 w-full z-[100] bg-background border-t p-3 py-4 mb-[13px] flex justify-end space-x-2 pointer-events-auto sm:static sm:bg-transparent sm:border-0 sm:p-0 sm:pt-4 sm:mb-0"
-      style={{ boxShadow: '0 -2px 8px rgba(0,0,0,0.04)', marginBottom: 0, paddingBottom: 12 }}
-    >
-          <Button
-            type="button"
-            variant="outline"
-            onClick={() => navigate("/settings")}
-            className={isMobile ? 'w-full' : ''}
+        {!onSuccess && (
+          <div
+            className="fixed bottom-0 left-0 w-full z-[100] bg-background border-t p-3 py-4 mb-[13px] flex justify-end space-x-2 pointer-events-auto sm:static sm:bg-transparent sm:border-0 sm:p-0 sm:pt-4 sm:mb-0"
+            style={{ boxShadow: '0 -2px 8px rgba(0,0,0,0.04)', marginBottom: 0, paddingBottom: 12 }}
           >
-            Anuluj
-          </Button>
-          <Button type="submit" className={isMobile ? 'w-full' : ''}>
-            {isEditing ? "Aktualizuj" : "Utwórz"} profil
-          </Button>
-        </div>
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => navigate("/settings")}
+              className={isMobile ? 'w-full' : ''}
+            >
+              Anuluj
+            </Button>
+            <Button type="submit" className={isMobile ? 'w-full' : ''}>
+              {isEditing ? "Aktualizuj" : "Utwórz"} profil
+            </Button>
+          </div>
+        )}
       </form>
     </Form>
   );
