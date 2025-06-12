@@ -12,7 +12,7 @@ export default function PublicHeader() {
   const navigate = useNavigate();
 
   return (
-    <header className="border-b border-neutral-800">
+    <header className="sticky top-0 z-50 border-b border-neutral-800 bg-neutral-900/80 backdrop-blur-lg supports-[backdrop-filter]:bg-neutral-900/60">
       <div className="container mx-auto px-4">
         <div className="flex items-center justify-between h-16">
           {/* Logo */}

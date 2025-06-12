@@ -76,9 +76,10 @@ const AppSidebar = () => {
 
   const getNavClassName = (path: string) => {
     return cn(
-      "flex items-center gap-3 px-3 py-2 rounded-lg transition-all duration-200 w-full justify-start",
-      isActive(path) 
-        ? "bg-primary text-primary-foreground font-medium shadow-sm" 
+      "flex items-center px-3 py-2 rounded-lg transition-all duration-200 w-full",
+      isCollapsed ? "justify-center" : "gap-3 justify-start",
+      isActive(path)
+        ? "bg-primary text-primary-foreground font-medium shadow-sm"
         : "hover:bg-muted text-foreground/80 hover:text-foreground dark:text-foreground/90 dark:hover:text-foreground"
     );
   };
@@ -89,7 +90,7 @@ const AppSidebar = () => {
   };
 
   return (
-    <Sidebar className="border-r-2">
+    <Sidebar className={cn("border-r-2 transition-all duration-300", isCollapsed ? "w-32" : "w-64")}>
       <SidebarHeader className="border-b">
         <div className="flex items-center gap-2 px-2">
           {!isCollapsed && (
@@ -124,9 +125,19 @@ const AppSidebar = () => {
                     asChild
                     tooltip={isCollapsed ? action.title : undefined}
                   >
-                    <NavLink to={action.path} className="flex items-center gap-3 px-3 py-2 rounded-lg bg-muted hover:bg-muted/80 transition-colors w-full justify-start dark:bg-muted/50 dark:hover:bg-muted/70">
+                    <NavLink
+                      to={action.path}
+                      className={cn(
+                        "flex items-center rounded-lg bg-muted hover:bg-muted/80 transition-colors w-full dark:bg-muted/50 dark:hover:bg-muted/70",
+                        isCollapsed ? "justify-center h-10 px-0" : "gap-3 px-3 py-2"
+                      )}
+                    >
                       <action.icon className={`h-5 w-5 flex-shrink-0 ${action.color} dark:opacity-90`} />
-                      {!isCollapsed && <span className="font-medium text-foreground/90 dark:text-foreground">{action.title}</span>}
+                      {!isCollapsed && (
+                        <span className="font-medium text-foreground/90 dark:text-foreground">
+                          {action.title}
+                        </span>
+                      )}
                     </NavLink>
                   </SidebarMenuButton>
                 </SidebarMenuItem>

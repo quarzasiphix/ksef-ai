@@ -77,6 +77,7 @@ const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
 
   return (
     <BusinessProfileProvider>
+      <HeartbeatHandler />
       <SidebarProvider>
         <Layout>{children}</Layout>
       </SidebarProvider>
@@ -109,7 +110,6 @@ const App = () => {
           <Toaster />
           <Sonner position="top-center" offset={10} />
           <AuthProvider>
-            <HeartbeatHandler />
             <Router>
               <Routes>
                 {/* Public routes */}

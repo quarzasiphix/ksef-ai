@@ -2,8 +2,10 @@ import React, { createContext, useState, useEffect, useContext } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useQueryClient } from "@tanstack/react-query";
 import { User, Session } from "@supabase/supabase-js";
-import PremiumCheckoutModal from "@/components/premium/PremiumCheckoutModal";
+import ReactLazy from "react";
 import { checkPremiumStatus } from "@/integrations/supabase/repositories/PremiumRepository";
+
+const PremiumCheckoutModalLazy = ReactLazy.lazy(() => import("@/components/premium/PremiumCheckoutModal"));
 
 export interface AuthContextType {
   user: User | null;
@@ -112,10 +114,14 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   return (
     <AuthContext.Provider value={{ user, loading, login, register, logout, isPremium, setIsPremium, openPremiumDialog, supabase }}>
       {children}
-      <PremiumCheckoutModal 
-        isOpen={showPremiumModal} 
-        onClose={() => setShowPremiumModal(false)} 
-      />
+      {showPremiumModal && (
+        <ReactLazy.Suspense fallback={null}>
+          <PremiumCheckoutModalLazy
+            isOpen={showPremiumModal}
+            onClose={() => setShowPremiumModal(false)}
+          />
+        </ReactLazy.Suspense>
+      )}
     </AuthContext.Provider>
   );
 };
