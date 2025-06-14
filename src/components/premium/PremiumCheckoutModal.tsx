@@ -9,7 +9,7 @@ import { Badge } from "@/components/ui/badge";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Label } from "@/components/ui/label";
 import { BlikPaymentModal } from "./BlikPaymentModal";
-import { checkTrialEligibility, startFreeTrial } from "@/integrations/supabase/repositories/PremiumRepository";
+import { checkTrialEligibility } from "@/integrations/supabase/repositories/PremiumRepository";
 
 interface PremiumCheckoutModalProps {
   isOpen: boolean;
@@ -103,26 +103,27 @@ const PremiumCheckoutModal: React.FC<PremiumCheckoutModalProps> = ({ isOpen, onC
   };
 
   const handleStartTrial = async () => {
-    if (!user) return;
-
-    // Double check eligibility before proceeding
-    const isEligible = await checkTrialEligibility(user.id);
-    if (!isEligible) {
-        toast.error("Nie jesteś uprawniony do darmowego okresu próbnego.");
-        setIsTrialEligible(false); // Update state if it somehow changed
-        return;
-    }
+    if (!user || !supabase) return;
 
     setIsLoading('trial');
-    const { success, error } = await startFreeTrial(user.id);
-    if (success) {
-        toast.success("7-dniowy darmowy okres próbny został aktywowany!");
-        setIsPremium(true); // Update context state to reflect premium status
-        onClose();
-    } else {
-        toast.error(error?.message || "Nie udało się rozpocząć okresu próbnego.");
+    try {
+      const { error } = await supabase.functions.invoke('start-free-trial');
+
+      if (error) {
+        throw new Error(error.message || "Nie udało się rozpocząć okresu próbnego.");
+      }
+      
+      toast.success("7-dniowy darmowy okres próbny został aktywowany!");
+      setIsPremium(true); // Update context state to reflect premium status
+      onClose();
+    } catch (error: any) {
+        toast.error(error.message);
+        if (error.message.includes('eligible')) {
+            setIsTrialEligible(false);
+        }
+    } finally {
+        setIsLoading(null);
     }
-    setIsLoading(null);
   };
 
   const handlePlanSelect = (plan: PlanDetails) => {

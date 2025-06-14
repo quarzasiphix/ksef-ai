@@ -13,6 +13,7 @@ import { ArrowLeft } from "lucide-react";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import CustomerForm from "@/components/customers/CustomerForm";
 import { BusinessProfileSelector } from "@/components/invoices/selectors/BusinessProfileSelector";
+import { useBusinessProfile } from "@/context/BusinessProfileContext";
 
 const ZUS_NIP = "5220005994";
 const ZUS_NAME = "ZAKŁAD UBEZPIECZEŃ SPOŁECZNYCH";
@@ -21,11 +22,12 @@ const NewExpense = () => {
   const { user } = useAuth();
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
+  const { selectedProfileId } = useBusinessProfile();
   const [isLoading, setIsLoading] = useState(false);
   const [description, setDescription] = useState("");
   const [date, setDate] = useState("");
   const [items, setItems] = useState<InvoiceItem[]>([]);
-  const [businessProfileId, setBusinessProfileId] = useState<string>("");
+  const [businessProfileId, setBusinessProfileId] = useState<string>(selectedProfileId || "");
   const [isZus, setIsZus] = useState(false);
   const [customerId, setCustomerId] = useState<string>("");
   const { customers } = useGlobalData();
@@ -60,7 +62,10 @@ const NewExpense = () => {
     if (!customerId && supplierCustomers.length > 0) {
       setCustomerId(supplierCustomers[0].id);
     }
-  }, [searchParams, supplierCustomers, customerId]);
+    if (!businessProfileId && selectedProfileId) {
+        setBusinessProfileId(selectedProfileId);
+    }
+  }, [searchParams, supplierCustomers, customerId, businessProfileId, selectedProfileId]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
