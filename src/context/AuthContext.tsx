@@ -1,3 +1,4 @@
+
 import React, { createContext, useState, useEffect, useContext } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useQueryClient } from "@tanstack/react-query";
@@ -11,7 +12,8 @@ const PremiumCheckoutModalLazy = ReactLazy.lazy(() => import("@/components/premi
 export interface AuthContextType {
   user: User | null;
   isLoading: boolean;
-  login: (email: string, password: string) => Promise<{ user: User | null; session: Session | null }>;
+  loading: boolean; // For backward compatibility
+  login: (email: string, password:string) => Promise<{ user: User | null; session: Session | null }>;
   register: (email: string, password: string) => Promise<{ user: User | null; session: Session | null }>;
   logout: () => Promise<void>;
   isPremium: boolean;
@@ -141,7 +143,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   };
 
   return (
-    <AuthContext.Provider value={{ user, isLoading: loading, login, register, logout, isPremium, setIsPremium, openPremiumDialog, supabase, signInWithGoogle, isModalOpen: showPremiumModal }}>
+    <AuthContext.Provider value={{ user, isLoading: loading, loading: loading, login, register, logout, isPremium, setIsPremium, openPremiumDialog, supabase, signInWithGoogle, isModalOpen: showPremiumModal }}>
       {children}
       {showPremiumModal && (
         <ReactLazy.Suspense fallback={null}>
