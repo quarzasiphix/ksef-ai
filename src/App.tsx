@@ -1,3 +1,4 @@
+
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -94,9 +95,12 @@ const PublicRoute = ({ children }: { children: React.ReactNode }) => {
     // Show gold if premium is being checked (loading && user exists but isPremium is still falsey)
     return <AppLoadingScreen loading={true} checkingPremium={!!user && loading} />;
   }
-  // Only redirect to dashboard if on home page and user is logged in
+  
+  // The redirection logic is now handled within PublicLayout to correctly
+  // determine whether to show the welcome/onboarding screen or the dashboard.
+  // This was preventing the check for a business profile after an OAuth login.
   if (user && location.pathname === '/') {
-    return <Navigate to="/dashboard" replace />;
+    // Intentionally left blank. PublicLayout will handle redirection.
   }
 
   return <PublicLayout>{children}</PublicLayout>;
