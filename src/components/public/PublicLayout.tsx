@@ -1,8 +1,9 @@
-import { useNavigate, useLocation } from "react-router-dom";
+
+import React, { useEffect } from "react";
+import { useNavigate, useLocation, Link } from "react-router-dom";
 import { useAuth } from "@/hooks/useAuth";
 import PublicHeader from "./PublicHeader";
 import { Button } from "@/components/ui/button";
-import { Link } from "react-router-dom";
 import { 
   FileText, 
   Receipt, 
@@ -22,6 +23,7 @@ import {
   LineChart
 } from "lucide-react";
 import { BusinessProfileProvider } from "@/context/BusinessProfileContext";
+import { getBusinessProfiles } from "@/integrations/supabase/repositories/businessProfileRepository";
 
 interface PublicLayoutProps {
   children: React.ReactNode;
@@ -30,7 +32,22 @@ interface PublicLayoutProps {
 export default function PublicLayout({ children }: PublicLayoutProps) {
   const navigate = useNavigate();
   const location = useLocation();
-  const { user } = useAuth();
+  const { user, loading } = useAuth();
+
+  useEffect(() => {
+    // After login (especially OAuth), user might land on `/`.
+    // If so, check if they need to be onboarded or sent to dashboard.
+    // We wait for auth state to be resolved (!loading) before checking.
+    if (!loading && user && (location.pathname === '/' || location.pathname.startsWith('/auth'))) {
+      getBusinessProfiles(user.id).then(profiles => {
+        if (profiles.length === 0) {
+          navigate("/welcome");
+        } else {
+          navigate("/dashboard");
+        }
+      });
+    }
+  }, [user, loading, navigate, location.pathname]);
 
   return (
     <BusinessProfileProvider>
