@@ -141,10 +141,10 @@ const Register = () => {
           <>
             <div className="text-center mb-8 animate-fade-in">
               <h1 className="text-3xl md:text-4xl font-bold tracking-tight bg-clip-text text-transparent bg-gradient-to-r from-amber-400 via-red-500 to-pink-500">
-                Zacznij z Ai Faktura
+                Najlepszy system fakturowy dla małych firm
               </h1>
               <p className="mt-4 text-lg text-muted-foreground max-w-xl mx-auto">
-                Wpisz swoje dane, aby utworzyć konto i dołączyć do tysięcy zadowolonych przedsiębiorców.
+                Stwórz darmowe konto i dołącz do tysięcy przedsiębiorców, którzy rozwijają swój biznes z Ai Faktura.
               </p>
             </div>
             <div className="p-px bg-gradient-to-br from-border to-transparent rounded-lg animate-fade-in">
@@ -216,7 +216,7 @@ const Register = () => {
               </Card>
             </div>
              <div className="mt-8 text-center text-muted-foreground text-sm animate-fade-in">
-                <p>Dołącz do tysięcy przedsiębiorców, którzy zaufali Ai Faktura.</p>
+                <p>Zaufaj liderom w branży i zacznij oszczędzać czas już dziś.</p>
                 <p className="font-medium text-foreground mt-1">Twój sukces to nasz priorytet.</p>
             </div>
           </>
