@@ -1,4 +1,3 @@
-
 import React, { useState } from "react";
 import { useNavigate, Link } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
@@ -32,8 +31,7 @@ const Register = () => {
   const [repeatPassword, setRepeatPassword] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [acceptPrivacyPolicy, setAcceptPrivacyPolicy] = useState(false);
-  const [acceptTOS, setAcceptTOS] = useState(false);
+  const [acceptTerms, setAcceptTerms] = useState(false);
   const [registered, setRegistered] = useState(false);
   const navigate = useNavigate();
   const { login } = useAuth();
@@ -53,8 +51,8 @@ const Register = () => {
       return;
     }
 
-    if (!acceptPrivacyPolicy || !acceptTOS) {
-      setError("Musisz zaakceptować politykę prywatności i regulamin.");
+    if (!acceptTerms) {
+      setError("Musisz zaakceptować regulamin i politykę prywatności.");
       return;
     }
 
@@ -154,15 +152,9 @@ const Register = () => {
                   {error && <div className="text-red-500 text-sm font-medium">{error}</div>}
                   <div className="space-y-3 pt-2">
                     <div className="flex items-start space-x-2.5">
-                      <Checkbox id="privacy" checked={acceptPrivacyPolicy} onCheckedChange={(checked) => setAcceptPrivacyPolicy(!!checked)} className="mt-0.5" required />
-                      <Label htmlFor="privacy" className="text-sm font-normal text-muted-foreground">
-                        Akceptuję <Link to="/policies/privacy" target="_blank" className="underline hover:text-primary">Politykę prywatności</Link>
-                      </Label>
-                    </div>
-                    <div className="flex items-start space-x-2.5">
-                      <Checkbox id="tos" checked={acceptTOS} onCheckedChange={(checked) => setAcceptTOS(!!checked)} className="mt-0.5" required />
-                      <Label htmlFor="tos" className="text-sm font-normal text-muted-foreground">
-                        Akceptuję <Link to="/policies/tos" target="_blank" className="underline hover:text-primary">Regulamin serwisu</Link>
+                      <Checkbox id="terms" checked={acceptTerms} onCheckedChange={(checked) => setAcceptTerms(!!checked)} className="mt-0.5" required />
+                      <Label htmlFor="terms" className="text-sm font-normal text-muted-foreground">
+                        Akceptuję <Link to="/policies/tos" target="_blank" className="underline hover:text-primary">Regulamin</Link> oraz <Link to="/policies/privacy" target="_blank" className="underline hover:text-primary">Politykę prywatności</Link>
                       </Label>
                     </div>
                   </div>
