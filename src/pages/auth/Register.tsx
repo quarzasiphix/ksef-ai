@@ -153,6 +153,20 @@ const Register = () => {
                   <CardTitle>Załóż darmowe konto</CardTitle>
                   <CardDescription>To zajmie tylko chwilę.</CardDescription>
                 </CardHeader>
+                <CardContent className="pt-4 pb-4">
+                  <Button variant="outline" className="w-full" onClick={handleGoogleSignIn} disabled={loading}>
+                    <GoogleIcon className="mr-2 h-4 w-4" />
+                    Zarejestruj się z Google
+                  </Button>
+                </CardContent>
+                <div className="relative my-0 px-6">
+                  <div className="absolute inset-0 flex items-center">
+                    <span className="w-full border-t" />
+                  </div>
+                  <div className="relative flex justify-center text-xs uppercase">
+                    <span className="bg-card px-2 text-muted-foreground">LUB UŻYJ ADRESU E-MAIL</span>
+                  </div>
+                </div>
                 <CardContent>
                   <form onSubmit={handleRegister} className="space-y-4">
                     <div className="grid gap-2">
@@ -190,20 +204,6 @@ const Register = () => {
                       {!loading && <ArrowRight className="ml-2 h-4 w-4" />}
                     </Button>
                   </form>
-                </CardContent>
-                <div className="relative my-0 px-6">
-                  <div className="absolute inset-0 flex items-center">
-                    <span className="w-full border-t" />
-                  </div>
-                  <div className="relative flex justify-center text-xs uppercase">
-                    <span className="bg-card px-2 text-muted-foreground">LUB</span>
-                  </div>
-                </div>
-                <CardContent className="pt-4 pb-4">
-                  <Button variant="outline" className="w-full" onClick={handleGoogleSignIn} disabled={loading}>
-                    <GoogleIcon className="mr-2 h-4 w-4" />
-                    Zarejestruj się z Google
-                  </Button>
                 </CardContent>
                 <CardFooter className="text-center text-sm pt-0">
                   <p className="text-muted-foreground w-full">
