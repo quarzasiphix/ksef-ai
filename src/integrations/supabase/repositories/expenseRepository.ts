@@ -109,6 +109,7 @@ export const saveExpense = async (expense: Omit<Expense, 'id' | 'createdAt'> & {
     amount: expense.amount,
     currency: expense.currency || 'PLN',
     description: expense.description || '',
+    customer_id: expense.customerId || null,
     // Additional optional fields below
   };
 

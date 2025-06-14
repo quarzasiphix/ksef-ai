@@ -3,7 +3,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Product, InvoiceType, VatType } from "@/types";
+import { Product, InvoiceType, VatType, TransactionType } from "@/types";
 import { Edit, Plus } from "lucide-react";
 import { saveProduct } from "@/integrations/supabase/repositories/productRepository";
 import { toast } from "sonner";
@@ -13,6 +13,7 @@ interface ProductEditDialogProps {
   mode: 'edit' | 'create';
   initialProduct?: Partial<Product>;
   documentType: InvoiceType;
+  transactionType: TransactionType;
   onProductSaved: (product: Omit<Product, 'id'> & { id?: string }) => void;
   onProductSavedAndSync?: (product: Omit<Product, 'id'> & { id?: string }) => void;
   trigger?: React.ReactNode;
@@ -24,6 +25,7 @@ export const ProductEditDialog: React.FC<ProductEditDialogProps> = ({
   mode,
   initialProduct = {},
   documentType,
+  transactionType,
   onProductSaved,
   onProductSavedAndSync,
   trigger,
@@ -72,7 +74,8 @@ export const ProductEditDialog: React.FC<ProductEditDialogProps> = ({
         unitPrice: Number(unitPrice),
         vatRate: vatRate === "zw" ? Number(VatType.ZW) : Number(vatRate), // Convert "zw" to -1 for VAT-exempt
         unit,
-        user_id: userId
+        user_id: userId,
+        product_type: transactionType === TransactionType.EXPENSE ? 'expense' : 'income'
       };
       
       if (mode === 'edit') {
@@ -90,7 +93,8 @@ export const ProductEditDialog: React.FC<ProductEditDialogProps> = ({
           unitPrice: Number(unitPrice),
           vatRate: vatRate === "zw" ? Number(VatType.ZW) : Number(vatRate), // Convert "zw" to -1 for VAT-exempt
           unit,
-          user_id: ""
+          user_id: "",
+          product_type: transactionType === TransactionType.EXPENSE ? 'expense' : 'income'
         });
         toast.success("Produkt został dodany do dokumentu");
       }

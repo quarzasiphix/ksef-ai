@@ -201,6 +201,7 @@ export type Database = {
           business_profile_id: string | null
           created_at: string | null
           currency: string | null
+          customer_id: string | null
           description: string | null
           id: string
           issue_date: string
@@ -211,6 +212,7 @@ export type Database = {
           business_profile_id?: string | null
           created_at?: string | null
           currency?: string | null
+          customer_id?: string | null
           description?: string | null
           id?: string
           issue_date: string
@@ -221,6 +223,7 @@ export type Database = {
           business_profile_id?: string | null
           created_at?: string | null
           currency?: string | null
+          customer_id?: string | null
           description?: string | null
           id?: string
           issue_date?: string
@@ -232,6 +235,13 @@ export type Database = {
             columns: ["business_profile_id"]
             isOneToOne: false
             referencedRelation: "business_profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "expenses_customer_id_fkey"
+            columns: ["customer_id"]
+            isOneToOne: false
+            referencedRelation: "customers"
             referencedColumns: ["id"]
           },
         ]

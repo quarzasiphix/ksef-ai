@@ -1,4 +1,3 @@
-
 import React, { useState } from "react";
 import { useNavigate, Link } from "react-router-dom";
 import { useAuth } from "@/hooks/useAuth";
@@ -40,8 +39,6 @@ const Login = () => {
         } else {
           navigate("/dashboard");
         }
-      } else {
-        navigate("/dashboard");
       }
     } catch (err: any) {
       if (err.message.includes("Invalid login credentials")) {
@@ -82,8 +79,6 @@ const Login = () => {
         } else {
           navigate("/dashboard");
         }
-      } else {
-        navigate("/dashboard");
       }
     } catch (err: any) {
       setError("Nie udało się zalogować na konto testowe.");
