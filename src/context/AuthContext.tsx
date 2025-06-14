@@ -1,13 +1,11 @@
-
 import React, { createContext, useState, useEffect, useContext } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useQueryClient } from "@tanstack/react-query";
 import { User, Session } from "@supabase/supabase-js";
-import ReactLazy from "react";
 import { checkPremiumStatus } from "@/integrations/supabase/repositories/PremiumRepository";
 import { cleanupAuthState } from "@/lib/auth-utils";
 
-const PremiumCheckoutModalLazy = ReactLazy.lazy(() => import("@/components/premium/PremiumCheckoutModal"));
+const PremiumCheckoutModalLazy = React.lazy(() => import("@/components/premium/PremiumCheckoutModal"));
 
 export interface AuthContextType {
   user: User | null;

@@ -1,8 +1,13 @@
+
 import React, { useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, Link } from "react-router-dom";
 import { useAuth } from "@/hooks/useAuth";
-import { LogIn, AlertCircle, UserCircle } from 'lucide-react';
 import { getBusinessProfiles } from '@/integrations/supabase/repositories/businessProfileRepository';
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
+import { Mail, ArrowRight, Lock, UserCircle } from "lucide-react";
 
 const GoogleIcon = (props: React.SVGProps<SVGSVGElement>) => (
     <svg role="img" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" {...props}>
@@ -26,12 +31,15 @@ const Login = () => {
     setError(null);
     try {
       const { user } = await login(email, password);
-      setCheckingOnboarding(true);
-      // Check onboarding status (business profile)
-      const profiles = user ? await getBusinessProfiles(user.id) : [];
-      setCheckingOnboarding(false);
-      if (profiles.length === 0) {
-        navigate("/welcome");
+      if (user) {
+        setCheckingOnboarding(true);
+        const profiles = await getBusinessProfiles(user.id);
+        setCheckingOnboarding(false);
+        if (profiles.length === 0) {
+          navigate("/welcome");
+        } else {
+          navigate("/dashboard");
+        }
       } else {
         navigate("/dashboard");
       }
@@ -65,11 +73,15 @@ const Login = () => {
     setError(null);
     try {
       const { user } = await login('test@quarza.online', 'nigga123');
-      setCheckingOnboarding(true);
-      const profiles = user ? await getBusinessProfiles(user.id) : [];
-      setCheckingOnboarding(false);
-      if (profiles.length === 0) {
-        navigate("/welcome");
+      if (user) {
+        setCheckingOnboarding(true);
+        const profiles = await getBusinessProfiles(user.id);
+        setCheckingOnboarding(false);
+        if (profiles.length === 0) {
+          navigate("/welcome");
+        } else {
+          navigate("/dashboard");
+        }
       } else {
         navigate("/dashboard");
       }
@@ -82,133 +94,90 @@ const Login = () => {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-neutral-900 via-neutral-800 to-neutral-900 flex flex-col items-center justify-center p-4">
-      <div className="w-full max-w-md">
-        <div className="text-center mb-10">
-          <LogIn className="mx-auto text-primary h-16 w-16 mb-4" />
-          <h1 className="text-4xl font-bold text-white">Witaj w KsiegaI</h1>
-          <p className="text-neutral-400 mt-2">Zaloguj się, aby kontynuować.</p>
-        </div>
-
-        {checkingOnboarding && (
-          <div className="flex items-center justify-center py-8">
-            <svg className="animate-spin -ml-1 mr-3 h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-              <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-              <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-            </svg>
-            <span className="text-white">Sprawdzanie konfiguracji konta...</span>
-          </div>
-        )}
-
-        <form 
-          onSubmit={handleLogin} 
-          className="bg-neutral-800/70 backdrop-blur-sm p-8 rounded-xl shadow-2xl border border-neutral-700 space-y-6"
-        >
-          <div>
-            <label htmlFor="email" className="block text-sm font-medium text-neutral-300 mb-1.5">
-              Adres Email
-            </label>
-            <div className="relative">
-              <input
-                id="email"
-                type="email"
-                autoComplete="email"
-                className="w-full border border-neutral-700 bg-neutral-900/80 text-white rounded-lg px-4 py-3 focus:outline-none focus:ring-2 focus:ring-primary focus:border-primary transition-shadow duration-200 shadow-sm"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                required
-                placeholder="twoj@email.com"
-              />
+    <div className="flex flex-col items-center justify-center w-full py-12">
+      <div className="w-full max-w-lg">
+          <>
+            <div className="text-center mb-8 animate-fade-in">
+              <h1 className="text-3xl md:text-4xl font-bold tracking-tight bg-clip-text text-transparent bg-gradient-to-r from-amber-400 via-red-500 to-pink-500">
+                Witaj z powrotem!
+              </h1>
+              <p className="mt-4 text-lg text-muted-foreground max-w-xl mx-auto">
+                Zaloguj się, aby kontynuować zarządzanie swoim biznesem.
+              </p>
             </div>
-          </div>
 
-          <div>
-            <label htmlFor="password" className="block text-sm font-medium text-neutral-300 mb-1.5">
-              Hasło
-            </label>
-            <div className="relative">
-              <input
-                id="password"
-                type="password"
-                autoComplete="current-password"
-                className="w-full border border-neutral-700 bg-neutral-900/80 text-white rounded-lg px-4 py-3 focus:outline-none focus:ring-2 focus:ring-primary focus:border-primary transition-shadow duration-200 shadow-sm"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                required
-                placeholder="••••••••"
-              />
-            </div>
-          </div>
-
-          {error && (
-            <div className="flex items-center bg-red-500/10 border border-red-500/30 text-red-400 px-4 py-3 rounded-lg text-sm">
-              <AlertCircle className="h-5 w-5 mr-3 flex-shrink-0" />
-              <span>{error}</span>
-            </div>
-          )}
-
-          <button
-            type="submit"
-            className="w-full bg-primary hover:bg-primary/90 text-white font-semibold py-3 px-4 rounded-lg shadow-md hover:shadow-lg transition-all duration-300 ease-in-out transform hover:-translate-y-0.5 disabled:opacity-70 disabled:cursor-not-allowed disabled:transform-none disabled:shadow-none flex items-center justify-center"
-            disabled={loading}
-          >
-            {loading ? (
-              <>
-                <svg className="animate-spin -ml-1 mr-3 h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+            {checkingOnboarding ? (
+              <div className="flex items-center justify-center py-8">
+                <svg className="animate-spin -ml-1 mr-3 h-5 w-5 text-primary" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
                   <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
                   <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
                 </svg>
-                Logowanie...
-              </>
+                <span className="text-foreground">Sprawdzanie konfiguracji konta...</span>
+              </div>
             ) : (
-              "Zaloguj się"
+            <div className="p-px bg-gradient-to-br from-border to-transparent rounded-lg animate-fade-in">
+              <Card className="w-full border-0">
+                <CardHeader>
+                  <CardTitle>Zaloguj się do swojego konta</CardTitle>
+                  <CardDescription>Wpisz swoje dane, aby uzyskać dostęp.</CardDescription>
+                </CardHeader>
+                 <CardContent className="pt-4 pb-4 space-y-2">
+                  <Button variant="outline" className="w-full" onClick={handleGoogleLogin} disabled={loading}>
+                    <GoogleIcon className="mr-2 h-4 w-4" />
+                    Zaloguj się z Google
+                  </Button>
+                   <Button variant="secondary" className="w-full" onClick={handleTestAccountLogin} disabled={loading}>
+                    <UserCircle className="mr-2 h-4 w-4" />
+                    Kontynuuj jako tester
+                  </Button>
+                </CardContent>
+                <div className="relative my-0 px-6">
+                  <div className="absolute inset-0 flex items-center">
+                    <span className="w-full border-t" />
+                  </div>
+                  <div className="relative flex justify-center text-xs uppercase">
+                    <span className="bg-card px-2 text-muted-foreground">LUB UŻYJ ADRESU E-MAIL</span>
+                  </div>
+                </div>
+                <CardContent>
+                  <form onSubmit={handleLogin} className="space-y-4">
+                    <div className="grid gap-2">
+                      <Label htmlFor="email">Email</Label>
+                      <div className="relative">
+                        <Mail className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                        <Input id="email" type="email" value={email} onChange={(e) => setEmail(e.target.value)} required placeholder="email@przyklad.com" className="pl-10" />
+                      </div>
+                    </div>
+                    <div className="grid gap-2">
+                      <Label htmlFor="password">Hasło</Label>
+                      <div className="relative">
+                        <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                        <Input id="password" type="password" value={password} onChange={(e) => setPassword(e.target.value)} required placeholder="••••••••" className="pl-10" />
+                      </div>
+                    </div>
+                    {error && <div className="text-red-500 text-sm font-medium">{error}</div>}
+                    <Button type="submit" className="w-full" disabled={loading}>
+                      {loading && email !== 'test@quarza.online' ? "Logowanie..." : "Zaloguj się"}
+                      {!loading && <ArrowRight className="ml-2 h-4 w-4" />}
+                    </Button>
+                  </form>
+                </CardContent>
+                <CardFooter className="text-center text-sm pt-0">
+                  <p className="text-muted-foreground w-full">
+                    Nie masz jeszcze konta?{' '}
+                    <Link to="/auth/register" className="underline hover:text-primary font-medium text-primary">
+                      Załóż darmowe konto
+                    </Link>
+                  </p>
+                </CardFooter>
+              </Card>
+            </div>
             )}
-          </button>
-
-          <div className="text-center">
-            <span className="text-neutral-400 text-sm">Nie masz konta? </span>
-            <button
-              type="button"
-              className="font-medium text-primary hover:text-primary/80 text-sm transition-colors duration-200"
-              onClick={() => navigate("/auth/register")}
-            >
-              Załóż konto
-            </button>
-          </div>
-        </form>
-
-        <div className="mt-8 text-center">
-           <div className="relative my-6">
-            <div className="absolute inset-0 flex items-center" aria-hidden="true">
-              <div className="w-full border-t border-neutral-700"></div>
+             <div className="mt-8 text-center text-muted-foreground text-sm animate-fade-in">
+                <p>Twoje dane są u nas bezpieczne.</p>
+                <p className="font-medium text-foreground mt-1">Logowanie jest szyfrowane.</p>
             </div>
-            <div className="relative flex justify-center">
-              <span className="bg-neutral-800/70 px-3 text-sm text-neutral-400 rounded-md">Lub</span>
-            </div>
-          </div>
-
-          <div className="space-y-4">
-            <button
-              onClick={handleGoogleLogin}
-              disabled={loading}
-              className="w-full bg-white hover:bg-gray-100 text-neutral-900 font-semibold py-3 px-4 rounded-lg shadow-md hover:shadow-lg transition-all duration-300 ease-in-out transform hover:-translate-y-0.5 disabled:opacity-70 disabled:cursor-not-allowed disabled:transform-none disabled:shadow-none flex items-center justify-center"
-            >
-              <GoogleIcon className="h-5 w-5 mr-2" />
-              Kontynuuj z Google
-            </button>
-            <button
-              onClick={handleTestAccountLogin}
-              disabled={loading}
-              className="w-full bg-amber-600/80 hover:bg-amber-600 text-white font-semibold py-3 px-4 rounded-lg shadow-md hover:shadow-lg transition-all duration-300 ease-in-out transform hover:-translate-y-0.5 disabled:opacity-70 disabled:cursor-not-allowed disabled:transform-none disabled:shadow-none flex items-center justify-center"
-            >
-              <UserCircle className="h-5 w-5 mr-2" />
-              {loading && email === 'test@quarza.online' ? 'Logowanie...' : 'Kontynuuj jako tester'}
-            </button>
-          </div>
-          <p className="mt-3 text-xs text-neutral-500">
-            Konto testowe zawiera przykładowe dane do demonstracji.
-          </p>
-        </div>
+          </>
       </div>
     </div>
   );

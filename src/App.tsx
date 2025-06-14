@@ -15,7 +15,7 @@ import TOSPolicy from "./pages/policies/TOSPolicy";
 import RefundsPolicy from "./pages/policies/RefundsPolicy";
 import { AuthProvider } from "./context/AuthContext";
 import { queryClient } from "./lib/queryClient";
-import { useAuth } from "@/context/AuthContext";
+import { useAuth } from "@/hooks/useAuth";
 import Layout from "./components/layout/Layout";
 import { SidebarProvider } from "@/components/ui/sidebar";
 import { BusinessProfileProvider } from "@/context/BusinessProfileContext";

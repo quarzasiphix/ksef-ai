@@ -1,4 +1,3 @@
-
 import React, { useState } from "react";
 import { useNavigate, Link } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
@@ -9,6 +8,7 @@ import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Mail, ArrowRight, Lock } from "lucide-react";
+import { getBusinessProfiles } from '@/integrations/supabase/repositories/businessProfileRepository';
 
 // Helper to get email provider link
 const getEmailProviderLink = (email: string) => {
@@ -89,10 +89,21 @@ const Register = () => {
     const pendingPassword = sessionStorage.getItem("pendingPassword") || password;
     try {
       setLoading(true);
-      await login(pendingEmail, pendingPassword);
+      const { user } = await login(pendingEmail, pendingPassword);
+      
+      if (user) {
+        const profiles = await getBusinessProfiles(user.id);
+        if (profiles.length === 0) {
+          navigate("/welcome");
+        } else {
+          navigate("/dashboard");
+        }
+      } else {
+         navigate("/dashboard");
+      }
+
       sessionStorage.removeItem("pendingEmail");
       sessionStorage.removeItem("pendingPassword");
-      navigate("/welcome");
     } catch (err: any) {
       setError("Nie udało się zalogować. Upewnij się, że zweryfikowałeś adres e-mail i spróbuj ponownie.");
     } finally {
