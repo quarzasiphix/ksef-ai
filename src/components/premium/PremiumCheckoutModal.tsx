@@ -1,7 +1,8 @@
+
 import React, { useState, useEffect } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogTrigger, DialogFooter, DialogClose } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
-import { Star, Check, CreditCard, Smartphone, Crown } from "lucide-react";
+import { Star, Check, CreditCard, Smartphone, Crown, Gift, Sparkles } from "lucide-react";
 import { useAuth } from "@/context/AuthContext";
 import { toast } from "sonner";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -273,25 +274,84 @@ const PremiumCheckoutModal: React.FC<PremiumCheckoutModalProps> = ({ isOpen, onC
                     <span>Sprawdzanie uprawnień...</span>
                 </div>
             ) : isTrialEligible && !isPremium ? (
-                <div className="mb-4">
-                    <div className="p-4 bg-gradient-to-tr from-emerald-50 to-teal-50 rounded-lg border border-emerald-200 text-center space-y-3 animate-fade-in">
-                        <Crown className="mx-auto h-10 w-10 text-emerald-500" />
-                        <h3 className="text-xl font-bold">Wypróbuj Premium za Darmo!</h3>
-                        <p className="text-muted-foreground text-sm">
-                            Jesteś uprawniony do 7-dniowego darmowego okresu próbnego. Aktywuj go teraz i odblokuj wszystkie funkcje!
-                        </p>
-                        <Button
-                            onClick={handleStartTrial}
-                            disabled={!!isLoading}
-                            className="w-full bg-emerald-600 hover:bg-emerald-700"
-                            size="lg"
-                        >
-                            {isLoading === 'trial' ? "Aktywowanie..." : "Aktywuj 7-dniowy okres próbny"}
-                        </Button>
+                <div className="mb-6">
+                    <div className="relative overflow-hidden p-6 bg-gradient-to-br from-emerald-50 via-teal-50 to-cyan-50 rounded-xl border-2 border-emerald-200 shadow-lg">
+                        {/* Decorative background elements */}
+                        <div className="absolute top-0 right-0 w-20 h-20 bg-emerald-100 rounded-full -translate-y-10 translate-x-10 opacity-50"></div>
+                        <div className="absolute bottom-0 left-0 w-16 h-16 bg-teal-100 rounded-full translate-y-8 -translate-x-8 opacity-30"></div>
+                        
+                        {/* Content */}
+                        <div className="relative text-center space-y-4">
+                            <div className="flex justify-center items-center space-x-2">
+                                <div className="relative">
+                                    <Crown className="h-12 w-12 text-emerald-600 animate-pulse" fill="currentColor" />
+                                    <Sparkles className="absolute -top-1 -right-1 h-5 w-5 text-yellow-500 animate-bounce" fill="currentColor" />
+                                </div>
+                                <Gift className="h-8 w-8 text-emerald-500 animate-bounce" style={{ animationDelay: '0.5s' }} />
+                            </div>
+                            
+                            <div className="space-y-2">
+                                <h3 className="text-2xl font-bold text-emerald-800">
+                                    Wypróbuj Premium za Darmo!
+                                </h3>
+                                <Badge className="bg-emerald-100 text-emerald-800 border-emerald-300 px-3 py-1 text-sm font-semibold">
+                                    🎉 Oferta specjalna
+                                </Badge>
+                            </div>
+                            
+                            <div className="bg-white/70 backdrop-blur-sm rounded-lg p-4 border border-emerald-200">
+                                <p className="text-emerald-700 text-sm leading-relaxed">
+                                    Jesteś uprawniony do <span className="font-bold text-emerald-800">7-dniowego darmowego okresu próbnego</span>. 
+                                    Aktywuj go teraz i odblokuj wszystkie funkcje Premium bez żadnych zobowiązań!
+                                </p>
+                                
+                                <div className="mt-3 flex flex-wrap justify-center gap-2 text-xs">
+                                    <span className="bg-emerald-50 text-emerald-700 px-2 py-1 rounded-full border border-emerald-200">
+                                        ✓ Bez karty
+                                    </span>
+                                    <span className="bg-emerald-50 text-emerald-700 px-2 py-1 rounded-full border border-emerald-200">
+                                        ✓ Bez zobowiązań
+                                    </span>
+                                    <span className="bg-emerald-50 text-emerald-700 px-2 py-1 rounded-full border border-emerald-200">
+                                        ✓ Anuluj w każdej chwili
+                                    </span>
+                                </div>
+                            </div>
+                            
+                            <Button
+                                onClick={handleStartTrial}
+                                disabled={!!isLoading}
+                                className="w-full bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 text-white font-semibold py-3 px-6 rounded-lg shadow-lg transform transition-all duration-200 hover:scale-105 hover:shadow-xl"
+                                size="lg"
+                            >
+                                {isLoading === 'trial' ? (
+                                    <div className="flex items-center space-x-2">
+                                        <svg className="animate-spin h-4 w-4" fill="none" viewBox="0 0 24 24">
+                                            <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                                            <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                                        </svg>
+                                        <span>Aktywowanie...</span>
+                                    </div>
+                                ) : (
+                                    <div className="flex items-center space-x-2">
+                                        <Crown className="h-5 w-5" fill="currentColor" />
+                                        <span>Aktywuj 7-dniowy okres próbny</span>
+                                        <Sparkles className="h-4 w-4" fill="currentColor" />
+                                    </div>
+                                )}
+                            </Button>
+                        </div>
                     </div>
-                    <div className="relative my-4">
-                        <div className="absolute inset-0 flex items-center"><span className="w-full border-t" /></div>
-                        <div className="relative flex justify-center text-xs uppercase"><span className="bg-card px-2 text-muted-foreground">LUB WYBIERZ PLAN PŁATNY</span></div>
+                    
+                    <div className="relative my-6">
+                        <div className="absolute inset-0 flex items-center">
+                            <span className="w-full border-t border-gray-200" />
+                        </div>
+                        <div className="relative flex justify-center text-xs uppercase">
+                            <span className="bg-white px-4 text-gray-500 font-medium">
+                                LUB WYBIERZ PLAN PŁATNY
+                            </span>
+                        </div>
                     </div>
                 </div>
             ) : null}
