@@ -32,6 +32,14 @@ export const ProductSelector: React.FC<ProductSelectorProps> = ({
     onProductSelected(value);
   };
 
+  const handleProductSaved = async (product: Omit<Product, 'id'> & { id?: string }) => {
+    console.log('ProductSelector - Product saved:', product);
+    onNewProductAdded(product);
+    await refetchProducts();
+    // Clear selection after adding
+    setSelectedProductId("");
+  };
+
   return (
     <div className="flex flex-wrap gap-2 items-center">
       <div className="flex-1">
@@ -61,10 +69,7 @@ export const ProductSelector: React.FC<ProductSelectorProps> = ({
         mode="create" 
         documentType={documentType}
         transactionType={transactionType}
-        onProductSaved={async (product) => {
-          onNewProductAdded(product);
-          await refetchProducts();
-        }}
+        onProductSaved={handleProductSaved}
         onProductSavedAndSync={onProductSavedAndSync as any}
         refetchProducts={refetchProducts}
         userId={userId}

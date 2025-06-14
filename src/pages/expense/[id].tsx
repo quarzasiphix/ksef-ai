@@ -1,3 +1,4 @@
+
 import React, { useEffect, useState } from "react";
 import { useParams, useNavigate, useSearchParams } from "react-router-dom";
 import { useAuth } from "@/context/AuthContext";
@@ -14,9 +15,6 @@ import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import CustomerForm from "@/components/customers/CustomerForm";
 import { BusinessProfileSelector } from "@/components/invoices/selectors/BusinessProfileSelector";
 import { useBusinessProfile } from "@/context/BusinessProfileContext";
-
-const ZUS_NIP = "5220005994";
-const ZUS_NAME = "ZAKŁAD UBEZPIECZEŃ SPOŁECZNYCH";
 
 const NewExpense = () => {
   const { user } = useAuth();
@@ -59,36 +57,56 @@ const NewExpense = () => {
     } else {
       setDate(new Date().toISOString().slice(0, 10));
     }
+    
+    // Set first supplier as default if no customer selected
     if (!customerId && supplierCustomers.length > 0) {
+      console.log('Setting default supplier:', supplierCustomers[0]);
       setCustomerId(supplierCustomers[0].id);
     }
+    
+    // Set selected profile as default if no business profile selected
     if (!businessProfileId && selectedProfileId) {
-        setBusinessProfileId(selectedProfileId);
+      console.log('Setting default business profile:', selectedProfileId);
+      setBusinessProfileId(selectedProfileId);
     }
   }, [searchParams, supplierCustomers, customerId, businessProfileId, selectedProfileId]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    console.log("Submitting expense with businessProfileId:", businessProfileId, "and customerId:", customerId);
+    
+    console.log("=== EXPENSE SUBMISSION DEBUG ===");
+    console.log("User:", user?.id);
+    console.log("Business Profile ID:", businessProfileId);
+    console.log("Customer ID:", customerId);
+    console.log("Date:", date);
+    console.log("Items:", items);
+    console.log("Description:", description);
+    
     if (!user) {
       toast.error("Musisz być zalogowany");
       return;
     }
+    
     if (!businessProfileId || businessProfileId.length === 0) {
       toast.error("Wybierz profil biznesowy (nabywcę)");
+      console.error("Missing business profile ID");
       return;
     }
+    
     if (!customerId || customerId.length === 0) {
       toast.error("Wybierz kontrahenta (dostawcę)");
+      console.error("Missing customer ID");
       return;
     }
+    
     if (!date || items.length === 0) {
       toast.error("Wypełnij wszystkie pola i dodaj co najmniej jedną pozycję");
       return;
     }
+    
     setIsLoading(true);
     try {
-      await saveExpense({
+      const expenseData = {
         userId: user.id,
         businessProfileId,
         issueDate: date,
@@ -99,10 +117,15 @@ const NewExpense = () => {
         transactionType: TransactionType.EXPENSE,
         items,
         customerId,
-      });
+      };
+      
+      console.log("Submitting expense data:", expenseData);
+      
+      await saveExpense(expenseData);
       toast.success("Wydatek zapisany");
       navigate("/expense");
     } catch (error) {
+      console.error("Error saving expense:", error);
       toast.error("Błąd podczas zapisywania wydatku");
     } finally {
       setIsLoading(false);
@@ -176,7 +199,10 @@ const NewExpense = () => {
                 <label className="block mb-1 font-medium">Nabywca (Twój profil)</label>
                 <BusinessProfileSelector
                   value={businessProfileId}
-                  onChange={(id) => setBusinessProfileId(id)}
+                  onChange={(id) => {
+                    console.log('Business profile changed to:', id);
+                    setBusinessProfileId(id);
+                  }}
                 />
               </div>
             </div>

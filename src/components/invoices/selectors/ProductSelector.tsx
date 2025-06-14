@@ -43,7 +43,7 @@ export const ProductSelector: React.FC<ProductSelectorProps> = ({
           documentType === InvoiceType.PROFORMA
         ) {
           productType = 'income';
-        } else if (documentType === 'expense') {
+        } else if (documentType === 'expense' as any) {
           productType = 'expense';
         }
         const products = await getProducts(user.id, productType);
@@ -79,7 +79,7 @@ export const ProductSelector: React.FC<ProductSelectorProps> = ({
       id: crypto.randomUUID(), // Temporary ID
       productId: product.id,
       name: product.name,
-      description: product.description,
+      description: product.description || '',
       quantity,
       unitPrice,
       vatRate,
