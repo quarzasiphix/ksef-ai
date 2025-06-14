@@ -38,7 +38,9 @@ export async function saveProduct(product: Product): Promise<Product> {
     vat_rate: product.vatRate,
     unit: product.unit,
     user_id: product.user_id,
-    product_type: product.product_type
+    product_type: product.product_type,
+    track_stock: product.track_stock,
+    stock: product.stock,
   };
 
   if (product.id) {
@@ -62,7 +64,9 @@ export async function saveProduct(product: Product): Promise<Product> {
       vatRate: data.vat_rate,
       unit: data.unit,
       user_id: data.user_id,
-      product_type: data.product_type as 'income' | 'expense'
+      product_type: data.product_type as 'income' | 'expense',
+      track_stock: data.track_stock,
+      stock: data.stock,
     };
   } else {
     // Insert new product
@@ -84,7 +88,9 @@ export async function saveProduct(product: Product): Promise<Product> {
       vatRate: data.vat_rate,
       unit: data.unit,
       user_id: data.user_id,
-      product_type: data.product_type as 'income' | 'expense'
+      product_type: data.product_type as 'income' | 'expense',
+      track_stock: data.track_stock,
+      stock: data.stock,
     };
   }
 }

@@ -5,23 +5,25 @@ import { Button } from "@/components/ui/button";
 import { ArrowLeft } from "lucide-react";
 import { Product } from "@/types";
 import { getProducts } from "@/integrations/supabase/repositories/productRepository";
-import ProductForm from "@/components/products/ProductForm";
+import ProductWithInventoryForm from "@/components/products/ProductWithInventoryForm";
 import { toast } from "sonner";
+import { useAuth } from "@/context/AuthContext";
 
 const EditProduct = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
+  const { user } = useAuth();
   const [product, setProduct] = useState<Product | null>(null);
   const [loading, setLoading] = useState(true);
   const [isOpen, setIsOpen] = useState(true);
   
   useEffect(() => {
     const fetchProduct = async () => {
-      if (!id) return;
+      if (!id || !user) return;
       
       setLoading(true);
       try {
-        const products = await getProducts();
+        const products = await getProducts(user.id);
         const foundProduct = products.find(p => p.id === id) || null;
         setProduct(foundProduct);
       } catch (error) {
@@ -32,7 +34,7 @@ const EditProduct = () => {
     };
     
     fetchProduct();
-  }, [id]);
+  }, [id, user]);
   
   const handleClose = () => {
     navigate('/products');
@@ -71,7 +73,7 @@ const EditProduct = () => {
   }
   
   return (
-    <ProductForm
+    <ProductWithInventoryForm
       initialData={product}
       isOpen={isOpen}
       onClose={handleClose}

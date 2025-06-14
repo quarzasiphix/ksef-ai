@@ -444,6 +444,8 @@ export type Database = {
           id: string
           name: string
           product_type: string
+          stock: number
+          track_stock: boolean
           unit: string
           unit_price: number
           updated_at: string
@@ -456,6 +458,8 @@ export type Database = {
           id?: string
           name: string
           product_type?: string
+          stock?: number
+          track_stock?: boolean
           unit: string
           unit_price: number
           updated_at?: string
@@ -468,6 +472,8 @@ export type Database = {
           id?: string
           name?: string
           product_type?: string
+          stock?: number
+          track_stock?: boolean
           unit?: string
           unit_price?: number
           updated_at?: string
