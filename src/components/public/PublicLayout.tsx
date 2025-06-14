@@ -110,7 +110,6 @@ export default function PublicLayout({ children }: PublicLayoutProps) {
                 <h3 className="text-white font-semibold mb-4">Kontakt</h3>
                 <ul className="space-y-2 text-neutral-400">
                   <li>Email: contact@ksiegai.pl</li>
-                  <li>Telefon: +48 123 456 789</li>
                   <li>Adres: Warszawa, Polska</li>
                 </ul>
               </div>
