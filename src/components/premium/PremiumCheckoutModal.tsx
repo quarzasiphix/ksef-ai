@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogTrigger, DialogFooter, DialogClose } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
@@ -245,17 +244,17 @@ const PremiumCheckoutModal: React.FC<PremiumCheckoutModalProps> = ({ isOpen, onC
 
   return (
     <Dialog open={isOpen} onOpenChange={handleClose}>
-      <DialogContent className="max-w-2xl w-[95vw] sm:w-[90vw] md:w-[80vw] lg:w-[600px]">
-        <DialogHeader className="space-y-1">
-          <DialogTitle className="flex items-center text-lg sm:text-xl">
+      <DialogContent className="max-w-lg w-[95vw] max-h-[90vh] overflow-y-auto">
+        <DialogHeader className="space-y-1 pb-2">
+          <DialogTitle className="flex items-center text-base sm:text-lg">
             {isPremium ? (
-              <Crown className="mr-2 h-4 w-4 sm:h-5 sm:w-5 text-amber-500" fill="currentColor"/>
+              <Crown className="mr-2 h-4 w-4 text-amber-500" fill="currentColor"/>
             ) : (
-              <Star className="mr-2 h-4 w-4 sm:h-5 sm:w-5 text-amber-500" fill="currentColor"/>
+              <Star className="mr-2 h-4 w-4 text-amber-500" fill="currentColor"/>
             )}
             {step === 'plan' ? getModalTitle() : 'Wybierz metodę płatności'}
           </DialogTitle>
-          <DialogDescription className="text-xs sm:text-sm">
+          <DialogDescription className="text-xs text-muted-foreground">
             {step === 'plan' 
               ? getModalDescription()
               : `Wybrany plan: ${selectedPlan?.name} (${selectedPlan?.price}/${selectedPlan?.interval})`
@@ -264,55 +263,55 @@ const PremiumCheckoutModal: React.FC<PremiumCheckoutModalProps> = ({ isOpen, onC
         </DialogHeader>
 
         {step === 'plan' && (
-          <>
+          <div className="space-y-4">
             {checkingEligibility ? (
-                <div className="py-10 flex justify-center items-center">
+                <div className="py-8 flex justify-center items-center">
                     <svg className="animate-spin -ml-1 mr-3 h-5 w-5 text-primary" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
                         <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
                         <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
                     </svg>
-                    <span>Sprawdzanie uprawnień...</span>
+                    <span className="text-sm">Sprawdzanie uprawnień...</span>
                 </div>
             ) : isTrialEligible && !isPremium ? (
-                <div className="mb-6">
-                    <div className="relative overflow-hidden p-6 bg-gradient-to-br from-emerald-50 via-teal-50 to-cyan-50 rounded-xl border-2 border-emerald-200 shadow-lg">
+                <div className="mb-4">
+                    <div className="relative overflow-hidden p-4 bg-gradient-to-br from-blue-50 via-indigo-50 to-cyan-50 rounded-xl border-2 border-blue-200 shadow-md">
                         {/* Decorative background elements */}
-                        <div className="absolute top-0 right-0 w-20 h-20 bg-emerald-100 rounded-full -translate-y-10 translate-x-10 opacity-50"></div>
-                        <div className="absolute bottom-0 left-0 w-16 h-16 bg-teal-100 rounded-full translate-y-8 -translate-x-8 opacity-30"></div>
+                        <div className="absolute top-0 right-0 w-16 h-16 bg-blue-100 rounded-full -translate-y-8 translate-x-8 opacity-50"></div>
+                        <div className="absolute bottom-0 left-0 w-12 h-12 bg-indigo-100 rounded-full translate-y-6 -translate-x-6 opacity-30"></div>
                         
                         {/* Content */}
-                        <div className="relative text-center space-y-4">
+                        <div className="relative text-center space-y-3">
                             <div className="flex justify-center items-center space-x-2">
                                 <div className="relative">
-                                    <Crown className="h-12 w-12 text-emerald-600 animate-pulse" fill="currentColor" />
-                                    <Sparkles className="absolute -top-1 -right-1 h-5 w-5 text-yellow-500 animate-bounce" fill="currentColor" />
+                                    <Crown className="h-8 w-8 text-blue-600 animate-pulse" fill="currentColor" />
+                                    <Sparkles className="absolute -top-1 -right-1 h-4 w-4 text-yellow-500 animate-bounce" fill="currentColor" />
                                 </div>
-                                <Gift className="h-8 w-8 text-emerald-500 animate-bounce" style={{ animationDelay: '0.5s' }} />
+                                <Gift className="h-6 w-6 text-blue-500 animate-bounce" style={{ animationDelay: '0.5s' }} />
                             </div>
                             
                             <div className="space-y-2">
-                                <h3 className="text-2xl font-bold text-emerald-800">
+                                <h3 className="text-lg font-bold text-blue-800">
                                     Wypróbuj Premium za Darmo!
                                 </h3>
-                                <Badge className="bg-emerald-100 text-emerald-800 border-emerald-300 px-3 py-1 text-sm font-semibold">
+                                <Badge className="bg-blue-100 text-blue-800 border-blue-300 px-2 py-1 text-xs font-semibold">
                                     🎉 Oferta specjalna
                                 </Badge>
                             </div>
                             
-                            <div className="bg-white/70 backdrop-blur-sm rounded-lg p-4 border border-emerald-200">
-                                <p className="text-emerald-700 text-sm leading-relaxed">
-                                    Jesteś uprawniony do <span className="font-bold text-emerald-800">7-dniowego darmowego okresu próbnego</span>. 
+                            <div className="bg-white/70 backdrop-blur-sm rounded-lg p-3 border border-blue-200">
+                                <p className="text-blue-700 text-xs leading-relaxed">
+                                    Jesteś uprawniony do <span className="font-bold text-blue-800">7-dniowego darmowego okresu próbnego</span>. 
                                     Aktywuj go teraz i odblokuj wszystkie funkcje Premium bez żadnych zobowiązań!
                                 </p>
                                 
-                                <div className="mt-3 flex flex-wrap justify-center gap-2 text-xs">
-                                    <span className="bg-emerald-50 text-emerald-700 px-2 py-1 rounded-full border border-emerald-200">
+                                <div className="mt-2 flex flex-wrap justify-center gap-1 text-xs">
+                                    <span className="bg-blue-50 text-blue-700 px-2 py-0.5 rounded-full border border-blue-200 text-xs">
                                         ✓ Bez karty
                                     </span>
-                                    <span className="bg-emerald-50 text-emerald-700 px-2 py-1 rounded-full border border-emerald-200">
+                                    <span className="bg-blue-50 text-blue-700 px-2 py-0.5 rounded-full border border-blue-200 text-xs">
                                         ✓ Bez zobowiązań
                                     </span>
-                                    <span className="bg-emerald-50 text-emerald-700 px-2 py-1 rounded-full border border-emerald-200">
+                                    <span className="bg-blue-50 text-blue-700 px-2 py-0.5 rounded-full border border-blue-200 text-xs">
                                         ✓ Anuluj w każdej chwili
                                     </span>
                                 </div>
@@ -321,8 +320,7 @@ const PremiumCheckoutModal: React.FC<PremiumCheckoutModalProps> = ({ isOpen, onC
                             <Button
                                 onClick={handleStartTrial}
                                 disabled={!!isLoading}
-                                className="w-full bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 text-white font-semibold py-3 px-6 rounded-lg shadow-lg transform transition-all duration-200 hover:scale-105 hover:shadow-xl"
-                                size="lg"
+                                className="w-full bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white font-semibold py-2 px-4 rounded-lg shadow-lg transform transition-all duration-200 hover:scale-105 hover:shadow-xl text-sm"
                             >
                                 {isLoading === 'trial' ? (
                                     <div className="flex items-center space-x-2">
@@ -334,21 +332,21 @@ const PremiumCheckoutModal: React.FC<PremiumCheckoutModalProps> = ({ isOpen, onC
                                     </div>
                                 ) : (
                                     <div className="flex items-center space-x-2">
-                                        <Crown className="h-5 w-5" fill="currentColor" />
+                                        <Crown className="h-4 w-4" fill="currentColor" />
                                         <span>Aktywuj 7-dniowy okres próbny</span>
-                                        <Sparkles className="h-4 w-4" fill="currentColor" />
+                                        <Sparkles className="h-3 w-3" fill="currentColor" />
                                     </div>
                                 )}
                             </Button>
                         </div>
                     </div>
                     
-                    <div className="relative my-6">
+                    <div className="relative my-4">
                         <div className="absolute inset-0 flex items-center">
                             <span className="w-full border-t border-gray-200" />
                         </div>
                         <div className="relative flex justify-center text-xs uppercase">
-                            <span className="bg-white px-4 text-gray-500 font-medium">
+                            <span className="bg-white px-3 text-gray-500 font-medium">
                                 LUB WYBIERZ PLAN PŁATNY
                             </span>
                         </div>
@@ -357,31 +355,31 @@ const PremiumCheckoutModal: React.FC<PremiumCheckoutModalProps> = ({ isOpen, onC
             ) : null}
 
             {isPremium && currentSubscription === 'annual' ? (
-              <div className="py-6">
+              <div className="py-4">
                 <div className="text-center">
-                  <div className="mx-auto w-16 h-16 bg-gradient-to-r from-amber-400 to-yellow-500 rounded-full flex items-center justify-center mb-4">
-                    <Crown className="h-8 w-8 text-white" fill="currentColor" />
+                  <div className="mx-auto w-12 h-12 bg-gradient-to-r from-amber-400 to-yellow-500 rounded-full flex items-center justify-center mb-3">
+                    <Crown className="h-6 w-6 text-white" fill="currentColor" />
                   </div>
-                  <h3 className="text-xl font-semibold mb-2">Masz już najlepszy plan!</h3>
-                  <p className="text-muted-foreground mb-6">
+                  <h3 className="text-lg font-semibold mb-2">Masz już najlepszy plan!</h3>
+                  <p className="text-muted-foreground mb-4 text-sm">
                     Korzystasz z rocznej subskrypcji Premium z wszystkimi dostępnymi funkcjami.
                   </p>
-                  <Button variant="outline" onClick={handleClose}>
+                  <Button variant="outline" onClick={handleClose} size="sm">
                     Wróć do ustawień
                   </Button>
                 </div>
               </div>
             ) : (
               <>
-                <div className="grid md:grid-cols-2 gap-3 py-3">
+                <div className="grid gap-3">
                   {plans.map((plan) => {
                     const isCurrent = isPlanCurrent(plan.id);
                     const statusMessage = getPlanStatusMessage(plan.id);
                     
                     return (
                       <Card key={plan.id} className={`relative ${
-                        plan.popular && !isCurrent ? 'border-amber-500 shadow-lg' : 
-                        isCurrent ? 'border-green-500 bg-green-50' : ''
+                        plan.popular && !isCurrent ? 'border-amber-500 shadow-md' : 
+                        isCurrent ? 'border-blue-500 bg-blue-50' : ''
                       }`}>
                         {plan.popular && !isCurrent && (
                           <Badge className="absolute -top-2 left-1/2 transform -translate-x-1/2 bg-amber-500 text-white text-xs">
@@ -389,28 +387,29 @@ const PremiumCheckoutModal: React.FC<PremiumCheckoutModalProps> = ({ isOpen, onC
                           </Badge>
                         )}
                         {isCurrent && (
-                          <Badge className="absolute -top-2 left-1/2 transform -translate-x-1/2 bg-green-500 text-white text-xs">
+                          <Badge className="absolute -top-2 left-1/2 transform -translate-x-1/2 bg-blue-500 text-white text-xs">
                             Aktualny plan
                           </Badge>
                         )}
                         <CardHeader className="text-center p-3">
-                          <CardTitle className="text-base sm:text-lg">{plan.name}</CardTitle>
+                          <CardTitle className="text-sm">{plan.name}</CardTitle>
                           <div className="mt-1">
-                            <span className="text-xl sm:text-2xl font-bold">{plan.price}</span>
+                            <span className="text-lg font-bold">{plan.price}</span>
                             <span className="text-muted-foreground text-xs">/{plan.interval}</span>
                           </div>
                           {plan.savings && !isCurrent && (
-                            <p className="text-xs text-green-600 font-medium">{plan.savings}</p>
+                            <p className="text-xs text-blue-600 font-medium">{plan.savings}</p>
                           )}
                         </CardHeader>
                         <CardContent className="p-3 pt-0">
                           <Button
                             onClick={() => handlePlanSelect(plan)}
                             disabled={!!isLoading || isCurrent}
-                            className={`w-full text-sm ${
+                            className={`w-full text-xs ${
                               plan.popular && !isCurrent ? 'bg-amber-500 hover:bg-amber-600' : ''
-                            } ${isCurrent ? 'bg-green-100 text-green-700 cursor-not-allowed' : ''}`}
+                            } ${isCurrent ? 'bg-blue-100 text-blue-700 cursor-not-allowed' : ''}`}
                             variant={isCurrent ? 'outline' : 'default'}
+                            size="sm"
                           >
                             {statusMessage || 'Wybierz Plan'}
                           </Button>
@@ -420,12 +419,12 @@ const PremiumCheckoutModal: React.FC<PremiumCheckoutModalProps> = ({ isOpen, onC
                   })}
                 </div>
 
-                <div className="bg-muted p-2 rounded-lg">
-                  <h4 className="font-semibold mb-1.5 text-xs sm:text-sm">Co otrzymasz z Premium:</h4>
-                  <div className="grid md:grid-cols-2 gap-1">
+                <div className="bg-muted p-3 rounded-lg">
+                  <h4 className="font-semibold mb-2 text-xs">Co otrzymasz z Premium:</h4>
+                  <div className="grid gap-1">
                     {features.map((feature, index) => (
                       <div key={index} className="flex items-center text-xs">
-                        <Check className="h-3 w-3 text-green-500 mr-1.5 flex-shrink-0" />
+                        <Check className="h-3 w-3 text-blue-500 mr-2 flex-shrink-0" />
                         <span>{feature}</span>
                       </div>
                     ))}
@@ -433,14 +432,14 @@ const PremiumCheckoutModal: React.FC<PremiumCheckoutModalProps> = ({ isOpen, onC
                 </div>
               </>
             )}
-          </>
+          </div>
         )}
 
         {step === 'payment' && selectedPlan && (
-          <div className="py-2 space-y-3">
+          <div className="space-y-3">
             <Card>
               <CardHeader className="p-3">
-                <CardTitle className="text-sm sm:text-base">Wybierz metodę płatności</CardTitle>
+                <CardTitle className="text-sm">Wybierz metodę płatności</CardTitle>
               </CardHeader>
               <CardContent className="p-3 pt-0">
                 <RadioGroup value={paymentMethod} onValueChange={(value: 'card' | 'blik') => setPaymentMethod(value)}>
@@ -449,7 +448,7 @@ const PremiumCheckoutModal: React.FC<PremiumCheckoutModalProps> = ({ isOpen, onC
                     <Label htmlFor="card" className="flex items-center cursor-pointer flex-1">
                       <CreditCard className="h-4 w-4 mr-2 text-blue-600" />
                       <div>
-                        <div className="font-medium text-xs sm:text-sm">Karta płatnicza</div>
+                        <div className="font-medium text-xs">Karta płatnicza</div>
                         <div className="text-xs text-muted-foreground">Subskrypcja automatyczna</div>
                       </div>
                     </Label>
@@ -459,7 +458,7 @@ const PremiumCheckoutModal: React.FC<PremiumCheckoutModalProps> = ({ isOpen, onC
                     <Label htmlFor="blik" className="flex items-center cursor-pointer flex-1">
                       <Smartphone className="h-4 w-4 mr-2 text-pink-600" />
                       <div>
-                        <div className="font-medium text-xs sm:text-sm">BLIK</div>
+                        <div className="font-medium text-xs">BLIK</div>
                         <div className="text-xs text-muted-foreground">Jednorazowa płatność</div>
                       </div>
                     </Label>
@@ -468,8 +467,8 @@ const PremiumCheckoutModal: React.FC<PremiumCheckoutModalProps> = ({ isOpen, onC
               </CardContent>
             </Card>
 
-            <div className="bg-muted p-2 rounded-lg">
-              <h4 className="font-semibold mb-1.5 text-xs sm:text-sm">Szczegóły płatności:</h4>
+            <div className="bg-muted p-3 rounded-lg">
+              <h4 className="font-semibold mb-2 text-xs">Szczegóły płatności:</h4>
               <div className="space-y-1 text-xs">
                 <div className="flex justify-between">
                   <span>Plan:</span>
@@ -491,13 +490,14 @@ const PremiumCheckoutModal: React.FC<PremiumCheckoutModalProps> = ({ isOpen, onC
             </div>
 
             <div className="flex gap-2">
-              <Button variant="outline" onClick={handleBack} className="flex-1 text-xs sm:text-sm">
+              <Button variant="outline" onClick={handleBack} className="flex-1 text-xs" size="sm">
                 Wróć
               </Button>
               <Button 
                 onClick={handleCheckout} 
                 disabled={!!isLoading}
-                className="flex-1 text-xs sm:text-sm"
+                className="flex-1 text-xs"
+                size="sm"
               >
                 {isLoading ? "Przekierowanie..." : "Przejdź do płatności"}
               </Button>
@@ -513,9 +513,9 @@ const PremiumCheckoutModal: React.FC<PremiumCheckoutModalProps> = ({ isOpen, onC
           />
         )}
 
-        <DialogFooter className="mt-1">
+        <DialogFooter className="mt-2">
           <DialogClose asChild>
-            <Button variant="outline" onClick={handleClose} className="text-xs sm:text-sm">Anuluj</Button>
+            <Button variant="outline" onClick={handleClose} className="text-xs" size="sm">Anuluj</Button>
           </DialogClose>
         </DialogFooter>
       </DialogContent>
