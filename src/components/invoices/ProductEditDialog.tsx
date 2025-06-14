@@ -1,3 +1,4 @@
+
 import React, { useState } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
@@ -84,7 +85,9 @@ export const ProductEditDialog: React.FC<ProductEditDialogProps> = ({
         vatRate: vatRate === "zw" ? Number(VatType.ZW) : Number(vatRate),
         unit,
         user_id: finalUserId,
-        product_type
+        product_type,
+        track_stock: initialProduct?.track_stock || false,
+        stock: initialProduct?.stock || 0
       };
       
       if (mode === 'edit') {
@@ -101,7 +104,9 @@ export const ProductEditDialog: React.FC<ProductEditDialogProps> = ({
           vatRate: vatRate === "zw" ? Number(VatType.ZW) : Number(vatRate),
           unit,
           user_id: finalUserId,
-          product_type
+          product_type,
+          track_stock: false,
+          stock: 0
         });
         toast.success("Produkt został dodany do dokumentu");
       }
