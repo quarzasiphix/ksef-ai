@@ -3,7 +3,7 @@ import React, { useState, useEffect } from "react";
 import { useParams, useNavigate, Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { ArrowLeft } from "lucide-react";
-import { Product } from "@/types";
+import { Product } from "@/types/index";
 import { getProducts } from "@/integrations/supabase/repositories/productRepository";
 import ProductWithInventoryForm from "@/components/products/ProductWithInventoryForm";
 import { toast } from "sonner";

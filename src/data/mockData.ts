@@ -1,4 +1,5 @@
-import { BusinessProfile, Customer, Product, Invoice, InvoiceType, PaymentMethodDb, InvoiceItem, TransactionType } from "@/types";
+
+import { BusinessProfile, Customer, Product, Invoice, InvoiceType, PaymentMethodDb, InvoiceItem, TransactionType } from "@/types/index";
 import { generateKsefXml } from "@/integrations/ksef/ksefGenerator";
 
 // Mock Business Profiles
@@ -34,7 +35,7 @@ export const mockCustomers: Customer[] = [
     city: "Kraków",
     email: "jan.kowalski@email.com",
     phone: "+48 987 654 321",
-    customerType: 'nabywca'
+    customerType: 'odbiorca'
   },
   {
     id: "2", 
@@ -44,7 +45,7 @@ export const mockCustomers: Customer[] = [
     postalCode: "03-001",
     city: "Gdańsk",
     email: "anna.nowak@email.com",
-    customerType: 'nabywca'
+    customerType: 'odbiorca'
   }
 ];
 

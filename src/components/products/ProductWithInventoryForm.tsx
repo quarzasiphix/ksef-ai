@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import {
   Dialog,
@@ -12,7 +11,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Switch } from '@/components/ui/switch';
-import { Product } from '@/types';
+import { Product } from '@/types/index';
 import { useAuth } from '@/context/AuthContext';
 import { saveProduct } from '@/integrations/supabase/repositories/productRepository';
 import { toast } from 'sonner';
@@ -32,7 +31,7 @@ const ProductWithInventoryForm: React.FC<ProductFormProps> = ({ isOpen, onClose,
   const [unit, setUnit] = useState('szt.');
   const [productType, setProductType] = useState<'income' | 'expense'>('income');
   const [trackStock, setTrackStock] = useState(false);
-  const [stock, setStock] = useState('');
+  const [stock, setStock] = useState('0');
   const [isLoading, setIsLoading] = useState(false);
 
   useEffect(() => {
@@ -43,7 +42,7 @@ const ProductWithInventoryForm: React.FC<ProductFormProps> = ({ isOpen, onClose,
       setUnit(initialData.unit);
       setProductType(initialData.product_type);
       setTrackStock(initialData.track_stock);
-      setStock(initialData.stock.toString());
+      setStock(initialData.stock ? initialData.stock.toString() : '0');
     } else {
       // Reset form for new product
       setName('');
@@ -52,7 +51,7 @@ const ProductWithInventoryForm: React.FC<ProductFormProps> = ({ isOpen, onClose,
       setUnit('szt.');
       setProductType('income');
       setTrackStock(false);
-      setStock('');
+      setStock('0');
     }
   }, [initialData, isOpen]);
 
@@ -68,8 +67,8 @@ const ProductWithInventoryForm: React.FC<ProductFormProps> = ({ isOpen, onClose,
 
     setIsLoading(true);
 
-    const productData: Omit<Product, 'id' | 'created_at' | 'updated_at'> & { id?: string } = {
-      id: initialData?.id,
+    const productData: Product = {
+      id: initialData?.id || '',
       name,
       unitPrice: parseFloat(unitPrice),
       vatRate: parseInt(vatRate, 10),
@@ -81,7 +80,7 @@ const ProductWithInventoryForm: React.FC<ProductFormProps> = ({ isOpen, onClose,
     };
 
     try {
-      const savedProduct = await saveProduct(productData as Product);
+      const savedProduct = await saveProduct(productData);
       toast.success(initialData ? 'Produkt zaktualizowany' : 'Produkt utworzony');
       onSuccess(savedProduct);
     } catch (error) {

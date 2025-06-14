@@ -2,7 +2,7 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import ProductWithInventoryForm from '@/components/products/ProductWithInventoryForm';
-import { Product } from '@/types';
+import { Product } from '@/types/index';
 import { toast } from 'sonner';
 
 const NewProduct = () => {

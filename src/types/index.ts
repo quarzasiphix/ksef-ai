@@ -1,3 +1,4 @@
+
 export interface BusinessProfile {
   id: string;
   user_id?: string; // Added for RLS, making optional for compatibility
@@ -13,7 +14,7 @@ export interface BusinessProfile {
   phone?: string;
   logo?: string;
   isDefault?: boolean;
-  tax_type?: "skala" | "liniowy" | "ryczalt"; // Added tax type
+  tax_type?: "skala" | "liniowy" | "ryczalt" | null;
   monthlySocialSecurity?: number; // Monthly social security contribution amount
   monthlyHealthInsurance?: number; // Monthly health insurance contribution amount
   accountant_email?: string; // Email for accountant
@@ -30,6 +31,7 @@ export interface Customer {
   country?: string; // Added optional country property
   email?: string;
   phone?: string;
+  customerType: 'odbiorca' | 'sprzedawca' | 'both';
 }
 
 export interface Product {
@@ -40,6 +42,9 @@ export interface Product {
   vatRate: number; // VAT percentage, e.g., 23 or -1 for VAT-exempt
   unit: string; // e.g., "szt.", "godz.", etc.
   description?: string; // Added optional description
+  product_type: 'income' | 'expense';
+  track_stock: boolean;
+  stock: number;
 }
 
 export enum TransactionType {
@@ -123,9 +128,9 @@ export interface InvoiceItem {
   unitPrice: number; // Netto price
   vatRate: number;
   unit: string;
-  totalNetValue?: number; // Calculated: unitPrice * quantity
-  totalGrossValue?: number; // Calculated: totalNetValue + VAT
-  totalVatValue?: number; // Calculated: totalNetValue * (vatRate/100)
+  totalNetValue: number;
+  totalGrossValue: number;
+  totalVatValue: number;
   vatExempt?: boolean; // Added vatExempt property
 }
 
@@ -193,10 +198,10 @@ export interface Invoice {
   paid: boolean;
   status: InvoiceStatus;
   comments?: string;
-  totalNetValue?: number;
-  totalGrossValue?: number;
-  totalVatValue?: number;
-  totalAmount: number; // Made required
+  totalNetValue: number;
+  totalGrossValue: number;
+  totalVatValue: number;
+  totalAmount: number;
   ksef?: KsefInfo;
   seller: Company;
   buyer: Company;
@@ -231,4 +236,6 @@ export interface Expense {
   createdAt?: string;
   transactionType: TransactionType; // Assuming this comes from common-types
   date: string; // Alias for compatibility
+  items?: InvoiceItem[];
+  customerId?: string;
 }
