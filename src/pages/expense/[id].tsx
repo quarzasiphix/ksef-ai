@@ -25,11 +25,10 @@ const NewExpense = () => {
   const [description, setDescription] = useState("");
   const [date, setDate] = useState("");
   const [items, setItems] = useState<InvoiceItem[]>([]);
-  const [businessProfileId, setBusinessProfileId] = useState<string>(selectedProfileId || "");
+  const [businessProfileId, setBusinessProfileId] = useState<string>("");
   const [isZus, setIsZus] = useState(false);
   const [customerId, setCustomerId] = useState<string>("");
   const { customers } = useGlobalData();
-  // Only show suppliers (sprzedawca)
   const supplierCustomers = customers.data.filter(c => c.customerType === 'sprzedawca');
   const [isAddSupplierOpen, setIsAddSupplierOpen] = useState(false);
 
@@ -57,45 +56,43 @@ const NewExpense = () => {
     } else {
       setDate(new Date().toISOString().slice(0, 10));
     }
-    
-    // Set first supplier as default if no customer selected
+  }, [searchParams]);
+
+  useEffect(() => {
     if (!customerId && supplierCustomers.length > 0) {
-      console.log('Setting default supplier:', supplierCustomers[0]);
       setCustomerId(supplierCustomers[0].id);
     }
-    
-    // Set selected profile as default if no business profile selected
-    if (!businessProfileId && selectedProfileId) {
-      console.log('Setting default business profile:', selectedProfileId);
+  }, [customerId, supplierCustomers]);
+
+  useEffect(() => {
+    if (selectedProfileId) {
       setBusinessProfileId(selectedProfileId);
     }
-  }, [searchParams, supplierCustomers, customerId, businessProfileId, selectedProfileId]);
+  }, [selectedProfileId]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
     console.log("=== EXPENSE SUBMISSION DEBUG ===");
     console.log("User:", user?.id);
-    console.log("Business Profile ID:", businessProfileId);
-    console.log("Customer ID:", customerId);
-    console.log("Date:", date);
-    console.log("Items:", items);
-    console.log("Description:", description);
+    console.log("Context selectedProfileId:", selectedProfileId);
+    console.log("State businessProfileId:", businessProfileId);
+    console.log("State customerId:", customerId);
     
     if (!user) {
       toast.error("Musisz być zalogowany");
       return;
     }
     
-    if (!businessProfileId || businessProfileId.length === 0) {
+    if (!businessProfileId) {
       toast.error("Wybierz profil biznesowy (nabywcę)");
-      console.error("Missing business profile ID");
+      console.error("Missing business profile ID. Current value:", businessProfileId);
       return;
     }
     
-    if (!customerId || customerId.length === 0) {
+    if (!customerId) {
       toast.error("Wybierz kontrahenta (dostawcę)");
-      console.error("Missing customer ID");
+      console.error("Missing customer ID. Current value:", customerId);
       return;
     }
     
