@@ -1,3 +1,4 @@
+
 import React, { createContext, useState, useEffect, useContext } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useQueryClient } from "@tanstack/react-query";
@@ -144,12 +145,12 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     <AuthContext.Provider value={{ user, isLoading: loading, loading: loading, login, register, logout, isPremium, setIsPremium, openPremiumDialog, supabase, signInWithGoogle, isModalOpen: showPremiumModal }}>
       {children}
       {showPremiumModal && (
-        <ReactLazy.Suspense fallback={null}>
+        <React.Suspense fallback={null}>
           <PremiumCheckoutModalLazy
             isOpen={showPremiumModal}
             onClose={() => setShowPremiumModal(false)}
           />
-        </ReactLazy.Suspense>
+        </React.Suspense>
       )}
     </AuthContext.Provider>
   );
