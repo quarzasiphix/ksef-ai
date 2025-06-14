@@ -4,12 +4,13 @@ import { useQueryClient } from "@tanstack/react-query";
 import { User, Session } from "@supabase/supabase-js";
 import ReactLazy from "react";
 import { checkPremiumStatus } from "@/integrations/supabase/repositories/PremiumRepository";
+import { cleanupAuthState } from "@/lib/auth-utils";
 
 const PremiumCheckoutModalLazy = ReactLazy.lazy(() => import("@/components/premium/PremiumCheckoutModal"));
 
 export interface AuthContextType {
   user: User | null;
-  loading: boolean;
+  isLoading: boolean;
   login: (email: string, password: string) => Promise<{ user: User | null; session: Session | null }>;
   register: (email: string, password: string) => Promise<{ user: User | null; session: Session | null }>;
   logout: () => Promise<void>;
@@ -18,6 +19,7 @@ export interface AuthContextType {
   openPremiumDialog: () => void;
   supabase: typeof supabase;
   signInWithGoogle: () => Promise<void>;
+  isModalOpen: boolean;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -118,34 +120,28 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const logout = async () => {
     try {
-      // Use local scope to avoid requiring a "global" sign-out which may fail for non-privileged sessions.
-      const { error } = await supabase.auth.signOut({ scope: "local" });
-
-      // Fallback to the default behaviour if local scope is not supported (older clients)
-      if (error?.message?.includes("scope")) {
-        const fallback = await supabase.auth.signOut();
-        if (fallback.error) throw fallback.error;
-      } else if (error) {
-        throw error;
-      }
+      cleanupAuthState();
+      // Attempt global sign out, but don't fail if it doesn't work.
+      // The cleanup and page reload will handle the client state.
+      await supabase.auth.signOut({ scope: 'global' }).catch(console.error);
 
       setUser(null);
+      setIsPremium(false);
       queryClient.clear();
+
+      // Force a full page reload to go to login and clear all state.
+      window.location.href = '/auth/login';
     } catch (err) {
-      console.error("Logout failed", err);
-      // Notify the user that something went wrong.
-      import("@/hooks/use-toast").then(({ toast }) => {
-        toast({
-          title: "Błąd wylogowania",
-          description: "Nie udało się wylogować. Spróbuj ponownie później.",
-          variant: "destructive",
-        });
-      });
+      console.error("Logout failed unexpectedly:", err);
+      // As a fallback, still try to redirect.
+      if (!window.location.pathname.includes('/auth/login')) {
+         window.location.href = '/auth/login';
+      }
     }
   };
 
   return (
-    <AuthContext.Provider value={{ user, loading, login, register, logout, isPremium, setIsPremium, openPremiumDialog, supabase, signInWithGoogle }}>
+    <AuthContext.Provider value={{ user, isLoading: loading, login, register, logout, isPremium, setIsPremium, openPremiumDialog, supabase, signInWithGoogle, isModalOpen: showPremiumModal }}>
       {children}
       {showPremiumModal && (
         <ReactLazy.Suspense fallback={null}>
