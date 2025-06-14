@@ -1,12 +1,13 @@
 
 import React, { useState } from "react";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Product, InvoiceType } from "@/types";
+import { Product, InvoiceType, TransactionType } from "@/types";
 import { ProductEditDialog } from "../ProductEditDialog";
 
 interface ProductSelectorProps {
   products: Product[];
   documentType: InvoiceType;
+  transactionType: TransactionType;
   onProductSelected: (productId: string) => void;
   onNewProductAdded: (product: Omit<Product, 'id'> & { id?: string }) => void;
   refetchProducts: () => Promise<void>;
@@ -17,6 +18,7 @@ interface ProductSelectorProps {
 export const ProductSelector: React.FC<ProductSelectorProps> = ({
   products,
   documentType,
+  transactionType,
   onProductSelected,
   onNewProductAdded,
   refetchProducts,
@@ -58,11 +60,12 @@ export const ProductSelector: React.FC<ProductSelectorProps> = ({
       <ProductEditDialog 
         mode="create" 
         documentType={documentType}
+        transactionType={transactionType}
         onProductSaved={async (product) => {
           onNewProductAdded(product);
           await refetchProducts();
         }}
-        onProductSavedAndSync={onProductSavedAndSync} // NEW: pass down
+        onProductSavedAndSync={onProductSavedAndSync as any}
         refetchProducts={refetchProducts}
         userId={userId}
       />

@@ -69,6 +69,7 @@ const NewExpense = () => {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    console.log("Submitting expense with businessProfileId:", businessProfileId, "and customerId:", customerId);
     if (!user) {
       toast.error("Musisz być zalogowany");
       return;
