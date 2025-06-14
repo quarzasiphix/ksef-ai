@@ -74,8 +74,12 @@ const NewExpense = () => {
       toast.error("Musisz być zalogowany");
       return;
     }
-    if (!businessProfileId) {
+    if (!businessProfileId || businessProfileId.length === 0) {
       toast.error("Wybierz profil biznesowy (nabywcę)");
+      return;
+    }
+    if (!customerId || customerId.length === 0) {
+      toast.error("Wybierz kontrahenta (dostawcę)");
       return;
     }
     if (!date || items.length === 0) {

@@ -7,11 +7,11 @@ import { ProductEditDialog } from "../ProductEditDialog";
 interface ProductSelectorProps {
   products: Product[];
   documentType: InvoiceType;
-  transactionType: TransactionType;
+  transactionType?: TransactionType;
   onProductSelected: (productId: string) => void;
   onNewProductAdded: (product: Omit<Product, 'id'> & { id?: string }) => void;
   refetchProducts: () => Promise<void>;
-  onProductSavedAndSync?: (product: Product) => void; // NEW: for instant UI update
+  onProductSavedAndSync?: (product: Product) => void;
   userId: string;
 }
 
@@ -22,7 +22,7 @@ export const ProductSelector: React.FC<ProductSelectorProps> = ({
   onProductSelected,
   onNewProductAdded,
   refetchProducts,
-  onProductSavedAndSync, // FIX: destructure from props
+  onProductSavedAndSync,
   userId
 }) => {
   const [selectedProductId, setSelectedProductId] = useState<string>("");

@@ -1,3 +1,4 @@
+
 import React, { useEffect, useState } from "react";
 import { 
   Select,
@@ -42,7 +43,7 @@ export const ProductSelector: React.FC<ProductSelectorProps> = ({
           documentType === InvoiceType.PROFORMA
         ) {
           productType = 'income';
-        } else if (documentType === InvoiceType.EXPENSE) {
+        } else if (documentType === 'expense') {
           productType = 'expense';
         }
         const products = await getProducts(user.id, productType);
