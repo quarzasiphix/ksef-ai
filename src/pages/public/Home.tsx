@@ -46,15 +46,6 @@ export default function Home() {
                   Rozpocznij za darmo
                 </Button>
               </Link>
-              <Link to="/auth/login" className="block">
-                <Button
-                  size="lg"
-                  variant="outline"
-                  className="text-lg px-8 border-blue-500/20 hover:border-blue-500/40 hover:bg-blue-500/10"
-                >
-                  Zaloguj się
-                </Button>
-              </Link>
             </div>
           </div>
         </div>
