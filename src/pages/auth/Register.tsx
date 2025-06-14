@@ -25,6 +25,13 @@ const getEmailProviderLink = (email: string) => {
   return "https://mail.google.com";
 };
 
+const GoogleIcon = (props: React.SVGProps<SVGSVGElement>) => (
+    <svg role="img" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" {...props}>
+        <title>Google</title>
+        <path d="M12.48 10.92v3.28h7.84c-.24 1.84-.85 3.18-1.73 4.1-1.02 1.02-2.62 1.9-4.73 1.9-3.41 0-6.18-2.8-6.18-6.18s2.77-6.18 6.18-6.18c1.93 0 3.3.73 4.1 1.52l2.6-2.6C16.99 3.2 14.94 2 12.48 2 7.28 2 3.2 6.13 3.2 11.2s4.08 9.2 9.28 9.2c5.08 0 8.53-3.47 8.53-8.75 0-.66-.07-1.25-.16-1.73H12.48z" />
+    </svg>
+);
+
 const Register = () => {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -34,7 +41,7 @@ const Register = () => {
   const [acceptTerms, setAcceptTerms] = useState(false);
   const [registered, setRegistered] = useState(false);
   const navigate = useNavigate();
-  const { login } = useAuth();
+  const { login, signInWithGoogle } = useAuth();
 
   // Store credentials in sessionStorage after registration
   const storeCredentials = (email: string, password: string) => {
@@ -65,6 +72,13 @@ const Register = () => {
       storeCredentials(email, password);
       setRegistered(true);
     }
+  };
+
+  const handleGoogleSignIn = async () => {
+    setError(null);
+    setLoading(true);
+    await signInWithGoogle();
+    setLoading(false);
   };
 
   // Handler for 'Proceed, email verified' button
@@ -164,7 +178,21 @@ const Register = () => {
                   </Button>
                 </form>
               </CardContent>
-              <CardFooter className="text-center text-sm">
+              <div className="relative my-0 px-6">
+                <div className="absolute inset-0 flex items-center">
+                  <span className="w-full border-t" />
+                </div>
+                <div className="relative flex justify-center text-xs uppercase">
+                  <span className="bg-card px-2 text-muted-foreground">LUB</span>
+                </div>
+              </div>
+              <CardContent className="pt-4 pb-4">
+                <Button variant="outline" className="w-full" onClick={handleGoogleSignIn} disabled={loading}>
+                  <GoogleIcon className="mr-2 h-4 w-4" />
+                  Zarejestruj się z Google
+                </Button>
+              </CardContent>
+              <CardFooter className="text-center text-sm pt-0">
                 <p className="text-muted-foreground w-full">
                   Masz już konto?{' '}
                   <Link to="/auth/login" className="underline hover:text-primary font-medium text-primary">

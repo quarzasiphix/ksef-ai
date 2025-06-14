@@ -17,6 +17,7 @@ export interface AuthContextType {
   setIsPremium: (value: boolean) => void;
   openPremiumDialog: () => void;
   supabase: typeof supabase;
+  signInWithGoogle: () => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -106,6 +107,15 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     return data;
   };
 
+  const signInWithGoogle = async () => {
+    await supabase.auth.signInWithOAuth({
+      provider: 'google',
+      options: {
+        redirectTo: window.location.origin,
+      },
+    });
+  };
+
   const logout = async () => {
     try {
       // Use local scope to avoid requiring a "global" sign-out which may fail for non-privileged sessions.
@@ -135,7 +145,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   };
 
   return (
-    <AuthContext.Provider value={{ user, loading, login, register, logout, isPremium, setIsPremium, openPremiumDialog, supabase }}>
+    <AuthContext.Provider value={{ user, loading, login, register, logout, isPremium, setIsPremium, openPremiumDialog, supabase, signInWithGoogle }}>
       {children}
       {showPremiumModal && (
         <ReactLazy.Suspense fallback={null}>

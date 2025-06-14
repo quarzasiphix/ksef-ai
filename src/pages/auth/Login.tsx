@@ -4,6 +4,13 @@ import { useAuth } from "@/hooks/useAuth";
 import { LogIn, AlertCircle, UserCircle } from 'lucide-react';
 import { getBusinessProfiles } from '@/integrations/supabase/repositories/businessProfileRepository';
 
+const GoogleIcon = (props: React.SVGProps<SVGSVGElement>) => (
+    <svg role="img" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" {...props}>
+        <title>Google</title>
+        <path d="M12.48 10.92v3.28h7.84c-.24 1.84-.85 3.18-1.73 4.1-1.02 1.02-2.62 1.9-4.73 1.9-3.41 0-6.18-2.8-6.18-6.18s2.77-6.18 6.18-6.18c1.93 0 3.3.73 4.1 1.52l2.6-2.6C16.99 3.2 14.94 2 12.48 2 7.28 2 3.2 6.13 3.2 11.2s4.08 9.2 9.28 9.2c5.08 0 8.53-3.47 8.53-8.75 0-.66-.07-1.25-.16-1.73H12.48z" />
+    </svg>
+);
+
 const Login = () => {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -11,7 +18,7 @@ const Login = () => {
   const [error, setError] = useState<string | null>(null);
   const [checkingOnboarding, setCheckingOnboarding] = useState(false);
   const navigate = useNavigate();
-  const { login } = useAuth();
+  const { login, signInWithGoogle } = useAuth();
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -37,6 +44,19 @@ const Login = () => {
       console.error('Login error details:', err);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleGoogleLogin = async () => {
+    setLoading(true);
+    setError(null);
+    try {
+        await signInWithGoogle();
+    } catch (err: any) {
+        setError("Nie udało się zalogować przez Google.");
+        console.error('Google login error:', err);
+    } finally {
+        setLoading(false);
     }
   };
 
@@ -167,14 +187,24 @@ const Login = () => {
             </div>
           </div>
 
-          <button
-            onClick={handleTestAccountLogin}
-            disabled={loading}
-            className="w-full bg-amber-600/80 hover:bg-amber-600 text-white font-semibold py-3 px-4 rounded-lg shadow-md hover:shadow-lg transition-all duration-300 ease-in-out transform hover:-translate-y-0.5 disabled:opacity-70 disabled:cursor-not-allowed disabled:transform-none disabled:shadow-none flex items-center justify-center"
-          >
-            <UserCircle className="h-5 w-5 mr-2" />
-            {loading && email === 'test@quarza.online' ? 'Logowanie...' : 'Kontynuuj jako tester'}
-          </button>
+          <div className="space-y-4">
+            <button
+              onClick={handleGoogleLogin}
+              disabled={loading}
+              className="w-full bg-white hover:bg-gray-100 text-neutral-900 font-semibold py-3 px-4 rounded-lg shadow-md hover:shadow-lg transition-all duration-300 ease-in-out transform hover:-translate-y-0.5 disabled:opacity-70 disabled:cursor-not-allowed disabled:transform-none disabled:shadow-none flex items-center justify-center"
+            >
+              <GoogleIcon className="h-5 w-5 mr-2" />
+              Kontynuuj z Google
+            </button>
+            <button
+              onClick={handleTestAccountLogin}
+              disabled={loading}
+              className="w-full bg-amber-600/80 hover:bg-amber-600 text-white font-semibold py-3 px-4 rounded-lg shadow-md hover:shadow-lg transition-all duration-300 ease-in-out transform hover:-translate-y-0.5 disabled:opacity-70 disabled:cursor-not-allowed disabled:transform-none disabled:shadow-none flex items-center justify-center"
+            >
+              <UserCircle className="h-5 w-5 mr-2" />
+              {loading && email === 'test@quarza.online' ? 'Logowanie...' : 'Kontynuuj jako tester'}
+            </button>
+          </div>
           <p className="mt-3 text-xs text-neutral-500">
             Konto testowe zawiera przykładowe dane do demonstracji.
           </p>
