@@ -1,3 +1,4 @@
+
 import React, { useEffect, useState, useRef } from "react";
 import { useParams, useNavigate, Link } from "react-router-dom";
 import jsPDF from 'jspdf';
@@ -7,8 +8,7 @@ import { Filesystem, Directory, Encoding } from '@capacitor/filesystem';
 import { Share } from '@capacitor/share';
 import { Invoice, InvoiceType, BusinessProfile, Customer, KsefInfo } from "@/types";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { getInvoice } from "@/integrations/supabase/repositories/invoiceRepository";
-import { updateInvoicePaymentStatus } from "@/integrations/supabase/repositories/invoiceRepository";
+import { getInvoice, updateInvoicePaymentStatus } from "@/integrations/supabase/repositories/invoiceRepository";
 import { getBusinessProfileById } from "@/integrations/supabase/repositories/businessProfileRepository";
 import { getCustomerById } from "@/integrations/supabase/repositories/customerRepository";
 import { useToast } from "@/components/ui/use-toast";
@@ -26,6 +26,7 @@ import { calculateInvoiceTotals } from '@/lib/invoice-utils';
 import { useIsMobile } from "@/hooks/use-mobile";
 import { cn } from "@/lib/utils";
 import { formatCurrency } from "@/lib/invoice-utils";
+import { useAuth } from "@/hooks/useAuth";
 
 interface InvoiceDetailProps {
   type: 'income' | 'expense';
@@ -39,6 +40,7 @@ const InvoiceDetail: React.FC<InvoiceDetailProps> = ({ type }) => {
   const printRef = useRef<HTMLDivElement>(null);
   const isMobile = useIsMobile();
   const queryClient = useQueryClient();
+  const { user, isPremium } = useAuth();
 
   // State hooks
   const [pdfLoading, setPdfLoading] = useState(false);
@@ -166,7 +168,17 @@ const InvoiceDetail: React.FC<InvoiceDetailProps> = ({ type }) => {
     ...buyerCustomer,
   } : {
     name: selectedInvoice.customerName || 'Brak danych nabywcy',
-  } as any; // Cast as any for minimal data case
+    taxId: '',
+    address: '',
+    postalCode: '',
+    city: '',
+    phone: '',
+    email: '',
+    user_id: selectedInvoice.user_id,
+    customerType: 'buyer' as const,
+    created_at: new Date().toISOString(),
+    updated_at: new Date().toISOString()
+  } as Customer;
 
   const handleGeneratePdf = async (): Promise<string | null> => {
     if (!printRef.current) return null;
@@ -235,6 +247,15 @@ const InvoiceDetail: React.FC<InvoiceDetailProps> = ({ type }) => {
     }
   };
 
+  // Handle premium requirement
+  const handleRequirePremiumClick = () => {
+    toast({
+      title: "Funkcja Premium",
+      description: "Ta funkcja wymaga aktywnego abonamentu Premium.",
+      variant: "default",
+    });
+  };
+
   // Calculate totals using the utility function
   const calculatedTotals = selectedInvoice ? calculateInvoiceTotals(selectedInvoice.items) : {
     totalNetValue: 0,
@@ -255,6 +276,9 @@ const InvoiceDetail: React.FC<InvoiceDetailProps> = ({ type }) => {
           handleSharePdf={handleSharePdf}
           canSharePdf={canSharePdf}
           transactionType={selectedInvoice.transactionType}
+          isPaid={selectedInvoice.isPaid}
+          isPremium={isPremium || false}
+          onRequirePremiumClick={handleRequirePremiumClick}
         />
       )}
 
@@ -354,14 +378,7 @@ const InvoiceDetail: React.FC<InvoiceDetailProps> = ({ type }) => {
             city: '',
             user_id: selectedInvoice.user_id
           }}
-          customer={buyerCustomer || {
-            id: selectedInvoice.customerId || '',
-            name: selectedInvoice.customerName || '',
-            address: '',
-            postalCode: '',
-            city: '',
-            user_id: selectedInvoice.user_id
-          }}
+          customer={buyerCardData}
         />
       </div>
     </div>

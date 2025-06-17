@@ -1,4 +1,3 @@
-
 import { supabase } from "../client";
 import { InvoiceItem, InvoiceType, PaymentMethod, PaymentMethodDb, Invoice, KsefInfo, VatExemptionReason, Company, BusinessProfile, Customer, InvoiceStatus, TransactionType } from "@/types/index";
 import { toPaymentMethodUi, toPaymentMethodDb } from "@/lib/invoice-utils";
@@ -619,5 +618,17 @@ export async function deleteInvoice(id: string): Promise<void> {
   if (invoiceError) {
     console.error("Error deleting invoice:", invoiceError);
     throw new Error(`Error deleting invoice: ${invoiceError.message}`);
+  }
+}
+
+export async function updateInvoicePaymentStatus(invoiceId: string, isPaid: boolean): Promise<void> {
+  const { error } = await supabase
+    .from('invoices')
+    .update({ is_paid: isPaid })
+    .eq('id', invoiceId);
+
+  if (error) {
+    console.error('Error updating invoice payment status:', error);
+    throw new Error(`Error updating payment status: ${error.message}`);
   }
 }
