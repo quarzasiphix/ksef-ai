@@ -190,9 +190,10 @@ export const toPaymentMethodDb = (method: string | PaymentMethod): PaymentMethod
   const dbValue = paymentMethodMappings.dbValues[methodStr] || 'transfer';
   
   // Ensure we return a valid PaymentMethodDb value
-  return (['transfer', 'cash', 'card', 'other'].includes(dbValue) 
-    ? dbValue as PaymentMethodDb
-    : PaymentMethodDb.TRANSFER);
+  if (['transfer', 'cash', 'card', 'other'].includes(dbValue)) {
+    return dbValue as PaymentMethodDb;
+  }
+  return PaymentMethodDb.TRANSFER;
 };
 
 export const invoiceItemSchema = z.object({

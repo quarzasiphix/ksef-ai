@@ -1,3 +1,4 @@
+
 import React from "react";
 import { NavLink, useLocation, useNavigate } from "react-router-dom";
 import { 
@@ -13,7 +14,8 @@ import {
   Crown,
   Shield,
   User,
-  LogOut
+  LogOut,
+  UserCheck
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import {
@@ -59,6 +61,7 @@ const AppSidebar = () => {
   const managementItems = [
     { title: "Klienci", path: "/customers", icon: Users },
     { title: "Produkty", path: "/products", icon: Package },
+    { title: "Pracownicy", path: "/employees", icon: UserCheck },
     { title: "Ustawienia", path: "/settings", icon: Settings },
   ];
 

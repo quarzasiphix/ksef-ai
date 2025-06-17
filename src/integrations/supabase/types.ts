@@ -126,6 +126,78 @@ export type Database = {
         }
         Relationships: []
       }
+      employees: {
+        Row: {
+          address: string
+          bank_account: string | null
+          city: string
+          contract_type: string
+          created_at: string
+          department: string | null
+          email: string | null
+          end_date: string | null
+          first_name: string
+          id: string
+          is_active: boolean
+          last_name: string
+          nip: string | null
+          pesel: string
+          phone: string | null
+          position: string
+          postal_code: string
+          salary: number
+          start_date: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          address: string
+          bank_account?: string | null
+          city: string
+          contract_type?: string
+          created_at?: string
+          department?: string | null
+          email?: string | null
+          end_date?: string | null
+          first_name: string
+          id?: string
+          is_active?: boolean
+          last_name: string
+          nip?: string | null
+          pesel: string
+          phone?: string | null
+          position: string
+          postal_code: string
+          salary: number
+          start_date: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          address?: string
+          bank_account?: string | null
+          city?: string
+          contract_type?: string
+          created_at?: string
+          department?: string | null
+          email?: string | null
+          end_date?: string | null
+          first_name?: string
+          id?: string
+          is_active?: boolean
+          last_name?: string
+          nip?: string | null
+          pesel?: string
+          phone?: string | null
+          position?: string
+          postal_code?: string
+          salary?: number
+          start_date?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       expense_items: {
         Row: {
           created_at: string | null
@@ -405,6 +477,71 @@ export type Database = {
           },
         ]
       }
+      labour_hours: {
+        Row: {
+          break_time: number
+          created_at: string
+          description: string | null
+          employee_id: string
+          end_time: string | null
+          hourly_rate: number | null
+          hours_worked: number
+          id: string
+          is_paid: boolean
+          notes: string | null
+          overtime_hours: number
+          payment_date: string | null
+          start_time: string | null
+          updated_at: string
+          user_id: string
+          work_date: string
+        }
+        Insert: {
+          break_time?: number
+          created_at?: string
+          description?: string | null
+          employee_id: string
+          end_time?: string | null
+          hourly_rate?: number | null
+          hours_worked: number
+          id?: string
+          is_paid?: boolean
+          notes?: string | null
+          overtime_hours?: number
+          payment_date?: string | null
+          start_time?: string | null
+          updated_at?: string
+          user_id: string
+          work_date: string
+        }
+        Update: {
+          break_time?: number
+          created_at?: string
+          description?: string | null
+          employee_id?: string
+          end_time?: string | null
+          hourly_rate?: number | null
+          hours_worked?: number
+          id?: string
+          is_paid?: boolean
+          notes?: string | null
+          overtime_hours?: number
+          payment_date?: string | null
+          start_time?: string | null
+          updated_at?: string
+          user_id?: string
+          work_date?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "labour_hours_employee_id_fkey"
+            columns: ["employee_id"]
+            isOneToOne: false
+            referencedRelation: "employees"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       premium_subscriptions: {
         Row: {
           created_at: string | null
@@ -509,6 +646,59 @@ export type Database = {
           user_id?: string
         }
         Relationships: []
+      }
+      salary_payments: {
+        Row: {
+          amount: number
+          created_at: string
+          employee_id: string
+          id: string
+          labour_hours_ids: string[] | null
+          notes: string | null
+          payment_date: string
+          payment_type: string
+          period_end: string
+          period_start: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          amount: number
+          created_at?: string
+          employee_id: string
+          id?: string
+          labour_hours_ids?: string[] | null
+          notes?: string | null
+          payment_date: string
+          payment_type?: string
+          period_end: string
+          period_start: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          amount?: number
+          created_at?: string
+          employee_id?: string
+          id?: string
+          labour_hours_ids?: string[] | null
+          notes?: string | null
+          payment_date?: string
+          payment_type?: string
+          period_end?: string
+          period_start?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "salary_payments_employee_id_fkey"
+            columns: ["employee_id"]
+            isOneToOne: false
+            referencedRelation: "employees"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       transactions: {
         Row: {

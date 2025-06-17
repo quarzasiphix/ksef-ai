@@ -1,10 +1,17 @@
+
 import React, { useEffect, useState, useRef } from "react";
-import { useParams, useNavigate } from "react-router-dom";
-import { Invoice, InvoiceType, VatExemptionReason, Customer, BusinessProfile } from "@/types/index";
+import { useParams, useNavigate, Link } from "react-router-dom";
+import jsPDF from 'jspdf';
+import html2canvas from 'html2canvas';
+import { Capacitor } from '@capacitor/core';
+import { Filesystem, Directory, Encoding } from '@capacitor/filesystem';
+import { Share } from '@capacitor/share';
+import { Invoice, InvoiceType, BusinessProfile, Customer, KsefInfo } from "@/types";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { getInvoice } from "@/integrations/supabase/repositories/invoiceRepository";
+import { getInvoice, updateInvoicePaymentStatus } from "@/integrations/supabase/repositories/invoiceRepository";
 import { getBusinessProfileById } from "@/integrations/supabase/repositories/businessProfileRepository";
 import { getCustomerById } from "@/integrations/supabase/repositories/customerRepository";
+import { useToast } from "@/components/ui/use-toast";
 import { InvoiceHeader } from "@/components/invoices/detail/InvoiceHeader";
 import { InvoiceDetailsCard } from "@/components/invoices/detail/InvoiceDetailsCard";
 import { InvoiceItemsCard } from "@/components/invoices/detail/InvoiceItemsCard";
@@ -13,17 +20,13 @@ import { InvoicePdfTemplate } from '@/components/invoices/pdf/InvoicePdfTemplate
 import TotalsSummary from "@/components/invoices/detail/TotalsSummary";
 import { CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { ArrowLeft, Plus, Check, CheckCircle } from "lucide-react";
-import { generateElementPdf, getInvoiceFileName, generateElementPdfBlob } from '@/lib/pdf-utils';
-import { calculateInvoiceTotals, formatCurrency } from '@/lib/invoice-utils';
+import { ArrowLeft, Pencil, Plus, Printer, FilePlus, FileDown, Share2 } from "lucide-react";
+import { generateElementPdf, getInvoiceFileName } from '@/lib/pdf-utils';
+import { calculateInvoiceTotals } from '@/lib/invoice-utils';
 import { useIsMobile } from "@/hooks/use-mobile";
-import { Capacitor } from '@capacitor/core';
-import { toast } from "sonner";
-import { saveInvoice } from "@/integrations/supabase/repositories/invoiceRepository";
-import { useAuth } from "@/context/AuthContext";
-import PremiumCheckoutModal from '@/components/premium/PremiumCheckoutModal';
-import NewInvoice from "@/pages/invoices/NewInvoice";
-import { sendInvoiceEmail } from '@/components/mail/Mailing';
+import { cn } from "@/lib/utils";
+import { formatCurrency } from "@/lib/invoice-utils";
+import { useAuth } from "@/hooks/useAuth";
 
 interface InvoiceDetailProps {
   type: 'income' | 'expense';
@@ -32,58 +35,73 @@ interface InvoiceDetailProps {
 const InvoiceDetail: React.FC<InvoiceDetailProps> = ({ type }) => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
-  const { isPremium } = useAuth();
+  const { toast } = useToast();
+  const containerRef = useRef<HTMLDivElement>(null);
+  const printRef = useRef<HTMLDivElement>(null);
   const isMobile = useIsMobile();
   const queryClient = useQueryClient();
+  const { user, isPremium } = useAuth();
 
-  // State
-  const [isPremiumModalOpen, setIsPremiumModalOpen] = useState(false);
+  // State hooks
   const [pdfLoading, setPdfLoading] = useState(false);
   const [canSharePdf, setCanSharePdf] = useState(false);
-  const [isMarkingPaid, setIsMarkingPaid] = useState(false);
+  const [isStickyVisible, setIsStickyVisible] = useState(false);
 
-  // Refs
-  const printRef = useRef<HTMLDivElement>(null);
-
-  // If id is 'new', render the NewInvoice form directly
-  if (id === 'new') {
-    return <NewInvoice />;
-  }
-
-  // Fetch data only if id is not 'new'
+  // Fetch the invoice (with items) directly
   const { data: selectedInvoice, isLoading: isLoadingInvoice, error: invoiceError } = useQuery({
     queryKey: ['invoice', id],
-    queryFn: () => getInvoice(id!),
-    enabled: !!id && id !== 'new',
+    queryFn: () => {
+      if (!id) throw new Error('Invoice ID is required');
+      return getInvoice(id);
+    },
+    enabled: !!id
   });
 
+  console.log('InvoiceDetail - Fetched selectedInvoice.vat:', selectedInvoice?.vat as any);
+
+  // Fetch the full business profile for the seller
   const { data: sellerProfile, isLoading: isLoadingSeller, error: sellerError } = useQuery({
-    queryKey: ['businessProfile', (selectedInvoice as Invoice | undefined)?.businessProfileId],
-    queryFn: () => getBusinessProfileById((selectedInvoice as Invoice).businessProfileId!),
-    enabled: !!(selectedInvoice as Invoice | undefined)?.businessProfileId,
+    queryKey: ['businessProfile', selectedInvoice?.businessProfileId],
+    queryFn: () => getBusinessProfileById(selectedInvoice!.businessProfileId),
+    enabled: !!selectedInvoice?.businessProfileId,
   });
 
+  // Fetch the full customer profile for the buyer
   const { data: buyerCustomer, isLoading: isLoadingBuyer, error: buyerError } = useQuery({
-    queryKey: ['customer', (selectedInvoice as Invoice | undefined)?.customerId],
-    queryFn: () => getCustomerById((selectedInvoice as Invoice).customerId!),
-    enabled: !!(selectedInvoice as Invoice | undefined)?.customerId,
+    queryKey: ['customer', selectedInvoice?.customerId],
+    queryFn: () => {
+      if (!selectedInvoice?.customerId) return null;
+      return getCustomerById(selectedInvoice.customerId);
+    },
+    enabled: !!selectedInvoice?.customerId,
   });
 
   const isLoading = isLoadingInvoice || isLoadingSeller || isLoadingBuyer;
   const error = invoiceError || sellerError || buyerError;
 
-  // Effects
+  // PDF sharing capability check
   useEffect(() => {
     if (Capacitor.isNativePlatform() || (navigator as any).share) {
       setCanSharePdf(true);
     }
   }, []);
 
-  // Early returns
+  // Back button handler for mobile
+  useEffect(() => {
+    const handleBackButton = (e: BeforeUnloadEvent) => {
+      if (Capacitor.isNativePlatform()) {
+        e.preventDefault();
+        navigate(-1);
+      }
+    };
+    window.addEventListener('beforeunload', handleBackButton);
+    return () => window.removeEventListener('beforeunload', handleBackButton);
+  }, [navigate]);
+
+  // Early returns after all hooks
   if (!id) {
     return <div className="p-4">Brak ID faktury</div>;
   }
-  
   if (isLoading) {
     return (
       <div className="flex flex-col items-center justify-center min-h-[50vh] space-y-4">
@@ -92,8 +110,8 @@ const InvoiceDetail: React.FC<InvoiceDetailProps> = ({ type }) => {
       </div>
     );
   }
-  
   if (error) {
+    console.error('Error loading invoice data:', error);
     return (
       <div className="flex flex-col items-center justify-center min-h-[50vh] p-4 text-center">
         <div className="bg-red-50 dark:bg-red-900/20 p-4 rounded-lg max-w-md w-full">
@@ -112,36 +130,34 @@ const InvoiceDetail: React.FC<InvoiceDetailProps> = ({ type }) => {
       </div>
     );
   }
-  
   if (!selectedInvoice) {
-    return (
-      <div className="flex flex-col items-center justify-center min-h-[50vh] p-6 text-center">
-        <div className="max-w-md w-full bg-card p-6 rounded-lg border">
-          <h2 className="text-xl font-semibold mb-3">Nie znaleziono faktury</h2>
-          <p className="text-muted-foreground mb-6">Faktura o podanym ID nie istnieje lub nie masz do niej dostępu.</p>
-          <div className="flex flex-col sm:flex-row gap-3 justify-center">
-            <Button 
-              variant="outline" 
-              onClick={() => navigate(type === 'income' ? '/income' : '/expense')}
-              className="flex-1 sm:flex-none"
-            >
-              <ArrowLeft className="mr-2 h-4 w-4" />
-              Wróć do listy {type === 'income' ? 'przychodów' : 'kosztów'}
-            </Button>
-            <Button 
-              onClick={() => navigate(`/${type}/new`)}
-              className="flex-1 sm:flex-none"
-            >
-              <Plus className="mr-2 h-4 w-4" />
-              Dodaj nową fakturę
-            </Button>
-          </div>
+    return <div className="flex flex-col items-center justify-center min-h-[50vh] p-6 text-center">
+      <div className="max-w-md w-full bg-card p-6 rounded-lg border">
+        <h2 className="text-xl font-semibold mb-3">Nie znaleziono faktury</h2>
+        <p className="text-muted-foreground mb-6">Faktura o podanym ID nie istnieje lub nie masz do niej dostępu.</p>
+        <div className="flex flex-col sm:flex-row gap-3 justify-center">
+          <Button 
+            variant="outline" 
+            onClick={() => navigate(type === 'income' ? '/income' : '/expense')}
+            className="flex-1 sm:flex-none"
+          >
+            <ArrowLeft className="mr-2 h-4 w-4" />
+            Wróć do listy {type === 'income' ? 'przychodów' : 'kosztów'}
+          </Button>
+          <Button 
+            onClick={() => navigate(`/${type}/new`)}
+            className="flex-1 sm:flex-none"
+          >
+            <Plus className="mr-2 h-4 w-4" />
+            Dodaj nową fakturę
+          </Button>
         </div>
       </div>
-    );
+    </div>;
   }
 
-  // Prepare contractor data
+  // Prepare seller and buyer data for contractor cards
+  // Use data from the newly fetched sellerProfile and buyerCustomer
   const sellerCardData = sellerProfile ? {
     name: selectedInvoice.businessName || sellerProfile.name,
     ...sellerProfile,
@@ -154,16 +170,26 @@ const InvoiceDetail: React.FC<InvoiceDetailProps> = ({ type }) => {
     name: selectedInvoice.customerName || buyerCustomer.name,
     ...buyerCustomer,
   } : {
+    id: selectedInvoice.customerId || '',
     name: selectedInvoice.customerName || 'Brak danych nabywcy',
-  } as any;
+    taxId: '',
+    address: '',
+    postalCode: '',
+    city: '',
+    phone: '',
+    email: '',
+    user_id: selectedInvoice.user_id,
+    customerType: 'buyer' as const,
+    created_at: new Date().toISOString(),
+    updated_at: new Date().toISOString()
+  } as Customer;
 
-  // Handlers
   const handleGeneratePdf = async (): Promise<string | null> => {
     if (!printRef.current) return null;
     
     setPdfLoading(true);
     try {
-      const fileName = getInvoiceFileName(selectedInvoice as Invoice);
+      const fileName = getInvoiceFileName(selectedInvoice);
       const success = await generateElementPdf(printRef.current, { filename: fileName });
       return success ? fileName : null;
     } catch (error) {
@@ -179,14 +205,17 @@ const InvoiceDetail: React.FC<InvoiceDetailProps> = ({ type }) => {
     
     setPdfLoading(true);
     try {
-      const fileName = getInvoiceFileName(selectedInvoice as Invoice);
+      const fileName = getInvoiceFileName(selectedInvoice);
       
       if (Capacitor.isNativePlatform()) {
+        // For mobile platforms, generate PDF and share
         const success = await generateElementPdf(printRef.current, { filename: fileName });
         if (success) {
-          // PDF will be automatically shared on mobile platforms
+          // The PDF will be automatically shared on mobile platforms
+          // No need to do anything else as the PDF is already in RAM
         }
       } else {
+        // For desktop, just download
         await handleGeneratePdf();
       }
     } catch (error) {
@@ -196,183 +225,84 @@ const InvoiceDetail: React.FC<InvoiceDetailProps> = ({ type }) => {
     }
   };
 
+  // Handle marking invoice as paid
   const handleMarkAsPaid = async () => {
-    if (!selectedInvoice) return;
-
-    setIsMarkingPaid(true);
+    if (!id || !selectedInvoice) return;
+    
     try {
+      await updateInvoicePaymentStatus(id, true);
+      
+      // Update the local state immediately for a better UX
       const updatedInvoice = { ...selectedInvoice, isPaid: true };
-      await saveInvoice(updatedInvoice as any);
+      queryClient.setQueryData(['invoice', id], updatedInvoice);
       
-      queryClient.setQueryData(['invoice', selectedInvoice.id], (oldData: Invoice | undefined) => {
-        if (oldData) {
-          return { ...oldData, isPaid: true };
-        }
-        return updatedInvoice as any;
+      toast({
+        title: "Sukces",
+        description: "Status faktury został zaktualizowany na 'Zapłacono'.",
+        variant: "default",
       });
-      
-      queryClient.setQueryData(['invoices'], (oldData: Invoice[] | undefined) => {
-        if (oldData) {
-          return oldData.map(inv => 
-            inv.id === selectedInvoice.id ? { ...inv, isPaid: true } : inv
-          );
-        }
-        return [updatedInvoice] as any[];
-      });
-      
-      await queryClient.invalidateQueries({ queryKey: ['invoice', selectedInvoice.id] });
-      await queryClient.invalidateQueries({ queryKey: ['invoices'] });
-
-      toast.success("Dokument oznaczono jako zapłacony");
     } catch (error) {
-      console.error("Error marking invoice as paid:", error);
-      toast.error("Wystąpił błąd podczas oznaczania dokumentu jako zapłacony");
-    } finally {
-      setIsMarkingPaid(false);
+      console.error('Error updating payment status:', error);
+      toast({
+        title: "Błąd",
+        description: "Nie udało się zaktualizować statusu płatności. Spróbuj ponownie.",
+        variant: "destructive",
+      });
     }
   };
 
-  // Handler to send invoice by mail
-  const handleSendInvoiceByMail = async () => {
-    if (!isPremium) {
-      setIsPremiumModalOpen(true);
-      return;
-    }
-    if (!buyerCustomer?.email) {
-      toast.error('Dodaj adres e-mail do klienta, aby wysłać fakturę.');
-      return;
-    }
-    if (!printRef.current) {
-      toast.error('Nie można wygenerować PDF.');
-      return;
-    }
-    setPdfLoading(true);
-    try {
-      // Generate PDF as Blob
-      const pdfBlob = await generateElementPdfBlob(printRef.current, { filename: getInvoiceFileName(selectedInvoice) });
-      if (!pdfBlob) {
-        toast.error('Nie udało się wygenerować PDF.');
-        setPdfLoading(false);
-        return;
-      }
-      // Subject: invoice name + first 2 words of business profile
-      const businessName = (sellerProfile?.name || '').split(' ').slice(0, 2).join(' ');
-      const fullBusinessName = sellerProfile?.name || '';
-      const invoiceName = selectedInvoice.number;
-      const subject = `${invoiceName} ${businessName}`;
-      // Polish HTML message
-      const totalGross = formatCurrency(selectedInvoice.totalGrossValue ?? 0);
-      const businessEmail = sellerProfile?.email || '';
-      const buyerName = buyerCustomer?.name || '';
-      // Payment method info
-      let paymentInfo = '';
-      const paymentMethod = selectedInvoice.paymentMethod;
-      const bankAccount = sellerProfile?.bankAccount || '';
-      if ((paymentMethod === 'transfer' || paymentMethod === 'przelew') && bankAccount) {
-        paymentInfo = `<p><strong>Numer rachunku bankowego:</strong> <span style='font-family:monospace;'>${bankAccount}</span></p>`;
-      } else if (paymentMethod === 'cash' || paymentMethod === 'gotówka') {
-        paymentInfo = `<p><strong>Płatność gotówkowa</strong></p>`;
-      }
-      const message = `
-        <div style="font-family: Arial, sans-serif; color: #222; font-size: 16px;">
-          <h2 style="color: #2563eb; margin-bottom: 0.5em;">Faktura: ${invoiceName}</h2>
-          <p><strong>Wystawca (sprzedawca):</strong> ${fullBusinessName}${businessEmail ? ` (<a href='mailto:${businessEmail}' style='color:#2563eb;'>${businessEmail}</a>)` : ''}</p>
-          <p><strong>Odbiorca (klient):</strong> ${buyerName}</p>
-          <p><strong>Data wystawienia:</strong> ${selectedInvoice.issueDate}</p>
-          <p><strong>Kwota do zapłaty:</strong> <span style="font-size:18px; color:#16a34a; font-weight:bold;">${totalGross}</span></p>
-          ${paymentInfo}
-          <hr style="margin: 2em 0; border: none; border-top: 1px solid #eee;" />
-          <p>W załączniku znajdziesz fakturę w formacie PDF.</p>
-          <div style="margin-top:2em; font-size:14px; color:#888;">
-            Wygenerowano i wysłano automatycznie przez <a href="https://ksiegai.pl" style="color:#2563eb; text-decoration:none;">ksiegai.pl</a> – najlepszy polski system księgowy.
-          </div>
-        </div>
-      `;
-      // Use the reusable email sender
-      const ok = await sendInvoiceEmail({
-        mail: buyerCustomer.email,
-        subject,
-        message,
-        pdfBlob,
-        filename: getInvoiceFileName(selectedInvoice),
-      });
-      if (ok) {
-        toast.success('Faktura została wysłana e-mailem!');
-      } else {
-        toast.error('Nie udało się wysłać faktury e-mailem.');
-      }
-    } catch (error) {
-      console.error('Error sending invoice by mail:', error);
-      toast.error('Wystąpił błąd podczas wysyłania faktury e-mailem.');
-    } finally {
-      setPdfLoading(false);
-    }
+  // Handle premium requirement
+  const handleRequirePremiumClick = () => {
+    toast({
+      title: "Funkcja Premium",
+      description: "Ta funkcja wymaga aktywnego abonamentu Premium.",
+      variant: "default",
+    });
   };
 
-  // Calculate totals
-  const totals = selectedInvoice ? calculateInvoiceTotals(selectedInvoice.items) : {
+  // Calculate totals using the utility function
+  const calculatedTotals = selectedInvoice ? calculateInvoiceTotals(selectedInvoice.items) : {
     totalNetValue: 0,
     totalVatValue: 0,
     totalGrossValue: 0
   };
 
   return (
-    <div className="flex flex-col flex-1 relative p-4 md:p-6 max-w-7xl mx-auto">
-      {/* Header */}
-      <InvoiceHeader 
-        id={selectedInvoice.id}
-        number={selectedInvoice.number}
-        type={selectedInvoice.type}
-        pdfLoading={pdfLoading}
-        handleGeneratePdf={handleGeneratePdf}
-        handleSharePdf={handleSharePdf}
-        canSharePdf={canSharePdf}
-        transactionType={selectedInvoice.transactionType}
-        isPaid={selectedInvoice.isPaid}
-        isPremium={isPremium}
-        onRequirePremiumClick={() => setIsPremiumModalOpen(true)}
-      />
-
-      {/* Mark as Paid Button - Prominent placement */}
-      {selectedInvoice.transactionType === 'income' && !selectedInvoice.isPaid && (
-        <div className="mb-6">
-          <Button 
-            onClick={handleMarkAsPaid}
-            disabled={isMarkingPaid || pdfLoading}
-            className="w-full sm:w-auto bg-green-600 hover:bg-green-700 text-white font-medium"
-            size={isMobile ? "default" : "lg"}
-          >
-            {isMarkingPaid ? (
-              <>Oznaczanie...</>
-            ) : (
-              <>
-                <CheckCircle className="mr-2 h-5 w-5" />
-                Oznacz jako zapłacone
-              </>
-            )}
-          </Button>
-        </div>
+    <div ref={containerRef} className="flex-1 space-y-3 lg:space-y-4 relative pt-16 md:pt-0">
+      {/* Original Static header content */}
+      {selectedInvoice && (
+        <InvoiceHeader 
+          id={selectedInvoice.id}
+          number={selectedInvoice.number}
+          type={selectedInvoice.type}
+          pdfLoading={pdfLoading}
+          handleGeneratePdf={handleGeneratePdf}
+          handleSharePdf={handleSharePdf}
+          canSharePdf={canSharePdf}
+          transactionType={selectedInvoice.transactionType}
+          isPaid={selectedInvoice.isPaid}
+          isPremium={isPremium || false}
+          onRequirePremiumClick={handleRequirePremiumClick}
+        />
       )}
-      {/* Send by Mail Button */}
-      <div className="mb-6">
-        <Button
-          onClick={handleSendInvoiceByMail}
-          disabled={pdfLoading}
-          className="w-full sm:w-auto bg-blue-600 hover:bg-blue-700 text-white font-medium"
-          size={isMobile ? "default" : "lg"}
-        >
-          {pdfLoading ? 'Wysyłanie...' : 'Wyślij fakturę e-mailem'}
-        </Button>
-      </div>
 
-      {/* Content */}
-      <div className="flex-1 overflow-y-auto space-y-6 pb-6">
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          {/* Main content */}
-          <div className="lg:col-span-2 space-y-6">
-            {/* Invoice Details */}
-            <div className="bg-card p-4 md:p-6 rounded-lg border">
-              <CardTitle className="text-lg mb-4">Szczegóły dokumentu</CardTitle>
+      <div className="space-y-8">
+        <div className="grid grid-cols-1 xl:grid-cols-3 gap-6">
+          <div className="xl:col-span-2 space-y-6">
+            <div className="bg-card p-6 rounded-lg border">
+              <div className="flex justify-between items-center mb-4">
+                <CardTitle className="text-lg">Szczegóły dokumentu</CardTitle>
+                {!selectedInvoice.isPaid && (
+                  <Button 
+                    variant="outline" 
+                    size="sm"
+                    onClick={handleMarkAsPaid}
+                    className="ml-auto"
+                  >
+                    Oznacz jako zapłacone
+                  </Button>
+                )}
+              </div>
               <InvoiceDetailsCard
                 number={selectedInvoice.number}
                 issueDate={selectedInvoice.issueDate}
@@ -380,30 +310,26 @@ const InvoiceDetail: React.FC<InvoiceDetailProps> = ({ type }) => {
                 sellDate={selectedInvoice.sellDate}
                 paymentMethod={selectedInvoice.paymentMethod}
                 isPaid={selectedInvoice.isPaid || false}
-                comments={selectedInvoice.comments || ''}
+                ksef={selectedInvoice.ksef}
+                comments={selectedInvoice.comments}
                 type={selectedInvoice.type}
-                bankAccount={sellerProfile?.bankAccount || ''}
-                vat={!selectedInvoice.fakturaBezVAT}
-                vatExemptionReason={selectedInvoice.vatExemptionReason}
+                bankAccount={sellerCardData?.bankAccount}
+                vat={selectedInvoice.vat}
               />
             </div>
+            <div className="bg-card p-6 rounded-lg border">
 
-            {/* Invoice Items */}
-            <div className="bg-card p-4 md:p-6 rounded-lg border">
-              <CardTitle className="text-lg mb-4">Pozycje na dokumencie</CardTitle>
               <InvoiceItemsCard
                 items={Array.isArray(selectedInvoice.items) ? selectedInvoice.items : []}
-                totalNetValue={totals.totalNetValue}
-                totalVatValue={totals.totalVatValue}
-                totalGrossValue={totals.totalGrossValue}
+                totalNetValue={calculatedTotals.totalNetValue}
+                totalVatValue={calculatedTotals.totalVatValue}
+                totalGrossValue={calculatedTotals.totalGrossValue}
                 type={selectedInvoice.type}
               />
             </div>
           </div>
-
-          {/* Sidebar - Desktop only */}
-          <div className="hidden lg:block">
-            <div className="bg-card p-4 md:p-6 rounded-lg border sticky top-6">
+          <div className="xl:block hidden">
+            <div className="bg-card p-6 rounded-lg border">
               <CardTitle className="text-lg mb-4">Dane Kontrahentów</CardTitle>
               <div className="space-y-6">
                 <ContractorCard title="Sprzedawca" contractor={sellerCardData} />
@@ -412,29 +338,25 @@ const InvoiceDetail: React.FC<InvoiceDetailProps> = ({ type }) => {
             </div>
           </div>
         </div>
-
-        {/* Mobile contractor cards */}
-        <div className="lg:hidden">
-          <div className="bg-card p-4 md:p-6 rounded-lg border">
+        {/* Mobile and tablet view for Contractor Cards */}
+        <div className="xl:hidden">
+          <div className="bg-card p-6 rounded-lg border">
             <CardTitle className="text-lg mb-4">Dane Kontrahentów</CardTitle>
-            <div className="grid grid-cols-1 gap-6">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <ContractorCard title="Sprzedawca" contractor={sellerCardData} />
               <ContractorCard title="Nabywca" contractor={buyerCardData} />
             </div>
           </div>
         </div>
-
-        {/* Totals Summary */}
-        <div className="bg-card p-4 md:p-6 rounded-lg border">
+        <div className="bg-card p-6 rounded-lg border">
           <TotalsSummary
-            totalNetValue={totals.totalNetValue}
-            totalVatValue={totals.totalVatValue}
-            totalGrossValue={totals.totalGrossValue}
+            totalNetValue={calculatedTotals.totalNetValue}
+            totalVatValue={calculatedTotals.totalVatValue}
+            totalGrossValue={calculatedTotals.totalGrossValue}
             type={selectedInvoice.type}
           />
         </div>
       </div> 
-
       {/* Hidden PDF template */}
       <div 
         ref={printRef} 
@@ -450,10 +372,7 @@ const InvoiceDetail: React.FC<InvoiceDetailProps> = ({ type }) => {
         }}
       >
         <InvoicePdfTemplate
-          invoice={{
-            ...(selectedInvoice as any),
-            totalGrossValue: (selectedInvoice as any).totalGrossValue ?? 0,
-          } as any}
+          invoice={selectedInvoice}
           businessProfile={sellerProfile || {
             id: selectedInvoice.businessProfileId,
             name: selectedInvoice.businessName || '',
@@ -462,24 +381,10 @@ const InvoiceDetail: React.FC<InvoiceDetailProps> = ({ type }) => {
             postalCode: '',
             city: '',
             user_id: selectedInvoice.user_id
-          } as any}
-          customer={buyerCustomer || {
-            id: selectedInvoice.customerId || '',
-            name: selectedInvoice.customerName || '',
-            address: '',
-            postalCode: '',
-            city: '',
-            user_id: selectedInvoice.user_id,
-            customerType: 'odbiorca',
-          } as any}
+          }}
+          customer={buyerCardData}
         />
       </div>
-
-      {/* Premium Checkout Modal */}
-      <PremiumCheckoutModal 
-        isOpen={isPremiumModalOpen} 
-        onClose={() => setIsPremiumModalOpen(false)}
-      />
     </div>
   );
 };
