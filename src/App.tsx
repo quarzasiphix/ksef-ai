@@ -1,57 +1,41 @@
+import React, { createContext, useContext, useState, useEffect } from 'react';
+import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import { Toaster } from '@/components/ui/toaster';
+import { ThemeProvider } from '@/components/theme/ThemeProvider';
+import { SidebarProvider } from '@/components/ui/sidebar';
 
-import { Toaster } from "@/components/ui/toaster";
-import { Toaster as Sonner } from "@/components/ui/sonner";
-import { TooltipProvider } from "@/components/ui/tooltip";
-import { QueryClientProvider } from "@tanstack/react-query";
-import { BrowserRouter as Router, Routes, Route, Navigate, useLocation } from "react-router-dom";
-import { ThemeProvider } from "./components/theme/ThemeProvider";
-import Login from "./pages/auth/Login";
-import Register from "./pages/auth/Register";
-import Home from "./pages/public/Home";
-import PublicLayout from "./components/public/PublicLayout";
-import Dashboard from "./pages/Dashboard";
-import PrivacyPolicy from "./pages/policies/PrivacyPolicy";
-import TOSPolicy from "./pages/policies/TOSPolicy";
-import RefundsPolicy from "./pages/policies/RefundsPolicy";
-import { AuthProvider } from "./context/AuthContext";
-import { queryClient } from "./lib/queryClient";
-import { useAuth } from "@/hooks/useAuth";
-import Layout from "./components/layout/Layout";
-import { SidebarProvider } from "@/components/ui/sidebar";
-import { BusinessProfileProvider } from "@/context/BusinessProfileContext";
-import { useHeartbeat } from "@/hooks/useHeartbeat";
-import GlobalDataLoader from "./components/layout/GlobalDataLoader";
-import InvoiceList from "./pages/invoices/InvoiceList";
-import InvoiceDetail from "./pages/invoices/InvoiceDetail";
-import NewInvoice from "./pages/invoices/NewInvoice";
-import { TransactionType } from "@/types";
-import BusinessProfiles from "./pages/settings/BusinessProfiles";
-import NewBusinessProfile from "./pages/settings/NewBusinessProfile";
-import EditBusinessProfile from "./pages/settings/EditBusinessProfile";
-import NotFound from "./pages/NotFound";
-import CustomerList from "./pages/customers/CustomerList";
-import CustomerDetail from "./pages/customers/CustomerDetail";
-import ProductList from "./pages/products/ProductList";
-import NewCustomer from "./pages/customers/NewCustomer";
-import EditCustomer from "./pages/customers/EditCustomer";
-import NewProduct from "./pages/products/NewProduct";
-import EditProduct from "./pages/products/EditProduct";
-import ProductDetail from "./pages/products/ProductDetail";
-import IncomeList from "./pages/income/IncomeList";
-import DocumentSettings from "./pages/settings/DocumentSettings";
-import ExpenseList from "./pages/expense/ExpenseList";
-import IncomeDetail from "./pages/income/[id]";
-import ExpenseDetail from "./pages/expense/[id]";
-import EditInvoice from "./pages/invoices/EditInvoice";
-import SettingsMenu from "./pages/settings/SettingsMenu";
-import ProfileSettings from "./pages/settings/ProfileSettings";
-import { AuthChangeEvent, Session, User, SupabaseClient, Subscription } from '@supabase/supabase-js';
-import PremiumCheckoutModal from "@/components/premium/PremiumCheckoutModal";
-import Accounting from './pages/accounting/Accounting';
-import RequirePremium from './components/auth/RequirePremium';
-import PremiumSuccessMessage from "@/components/premium/PremiumSuccessMessage";
-import React from "react";
-import Welcome from "@/components/welcome/Welcome";
+// Auth components
+import Login from '@/pages/auth/Login';
+import Register from '@/pages/auth/Register';
+
+// Layout components
+import Layout from '@/components/layout/Layout';
+
+// Page components
+import Dashboard from '@/pages/Dashboard';
+import IncomeList from '@/pages/income/IncomeList';
+import ExpenseList from '@/pages/expense/ExpenseList';
+import CustomerList from '@/pages/customers/CustomerList';
+import NewCustomer from '@/pages/customers/NewCustomer';
+import EditCustomer from '@/pages/customers/EditCustomer';
+import CustomerDetail from '@/pages/customers/CustomerDetail';
+import ProductList from '@/pages/products/ProductList';
+import NewProduct from '@/pages/products/NewProduct';
+import EditProduct from '@/pages/products/EditProduct';
+import ProductDetail from '@/pages/products/ProductDetail';
+import EmployeesList from '@/pages/employees/EmployeesList';
+import NewInvoice from '@/pages/invoices/NewInvoice';
+import EditInvoice from '@/pages/invoices/EditInvoice';
+import InvoiceDetail from '@/pages/invoices/InvoiceDetail';
+import Settings from '@/pages/settings/Settings';
+import BusinessProfiles from '@/pages/settings/BusinessProfiles';
+import NewBusinessProfile from '@/pages/settings/NewBusinessProfile';
+import EditBusinessProfile from '@/pages/settings/EditBusinessProfile';
+import DocumentSettings from '@/pages/settings/DocumentSettings';
+import AccountingPage from '@/pages/accounting/AccountingPage';
+import KsefPage from '@/pages/ksef/KsefPage';
+import NotFound from '@/pages/NotFound';
 
 const AppLoadingScreen = ({ loading, checkingPremium }: { loading: boolean, checkingPremium: boolean }) => (
   <div className={`fixed inset-0 z-50 flex flex-col items-center justify-center bg-background/90 transition-colors ${checkingPremium ? 'text-amber-500' : 'text-primary'}`}>
@@ -112,7 +96,6 @@ const App = () => {
       <QueryClientProvider client={queryClient}>
         <TooltipProvider>
           <Toaster />
-          <Sonner position="top-center" offset={10} />
           <AuthProvider>
             <Router>
               <Routes>
@@ -246,7 +229,7 @@ const App = () => {
                 </Route>
                 <Route path="/accounting/*" element={
                   <ProtectedRoute>
-                    <Accounting />
+                    <AccountingPage />
                   </ProtectedRoute>
                 } />
                 <Route path="/ksef/*" element={

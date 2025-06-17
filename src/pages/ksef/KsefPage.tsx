@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -10,10 +11,10 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import { ListBullet, Plus, Upload } from "lucide-react";
+import { List, Plus, Upload } from "lucide-react";
 import { Separator } from "@/components/ui/separator";
 import { Badge } from "@/components/ui/badge";
-import { useToast } from "@/components/ui/use-toast";
+import { useToast } from "@/hooks/use-toast";
 import { Customer } from '@/types';
 import RequirePremium from "@/components/auth/RequirePremium";
 
@@ -104,7 +105,7 @@ const KsefPage = () => {
       <div className="flex justify-between items-center mb-4">
         <h1 className="text-2xl font-bold">Krajowy System e-Faktur (KSeF)</h1>
         <Badge variant="secondary">
-          <ListBullet className="mr-2 h-4 w-4" />
+          <List className="mr-2 h-4 w-4" />
           Wersja Premium
         </Badge>
       </div>
