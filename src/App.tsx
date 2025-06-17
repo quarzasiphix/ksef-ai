@@ -1,40 +1,24 @@
-
-import React, { createContext, useContext, useState, useEffect } from 'react';
+import React from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate, useLocation } from 'react-router-dom';
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import { QueryClientProvider } from '@tanstack/react-query';
 import { Toaster } from '@/components/ui/toaster';
 import { ThemeProvider } from '@/components/theme/ThemeProvider';
 import { SidebarProvider } from '@/components/ui/sidebar';
 import { TooltipProvider } from '@/components/ui/tooltip';
 
-// Import the query client
-import { queryClient } from '@/lib/queryClient';
-
-// Auth components and context
-import { AuthProvider } from '@/context/AuthContext';
-import { useAuth } from '@/hooks/useAuth';
-import { BusinessProfileProvider } from '@/context/BusinessProfileContext';
-import { useHeartbeat } from '@/hooks/useHeartbeat';
-
-// Auth pages
+// Auth components
 import Login from '@/pages/auth/Login';
 import Register from '@/pages/auth/Register';
-
-// Public pages
-import Home from '@/pages/public/Home';
-import PrivacyPolicy from '@/pages/policies/PrivacyPolicy';
-import TOSPolicy from '@/pages/policies/TOSPolicy';
-import RefundsPolicy from '@/pages/policies/RefundsPolicy';
+import { AuthProvider } from '@/context/AuthContext';
+import { BusinessProfileProvider } from '@/context/BusinessProfileContext';
 
 // Layout components
 import Layout from '@/components/layout/Layout';
 import PublicLayout from '@/components/public/PublicLayout';
 
-// Welcome component
-import Welcome from '@/components/welcome/Welcome';
-
 // Page components
 import Dashboard from '@/pages/Dashboard';
+import Home from '@/pages/public/Home';
 import IncomeList from '@/pages/income/IncomeList';
 import ExpenseList from '@/pages/expense/ExpenseList';
 import CustomerList from '@/pages/customers/CustomerList';
@@ -45,7 +29,6 @@ import ProductList from '@/pages/products/ProductList';
 import NewProduct from '@/pages/products/NewProduct';
 import EditProduct from '@/pages/products/EditProduct';
 import ProductDetail from '@/pages/products/ProductDetail';
-import EmployeesList from '@/pages/employees/EmployeesList';
 import NewInvoice from '@/pages/invoices/NewInvoice';
 import EditInvoice from '@/pages/invoices/EditInvoice';
 import InvoiceDetail from '@/pages/invoices/InvoiceDetail';
@@ -53,58 +36,60 @@ import BusinessProfiles from '@/pages/settings/BusinessProfiles';
 import NewBusinessProfile from '@/pages/settings/NewBusinessProfile';
 import EditBusinessProfile from '@/pages/settings/EditBusinessProfile';
 import DocumentSettings from '@/pages/settings/DocumentSettings';
-import SettingsMenu from '@/pages/settings/SettingsMenu';
-import ProfileSettings from '@/pages/settings/ProfileSettings';
+import EmployeesList from '@/pages/employees/EmployeesList';
+import LabourHoursPage from '@/pages/employees/LabourHoursPage';
 import NotFound from '@/pages/NotFound';
 
-// Import transaction types
-import { TransactionType } from '@/types';
+import { queryClient } from '@/lib/queryClient';
+import { useAuth } from '@/hooks/useAuth';
+import { HeartbeatHandler } from '@/hooks/useHeartbeat';
 
-// Income detail page
-import IncomeDetail from '@/pages/income/[id]';
-
-const AppLoadingScreen = ({ loading, checkingPremium }: { loading: boolean, checkingPremium: boolean }) => (
-  <div className={`fixed inset-0 z-50 flex flex-col items-center justify-center bg-background/90 transition-colors ${checkingPremium ? 'text-amber-500' : 'text-primary'}`}>
-    <div className="text-2xl font-bold animate-pulse">
-      {checkingPremium ? 'Checking for premium...' : 'Ładowanie...'}
-    </div>
-    {checkingPremium && (
-      <div className="mt-2 text-sm font-medium text-amber-600">Ładowanie premium...</div>
-    )}
+const AppLoadingScreen = () => (
+  <div className="flex items-center justify-center h-screen">
+    <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-primary"></div>
   </div>
 );
 
-// Protected route wrapper component
 const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
-  const { user, loading } = useAuth();
-  
-  if (loading) {
-    return <AppLoadingScreen loading={true} checkingPremium={!!user && loading} />;
+  const { isAuthenticated, isLoading } = useAuth();
+  const location = useLocation();
+
+  if (isLoading) {
+    return <AppLoadingScreen />;
   }
-  if (!user) {
-    return <Navigate to="/auth/login" replace />;
+
+  if (!isAuthenticated) {
+    return <Navigate to="/auth/login" replace state={{ from: location }} />;
   }
 
   return (
-    <BusinessProfileProvider>
-      <HeartbeatHandler />
-      <SidebarProvider>
-        <Layout>{children}</Layout>
-      </SidebarProvider>
-    </BusinessProfileProvider>
+    <SidebarProvider>
+      <BusinessProfileProvider>
+        <Layout>
+          {children}
+        </Layout>
+      </BusinessProfileProvider>
+    </SidebarProvider>
   );
 };
 
-// Public route wrapper component
 const PublicRoute = ({ children }: { children: React.ReactNode }) => {
-  const { user, loading } = useAuth();
+  const { isAuthenticated, isLoading } = useAuth();
   const location = useLocation();
-  
-  if (loading) {
-    return <AppLoadingScreen loading={true} checkingPremium={!!user && loading} />;
+
+  if (isLoading) {
+    return <AppLoadingScreen />;
   }
-  
-  return <PublicLayout>{children}</PublicLayout>;
+
+  if (isAuthenticated) {
+    return <Navigate to="/dashboard" replace state={{ from: location }} />;
+  }
+
+  return (
+    <PublicLayout>
+      {children}
+    </PublicLayout>
+  );
 };
 
 const App = () => {
@@ -132,29 +117,21 @@ const App = () => {
                     <Register />
                   </PublicRoute>
                 } />
-                <Route path="/policies/privacy" element={
-                  <PublicRoute>
-                    <PrivacyPolicy />
-                  </PublicRoute>
-                } />
-                <Route path="/policies/tos" element={
-                  <PublicRoute>
-                    <TOSPolicy />
-                  </PublicRoute>
-                } />
-                <Route path="/policies/refunds" element={
-                  <PublicRoute>
-                    <RefundsPolicy />
-                  </PublicRoute>
-                } />
 
-                {/* Welcome route OUTSIDE main app layout */}
-                <Route path="/welcome" element={<Welcome />} />
-
-                {/* Protected routes (main app shell) */}
+                {/* Protected routes */}
                 <Route path="/dashboard" element={
                   <ProtectedRoute>
                     <Dashboard />
+                  </ProtectedRoute>
+                } />
+                <Route path="/income" element={
+                  <ProtectedRoute>
+                    <IncomeList />
+                  </ProtectedRoute>
+                } />
+                <Route path="/expense" element={
+                  <ProtectedRoute>
+                    <ExpenseList />
                   </ProtectedRoute>
                 } />
                 <Route path="/customers" element={
@@ -197,58 +174,68 @@ const App = () => {
                     <ProductDetail />
                   </ProtectedRoute>
                 } />
+                <Route path="/income/new" element={
+                  <ProtectedRoute>
+                    <NewInvoice type="income" />
+                  </ProtectedRoute>
+                } />
+                <Route path="/expense/new" element={
+                  <ProtectedRoute>
+                    <NewInvoice type="expense" />
+                  </ProtectedRoute>
+                } />
+                <Route path="/income/edit/:id" element={
+                  <ProtectedRoute>
+                    <EditInvoice type="income" />
+                  </ProtectedRoute>
+                } />
+                 <Route path="/expense/edit/:id" element={
+                  <ProtectedRoute>
+                    <EditInvoice type="expense" />
+                  </ProtectedRoute>
+                } />
+                <Route path="/income/:id" element={
+                  <ProtectedRoute>
+                    <InvoiceDetail type="income" />
+                  </ProtectedRoute>
+                } />
+                <Route path="/expense/:id" element={
+                  <ProtectedRoute>
+                    <InvoiceDetail type="expense" />
+                  </ProtectedRoute>
+                } />
+                <Route path="/settings/business-profiles" element={
+                  <ProtectedRoute>
+                    <BusinessProfiles />
+                  </ProtectedRoute>
+                } />
+                <Route path="/settings/business-profiles/new" element={
+                  <ProtectedRoute>
+                    <NewBusinessProfile />
+                  </ProtectedRoute>
+                } />
+                <Route path="/settings/business-profiles/edit/:id" element={
+                  <ProtectedRoute>
+                    <EditBusinessProfile />
+                  </ProtectedRoute>
+                } />
+                <Route path="/settings/documents" element={
+                  <ProtectedRoute>
+                    <DocumentSettings />
+                  </ProtectedRoute>
+                } />
+
+                {/* Employee routes */}
                 <Route path="/employees" element={
                   <ProtectedRoute>
                     <EmployeesList />
                   </ProtectedRoute>
                 } />
-                <Route path="/expense" element={
+                <Route path="/labour-hours" element={
                   <ProtectedRoute>
-                    <ExpenseList />
+                    <LabourHoursPage />
                   </ProtectedRoute>
                 } />
-                <Route path="/expense/new" element={
-                  <ProtectedRoute>
-                    <NewInvoice type={TransactionType.EXPENSE} />
-                  </ProtectedRoute>
-                } />
-                <Route path="/expense/:id" element={
-                  <ProtectedRoute>
-                    <InvoiceDetail type={TransactionType.EXPENSE} />
-                  </ProtectedRoute>
-                } />
-                <Route path="/income" element={
-                  <ProtectedRoute>
-                    <IncomeList />
-                  </ProtectedRoute>
-                } />
-                <Route path="/income/:id" element={
-                  <ProtectedRoute>
-                    <IncomeDetail />
-                  </ProtectedRoute>
-                } />
-                <Route path="/income/:id/edit" element={
-                  <ProtectedRoute>
-                    <EditInvoice />
-                  </ProtectedRoute>
-                } />
-                <Route path="/expense/:id/edit" element={
-                  <ProtectedRoute>
-                    <EditInvoice />
-                  </ProtectedRoute>
-                } />
-                <Route path="/settings/*" element={
-                  <ProtectedRoute>
-                    <SettingsMenu />
-                  </ProtectedRoute>
-                }>
-                  <Route path="profile" element={<ProfileSettings />} />
-                  <Route path="business-profiles" element={<BusinessProfiles />} />
-                  <Route path="business-profiles/new" element={<NewBusinessProfile />} />
-                  <Route path="business-profiles/:id" element={<EditBusinessProfile />} />
-                  <Route path="business-profiles/:id/edit" element={<EditBusinessProfile />} />
-                  <Route path="documents" element={<DocumentSettings />} />
-                </Route>
 
                 {/* Catch all route */}
                 <Route path="*" element={<NotFound />} />
@@ -260,15 +247,5 @@ const App = () => {
     </ThemeProvider>
   );
 };
-
-function HeartbeatHandler() {
-  const { user } = useAuth();
-  useHeartbeat({
-    onStatus: (status) => {
-      // Handle status updates
-    },
-  });
-  return null;
-}
 
 export default App;

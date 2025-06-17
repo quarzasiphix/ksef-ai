@@ -50,7 +50,10 @@ const InvoiceDetail: React.FC<InvoiceDetailProps> = ({ type }) => {
   // Fetch the invoice (with items) directly
   const { data: selectedInvoice, isLoading: isLoadingInvoice, error: invoiceError } = useQuery({
     queryKey: ['invoice', id],
-    queryFn: () => getInvoice(id!),
+    queryFn: () => {
+      if (!id) throw new Error('Invoice ID is required');
+      return getInvoice(id);
+    },
     enabled: !!id
   });
 
@@ -156,17 +159,18 @@ const InvoiceDetail: React.FC<InvoiceDetailProps> = ({ type }) => {
   // Prepare seller and buyer data for contractor cards
   // Use data from the newly fetched sellerProfile and buyerCustomer
   const sellerCardData = sellerProfile ? {
-    name: selectedInvoice.businessName || sellerProfile.name, // Prioritize name from invoice if exists
+    name: selectedInvoice.businessName || sellerProfile.name,
     ...sellerProfile,
     bankAccount: sellerProfile.bankAccount ?? '',
   } : {
     name: selectedInvoice.businessName || 'Brak danych sprzedawcy',
-  } as any; // Cast as any for minimal data case
+  } as any;
 
   const buyerCardData = buyerCustomer ? {
-    name: selectedInvoice.customerName || buyerCustomer.name, // Prioritize name from invoice if exists
+    name: selectedInvoice.customerName || buyerCustomer.name,
     ...buyerCustomer,
   } : {
+    id: selectedInvoice.customerId || '',
     name: selectedInvoice.customerName || 'Brak danych nabywcy',
     taxId: '',
     address: '',

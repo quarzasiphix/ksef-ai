@@ -487,7 +487,10 @@ export type Database = {
           hourly_rate: number | null
           hours_worked: number
           id: string
+          is_paid: boolean
+          notes: string | null
           overtime_hours: number
+          payment_date: string | null
           start_time: string | null
           updated_at: string
           user_id: string
@@ -502,7 +505,10 @@ export type Database = {
           hourly_rate?: number | null
           hours_worked: number
           id?: string
+          is_paid?: boolean
+          notes?: string | null
           overtime_hours?: number
+          payment_date?: string | null
           start_time?: string | null
           updated_at?: string
           user_id: string
@@ -517,7 +523,10 @@ export type Database = {
           hourly_rate?: number | null
           hours_worked?: number
           id?: string
+          is_paid?: boolean
+          notes?: string | null
           overtime_hours?: number
+          payment_date?: string | null
           start_time?: string | null
           updated_at?: string
           user_id?: string
@@ -637,6 +646,59 @@ export type Database = {
           user_id?: string
         }
         Relationships: []
+      }
+      salary_payments: {
+        Row: {
+          amount: number
+          created_at: string
+          employee_id: string
+          id: string
+          labour_hours_ids: string[] | null
+          notes: string | null
+          payment_date: string
+          payment_type: string
+          period_end: string
+          period_start: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          amount: number
+          created_at?: string
+          employee_id: string
+          id?: string
+          labour_hours_ids?: string[] | null
+          notes?: string | null
+          payment_date: string
+          payment_type?: string
+          period_end: string
+          period_start: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          amount?: number
+          created_at?: string
+          employee_id?: string
+          id?: string
+          labour_hours_ids?: string[] | null
+          notes?: string | null
+          payment_date?: string
+          payment_type?: string
+          period_end?: string
+          period_start?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "salary_payments_employee_id_fkey"
+            columns: ["employee_id"]
+            isOneToOne: false
+            referencedRelation: "employees"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       transactions: {
         Row: {

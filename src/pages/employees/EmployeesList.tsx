@@ -1,25 +1,28 @@
-
 import React, { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { Plus, Edit2, Trash2, Clock, Eye } from 'lucide-react';
+import { Plus, Edit2, Trash2, Clock, Eye, DollarSign } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { useToast } from '@/hooks/use-toast';
-import { getEmployees, deleteEmployee } from '@/integrations/supabase/repositories/employeeRepository';
+import { getEmployees, deleteEmployee, getEmployeeSalaryStats } from '@/integrations/supabase/repositories/employeeRepository';
 import { Employee } from '@/types/employee';
 import { formatCurrency } from '@/lib/invoice-utils';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import EmployeeForm from '@/components/employees/EmployeeForm';
+import SalaryManagement from '@/components/employees/SalaryManagement';
 import { createEmployee, updateEmployee } from '@/integrations/supabase/repositories/employeeRepository';
 import { CreateEmployeeData } from '@/types/employee';
+import { useNavigate } from 'react-router-dom';
 
 const EmployeesList = () => {
   const [selectedEmployee, setSelectedEmployee] = useState<Employee | null>(null);
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
+  const [isSalaryDialogOpen, setIsSalaryDialogOpen] = useState(false);
   const { toast } = useToast();
   const queryClient = useQueryClient();
+  const navigate = useNavigate();
 
   const { data: employees = [], isLoading } = useQuery({
     queryKey: ['employees'],
@@ -137,10 +140,16 @@ const EmployeesList = () => {
     <div className="container mx-auto py-6">
       <div className="flex justify-between items-center mb-6">
         <h1 className="text-3xl font-bold">Pracownicy</h1>
-        <Button onClick={() => setIsCreateDialogOpen(true)}>
-          <Plus className="mr-2 h-4 w-4" />
-          Dodaj pracownika
-        </Button>
+        <div className="flex gap-2">
+          <Button variant="outline" onClick={() => navigate('/labour-hours')}>
+            <Clock className="mr-2 h-4 w-4" />
+            Ewidencja czasu pracy
+          </Button>
+          <Button onClick={() => setIsCreateDialogOpen(true)}>
+            <Plus className="mr-2 h-4 w-4" />
+            Dodaj pracownika
+          </Button>
+        </div>
       </div>
 
       {employees.length === 0 ? (
@@ -161,72 +170,20 @@ const EmployeesList = () => {
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {employees.map((employee) => (
-            <Card key={employee.id} className="hover:shadow-lg transition-shadow">
-              <CardHeader>
-                <div className="flex justify-between items-start">
-                  <div>
-                    <CardTitle className="text-lg">
-                      {employee.first_name} {employee.last_name}
-                    </CardTitle>
-                    <p className="text-sm text-muted-foreground">{employee.position}</p>
-                    {employee.department && (
-                      <p className="text-xs text-muted-foreground">{employee.department}</p>
-                    )}
-                  </div>
-                  {getContractTypeBadge(employee.contract_type)}
-                </div>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-2">
-                  <div className="flex justify-between">
-                    <span className="text-sm font-medium">PESEL:</span>
-                    <span className="text-sm">{employee.pesel}</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-sm font-medium">Wynagrodzenie:</span>
-                    <span className="text-sm">{formatCurrency(employee.salary)}</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-sm font-medium">Data rozpoczęcia:</span>
-                    <span className="text-sm">
-                      {new Date(employee.start_date).toLocaleDateString('pl-PL')}
-                    </span>
-                  </div>
-                  {employee.email && (
-                    <div className="flex justify-between">
-                      <span className="text-sm font-medium">Email:</span>
-                      <span className="text-sm">{employee.email}</span>
-                    </div>
-                  )}
-                  {employee.phone && (
-                    <div className="flex justify-between">
-                      <span className="text-sm font-medium">Telefon:</span>
-                      <span className="text-sm">{employee.phone}</span>
-                    </div>
-                  )}
-                </div>
-
-                <div className="flex justify-end space-x-2 mt-4 pt-4 border-t">
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => {
-                      setSelectedEmployee(employee);
-                      setIsEditDialogOpen(true);
-                    }}
-                  >
-                    <Edit2 className="h-4 w-4" />
-                  </Button>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => handleDeleteEmployee(employee)}
-                  >
-                    <Trash2 className="h-4 w-4" />
-                  </Button>
-                </div>
-              </CardContent>
-            </Card>
+            <EmployeeCard 
+              key={employee.id} 
+              employee={employee}
+              onEdit={() => {
+                setSelectedEmployee(employee);
+                setIsEditDialogOpen(true);
+              }}
+              onDelete={() => handleDeleteEmployee(employee)}
+              onManageSalary={() => {
+                setSelectedEmployee(employee);
+                setIsSalaryDialogOpen(true);
+              }}
+              getContractTypeBadge={getContractTypeBadge}
+            />
           ))}
         </div>
       )}
@@ -264,7 +221,117 @@ const EmployeesList = () => {
           )}
         </DialogContent>
       </Dialog>
+
+      {/* Salary Management Dialog */}
+      <Dialog open={isSalaryDialogOpen} onOpenChange={setIsSalaryDialogOpen}>
+        <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>
+              Zarządzanie wynagrodzeniem - {selectedEmployee?.first_name} {selectedEmployee?.last_name}
+            </DialogTitle>
+          </DialogHeader>
+          {selectedEmployee && (
+            <SalaryManagement
+              employee={selectedEmployee}
+            />
+          )}
+        </DialogContent>
+      </Dialog>
     </div>
+  );
+};
+
+const EmployeeCard: React.FC<{
+  employee: Employee;
+  onEdit: () => void;
+  onDelete: () => void;
+  onManageSalary: () => void;
+  getContractTypeBadge: (contractType: string) => React.ReactNode;
+}> = ({ employee, onEdit, onDelete, onManageSalary, getContractTypeBadge }) => {
+  const { data: salaryStats } = useQuery({
+    queryKey: ['salary_stats', employee.id],
+    queryFn: () => getEmployeeSalaryStats(employee.id),
+  });
+
+  return (
+    <Card className="hover:shadow-lg transition-shadow">
+      <CardHeader>
+        <div className="flex justify-between items-start">
+          <div>
+            <CardTitle className="text-lg">
+              {employee.first_name} {employee.last_name}
+            </CardTitle>
+            <p className="text-sm text-muted-foreground">{employee.position}</p>
+            {employee.department && (
+              <p className="text-xs text-muted-foreground">{employee.department}</p>
+            )}
+          </div>
+          {getContractTypeBadge(employee.contract_type)}
+        </div>
+      </CardHeader>
+      <CardContent>
+        <div className="space-y-2">
+          <div className="flex justify-between">
+            <span className="text-sm font-medium">PESEL:</span>
+            <span className="text-sm">{employee.pesel}</span>
+          </div>
+          <div className="flex justify-between">
+            <span className="text-sm font-medium">Wynagrodzenie:</span>
+            <span className="text-sm">{formatCurrency(employee.salary)}</span>
+          </div>
+          {salaryStats && (
+            <div className="flex justify-between">
+              <span className="text-sm font-medium">Do wypłaty:</span>
+              <span className="text-sm font-bold text-orange-600">
+                {formatCurrency(salaryStats.totalUnpaidAmount)}
+              </span>
+            </div>
+          )}
+          <div className="flex justify-between">
+            <span className="text-sm font-medium">Data rozpoczęcia:</span>
+            <span className="text-sm">
+              {new Date(employee.start_date).toLocaleDateString('pl-PL')}
+            </span>
+          </div>
+          {employee.email && (
+            <div className="flex justify-between">
+              <span className="text-sm font-medium">Email:</span>
+              <span className="text-sm">{employee.email}</span>
+            </div>
+          )}
+          {employee.phone && (
+            <div className="flex justify-between">
+              <span className="text-sm font-medium">Telefon:</span>
+              <span className="text-sm">{employee.phone}</span>
+            </div>
+          )}
+        </div>
+
+        <div className="flex justify-end space-x-2 mt-4 pt-4 border-t">
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={onManageSalary}
+          >
+            <DollarSign className="h-4 w-4" />
+          </Button>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={onEdit}
+          >
+            <Edit2 className="h-4 w-4" />
+          </Button>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={onDelete}
+          >
+            <Trash2 className="h-4 w-4" />
+          </Button>
+        </div>
+      </CardContent>
+    </Card>
   );
 };
 

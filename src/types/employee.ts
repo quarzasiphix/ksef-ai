@@ -35,6 +35,24 @@ export interface LabourHours {
   end_time?: string;
   description?: string;
   hourly_rate?: number;
+  is_paid: boolean;
+  payment_date?: string;
+  notes?: string;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface SalaryPayment {
+  id: string;
+  user_id: string;
+  employee_id: string;
+  payment_date: string;
+  amount: number;
+  period_start: string;
+  period_end: string;
+  payment_type: 'salary' | 'hourly' | 'bonus';
+  labour_hours_ids?: string[];
+  notes?: string;
   created_at: string;
   updated_at: string;
 }
@@ -67,4 +85,16 @@ export interface CreateLabourHoursData {
   end_time?: string;
   description?: string;
   hourly_rate?: number;
+  notes?: string;
+}
+
+export interface CreateSalaryPaymentData {
+  employee_id: string;
+  payment_date: string;
+  amount: number;
+  period_start: string;
+  period_end: string;
+  payment_type: 'salary' | 'hourly' | 'bonus';
+  labour_hours_ids?: string[];
+  notes?: string;
 }

@@ -1,6 +1,6 @@
 
 import { supabase } from '../client';
-import { Employee, LabourHours, CreateEmployeeData, CreateLabourHoursData } from '@/types/employee';
+import { Employee, LabourHours, SalaryPayment, CreateEmployeeData, CreateLabourHoursData, CreateSalaryPaymentData } from '@/types/employee';
 
 export const getEmployees = async (): Promise<Employee[]> => {
   const { data, error } = await supabase
@@ -113,4 +113,104 @@ export const deleteLabourHours = async (id: string): Promise<void> => {
     .eq('id', id);
 
   if (error) throw error;
+};
+
+export const markLabourHoursAsPaid = async (ids: string[], paymentDate: string): Promise<void> => {
+  const { error } = await supabase
+    .from('labour_hours')
+    .update({ 
+      is_paid: true, 
+      payment_date: paymentDate,
+      updated_at: new Date().toISOString() 
+    })
+    .in('id', ids);
+
+  if (error) throw error;
+};
+
+export const getSalaryPayments = async (employeeId?: string): Promise<SalaryPayment[]> => {
+  let query = supabase
+    .from('salary_payments')
+    .select(`
+      *,
+      employees (
+        first_name,
+        last_name
+      )
+    `)
+    .order('payment_date', { ascending: false });
+
+  if (employeeId) {
+    query = query.eq('employee_id', employeeId);
+  }
+
+  const { data, error } = await query;
+  if (error) throw error;
+  return data || [];
+};
+
+export const createSalaryPayment = async (paymentData: CreateSalaryPaymentData): Promise<SalaryPayment> => {
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) throw new Error('User not authenticated');
+
+  const { data, error } = await supabase
+    .from('salary_payments')
+    .insert([{ ...paymentData, user_id: user.id }])
+    .select()
+    .single();
+
+  if (error) throw error;
+  return data;
+};
+
+export const getUnpaidLabourHours = async (employeeId: string): Promise<LabourHours[]> => {
+  const { data, error } = await supabase
+    .from('labour_hours')
+    .select('*')
+    .eq('employee_id', employeeId)
+    .eq('is_paid', false)
+    .order('work_date', { ascending: true });
+
+  if (error) throw error;
+  return data || [];
+};
+
+export const getEmployeeSalaryStats = async (employeeId: string): Promise<{
+  totalUnpaidHours: number;
+  totalUnpaidAmount: number;
+  totalPaidThisMonth: number;
+}> => {
+  const employee = await getEmployee(employeeId);
+  if (!employee) throw new Error('Employee not found');
+
+  const unpaidHours = await getUnpaidLabourHours(employeeId);
+  
+  const totalUnpaidHours = unpaidHours.reduce((sum, hours) => 
+    sum + hours.hours_worked + (hours.overtime_hours * 1.5), 0
+  );
+  
+  const hourlyRate = employee.salary / 160; // Assuming 160 hours per month
+  const totalUnpaidAmount = unpaidHours.reduce((sum, hours) => {
+    const rate = hours.hourly_rate || hourlyRate;
+    return sum + (hours.hours_worked * rate) + (hours.overtime_hours * rate * 1.5);
+  }, 0);
+
+  // Get payments for current month
+  const currentMonth = new Date().toISOString().substring(0, 7);
+  const { data: monthlyPayments, error } = await supabase
+    .from('salary_payments')
+    .select('amount')
+    .eq('employee_id', employeeId)
+    .gte('payment_date', `${currentMonth}-01`)
+    .lt('payment_date', `${currentMonth}-32`);
+
+  if (error) throw error;
+
+  const totalPaidThisMonth = monthlyPayments?.reduce((sum, payment) => sum + payment.amount, 0) || 0;
+
+  return {
+    totalUnpaidHours,
+    totalUnpaidAmount,
+    totalPaidThisMonth
+  };
 };
