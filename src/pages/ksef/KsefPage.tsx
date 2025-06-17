@@ -1,262 +1,198 @@
-import React, { useState, useEffect } from "react";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import React, { useState, useEffect } from 'react';
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardFooter,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
+import { ListBullet, Plus, Upload } from "lucide-react";
+import { Separator } from "@/components/ui/separator";
 import { Badge } from "@/components/ui/badge";
-import { Alert, AlertDescription } from "@/components/ui/alert";
-import { 
-  Building, 
-  FileText, 
-  Download, 
-  AlertCircle, 
-  CheckCircle, 
-  Clock, 
-  XCircle,
-  Info
-} from "lucide-react";
-import { Invoice } from "@/types";
-import { mockInvoices } from "@/data/mockData";
-import { generateKsefXml, generateKsefData } from "@/integrations/ksef/ksefGenerator";
-import { useAuth } from "@/context/AuthContext";
-import { RequirePremium } from "@/components/auth/RequirePremium";
+import { useToast } from "@/components/ui/use-toast";
+import { Customer } from '@/types';
+import RequirePremium from "@/components/auth/RequirePremium";
 
 const KsefPage = () => {
-  const { isPremium } = useAuth();
-  const [invoices, setInvoices] = useState<Invoice[]>([]);
-  const [loading, setLoading] = useState(false);
+  const [ksefEnabled, setKsefEnabled] = useState(false);
+  const [ksefCertUploaded, setKsefCertUploaded] = useState(false);
+  const [ksefInvoiceSyncEnabled, setKsefInvoiceSyncEnabled] = useState(false);
+  const { toast } = useToast();
 
   useEffect(() => {
-    // Load invoices (in real app, this would be from API)
-    setInvoices(mockInvoices);
+    // Mock check for KSeF status
+    const storedKsefEnabled = localStorage.getItem('ksefEnabled') === 'true';
+    setKsefEnabled(storedKsefEnabled);
+
+    // Mock check for certificate upload
+    const storedKsefCertUploaded = localStorage.getItem('ksefCertUploaded') === 'true';
+    setKsefCertUploaded(storedKsefCertUploaded);
+
+    // Mock check for invoice sync status
+    const storedKsefInvoiceSyncEnabled = localStorage.getItem('ksefInvoiceSyncEnabled') === 'true';
+    setKsefInvoiceSyncEnabled(storedKsefInvoiceSyncEnabled);
   }, []);
 
-  const getStatusIcon = (status: string) => {
-    switch (status) {
-      case 'sent':
-        return <CheckCircle className="h-4 w-4 text-green-500" />;
-      case 'pending':
-        return <Clock className="h-4 w-4 text-yellow-500" />;
-      case 'error':
-        return <XCircle className="h-4 w-4 text-red-500" />;
-      default:
-        return <AlertCircle className="h-4 w-4 text-gray-500" />;
-    }
+  const handleKsefEnable = () => {
+    const newKsefEnabled = !ksefEnabled;
+    setKsefEnabled(newKsefEnabled);
+    localStorage.setItem('ksefEnabled', newKsefEnabled.toString());
+
+    toast({
+      title: newKsefEnabled ? "KSeF Włączony" : "KSeF Wyłączony",
+      description: newKsefEnabled ? "Integracja z KSeF została włączona." : "Integracja z KSeF została wyłączona.",
+    });
   };
 
-  const getStatusText = (status: string) => {
-    switch (status) {
-      case 'sent':
-        return 'Wysłane';
-      case 'pending':
-        return 'Oczekuje';
-      case 'error':
-        return 'Błąd';
-      default:
-        return 'Nie wysłane';
-    }
+  const handleCertUpload = () => {
+    setKsefCertUploaded(true);
+    localStorage.setItem('ksefCertUploaded', 'true');
+
+    toast({
+      title: "Certyfikat Wysłany",
+      description: "Certyfikat KSeF został pomyślnie przesłany.",
+    });
   };
 
-  const getStatusVariant = (status: string) => {
-    switch (status) {
-      case 'sent':
-        return 'default' as const;
-      case 'pending':
-        return 'secondary' as const;
-      case 'error':
-        return 'destructive' as const;
-      default:
-        return 'outline' as const;
-    }
+  const handleInvoiceSyncEnable = () => {
+    const newKsefInvoiceSyncEnabled = !ksefInvoiceSyncEnabled;
+    setKsefInvoiceSyncEnabled(newKsefInvoiceSyncEnabled);
+    localStorage.setItem('ksefInvoiceSyncEnabled', newKsefInvoiceSyncEnabled.toString());
+
+    toast({
+      title: newKsefInvoiceSyncEnabled ? "Synchronizacja Włączona" : "Synchronizacja Wyłączona",
+      description: newKsefInvoiceSyncEnabled ? "Synchronizacja faktur z KSeF została włączona." : "Synchronizacja faktur z KSeF została wyłączona.",
+    });
   };
 
-  const handleGenerateXml = async (invoice: Invoice) => {
-    setLoading(true);
-    try {
-      // Simulate API call
-      await new Promise(resolve => setTimeout(resolve, 1000));
-      
-      // This would normally generate real XML with proper business profile and customer data
-      const ksefData = generateKsefData(
-        invoice, 
-        { 
-          id: '1', 
-          name: 'Test Business', 
-          taxId: '1234567890', 
-          address: 'Test Address',
-          postalCode: '00-000',
-          city: 'Warszawa'
-        }, 
-        { 
-          id: '1', 
-          user_id: '1',
-          name: 'Test Customer', 
-          address: 'Customer Address',
-          postalCode: '00-000',
-          city: 'Kraków'
-        }
-      );
-      
-      if (ksefData) {
-        const xmlContent = generateKsefXml(ksefData);
-        if (xmlContent) {
-          // Download XML file
-          const blob = new Blob([xmlContent], { type: 'application/xml' });
-          const url = window.URL.createObjectURL(blob);
-          const a = document.createElement('a');
-          a.style.display = 'none';
-          a.href = url;
-          a.download = `KSeF_${invoice.number}.xml`;
-          document.body.appendChild(a);
-          a.click();
-          window.URL.revokeObjectURL(url);
-          document.body.removeChild(a);
-        }
-      }
-    } catch (error) {
-      console.error('Error generating XML:', error);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  if (!isPremium) {
-    return <RequirePremium feature="KSeF" />;
-  }
+  const mockCustomers: Customer[] = [
+    {
+      id: "1",
+      user_id: "user-1",
+      name: "ACME Corporation",
+      address: "ul. Testowa 123",
+      postalCode: "00-001",
+      city: "Warszawa",
+      customerType: 'odbiorca',
+    },
+    {
+      id: "2",
+      user_id: "user-2",
+      name: "Beta Industries",
+      address: "al. Przemysłowa 456",
+      postalCode: "00-002",
+      city: "Kraków",
+      customerType: 'odbiorca',
+    },
+    {
+      id: "3",
+      user_id: "user-3",
+      name: "Gamma Solutions",
+      address: "pl. Rynkowa 789",
+      postalCode: "00-003",
+      city: "Gdańsk",
+      customerType: 'odbiorca',
+    },
+  ];
 
   return (
-    <div className="container mx-auto p-6 space-y-6">
-      <div className="flex items-center gap-3">
-        <Building className="h-8 w-8 text-blue-600" />
-        <div>
-          <h1 className="text-3xl font-bold">Krajowy System e-Faktur (KSeF)</h1>
-          <p className="text-muted-foreground">Zarządzaj fakturami w systemie KSeF</p>
+    <div className="container mx-auto py-6">
+      <div className="flex justify-between items-center mb-4">
+        <h1 className="text-2xl font-bold">Krajowy System e-Faktur (KSeF)</h1>
+        <Badge variant="secondary">
+          <ListBullet className="mr-2 h-4 w-4" />
+          Wersja Premium
+        </Badge>
+      </div>
+
+      <Separator className="mb-4" />
+
+      {!ksefEnabled ? (
+        <RequirePremium feature="Integracja z KSeF">
+          <Card className="max-w-md mx-auto">
+            <CardHeader>
+              <CardTitle>Integracja z KSeF</CardTitle>
+              <CardDescription>
+                Włącz integrację z Krajowym Systemem e-Faktur, aby wysyłać i odbierać faktury w KSeF.
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <Button className="w-full" onClick={handleKsefEnable}>
+                Włącz KSeF
+              </Button>
+            </CardContent>
+          </Card>
+        </RequirePremium>
+      ) : (
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          <Card>
+            <CardHeader>
+              <CardTitle>Certyfikat KSeF</CardTitle>
+              <CardDescription>
+                Prześlij certyfikat KSeF, aby autoryzować swoją firmę w systemie.
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              {!ksefCertUploaded ? (
+                <>
+                  <Label htmlFor="cert-upload">
+                    <div className="flex items-center justify-center w-full py-4 bg-muted rounded-md cursor-pointer hover:bg-accent">
+                      <Upload className="mr-2 h-4 w-4" />
+                      Wybierz certyfikat z dysku
+                    </div>
+                  </Label>
+                  <Input type="file" id="cert-upload" className="hidden" onChange={handleCertUpload} />
+                </>
+              ) : (
+                <Badge variant="outline">Certyfikat przesłany</Badge>
+              )}
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader>
+              <CardTitle>Synchronizacja Faktur</CardTitle>
+              <CardDescription>
+                Włącz automatyczną synchronizację faktur z KSeF.
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <Button className="w-full" onClick={handleInvoiceSyncEnable}>
+                {ksefInvoiceSyncEnabled ? "Wyłącz Synchronizację" : "Włącz Synchronizację"}
+              </Button>
+            </CardContent>
+          </Card>
         </div>
-      </div>
+      )}
 
-      {/* Status Alert */}
-      <Alert className="border-blue-200 bg-blue-50">
-        <Info className="h-4 w-4" />
-        <AlertDescription className="text-blue-800">
-          <strong>Uwaga:</strong> System KSeF nie jest w pełni funkcjonalny. Pełne połączenie z systemem KSeF będzie dostępne wkrótce.
-          Obecnie możesz generować pliki XML zgodne ze schematem KSeF.
-        </AlertDescription>
-      </Alert>
-
-      {/* Statistics Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Faktury w KSeF</CardTitle>
-            <FileText className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">
-              {invoices.filter(inv => inv.ksef?.status === 'sent').length}
-            </div>
-            <p className="text-xs text-muted-foreground">
-              z {invoices.length} faktur
-            </p>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Oczekujące</CardTitle>
-            <Clock className="h-4 w-4 text-yellow-500" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">
-              {invoices.filter(inv => inv.ksef?.status === 'pending').length}
-            </div>
-            <p className="text-xs text-muted-foreground">
-              do wysłania
-            </p>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Błędy</CardTitle>
-            <XCircle className="h-4 w-4 text-red-500" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">
-              {invoices.filter(inv => inv.ksef?.status === 'error').length}
-            </div>
-            <p className="text-xs text-muted-foreground">
-              do sprawdzenia
-            </p>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Nie wysłane</CardTitle>
-            <AlertCircle className="h-4 w-4 text-gray-500" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">
-              {invoices.filter(inv => !inv.ksef?.status || inv.ksef?.status === 'none').length}
-            </div>
-            <p className="text-xs text-muted-foreground">
-              do przygotowania
-            </p>
-          </CardContent>
-        </Card>
-      </div>
-
-      {/* Invoices List */}
-      <Card>
-        <CardHeader>
-          <CardTitle>Faktury</CardTitle>
-          <CardDescription>
-            Lista faktur z możliwością generowania XML dla KSeF
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          <div className="space-y-4">
-            {invoices.map((invoice) => (
-              <div
-                key={invoice.id}
-                className="flex flex-col sm:flex-row sm:items-center justify-between p-4 border rounded-lg hover:bg-muted/50 transition-colors"
-              >
-                <div className="flex items-center gap-4">
-                  <div className="flex items-center gap-2">
-                    {getStatusIcon(invoice.ksef?.status || 'none')}
-                    <Badge variant={getStatusVariant(invoice.ksef?.status || 'none')}>
-                      {getStatusText(invoice.ksef?.status || 'none')}
-                    </Badge>
-                  </div>
-                  <div>
-                    <p className="font-medium">{invoice.number}</p>
-                    <p className="text-sm text-muted-foreground">
-                      {invoice.customerName} • {invoice.totalGrossValue?.toFixed(2)} zł
-                    </p>
-                    <p className="text-xs text-muted-foreground">{invoice.issueDate}</p>
-                  </div>
-                </div>
-
-                <div className="flex items-center gap-2 mt-3 sm:mt-0">
-                  {invoice.ksef?.referenceNumber && (
-                    <Badge variant="outline" className="text-xs">
-                      {invoice.ksef.referenceNumber}
-                    </Badge>
-                  )}
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => handleGenerateXml(invoice)}
-                    disabled={loading}
-                    className="flex items-center gap-2"
-                  >
-                    <Download className="h-4 w-4" />
-                    {loading ? 'Generowanie...' : 'Generuj XML'}
-                  </Button>
-                </div>
-              </div>
-            ))}
-          </div>
-        </CardContent>
-      </Card>
+      <section className="mt-8">
+        <h2 className="text-xl font-semibold mb-4">Lista Klientów (KSeF)</h2>
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+          {mockCustomers.map((customer) => (
+            <Card key={customer.id}>
+              <CardHeader>
+                <CardTitle>{customer.name}</CardTitle>
+                <CardDescription>
+                  {customer.address}, {customer.postalCode} {customer.city}
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <p>NIP: {customer.taxId || 'Brak'}</p>
+              </CardContent>
+              <CardFooter className="flex justify-end">
+                <Button size="sm">
+                  <Plus className="mr-2 h-4 w-4" />
+                  Dodaj fakturę
+                </Button>
+              </CardFooter>
+            </Card>
+          ))}
+        </div>
+      </section>
     </div>
   );
 };

@@ -184,15 +184,15 @@ export const toPaymentMethodUi = (method: string | PaymentMethod): string => {
 
 // Convert any payment method format to database format
 export const toPaymentMethodDb = (method: string | PaymentMethod): PaymentMethodDb => {
-  if (!method) return 'transfer';
+  if (!method) return PaymentMethodDb.TRANSFER;
   
   const methodStr = typeof method === 'string' ? method.toLowerCase() : method;
   const dbValue = paymentMethodMappings.dbValues[methodStr] || 'transfer';
   
   // Ensure we return a valid PaymentMethodDb value
   return (['transfer', 'cash', 'card', 'other'].includes(dbValue) 
-    ? dbValue 
-    : 'transfer') as PaymentMethodDb;
+    ? dbValue as PaymentMethodDb
+    : PaymentMethodDb.TRANSFER);
 };
 
 export const invoiceItemSchema = z.object({
