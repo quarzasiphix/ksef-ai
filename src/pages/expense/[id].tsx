@@ -1,4 +1,3 @@
-
 import React, { useEffect, useState } from "react";
 import { useParams, useNavigate, useSearchParams } from "react-router-dom";
 import { useAuth } from "@/context/AuthContext";
@@ -28,7 +27,7 @@ const NewExpense = () => {
   const [businessProfileId, setBusinessProfileId] = useState<string>("");
   const [isZus, setIsZus] = useState(false);
   const [customerId, setCustomerId] = useState<string>("");
-  const { customers } = useGlobalData();
+  const { customers, businessProfiles } = useGlobalData();
   const supplierCustomers = customers.data.filter(c => c.customerType === 'sprzedawca');
   const [isAddSupplierOpen, setIsAddSupplierOpen] = useState(false);
 
@@ -98,6 +97,14 @@ const NewExpense = () => {
     
     if (!date || items.length === 0) {
       toast.error("Wypełnij wszystkie pola i dodaj co najmniej jedną pozycję");
+      return;
+    }
+    
+    // Extra safeguard – verify that the selected business profile ID exists in cached data
+    const profileExists = businessProfiles.data.some(p => p.id === businessProfileId);
+    if (!profileExists) {
+      toast.error("Wybrany profil biznesowy nie istnieje. Odśwież dane i spróbuj ponownie.");
+      console.error("Business profile not found in cache. ID:", businessProfileId);
       return;
     }
     

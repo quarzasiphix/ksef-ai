@@ -1,4 +1,3 @@
-
 import React from "react";
 import { FormLabel } from "@/components/ui/form";
 import { CardHeader, CardTitle, CardContent, Card } from "@/components/ui/card";
@@ -47,20 +46,22 @@ export const InvoicePartiesForm: React.FC<InvoicePartiesFormProps> = ({
           </>
         ) : (
           <>
-            <div>
-              <FormLabel>Dostawca (sprzedawca)</FormLabel>
-              <CustomerSelector
-                value={businessProfileId}
-                onChange={onBusinessProfileChange}
-                showBusinessProfiles={false}
-              />
-            </div>
-            
+            {/* Buyer (our business profile) */}
             <div>
               <FormLabel>Mój profil (nabywca)</FormLabel>
               <BusinessProfileSelector
+                value={businessProfileId}
+                onChange={onBusinessProfileChange}
+              />
+            </div>
+
+            {/* Supplier (vendor) */}
+            <div>
+              <FormLabel>Dostawca (sprzedawca)</FormLabel>
+              <CustomerSelector
                 value={customerId}
                 onChange={onCustomerChange}
+                showBusinessProfiles={false}
               />
             </div>
           </>

@@ -205,7 +205,7 @@ const App = () => {
                     <EditInvoice />
                   </ProtectedRoute>
                 } />
-                 <Route path="/expense/edit/:id" element={
+                <Route path="/expense/:id/edit" element={
                   <ProtectedRoute>
                     <EditInvoice />
                   </ProtectedRoute>

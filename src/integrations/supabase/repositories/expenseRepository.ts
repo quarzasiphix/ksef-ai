@@ -2,6 +2,7 @@ import { supabase } from '../client';
 import { Expense, TransactionType } from '../../../types';
 import { useAuth } from '@/hooks/useAuth';
 import { format } from 'date-fns';
+import { InvoiceType } from "@/types";
 
 // Function to get start and end dates based on selected period - Duplicated from Accounting.tsx for now
 const getPeriodDates = (period: string): { startDate: string, endDate: string } => {
@@ -159,7 +160,6 @@ export const saveExpense = async (expense: Omit<Expense, 'id' | 'createdAt'> & {
       total_gross_value: item.totalGrossValue ?? 0,
       total_vat_value: item.totalVatValue ?? 0,
       vat_exempt: item.vatExempt ?? false,
-      user_id: expense.userId,
     }));
     const { error: itemsError } = await supabase.from('expense_items').insert(itemsPayload as any);
     if (itemsError) throw itemsError;
@@ -169,13 +169,89 @@ export const saveExpense = async (expense: Omit<Expense, 'id' | 'createdAt'> & {
 };
 
 export const getExpense = async (id: string) => {
+  // Fetch the expense along with its related items in a single query
   const { data, error } = await supabase
     .from('expenses')
-    .select('*')
+    .select('*, expense_items(*)')
     .eq('id', id)
     .single();
+
   if (error) throw error;
-  return data;
+
+  if (!data) throw new Error('Expense not found');
+
+  // Cast to any for flexible property access
+  const dbExpense: any = data;
+
+  // Map expense_items rows to the shared InvoiceItem shape
+  let mappedItems = (dbExpense.expense_items || []).map((item: any) => ({
+    id: item.id,
+    productId: item.product_id || undefined,
+    name: item.name || 'Pozycja',
+    quantity: Number(item.quantity) || 1,
+    unitPrice: Number(item.unit_price) || 0,
+    vatRate: Number(item.vat_rate) ?? 0,
+    unit: item.unit || 'szt.',
+    totalNetValue: Number(item.total_net_value) || 0,
+    totalGrossValue: Number(item.total_gross_value) || 0,
+    totalVatValue: Number(item.total_vat_value) || 0,
+    vatExempt: item.vat_exempt ?? false,
+  }));
+
+  // If there are no item rows, create a synthetic one based on the amount field
+  if (mappedItems.length === 0) {
+    const amount = Number(dbExpense.amount) || 0;
+    mappedItems = [
+      {
+        id: `synthetic-${dbExpense.id}`,
+        name: dbExpense.description || 'Wydatek',
+        quantity: 1,
+        unitPrice: amount,
+        vatRate: 0,
+        unit: 'szt.',
+        totalNetValue: amount,
+        totalGrossValue: amount,
+        totalVatValue: 0,
+        vatExempt: true,
+      },
+    ];
+  }
+
+  return {
+    // Original DB columns (camelCased where needed)
+    id: dbExpense.id,
+    user_id: dbExpense.user_id,
+    businessProfileId: dbExpense.business_profile_id,
+    issueDate: dbExpense.issue_date,
+    amount: Number(dbExpense.amount) || 0,
+    currency: dbExpense.currency || 'PLN',
+    description: dbExpense.description || '',
+    created_at: dbExpense.created_at,
+    customerId: dbExpense.customer_id || null,
+
+    // Fields expected by InvoiceDetail & other invoice-centric components
+    items: mappedItems,
+    number: dbExpense.number || `EXP-${dbExpense.id.slice(0, 6)}`,
+    type: InvoiceType.SALES, // Treat expenses like normal VAT invoices for display purposes
+    transactionType: TransactionType.EXPENSE,
+    dueDate: dbExpense.due_date || dbExpense.issue_date,
+    sellDate: dbExpense.issue_date,
+    date: dbExpense.issue_date,
+    paymentMethod: dbExpense.payment_method || 'cash',
+    isPaid: dbExpense.is_paid ?? false,
+    paid: dbExpense.paid ?? false,
+    status: dbExpense.status || 'paid',
+    comments: dbExpense.comments || '',
+    totalNetValue: mappedItems.reduce((acc: number, it: any) => acc + (it.totalNetValue || 0), 0),
+    totalVatValue: mappedItems.reduce((acc: number, it: any) => acc + (it.totalVatValue || 0), 0),
+    totalGrossValue: mappedItems.reduce((acc: number, it: any) => acc + (it.totalGrossValue || 0), 0),
+    totalAmount: Number(dbExpense.amount) || 0,
+    ksef: dbExpense.ksef || { status: 'none' },
+    businessName: dbExpense.business_name || undefined,
+    customerName: dbExpense.customer_name || undefined,
+    vat: dbExpense.vat ?? false,
+    vatExemptionReason: dbExpense.vat_exemption_reason || undefined,
+  };
 };
 
 export const updateExpense = async (id: string, updates: Partial<Expense>) => {

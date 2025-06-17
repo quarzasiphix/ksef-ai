@@ -213,9 +213,10 @@ const pdfStyles: Record<string, React.CSSProperties> = {
 export const InvoicePdfTemplate: React.FC<InvoicePdfTemplateProps> = ({ invoice, businessProfile, customer }) => {
     const isReceipt = invoice.type === InvoiceType.RECEIPT;
 
-    // Always recalculate items and totals
-    const itemsWithValues = invoice.items.map(calculateItemValues);
-    const { totalNetValue, totalVatValue, totalGrossValue } = calculateInvoiceTotals(invoice.items);
+    // Always recalculate items and totals. Ensure we handle invoices that have no items array (e.g. some expenses)
+    const rawItems = invoice.items ?? [];
+    const itemsWithValues = rawItems.map(calculateItemValues);
+    const { totalNetValue, totalVatValue, totalGrossValue } = calculateInvoiceTotals(rawItems);
 
     // Format address with postal code and city
     const formatAddress = (address: string, postalCode: string, city: string) => {

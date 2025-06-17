@@ -1,4 +1,3 @@
-
 import React, { useEffect, useState, useRef } from "react";
 import { useParams, useNavigate, Link } from "react-router-dom";
 import jsPDF from 'jspdf';
@@ -9,6 +8,7 @@ import { Share } from '@capacitor/share';
 import { Invoice, InvoiceType, BusinessProfile, Customer, KsefInfo } from "@/types";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { getInvoice, updateInvoicePaymentStatus } from "@/integrations/supabase/repositories/invoiceRepository";
+import { getExpense } from "@/integrations/supabase/repositories/expenseRepository";
 import { getBusinessProfileById } from "@/integrations/supabase/repositories/businessProfileRepository";
 import { getCustomerById } from "@/integrations/supabase/repositories/customerRepository";
 import { useToast } from "@/components/ui/use-toast";
@@ -49,10 +49,10 @@ const InvoiceDetail: React.FC<InvoiceDetailProps> = ({ type }) => {
 
   // Fetch the invoice (with items) directly
   const { data: selectedInvoice, isLoading: isLoadingInvoice, error: invoiceError } = useQuery({
-    queryKey: ['invoice', id],
+    queryKey: [type === 'expense' ? 'expense' : 'invoice', id],
     queryFn: () => {
-      if (!id) throw new Error('Invoice ID is required');
-      return getInvoice(id);
+      if (!id) throw new Error('Document ID is required');
+      return type === 'expense' ? (getExpense as any)(id) : getInvoice(id);
     },
     enabled: !!id
   });
@@ -62,7 +62,7 @@ const InvoiceDetail: React.FC<InvoiceDetailProps> = ({ type }) => {
   // Fetch the full business profile for the seller
   const { data: sellerProfile, isLoading: isLoadingSeller, error: sellerError } = useQuery({
     queryKey: ['businessProfile', selectedInvoice?.businessProfileId],
-    queryFn: () => getBusinessProfileById(selectedInvoice!.businessProfileId),
+    queryFn: () => getBusinessProfileById(selectedInvoice!.businessProfileId, selectedInvoice!.user_id),
     enabled: !!selectedInvoice?.businessProfileId,
   });
 
@@ -169,6 +169,7 @@ const InvoiceDetail: React.FC<InvoiceDetailProps> = ({ type }) => {
   const buyerCardData = buyerCustomer ? {
     name: selectedInvoice.customerName || buyerCustomer.name,
     ...buyerCustomer,
+    customerType: 'odbiorca' as const,
   } : {
     id: selectedInvoice.customerId || '',
     name: selectedInvoice.customerName || 'Brak danych nabywcy',
@@ -179,7 +180,7 @@ const InvoiceDetail: React.FC<InvoiceDetailProps> = ({ type }) => {
     phone: '',
     email: '',
     user_id: selectedInvoice.user_id,
-    customerType: 'buyer' as const,
+    customerType: 'odbiorca',
     created_at: new Date().toISOString(),
     updated_at: new Date().toISOString()
   } as Customer;
@@ -261,7 +262,7 @@ const InvoiceDetail: React.FC<InvoiceDetailProps> = ({ type }) => {
   };
 
   // Calculate totals using the utility function
-  const calculatedTotals = selectedInvoice ? calculateInvoiceTotals(selectedInvoice.items) : {
+  const calculatedTotals = selectedInvoice ? calculateInvoiceTotals((selectedInvoice as any).items || []) : {
     totalNetValue: 0,
     totalVatValue: 0,
     totalGrossValue: 0

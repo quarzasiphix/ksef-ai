@@ -173,9 +173,8 @@ const IncomeList = () => {
         // Only show income transactions
         if (invoice.transactionType !== 'income') return false;
 
-        // Filter by selected business profile
-        // selectedProfileId could be null if no profile is selected, in which case we show no invoices
-        if (!selectedProfileId || invoice.businessProfileId !== selectedProfileId) return false;
+        // If a business profile is selected, include only matching invoices; otherwise include all
+        if (selectedProfileId && invoice.businessProfileId !== selectedProfileId) return false;
 
         const matchesSearch =
           invoice.number.toLowerCase().includes(searchTerm.toLowerCase()) ||
