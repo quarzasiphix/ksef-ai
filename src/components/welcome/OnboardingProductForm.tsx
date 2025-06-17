@@ -68,6 +68,8 @@ const OnboardingProductForm = forwardRef<OnboardingProductFormHandle, Onboarding
         unit: data.unit,
         user_id: user.id,
         product_type: data.product_type,
+        track_stock: initialData?.track_stock || false,
+        stock: initialData?.stock || 0,
       };
       const savedProduct = await saveProduct(productData);
       toast.success(initialData ? "Produkt został zaktualizowany" : "Produkt został utworzony");

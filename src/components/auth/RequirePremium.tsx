@@ -1,43 +1,36 @@
-import React, { useEffect } from 'react';
-import { useAuth } from "@/context/AuthContext";
-import { Navigate, Outlet, useLocation, useNavigate } from 'react-router-dom';
 
-const RequirePremium: React.FC = () => {
-  const { user, isPremium, openPremiumDialog, isLoading, isModalOpen } = useAuth();
-  const location = useLocation();
-  const navigate = useNavigate();
+import React from 'react';
+import { Button } from '@/components/ui/button';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Crown } from 'lucide-react';
 
-  // Wait for auth and premium status to load
-  if (isLoading) {
-    return null; // Or a loading spinner
-  }
+interface RequirePremiumProps {
+  children?: React.ReactNode;
+  feature?: string;
+}
 
-  // If not authenticated, redirect to login
-  if (!user) {
-    return <Navigate to="/auth/login" replace />;
-  }
-
-  // If authenticated but not premium
-  if (!isPremium) {
-    // Open dialog when entering a premium route and not already in the modal
-    useEffect(() => {
-      if (!isModalOpen) {
-        openPremiumDialog();
-      }
-    }, [isPremium, isModalOpen, openPremiumDialog]);
-
-    // Redirect to root if modal is closed while on a premium route
-    useEffect(() => {
-      if (!isPremium && !isModalOpen && location.pathname === '/accounting') {
-        navigate('/', { replace: true });
-      }
-    }, [isPremium, isModalOpen, location.pathname, navigate]);
-
-    return null; // Render nothing while the modal is open or redirecting
-  }
-
-  // If authenticated and premium, render the child routes
-  return <Outlet />;
+const RequirePremium: React.FC<RequirePremiumProps> = ({ 
+  children, 
+  feature = "Ta funkcjonalność" 
+}) => {
+  return (
+    <Card className="max-w-md mx-auto">
+      <CardHeader className="text-center">
+        <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-full bg-yellow-100">
+          <Crown className="h-6 w-6 text-yellow-600" />
+        </div>
+        <CardTitle>Funkcja Premium</CardTitle>
+        <CardDescription>
+          {feature} jest dostępna tylko dla użytkowników Premium
+        </CardDescription>
+      </CardHeader>
+      <CardContent className="text-center">
+        <Button className="w-full">
+          Przejdź na Premium
+        </Button>
+      </CardContent>
+    </Card>
+  );
 };
 
-export default RequirePremium; 
+export default RequirePremium;

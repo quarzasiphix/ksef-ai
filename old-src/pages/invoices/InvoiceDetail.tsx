@@ -64,7 +64,10 @@ const InvoiceDetail: React.FC<InvoiceDetailProps> = ({ type }) => {
   // Fetch the full customer profile for the buyer
   const { data: buyerCustomer, isLoading: isLoadingBuyer, error: buyerError } = useQuery({
     queryKey: ['customer', selectedInvoice?.customerId],
-    queryFn: () => getCustomerById(selectedInvoice!.customerId!),
+    queryFn: () => {
+      if (!selectedInvoice?.customerId) return null;
+      return getCustomerById(selectedInvoice.customerId);
+    },
     enabled: !!selectedInvoice?.customerId,
   });
 
