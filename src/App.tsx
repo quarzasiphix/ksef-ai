@@ -40,6 +40,7 @@ import EmployeesList from '@/pages/employees/EmployeesList';
 import LabourHoursPage from '@/pages/employees/LabourHoursPage';
 import NotFound from '@/pages/NotFound';
 import InventoryPage from '@/pages/inventory/InventoryPage';
+import Accounting from '@/pages/accounting/Accounting';
 
 import { queryClient } from '@/lib/queryClient';
 import { useAuth } from '@/hooks/useAuth';
@@ -262,6 +263,15 @@ const App = () => {
                   <ProtectedRoute>
                     <RequirePremium>
                       <InventoryPage />
+                    </RequirePremium>
+                  </ProtectedRoute>
+                } />
+
+                {/* Accounting (Premium) */}
+                <Route path="/accounting" element={
+                  <ProtectedRoute>
+                    <RequirePremium>
+                      <Accounting />
                     </RequirePremium>
                   </ProtectedRoute>
                 } />
