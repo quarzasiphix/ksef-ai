@@ -11,11 +11,11 @@ import {
   Calculator,
   Building,
   Crown,
-  Shield,
   User,
   LogOut,
   UserCheck,
-  Boxes
+  Boxes,
+  LucideIcon,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import {
@@ -44,43 +44,69 @@ const AppSidebar = () => {
   const isCollapsed = state === "collapsed";
   const navigate = useNavigate();
 
-  // Main navigation items
-  const mainNavItems = [
-    { title: "Dashboard", path: "/", icon: BarChart },
-    { title: "Faktury", path: "/income", icon: FileText },
-    { title: "Wydatki", path: "/expense", icon: CreditCard },
-  ];
-
   // Quick actions
   const quickActions = [
     { title: "Nowa Faktura", path: "/income/new", icon: Plus, color: "text-blue-600" },
     { title: "Nowy Wydatek", path: "/expense/new", icon: Plus, color: "text-green-600" },
   ];
 
-  // Management items
-  const managementItems = [
-    { title: "Klienci", path: "/customers", icon: Users },
-    { title: "Produkty", path: "/products", icon: Package },
-    { title: "Pracownicy", path: "/employees", icon: UserCheck },
-    { title: "Ustawienia", path: "/settings", icon: Settings },
-  ];
+  // Sidebar item type with optional premium flag
+  interface SidebarItem {
+    title: string;
+    path: string;
+    icon: LucideIcon;
+    premium?: boolean;
+  }
 
-  // Premium features
-  const premiumFeatures = [
-    { title: "Księgowość", path: "/accounting", icon: Calculator },
-    { title: "Magazyn", path: "/inventory", icon: Boxes },
-    { title: "KSeF", path: "/ksef", icon: Building },
-  ];
+  // Define base items
+  const dashboardItem: SidebarItem = { title: "Dashboard", path: "/", icon: BarChart };
+  const invoiceItem = { title: "Faktury", path: "/income", icon: FileText } as SidebarItem;
+  const expenseItem = { title: "Wydatki", path: "/expense", icon: CreditCard } as SidebarItem;
+  const accountingItem: SidebarItem = { title: "Księgowość", path: "/accounting", icon: Calculator, premium: true };
+  const clientsItem = { title: "Klienci", path: "/customers", icon: Users } as SidebarItem;
+  const productsItem = { title: "Produkty", path: "/products", icon: Package } as SidebarItem;
+  const inventoryItem: SidebarItem = { title: "Magazyn", path: "/inventory", icon: Boxes, premium: true };
+  const employeesItem = { title: "Pracownicy", path: "/employees", icon: UserCheck } as SidebarItem;
+  const ksefItem: SidebarItem = { title: "KSeF", path: "/ksef", icon: Building, premium: true };
+  const settingsItem = { title: "Ustawienia", path: "/settings", icon: Settings } as SidebarItem;
+
+  // Sections depending on premium
+  const mainNavItems: SidebarItem[] = [dashboardItem];
+
+  // Finance section
+  const financeItems: SidebarItem[] = [invoiceItem, expenseItem, ...(isPremium ? [accountingItem] : [])];
+
+  // Customers & Offer section
+  const offerItems: SidebarItem[] = [clientsItem, productsItem, ...(isPremium ? [inventoryItem] : [])];
+
+  // Administration section
+  const adminItems: SidebarItem[] = [employeesItem, ...(isPremium ? [ksefItem] : []), settingsItem];
+
+  // Premium section for non-premium users (upsell)
+  const premiumFeatures: SidebarItem[] = [accountingItem, inventoryItem, ksefItem];
 
   const isActive = (path: string) => {
     if (path === "/") return location.pathname === "/";
     return location.pathname.startsWith(path);
   };
 
-  const getNavClassName = (path: string) => {
+  const getNavClassName = (path: string, premiumItem?: boolean) => {
+    const base = "flex items-center px-3 py-2 rounded-lg transition-all duration-200 w-full";
+    const align = isCollapsed ? "justify-center" : "gap-3 justify-start";
+
+    if (premiumItem && isPremium) {
+      return cn(
+        base,
+        align,
+        isActive(path)
+          ? "bg-amber-600 text-white shadow-sm"
+          : "bg-gradient-to-r from-amber-500 to-orange-600 text-white hover:from-amber-600 hover:to-orange-700"
+      );
+    }
+
     return cn(
-      "flex items-center px-3 py-2 rounded-lg transition-all duration-200 w-full",
-      isCollapsed ? "justify-center" : "gap-3 justify-start",
+      base,
+      align,
       isActive(path)
         ? "bg-primary text-primary-foreground font-medium shadow-sm"
         : "hover:bg-muted text-foreground/80 hover:text-foreground dark:text-foreground/90 dark:hover:text-foreground"
@@ -117,8 +143,8 @@ const AppSidebar = () => {
           <BusinessProfileSwitcher isCollapsed={isCollapsed} />
         </div>
 
-                {/* Quick Actions */}
-                <SidebarGroup>
+        {/* Quick Actions */}
+        <SidebarGroup>
           {!isCollapsed && <SidebarGroupLabel>SZYBKIE AKCJE</SidebarGroupLabel>}
           <SidebarGroupContent>
             <SidebarMenu>
@@ -149,8 +175,7 @@ const AppSidebar = () => {
           </SidebarGroupContent>
         </SidebarGroup>
 
-
-        {/* Main Navigation */}
+        {/* Main */}
         <SidebarGroup>
           {!isCollapsed && <SidebarGroupLabel>GŁÓWNE</SidebarGroupLabel>}
           <SidebarGroupContent>
@@ -162,7 +187,7 @@ const AppSidebar = () => {
                     isActive={isActive(item.path)}
                     tooltip={isCollapsed ? item.title : undefined}
                   >
-                    <NavLink to={item.path} className={getNavClassName(item.path)}>
+                    <NavLink to={item.path} className={getNavClassName(item.path, item.premium)}>
                       <item.icon className="h-5 w-5 flex-shrink-0" />
                       {!isCollapsed && <span>{item.title}</span>}
                     </NavLink>
@@ -173,21 +198,28 @@ const AppSidebar = () => {
           </SidebarGroupContent>
         </SidebarGroup>
 
-        {/* Management */}
+        {/* Finance */}
         <SidebarGroup>
-          {!isCollapsed && <SidebarGroupLabel>ZARZĄDZANIE</SidebarGroupLabel>}
+          {!isCollapsed && <SidebarGroupLabel>FINANSE</SidebarGroupLabel>}
           <SidebarGroupContent>
             <SidebarMenu>
-              {managementItems.map((item) => (
+              {financeItems.map((item) => (
                 <SidebarMenuItem key={item.path}>
                   <SidebarMenuButton
                     asChild
                     isActive={isActive(item.path)}
                     tooltip={isCollapsed ? item.title : undefined}
                   >
-                    <NavLink to={item.path} className={getNavClassName(item.path)}>
+                    <NavLink to={item.path} className={getNavClassName(item.path, item.premium)}>
                       <item.icon className="h-5 w-5 flex-shrink-0" />
-                      {!isCollapsed && <span>{item.title}</span>}
+                      {!isCollapsed && (
+                        <span className="flex items-center gap-1">
+                          {item.title}
+                          {item.premium && (
+                            <Crown className={cn("h-3 w-3", isPremium ? "text-white" : "text-amber-500")} />
+                          )}
+                        </span>
+                      )}
                     </NavLink>
                   </SidebarMenuButton>
                 </SidebarMenuItem>
@@ -196,48 +228,91 @@ const AppSidebar = () => {
           </SidebarGroupContent>
         </SidebarGroup>
 
-        
-        {/* Premium Features Section - At the top */}
+        {/* Kontrahenci & Oferta */}
         <SidebarGroup>
-          <div className="flex items-center justify-between px-2 py-2">
-            {!isCollapsed && (
-              <SidebarGroupLabel className="flex items-center gap-2">
-                PREMIUM
-                {isPremium ? (
-                  <Shield className="h-3 w-3 text-amber-500" />
-                ) : (
-                  <Crown className="h-3 w-3 text-amber-500" />
-                )}
-              </SidebarGroupLabel>
-            )}
-          </div>
+          {!isCollapsed && <SidebarGroupLabel>KONTRAHENCI & OFERTA</SidebarGroupLabel>}
           <SidebarGroupContent>
             <SidebarMenu>
-              {premiumFeatures.map((feature) => (
-                <SidebarMenuItem key={feature.path}>
-                  {isPremium ? (
-                    <SidebarMenuButton
-                      asChild
-                      isActive={isActive(feature.path)}
-                      tooltip={isCollapsed ? feature.title : undefined}
-                    >
-                      <NavLink to={feature.path} className={cn(
-                        getNavClassName(feature.path),
-                        isActive(feature.path) ? "bg-amber-100 text-amber-900" : "hover:bg-amber-50"
-                      )}>
-                        <feature.icon className="h-5 w-5 flex-shrink-0 text-amber-600" />
-                        {!isCollapsed && <span>{feature.title}</span>}
-                      </NavLink>
-                    </SidebarMenuButton>
-                  ) : (
+              {offerItems.map((item) => (
+                <SidebarMenuItem key={item.path}>
+                  <SidebarMenuButton
+                    asChild
+                    isActive={isActive(item.path)}
+                    tooltip={isCollapsed ? item.title : undefined}
+                  >
+                    <NavLink to={item.path} className={getNavClassName(item.path, item.premium)}>
+                      <item.icon className="h-5 w-5 flex-shrink-0" />
+                      {!isCollapsed && (
+                        <span className="flex items-center gap-1">
+                          {item.title}
+                          {item.premium && (
+                            <Crown className={cn("h-3 w-3", isPremium ? "text-white" : "text-amber-500")} />
+                          )}
+                        </span>
+                      )}
+                    </NavLink>
+                  </SidebarMenuButton>
+                </SidebarMenuItem>
+              ))}
+            </SidebarMenu>
+          </SidebarGroupContent>
+        </SidebarGroup>
+
+        {/* Zarządzanie */}
+        <SidebarGroup>
+          {!isCollapsed && <SidebarGroupLabel>ZARZĄDZANIE</SidebarGroupLabel>}
+          <SidebarGroupContent>
+            <SidebarMenu>
+              {adminItems.map((item) => (
+                <SidebarMenuItem key={item.path}>
+                  <SidebarMenuButton
+                    asChild
+                    isActive={isActive(item.path)}
+                    tooltip={isCollapsed ? item.title : undefined}
+                  >
+                    <NavLink to={item.path} className={getNavClassName(item.path, item.premium)}>
+                      <item.icon className="h-5 w-5 flex-shrink-0" />
+                      {!isCollapsed && (
+                        <span className="flex items-center gap-1">
+                          {item.title}
+                          {item.premium && (
+                            <Crown className={cn("h-3 w-3", isPremium ? "text-white" : "text-amber-500")} />
+                          )}
+                        </span>
+                      )}
+                    </NavLink>
+                  </SidebarMenuButton>
+                </SidebarMenuItem>
+              ))}
+            </SidebarMenu>
+          </SidebarGroupContent>
+        </SidebarGroup>
+
+        {/* Upsell Premium Section (visible only for non-premium users) */}
+        {!isPremium && (
+          <SidebarGroup>
+            <div className="flex items-center justify-between px-2 py-2">
+              {!isCollapsed && (
+                <SidebarGroupLabel className="flex items-center gap-2">
+                  PREMIUM
+                  <Crown className="h-3 w-3 text-amber-500" />
+                </SidebarGroupLabel>
+              )}
+            </div>
+            <SidebarGroupContent>
+              <SidebarMenu>
+                {premiumFeatures.map((feature) => (
+                  <SidebarMenuItem key={feature.path}>
                     <SidebarMenuButton
                       onClick={openPremiumDialog}
                       tooltip={isCollapsed ? `${feature.title} (Premium)` : undefined}
                     >
-                      <div className={cn(
-                        "flex items-center gap-3 px-3 py-2 rounded-lg bg-white border border-gray-200 hover:bg-gray-50 transition-colors cursor-pointer w-full",
-                        isCollapsed ? "justify-center" : "justify-between"
-                      )}>
+                      <div
+                        className={cn(
+                          "flex items-center gap-3 px-3 py-2 rounded-lg bg-white border border-gray-200 hover:bg-gray-50 transition-colors cursor-pointer w-full",
+                          isCollapsed ? "justify-center" : "justify-between"
+                        )}
+                      >
                         <div className="flex items-center gap-3">
                           <feature.icon className="h-5 w-5 flex-shrink-0 text-amber-600" />
                           {!isCollapsed && (
@@ -247,25 +322,25 @@ const AppSidebar = () => {
                         {!isCollapsed && <Crown className="h-4 w-4 text-amber-600" />}
                       </div>
                     </SidebarMenuButton>
-                  )}
-                </SidebarMenuItem>
-              ))}
-            </SidebarMenu>
-          </SidebarGroupContent>
-          
-          {!isPremium && !isCollapsed && (
-            <div className="px-2 mt-2">
-              <Button 
-                onClick={openPremiumDialog}
-                className="w-full bg-gradient-to-r from-amber-500 to-orange-600 hover:from-amber-600 hover:to-orange-700 text-white"
-                size="sm"
-              >
-                <Crown className="mr-2 h-4 w-4" />
-                Kup Premium
-              </Button>
-            </div>
-          )}
-        </SidebarGroup>
+                  </SidebarMenuItem>
+                ))}
+              </SidebarMenu>
+            </SidebarGroupContent>
+
+            {!isCollapsed && (
+              <div className="px-2 mt-2">
+                <Button
+                  onClick={openPremiumDialog}
+                  className="w-full bg-gradient-to-r from-amber-500 to-orange-600 hover:from-amber-600 hover:to-orange-700 text-white"
+                  size="sm"
+                >
+                  <Crown className="mr-2 h-4 w-4" />
+                  Kup Premium
+                </Button>
+              </div>
+            )}
+          </SidebarGroup>
+        )}
       </SidebarContent>
       
       {/* beginning of footer */}

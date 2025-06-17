@@ -16,6 +16,8 @@ import { LineChart, Line, AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip,
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { toast } from 'sonner';
+import TaxTimeline from "@/components/accounting/TaxTimeline";
+import TaxReportsCard, { TaxReport } from "@/components/accounting/TaxReportsCard";
 
 const Accounting = () => {
   const { isPremium, openPremiumDialog, user } = useAuth();
@@ -36,9 +38,34 @@ const Accounting = () => {
 
   const [generatedXml, setGeneratedXml] = useState<string | null>(null);
 
-  // Calculate totals
-  const totalIncome = invoices.reduce((sum, invoice) => sum + (invoice.totalGrossValue || 0), 0);
-  const totalExpenses = expenses.reduce((sum, expense) => sum + (expense.amount || 0), 0);
+  // Timeline selection state
+  const [selectedMonthIdx, setSelectedMonthIdx] = useState<number>(new Date().getMonth());
+
+  const getMonthlyReports = (monthIdx: number): TaxReport[] => {
+    const reports: TaxReport[] = [
+      { id: `jpk-${monthIdx}`, name: "JPK_V7M", dueDay: 25 },
+      { id: `zus-${monthIdx}`, name: "Deklaracja ZUS (DRA)", dueDay: 20 },
+    ];
+    // PIT advance quarterly (20th next month for months 3/6/9/12)
+    if ([2, 5, 8, 11].includes(monthIdx)) {
+      reports.push({ id: `pit-${monthIdx}`, name: "PIT zaliczka", dueDay: 20 });
+    }
+    return reports;
+  };
+
+  // Calculate totals for selected month (timeline)
+  const currentYear = new Date().getFullYear();
+  const displayedInvoices = allInvoices.filter((inv) => {
+    const d = new Date(inv.issueDate);
+    return d.getFullYear() === currentYear && d.getMonth() === selectedMonthIdx;
+  });
+  const displayedExpenses = expenses.filter((exp) => {
+    const d = new Date(exp.date || exp.issueDate || exp.issue_date || "");
+    return d.getFullYear() === currentYear && d.getMonth() === selectedMonthIdx;
+  });
+
+  const totalIncome = displayedInvoices.reduce((sum, invoice) => sum + (invoice.totalGrossValue || 0), 0);
+  const totalExpenses = displayedExpenses.reduce((sum, expense) => sum + (expense.amount || 0), 0);
   const netProfit = totalIncome - totalExpenses;
 
   const selectedProfile = profiles?.find(p => p.id === selectedProfileId);
@@ -292,14 +319,18 @@ const Accounting = () => {
   return (
     <div className="space-y-6 pb-20 px-4 md:px-6">
       {/* Header */}
+
       <div className="space-y-2">
         <h1 className="text-2xl md:text-3xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-amber-400 via-amber-500 to-amber-700">
           Panel Księgowości
         </h1>
         <p className="text-muted-foreground">Zarządzaj finansami i rozliczeniami swojej firmy</p>
       </div>
+      <TaxTimeline selectedMonth={selectedMonthIdx} onMonthSelect={setSelectedMonthIdx} />
 
-      {/* Business Profile Selector */}
+      <TaxReportsCard monthIndex={selectedMonthIdx} reports={getMonthlyReports(selectedMonthIdx)} />
+
+      {/* Business Profile Selector 
       <Card>
         <CardHeader className="pb-3">
           <CardTitle className="text-lg">Profil firmowy</CardTitle>
@@ -325,6 +356,8 @@ const Accounting = () => {
           )}
         </CardContent>
       </Card>
+
+      */}
 
       {/* Financial Overview Cards */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
@@ -441,7 +474,7 @@ const Accounting = () => {
         </Card>
       </div>
 
-      {/* Period Selector and JPK Generation */}
+      {/* Period Selector and JPK Generation 
       <Card className="mb-6">
         <CardHeader className="pb-4">
           <CardTitle className="text-lg font-semibold">Generowanie JPK V7M</CardTitle>
@@ -480,7 +513,7 @@ const Accounting = () => {
         </CardContent>
       </Card>
 
-      {/* Required Reports Status */}
+      {/* Required Reports Status 
       <Card>
         <CardHeader>
           <CardTitle className="text-lg">Status raportów JPK</CardTitle>
@@ -548,7 +581,7 @@ const Accounting = () => {
           )}
         </CardContent>
       </Card>
-
+        
       {/* KSeF Integration */}
       <Card>
         <CardHeader>
