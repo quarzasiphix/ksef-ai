@@ -1,16 +1,37 @@
+
 import React, { createContext, useContext, useState, useEffect } from 'react';
-import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
+import { BrowserRouter as Router, Routes, Route, Navigate, useLocation } from 'react-router-dom';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { Toaster } from '@/components/ui/toaster';
 import { ThemeProvider } from '@/components/theme/ThemeProvider';
 import { SidebarProvider } from '@/components/ui/sidebar';
+import { TooltipProvider } from '@/components/ui/tooltip';
 
-// Auth components
+// Import the query client
+import { queryClient } from '@/lib/queryClient';
+
+// Auth components and context
+import { AuthProvider } from '@/context/AuthContext';
+import { useAuth } from '@/hooks/useAuth';
+import { BusinessProfileProvider } from '@/context/BusinessProfileContext';
+import { useHeartbeat } from '@/hooks/useHeartbeat';
+
+// Auth pages
 import Login from '@/pages/auth/Login';
 import Register from '@/pages/auth/Register';
 
+// Public pages
+import Home from '@/pages/public/Home';
+import PrivacyPolicy from '@/pages/policies/PrivacyPolicy';
+import TOSPolicy from '@/pages/policies/TOSPolicy';
+import RefundsPolicy from '@/pages/policies/RefundsPolicy';
+
 // Layout components
 import Layout from '@/components/layout/Layout';
+import PublicLayout from '@/components/public/PublicLayout';
+
+// Welcome component
+import Welcome from '@/components/welcome/Welcome';
 
 // Page components
 import Dashboard from '@/pages/Dashboard';
@@ -28,19 +49,24 @@ import EmployeesList from '@/pages/employees/EmployeesList';
 import NewInvoice from '@/pages/invoices/NewInvoice';
 import EditInvoice from '@/pages/invoices/EditInvoice';
 import InvoiceDetail from '@/pages/invoices/InvoiceDetail';
-import Settings from '@/pages/settings/Settings';
 import BusinessProfiles from '@/pages/settings/BusinessProfiles';
 import NewBusinessProfile from '@/pages/settings/NewBusinessProfile';
 import EditBusinessProfile from '@/pages/settings/EditBusinessProfile';
 import DocumentSettings from '@/pages/settings/DocumentSettings';
-import AccountingPage from '@/pages/accounting/AccountingPage';
-import KsefPage from '@/pages/ksef/KsefPage';
+import SettingsMenu from '@/pages/settings/SettingsMenu';
+import ProfileSettings from '@/pages/settings/ProfileSettings';
 import NotFound from '@/pages/NotFound';
+
+// Import transaction types
+import { TransactionType } from '@/types';
+
+// Income detail page
+import IncomeDetail from '@/pages/income/[id]';
 
 const AppLoadingScreen = ({ loading, checkingPremium }: { loading: boolean, checkingPremium: boolean }) => (
   <div className={`fixed inset-0 z-50 flex flex-col items-center justify-center bg-background/90 transition-colors ${checkingPremium ? 'text-amber-500' : 'text-primary'}`}>
     <div className="text-2xl font-bold animate-pulse">
-      {checkingPremium ? 'Checking for premium...' : ':loading in app'}
+      {checkingPremium ? 'Checking for premium...' : 'Ładowanie...'}
     </div>
     {checkingPremium && (
       <div className="mt-2 text-sm font-medium text-amber-600">Ładowanie premium...</div>
@@ -50,11 +76,10 @@ const AppLoadingScreen = ({ loading, checkingPremium }: { loading: boolean, chec
 
 // Protected route wrapper component
 const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
-  const { user, isLoading, isPremium } = useAuth();
+  const { user, loading } = useAuth();
   
-  if (isLoading) {
-    // Show gold if premium is being checked (loading && user exists but isPremium is still falsey)
-    return <AppLoadingScreen loading={true} checkingPremium={!!user && isLoading} />;
+  if (loading) {
+    return <AppLoadingScreen loading={true} checkingPremium={!!user && loading} />;
   }
   if (!user) {
     return <Navigate to="/auth/login" replace />;
@@ -72,21 +97,13 @@ const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
 
 // Public route wrapper component
 const PublicRoute = ({ children }: { children: React.ReactNode }) => {
-  const { user, isLoading, isPremium } = useAuth();
+  const { user, loading } = useAuth();
   const location = useLocation();
   
-  if (isLoading) {
-    // Show gold if premium is being checked (loading && user exists but isPremium is still falsey)
-    return <AppLoadingScreen loading={true} checkingPremium={!!user && isLoading} />;
+  if (loading) {
+    return <AppLoadingScreen loading={true} checkingPremium={!!user && loading} />;
   }
   
-  // The redirection logic is now handled within PublicLayout to correctly
-  // determine whether to show the welcome/onboarding screen or the dashboard.
-  // This was preventing the check for a business profile after an OAuth login.
-  if (user && location.pathname === '/') {
-    // Intentionally left blank. PublicLayout will handle redirection.
-  }
-
   return <PublicLayout>{children}</PublicLayout>;
 };
 
@@ -180,6 +197,11 @@ const App = () => {
                     <ProductDetail />
                   </ProtectedRoute>
                 } />
+                <Route path="/employees" element={
+                  <ProtectedRoute>
+                    <EmployeesList />
+                  </ProtectedRoute>
+                } />
                 <Route path="/expense" element={
                   <ProtectedRoute>
                     <ExpenseList />
@@ -227,17 +249,6 @@ const App = () => {
                   <Route path="business-profiles/:id/edit" element={<EditBusinessProfile />} />
                   <Route path="documents" element={<DocumentSettings />} />
                 </Route>
-                <Route path="/accounting/*" element={
-                  <ProtectedRoute>
-                    <AccountingPage />
-                  </ProtectedRoute>
-                } />
-                <Route path="/ksef/*" element={
-                  <ProtectedRoute>
-                    {/* <KsefPage /> */}
-                    <h1> KSEF COMING SOON</h1>
-                  </ProtectedRoute>
-                } />
 
                 {/* Catch all route */}
                 <Route path="*" element={<NotFound />} />
@@ -251,11 +262,10 @@ const App = () => {
 };
 
 function HeartbeatHandler() {
-  const { setIsPremium } = useAuth();
+  const { user } = useAuth();
   useHeartbeat({
     onStatus: (status) => {
-      setIsPremium(!!status.premium);
-      // Optionally: handle ban (logout), update premium, etc.
+      // Handle status updates
     },
   });
   return null;

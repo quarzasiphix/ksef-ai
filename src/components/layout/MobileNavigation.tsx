@@ -1,10 +1,11 @@
+
 import React, { useState } from "react";
 import { NavLink, useLocation, useNavigate } from "react-router-dom";
 import { BarChart, FileText, Settings, Menu, Users, Package, CreditCard, UserCheck } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 import { ThemeToggle } from "@/components/theme/ThemeToggle";
-import { useAuth } from "@/App";
+import { useAuth } from "@/hooks/useAuth";
 
 const MobileNavigation = () => {
   // Main navigation items
@@ -90,7 +91,7 @@ const MobileNavigation = () => {
 };
 
 const UserMenuFooter = () => {
-  const { user, setUser } = useAuth();
+  const { user, logout } = useAuth();
   const navigate = useNavigate();
   if (!user) return null;
   return (
@@ -99,9 +100,8 @@ const UserMenuFooter = () => {
       <span className="text-sm font-medium mb-2">{user.email}</span>
       <button
         className="text-xs text-red-500 hover:underline"
-        onClick={() => {
-          localStorage.removeItem("sb_session");
-          setUser(null);
+        onClick={async () => {
+          await logout();
           navigate("/auth/login");
         }}
       >
