@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -81,6 +82,8 @@ const ProductForm: React.FC<ProductFormProps> = ({
         unit: data.unit,
         user_id: user.id,
         product_type: data.product_type,
+        track_stock: initialData?.track_stock || false,
+        stock: initialData?.stock || 0,
       };
 
       const savedProduct = await saveProduct(productData);

@@ -1,26 +1,28 @@
 
 import React, { useState } from "react";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Product, InvoiceType } from "@/types";
+import { Product, InvoiceType, TransactionType } from "@/types";
 import { ProductEditDialog } from "../ProductEditDialog";
 
 interface ProductSelectorProps {
   products: Product[];
   documentType: InvoiceType;
+  transactionType?: TransactionType;
   onProductSelected: (productId: string) => void;
   onNewProductAdded: (product: Omit<Product, 'id'> & { id?: string }) => void;
   refetchProducts: () => Promise<void>;
-  onProductSavedAndSync?: (product: Product) => void; // NEW: for instant UI update
+  onProductSavedAndSync?: (product: Product) => void;
   userId: string;
 }
 
 export const ProductSelector: React.FC<ProductSelectorProps> = ({
   products,
   documentType,
+  transactionType,
   onProductSelected,
   onNewProductAdded,
   refetchProducts,
-  onProductSavedAndSync, // FIX: destructure from props
+  onProductSavedAndSync,
   userId
 }) => {
   const [selectedProductId, setSelectedProductId] = useState<string>("");
@@ -28,6 +30,14 @@ export const ProductSelector: React.FC<ProductSelectorProps> = ({
   const handleProductChange = (value: string) => {
     setSelectedProductId(value);
     onProductSelected(value);
+  };
+
+  const handleProductSaved = async (product: Omit<Product, 'id'> & { id?: string }) => {
+    console.log('ProductSelector - Product saved:', product);
+    onNewProductAdded(product);
+    await refetchProducts();
+    // Clear selection after adding
+    setSelectedProductId("");
   };
 
   return (
@@ -58,11 +68,9 @@ export const ProductSelector: React.FC<ProductSelectorProps> = ({
       <ProductEditDialog 
         mode="create" 
         documentType={documentType}
-        onProductSaved={async (product) => {
-          onNewProductAdded(product);
-          await refetchProducts();
-        }}
-        onProductSavedAndSync={onProductSavedAndSync} // NEW: pass down
+        transactionType={transactionType}
+        onProductSaved={handleProductSaved}
+        onProductSavedAndSync={onProductSavedAndSync as any}
         refetchProducts={refetchProducts}
         userId={userId}
       />

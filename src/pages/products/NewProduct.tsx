@@ -1,8 +1,8 @@
 
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import ProductForm from '@/components/products/ProductForm';
-import { Product } from '@/types';
+import ProductWithInventoryForm from '@/components/products/ProductWithInventoryForm';
+import { Product } from '@/types/index';
 import { toast } from 'sonner';
 
 const NewProduct = () => {
@@ -19,7 +19,7 @@ const NewProduct = () => {
   };
   
   return (
-    <ProductForm
+    <ProductWithInventoryForm
       isOpen={isOpen}
       onClose={handleClose}
       onSuccess={handleSuccess}

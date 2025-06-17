@@ -1,4 +1,5 @@
-import React, { useState } from "react";
+
+import React, { useState, useImperativeHandle, forwardRef } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
@@ -27,15 +28,17 @@ type ProductFormData = z.infer<typeof productSchema>;
 
 interface OnboardingProductFormProps {
   onSuccess: (product: Product) => void;
-  onSkip: () => void;
   initialData?: Product;
 }
 
-const OnboardingProductForm: React.FC<OnboardingProductFormProps> = ({
+export interface OnboardingProductFormHandle {
+  submit: () => void;
+}
+
+const OnboardingProductForm = forwardRef<OnboardingProductFormHandle, OnboardingProductFormProps>(({
   initialData,
   onSuccess,
-  onSkip,
-}) => {
+}, ref) => {
   const { user } = useAuth();
   const [isLoading, setIsLoading] = useState(false);
 
@@ -77,6 +80,10 @@ const OnboardingProductForm: React.FC<OnboardingProductFormProps> = ({
     }
   };
 
+  useImperativeHandle(ref, () => ({
+    submit: form.handleSubmit(onSubmit),
+  }));
+
   const vatOptions = [
     { value: 23, label: "23%" },
     { value: 8, label: "8%" },
@@ -86,25 +93,13 @@ const OnboardingProductForm: React.FC<OnboardingProductFormProps> = ({
   ];
 
   const unitOptions = [
-    "szt.",
-    "godz.",
-    "kg",
-    "l",
-    "m",
-    "m²",
-    "m³",
-    "usługa",
-    "komplet",
-    "opakowanie",
+    "szt.", "godz.", "kg", "l", "m", "m²", "m³", "usługa", "komplet", "opakowanie",
   ];
 
   return (
-    <div className="bg-white dark:bg-neutral-800 rounded-xl shadow-lg p-6 max-w-lg mx-auto mt-6 border border-blue-100 dark:border-blue-900">
-      <h2 className="text-xl font-semibold mb-4 text-purple-700 dark:text-purple-300">
-        Dodaj swój pierwszy produkt lub usługę
-      </h2>
+    <div className="w-full max-w-lg mx-auto bg-transparent">
       <Form {...form}>
-        <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+        <form className="space-y-4">
           <FormField
             control={form.control}
             name="product_type"
@@ -115,20 +110,16 @@ const OnboardingProductForm: React.FC<OnboardingProductFormProps> = ({
                   <RadioGroup
                     onValueChange={field.onChange}
                     value={field.value}
-                    className="flex flex-col space-y-1"
+                    className="grid grid-cols-2 gap-4"
                   >
-                    <div className="flex items-center space-x-2">
-                      <RadioGroupItem value="income" id="income" />
-                      <Label htmlFor="income" className="cursor-pointer">
-                        Sprzedaż (przychody)
-                      </Label>
-                    </div>
-                    <div className="flex items-center space-x-2">
-                      <RadioGroupItem value="expense" id="expense" />
-                      <Label htmlFor="expense" className="cursor-pointer">
-                        Wydatki (koszty)
-                      </Label>
-                    </div>
+                    <Label htmlFor="income" className="flex flex-col items-center justify-center rounded-md border-2 border-muted bg-popover p-4 hover:bg-accent hover:text-accent-foreground [&:has([data-state=checked])]:border-primary cursor-pointer transition-all">
+                      <RadioGroupItem value="income" id="income" className="sr-only" />
+                      Sprzedaż (przychody)
+                    </Label>
+                    <Label htmlFor="expense" className="flex flex-col items-center justify-center rounded-md border-2 border-muted bg-popover p-4 hover:bg-accent hover:text-accent-foreground [&:has([data-state=checked])]:border-primary cursor-pointer transition-all">
+                      <RadioGroupItem value="expense" id="expense" className="sr-only" />
+                      Wydatki (koszty)
+                    </Label>
                   </RadioGroup>
                 </FormControl>
                 <FormMessage />
@@ -142,13 +133,13 @@ const OnboardingProductForm: React.FC<OnboardingProductFormProps> = ({
               <FormItem>
                 <FormLabel>Nazwa produktu</FormLabel>
                 <FormControl>
-                  <Input placeholder="Nazwa produktu/usługi" {...field} />
+                  <Input placeholder="np. Konsultacja marketingowa" {...field} />
                 </FormControl>
                 <FormMessage />
               </FormItem>
             )}
           />
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <FormField
               control={form.control}
               name="unitPrice"
@@ -220,18 +211,10 @@ const OnboardingProductForm: React.FC<OnboardingProductFormProps> = ({
               </FormItem>
             )}
           />
-          <div className="flex gap-2 pt-4">
-            <Button type="button" variant="outline" onClick={onSkip} className="flex-1">
-              Pomiń
-            </Button>
-            <Button type="submit" disabled={isLoading} className="flex-1">
-              {isLoading ? "Zapisywanie..." : initialData ? "Zaktualizuj" : "Dodaj"}
-            </Button>
-          </div>
         </form>
       </Form>
     </div>
   );
-};
+});
 
-export default OnboardingProductForm; 
+export default OnboardingProductForm;

@@ -1,3 +1,4 @@
+
 import React, { useEffect, useState } from "react";
 import { useParams, useNavigate, useSearchParams } from "react-router-dom";
 import { useAuth } from "@/context/AuthContext";
@@ -13,14 +14,13 @@ import { ArrowLeft } from "lucide-react";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import CustomerForm from "@/components/customers/CustomerForm";
 import { BusinessProfileSelector } from "@/components/invoices/selectors/BusinessProfileSelector";
-
-const ZUS_NIP = "5220005994";
-const ZUS_NAME = "ZAKŁAD UBEZPIECZEŃ SPOŁECZNYCH";
+import { useBusinessProfile } from "@/context/BusinessProfileContext";
 
 const NewExpense = () => {
   const { user } = useAuth();
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
+  const { selectedProfileId } = useBusinessProfile();
   const [isLoading, setIsLoading] = useState(false);
   const [description, setDescription] = useState("");
   const [date, setDate] = useState("");
@@ -29,7 +29,6 @@ const NewExpense = () => {
   const [isZus, setIsZus] = useState(false);
   const [customerId, setCustomerId] = useState<string>("");
   const { customers } = useGlobalData();
-  // Only show suppliers (sprzedawca)
   const supplierCustomers = customers.data.filter(c => c.customerType === 'sprzedawca');
   const [isAddSupplierOpen, setIsAddSupplierOpen] = useState(false);
 
@@ -57,28 +56,54 @@ const NewExpense = () => {
     } else {
       setDate(new Date().toISOString().slice(0, 10));
     }
+  }, [searchParams]);
+
+  useEffect(() => {
     if (!customerId && supplierCustomers.length > 0) {
       setCustomerId(supplierCustomers[0].id);
     }
-  }, [searchParams, supplierCustomers, customerId]);
+  }, [customerId, supplierCustomers]);
+
+  useEffect(() => {
+    if (selectedProfileId) {
+      setBusinessProfileId(selectedProfileId);
+    }
+  }, [selectedProfileId]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    
+    console.log("=== EXPENSE SUBMISSION DEBUG ===");
+    console.log("User:", user?.id);
+    console.log("Context selectedProfileId:", selectedProfileId);
+    console.log("State businessProfileId:", businessProfileId);
+    console.log("State customerId:", customerId);
+    
     if (!user) {
       toast.error("Musisz być zalogowany");
       return;
     }
+    
     if (!businessProfileId) {
       toast.error("Wybierz profil biznesowy (nabywcę)");
+      console.error("Missing business profile ID. Current value:", businessProfileId);
       return;
     }
+    
+    if (!customerId) {
+      toast.error("Wybierz kontrahenta (dostawcę)");
+      console.error("Missing customer ID. Current value:", customerId);
+      return;
+    }
+    
     if (!date || items.length === 0) {
       toast.error("Wypełnij wszystkie pola i dodaj co najmniej jedną pozycję");
       return;
     }
+    
     setIsLoading(true);
     try {
-      await saveExpense({
+      const expenseData = {
         userId: user.id,
         businessProfileId,
         issueDate: date,
@@ -89,10 +114,15 @@ const NewExpense = () => {
         transactionType: TransactionType.EXPENSE,
         items,
         customerId,
-      });
+      };
+      
+      console.log("Submitting expense data:", expenseData);
+      
+      await saveExpense(expenseData);
       toast.success("Wydatek zapisany");
       navigate("/expense");
     } catch (error) {
+      console.error("Error saving expense:", error);
       toast.error("Błąd podczas zapisywania wydatku");
     } finally {
       setIsLoading(false);
@@ -166,7 +196,10 @@ const NewExpense = () => {
                 <label className="block mb-1 font-medium">Nabywca (Twój profil)</label>
                 <BusinessProfileSelector
                   value={businessProfileId}
-                  onChange={(id) => setBusinessProfileId(id)}
+                  onChange={(id) => {
+                    console.log('Business profile changed to:', id);
+                    setBusinessProfileId(id);
+                  }}
                 />
               </div>
             </div>

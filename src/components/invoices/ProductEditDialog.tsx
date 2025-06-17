@@ -1,40 +1,45 @@
+
 import React, { useState } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Product, InvoiceType, VatType } from "@/types";
+import { Product, InvoiceType, VatType, TransactionType } from "@/types";
 import { Edit, Plus } from "lucide-react";
 import { saveProduct } from "@/integrations/supabase/repositories/productRepository";
 import { toast } from "sonner";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { useAuth } from "@/context/AuthContext";
 
 interface ProductEditDialogProps {
   mode: 'edit' | 'create';
   initialProduct?: Partial<Product>;
   documentType: InvoiceType;
+  transactionType?: TransactionType;
   onProductSaved: (product: Omit<Product, 'id'> & { id?: string }) => void;
   onProductSavedAndSync?: (product: Omit<Product, 'id'> & { id?: string }) => void;
   trigger?: React.ReactNode;
   refetchProducts?: () => Promise<void>;
-  userId: string; // Add userId prop
+  userId?: string;
 }
 
 export const ProductEditDialog: React.FC<ProductEditDialogProps> = ({
   mode,
   initialProduct = {},
   documentType,
+  transactionType,
   onProductSaved,
   onProductSavedAndSync,
   trigger,
   refetchProducts,
   userId
 }) => {
+  const { user } = useAuth();
+  const finalUserId = userId || user?.id;
   const isReceipt = documentType === InvoiceType.RECEIPT;
   const [open, setOpen] = useState(false);
   const [name, setName] = useState(initialProduct?.name || "");
   const [unitPrice, setUnitPrice] = useState(initialProduct?.unitPrice?.toString() || "");
-  // Initialize vatRate, converting -1 (ZW) to "zw" for the select input
   const initialVatRate = initialProduct?.vatRate !== undefined 
     ? (initialProduct.vatRate === -1 ? "zw" : initialProduct.vatRate.toString())
     : (isReceipt ? "0" : "23");
@@ -62,35 +67,46 @@ export const ProductEditDialog: React.FC<ProductEditDialogProps> = ({
       toast.error("Jednostka miary jest wymagana");
       return;
     }
+
+    if (!finalUserId) {
+      toast.error("Błąd uwierzytelniania. Spróbuj zalogować się ponownie.");
+      return;
+    }
     
     try {
       setIsLoading(true);
       
+      const product_type = transactionType === TransactionType.EXPENSE ? 'expense' : 'income';
+
       const productData: Product = {
         id: initialProduct?.id || "",
         name,
         unitPrice: Number(unitPrice),
-        vatRate: vatRate === "zw" ? Number(VatType.ZW) : Number(vatRate), // Convert "zw" to -1 for VAT-exempt
+        vatRate: vatRate === "zw" ? Number(VatType.ZW) : Number(vatRate),
         unit,
-        user_id: userId
+        user_id: finalUserId,
+        product_type,
+        track_stock: initialProduct?.track_stock || false,
+        stock: initialProduct?.stock || 0
       };
       
       if (mode === 'edit') {
-        // Save changes to existing product
         const savedProduct = await saveProduct(productData);
         toast.success("Produkt został zaktualizowany");
         onProductSaved(savedProduct);
-        if (onProductSavedAndSync) onProductSavedAndSync(savedProduct); // NEW: instant UI update
+        if (onProductSavedAndSync) onProductSavedAndSync(savedProduct);
         if (refetchProducts) await refetchProducts();
       } else {
-        // Just return the new product without saving to database
         onProductSaved({
           id: crypto.randomUUID(), // Temporary ID
           name,
           unitPrice: Number(unitPrice),
-          vatRate: vatRate === "zw" ? Number(VatType.ZW) : Number(vatRate), // Convert "zw" to -1 for VAT-exempt
+          vatRate: vatRate === "zw" ? Number(VatType.ZW) : Number(vatRate),
           unit,
-          user_id: ""
+          user_id: finalUserId,
+          product_type,
+          track_stock: false,
+          stock: 0
         });
         toast.success("Produkt został dodany do dokumentu");
       }

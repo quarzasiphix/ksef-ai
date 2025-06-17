@@ -1,4 +1,5 @@
-import { BusinessProfile, Customer, Product, Invoice, InvoiceType, PaymentMethodDb, InvoiceItem, TransactionType } from "@/types";
+
+import { BusinessProfile, Customer, Product, Invoice, InvoiceType, PaymentMethodDb, InvoiceItem, TransactionType } from "@/types/index";
 import { generateKsefXml } from "@/integrations/ksef/ksefGenerator";
 
 // Mock Business Profiles
@@ -11,7 +12,6 @@ export const mockBusinessProfiles: BusinessProfile[] = [
     address: "ul. Przykładowa 123",
     postalCode: "00-001",
     city: "Warszawa",
-    country: "Polska",
     regon: "123456789",
     bankAccount: "12 3456 7890 1234 5678 9012 3456",
     email: "kontakt@acme.pl",
@@ -33,9 +33,9 @@ export const mockCustomers: Customer[] = [
     address: "ul. Testowa 456",
     postalCode: "02-001",
     city: "Kraków",
-    country: "Polska",
     email: "jan.kowalski@email.com",
-    phone: "+48 987 654 321"
+    phone: "+48 987 654 321",
+    customerType: 'odbiorca'
   },
   {
     id: "2", 
@@ -44,8 +44,8 @@ export const mockCustomers: Customer[] = [
     address: "ul. Nowa 789",
     postalCode: "03-001",
     city: "Gdańsk",
-    country: "Polska",
-    email: "anna.nowak@email.com"
+    email: "anna.nowak@email.com",
+    customerType: 'odbiorca'
   }
 ];
 
@@ -58,7 +58,10 @@ export const mockProducts: Product[] = [
     unitPrice: 200,
     vatRate: 23,
     unit: "godz.",
-    description: "Konsultacje informatyczne"
+    description: "Konsultacje informatyczne",
+    product_type: 'income',
+    track_stock: false,
+    stock: 0,
   },
   {
     id: "2",
@@ -67,7 +70,10 @@ export const mockProducts: Product[] = [
     unitPrice: 5000,
     vatRate: 23,
     unit: "szt.",
-    description: "Projekt i wykonanie strony internetowej"
+    description: "Projekt i wykonanie strony internetowej",
+    product_type: 'income',
+    track_stock: false,
+    stock: 0,
   },
   {
     id: "3",
@@ -76,7 +82,10 @@ export const mockProducts: Product[] = [
     unitPrice: 300,
     vatRate: 23,
     unit: "szt.",
-    description: "Hosting strony internetowej na rok"
+    description: "Hosting strony internetowej na rok",
+    product_type: 'income',
+    track_stock: false,
+    stock: 0,
   }
 ];
 

@@ -1,3 +1,4 @@
+
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -14,7 +15,7 @@ import TOSPolicy from "./pages/policies/TOSPolicy";
 import RefundsPolicy from "./pages/policies/RefundsPolicy";
 import { AuthProvider } from "./context/AuthContext";
 import { queryClient } from "./lib/queryClient";
-import { useAuth } from "@/context/AuthContext";
+import { useAuth } from "@/hooks/useAuth";
 import Layout from "./components/layout/Layout";
 import { SidebarProvider } from "@/components/ui/sidebar";
 import { BusinessProfileProvider } from "@/context/BusinessProfileContext";
@@ -65,11 +66,11 @@ const AppLoadingScreen = ({ loading, checkingPremium }: { loading: boolean, chec
 
 // Protected route wrapper component
 const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
-  const { user, loading, isPremium } = useAuth();
+  const { user, isLoading, isPremium } = useAuth();
   
-  if (loading) {
+  if (isLoading) {
     // Show gold if premium is being checked (loading && user exists but isPremium is still falsey)
-    return <AppLoadingScreen loading={true} checkingPremium={!!user && loading} />;
+    return <AppLoadingScreen loading={true} checkingPremium={!!user && isLoading} />;
   }
   if (!user) {
     return <Navigate to="/auth/login" replace />;
@@ -87,16 +88,19 @@ const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
 
 // Public route wrapper component
 const PublicRoute = ({ children }: { children: React.ReactNode }) => {
-  const { user, loading, isPremium } = useAuth();
+  const { user, isLoading, isPremium } = useAuth();
   const location = useLocation();
   
-  if (loading) {
+  if (isLoading) {
     // Show gold if premium is being checked (loading && user exists but isPremium is still falsey)
-    return <AppLoadingScreen loading={true} checkingPremium={!!user && loading} />;
+    return <AppLoadingScreen loading={true} checkingPremium={!!user && isLoading} />;
   }
-  // Only redirect to dashboard if on home page and user is logged in
+  
+  // The redirection logic is now handled within PublicLayout to correctly
+  // determine whether to show the welcome/onboarding screen or the dashboard.
+  // This was preventing the check for a business profile after an OAuth login.
   if (user && location.pathname === '/') {
-    return <Navigate to="/dashboard" replace />;
+    // Intentionally left blank. PublicLayout will handle redirection.
   }
 
   return <PublicLayout>{children}</PublicLayout>;

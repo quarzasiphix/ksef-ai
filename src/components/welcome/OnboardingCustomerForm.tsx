@@ -1,10 +1,12 @@
-import React from "react";
+
+import React, { useImperativeHandle, forwardRef } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
 import {
   Form,
   FormControl,
@@ -16,6 +18,7 @@ import {
 import { Customer } from "@/types";
 import { saveCustomer } from "@/integrations/supabase/repositories/customerRepository";
 import { useAuth } from "@/context/AuthContext";
+import { Search } from 'lucide-react';
 
 const formSchema = z.object({
   name: z.string().min(1, "Nazwa jest wymagana"),
@@ -32,7 +35,11 @@ interface OnboardingCustomerFormProps {
   initialData?: Customer;
 }
 
-const OnboardingCustomerForm = ({ onSuccess, initialData }: OnboardingCustomerFormProps) => {
+export interface OnboardingCustomerFormHandle {
+  submit: () => void;
+}
+
+const OnboardingCustomerForm = forwardRef<OnboardingCustomerFormHandle, OnboardingCustomerFormProps>(({ onSuccess, initialData }, ref) => {
   const { user } = useAuth();
   const isEditing = !!initialData?.id;
 
@@ -76,28 +83,28 @@ const OnboardingCustomerForm = ({ onSuccess, initialData }: OnboardingCustomerFo
     }
   };
 
+  useImperativeHandle(ref, () => ({
+    submit: form.handleSubmit(onSubmit),
+  }));
+
   return (
-    <div className="bg-white dark:bg-neutral-800 rounded-xl shadow-lg p-6 max-w-lg mx-auto mt-6 border border-blue-100 dark:border-blue-900">
-      <h2 className="text-xl font-semibold mb-4 text-blue-700 dark:text-blue-300">
-        Dodaj swojego pierwszego klienta
-      </h2>
+    <div className="w-full max-w-lg mx-auto bg-transparent">
       <Form {...form}>
-        <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+        <form className="space-y-4">
           <FormField
             control={form.control}
             name="taxId"
             render={({ field }) => (
               <FormItem>
                 <FormLabel>NIP</FormLabel>
-                <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+                <div className="flex items-center gap-2">
                   <FormControl>
-                    <Input placeholder="NIP" maxLength={10} {...field} />
+                    <Input placeholder="1234567890" maxLength={10} {...field} />
                   </FormControl>
                   <Button
                     type="button"
-                    size="sm"
                     variant="secondary"
-                    style={{ minWidth: 60, padding: '0 10px' }}
+                    className="px-3"
                     onClick={async () => {
                       const nip = form.getValues("taxId");
                       if (!nip || nip.length !== 10) {
@@ -105,11 +112,12 @@ const OnboardingCustomerForm = ({ onSuccess, initialData }: OnboardingCustomerFo
                         return;
                       }
                       try {
+                        toast.info("Pobieranie danych z GUS...");
                         const today = new Date().toISOString().slice(0, 10);
                         const res = await fetch(`https://wl-api.mf.gov.pl/api/search/nip/${nip}?date=${today}`);
                         if (!res.ok) {
                           const errorData = await res.json();
-                          const errorMessage = errorData.error ? errorData.error.message : `Błąd HTTP: ${res.status} ${res.statusText}`;
+                          const errorMessage = errorData.message || `Błąd HTTP: ${res.status}`;
                           toast.error(`Błąd pobierania danych: ${errorMessage}`);
                           return;
                         }
@@ -117,15 +125,13 @@ const OnboardingCustomerForm = ({ onSuccess, initialData }: OnboardingCustomerFo
                         if (data.result && data.result.subject) {
                           const subject = data.result.subject;
                           form.setValue("name", subject.name || "");
-                          form.setValue("address", subject.workingAddress || subject.residenceAddress || "");
-                          // Try to extract postal code and city from address
-                          if (subject.workingAddress || subject.residenceAddress) {
-                            const addr = subject.workingAddress || subject.residenceAddress;
-                            const match = addr.match(/(\d{2}-\d{3})\s+(.+)/);
-                            if (match) {
-                              form.setValue("postalCode", match[1]);
-                              form.setValue("city", match[2]);
-                            }
+                          const fullAddress = subject.workingAddress || subject.residenceAddress || "";
+                          form.setValue("address", fullAddress);
+                          const match = fullAddress.match(/(.*),\s*(\d{2}-\d{3})\s+(.+)/);
+                          if (match) {
+                              form.setValue("address", match[1]);
+                              form.setValue("postalCode", match[2]);
+                              form.setValue("city", match[3]);
                           }
                           toast.success("Dane firmy pobrane z GUS");
                         } else {
@@ -136,6 +142,7 @@ const OnboardingCustomerForm = ({ onSuccess, initialData }: OnboardingCustomerFo
                       }
                     }}
                   >
+                    <Search className="h-4 w-4 mr-2" />
                     Szukaj
                   </Button>
                 </div>
@@ -163,13 +170,13 @@ const OnboardingCustomerForm = ({ onSuccess, initialData }: OnboardingCustomerFo
               <FormItem>
                 <FormLabel>Adres</FormLabel>
                 <FormControl>
-                  <Input placeholder="Adres" {...field} />
+                  <Textarea placeholder="ul. Przykładowa 1&#x0a;00-001 Warszawa" {...field} />
                 </FormControl>
                 <FormMessage />
               </FormItem>
             )}
           />
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <FormField
               control={form.control}
               name="postalCode"
@@ -177,7 +184,7 @@ const OnboardingCustomerForm = ({ onSuccess, initialData }: OnboardingCustomerFo
                 <FormItem>
                   <FormLabel>Kod pocztowy</FormLabel>
                   <FormControl>
-                    <Input placeholder="Kod pocztowy" {...field} />
+                    <Input placeholder="00-000" {...field} />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
@@ -190,7 +197,7 @@ const OnboardingCustomerForm = ({ onSuccess, initialData }: OnboardingCustomerFo
                 <FormItem>
                   <FormLabel>Miasto</FormLabel>
                   <FormControl>
-                    <Input placeholder="Miasto" {...field} />
+                    <Input placeholder="Warszawa" {...field} />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
@@ -204,7 +211,7 @@ const OnboardingCustomerForm = ({ onSuccess, initialData }: OnboardingCustomerFo
               <FormItem>
                 <FormLabel>Email (opcjonalnie)</FormLabel>
                 <FormControl>
-                  <Input placeholder="Email" {...field} />
+                  <Input placeholder="kontakt@firma.pl" {...field} />
                 </FormControl>
                 <FormMessage />
               </FormItem>
@@ -217,21 +224,16 @@ const OnboardingCustomerForm = ({ onSuccess, initialData }: OnboardingCustomerFo
               <FormItem>
                 <FormLabel>Telefon (opcjonalnie)</FormLabel>
                 <FormControl>
-                  <Input placeholder="Telefon" {...field} />
+                  <Input placeholder="+48 123 456 789" {...field} />
                 </FormControl>
                 <FormMessage />
               </FormItem>
             )}
           />
-          <div className="flex justify-end pt-4">
-            <Button type="submit" className="w-full">
-              {isEditing ? "Aktualizuj klienta" : "Dodaj klienta"}
-            </Button>
-          </div>
         </form>
       </Form>
     </div>
   );
-};
+});
 
-export default OnboardingCustomerForm; 
+export default OnboardingCustomerForm;
