@@ -1,7 +1,6 @@
-
 import React, { useState } from "react";
 import { NavLink, useLocation, useNavigate } from "react-router-dom";
-import { BarChart, FileText, Settings, Menu, Users, Package, CreditCard, UserCheck } from "lucide-react";
+import { BarChart, FileText, Settings, Menu, Users, Package, CreditCard, UserCheck, Boxes } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 import { ThemeToggle } from "@/components/theme/ThemeToggle";
@@ -15,12 +14,15 @@ const MobileNavigation = () => {
     { title: "Ustawienia", path: "/settings", icon: Settings },
   ];
   
+  const { isPremium, openPremiumDialog } = useAuth();
+
   // Side menu items
   const sideMenuItems = [
-    { title: "Dashboard", path: "/", icon: BarChart },
-    { title: "Klienci", path: "/customers", icon: Users },
-    { title: "Produkty", path: "/products", icon: Package },
-    { title: "Pracownicy", path: "/employees", icon: UserCheck },
+    { title: "Dashboard", path: "/", icon: BarChart, premium: false },
+    { title: "Klienci", path: "/customers", icon: Users, premium: false },
+    { title: "Produkty", path: "/products", icon: Package, premium: false },
+    { title: "Pracownicy", path: "/employees", icon: UserCheck, premium: false },
+    { title: "Magazyn", path: "/inventory", icon: Boxes, premium: true },
   ];
 
   // Generate NavLink className based on active state
@@ -63,17 +65,31 @@ const MobileNavigation = () => {
         <SheetContent side="right" className="w-[250px] pt-10">
           <div className="flex flex-col space-y-3 pt-4">
             {sideMenuItems.map((item) => (
-              <NavLink
-                key={item.path}
-                to={item.path}
-                className={({ isActive }) => 
-                  cn("flex items-center gap-3 px-4 py-2 rounded-md", 
-                     isActive ? "bg-primary/10 text-primary" : "text-foreground hover:bg-accent")
-                }
-              >
-                <item.icon className="h-5 w-5" />
-                <span>{item.title}</span>
-              </NavLink>
+              item.premium && !isPremium ? (
+                <button
+                  key={item.title}
+                  onClick={() => openPremiumDialog()}
+                  className={cn(
+                    "flex items-center gap-3 px-4 py-2 rounded-md w-full text-foreground hover:bg-accent"
+                  )}
+                >
+                  <item.icon className="h-5 w-5" />
+                  <span>{item.title}</span>
+                  <span className="ml-auto text-[10px] uppercase text-amber-600">Premium</span>
+                </button>
+              ) : (
+                <NavLink
+                  key={item.path}
+                  to={item.path}
+                  className={({ isActive }) => 
+                    cn("flex items-center gap-3 px-4 py-2 rounded-md", 
+                       isActive ? "bg-primary/10 text-primary" : "text-foreground hover:bg-accent")
+                  }
+                >
+                  <item.icon className="h-5 w-5" />
+                  <span>{item.title}</span>
+                </NavLink>
+              )
             ))}
             
             <div className="mt-4 px-4 py-2">

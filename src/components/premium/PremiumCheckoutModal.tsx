@@ -237,6 +237,7 @@ const PremiumCheckoutModal: React.FC<PremiumCheckoutModalProps> = ({ isOpen, onC
     "Nieograniczone faktury i dokumenty",
     "Zaawansowane raporty i statystyki",
     "Eksport danych (JPK, KSeF)",
+    "Magazyn – śledzenie stanów i ruchów towarów",
     "Priorytetowe wsparcie techniczne",
     "Backup i synchronizacja danych",
     "Automiczne wysyłanie faktur na e-mail"

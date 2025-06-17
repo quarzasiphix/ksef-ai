@@ -39,10 +39,12 @@ import DocumentSettings from '@/pages/settings/DocumentSettings';
 import EmployeesList from '@/pages/employees/EmployeesList';
 import LabourHoursPage from '@/pages/employees/LabourHoursPage';
 import NotFound from '@/pages/NotFound';
+import InventoryPage from '@/pages/inventory/InventoryPage';
 
 import { queryClient } from '@/lib/queryClient';
 import { useAuth } from '@/hooks/useAuth';
-import { HeartbeatHandler } from '@/hooks/useHeartbeat';
+import { TransactionType } from '@/types/common';
+import SettingsMenu from './pages/settings/SettingsMenu';
 
 const AppLoadingScreen = () => (
   <div className="flex items-center justify-center h-screen">
@@ -51,7 +53,8 @@ const AppLoadingScreen = () => (
 );
 
 const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
-  const { isAuthenticated, isLoading } = useAuth();
+  const { user, isLoading } = useAuth();
+  const isAuthenticated = !!user;
   const location = useLocation();
 
   if (isLoading) {
@@ -74,7 +77,8 @@ const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
 };
 
 const PublicRoute = ({ children }: { children: React.ReactNode }) => {
-  const { isAuthenticated, isLoading } = useAuth();
+  const { user, isLoading } = useAuth();
+  const isAuthenticated = !!user;
   const location = useLocation();
 
   if (isLoading) {
@@ -90,6 +94,17 @@ const PublicRoute = ({ children }: { children: React.ReactNode }) => {
       {children}
     </PublicLayout>
   );
+};
+
+// Premium guard component
+const RequirePremium = ({ children }: { children: React.ReactNode }) => {
+  const { isPremium, openPremiumDialog } = useAuth();
+  if (!isPremium) {
+    // Show premium dialog then redirect to settings
+    openPremiumDialog();
+    return <Navigate to="/settings" replace />;
+  }
+  return <>{children}</>;
 };
 
 const App = () => {
@@ -176,22 +191,22 @@ const App = () => {
                 } />
                 <Route path="/income/new" element={
                   <ProtectedRoute>
-                    <NewInvoice type="income" />
+                    <NewInvoice type={TransactionType.INCOME} />
                   </ProtectedRoute>
                 } />
                 <Route path="/expense/new" element={
                   <ProtectedRoute>
-                    <NewInvoice type="expense" />
+                    <NewInvoice type={TransactionType.EXPENSE} />
                   </ProtectedRoute>
                 } />
                 <Route path="/income/edit/:id" element={
                   <ProtectedRoute>
-                    <EditInvoice type="income" />
+                    <EditInvoice />
                   </ProtectedRoute>
                 } />
                  <Route path="/expense/edit/:id" element={
                   <ProtectedRoute>
-                    <EditInvoice type="expense" />
+                    <EditInvoice />
                   </ProtectedRoute>
                 } />
                 <Route path="/income/:id" element={
@@ -207,6 +222,11 @@ const App = () => {
                 <Route path="/settings/business-profiles" element={
                   <ProtectedRoute>
                     <BusinessProfiles />
+                  </ProtectedRoute>
+                } />
+                <Route path="/settings" element={
+                  <ProtectedRoute>
+                      <SettingsMenu />
                   </ProtectedRoute>
                 } />
                 <Route path="/settings/business-profiles/new" element={
@@ -234,6 +254,15 @@ const App = () => {
                 <Route path="/labour-hours" element={
                   <ProtectedRoute>
                     <LabourHoursPage />
+                  </ProtectedRoute>
+                } />
+
+                {/* Inventory tracking (Premium) */}
+                <Route path="/inventory" element={
+                  <ProtectedRoute>
+                    <RequirePremium>
+                      <InventoryPage />
+                    </RequirePremium>
                   </ProtectedRoute>
                 } />
 

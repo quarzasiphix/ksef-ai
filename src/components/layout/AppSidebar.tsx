@@ -1,4 +1,3 @@
-
 import React from "react";
 import { NavLink, useLocation, useNavigate } from "react-router-dom";
 import { 
@@ -15,7 +14,8 @@ import {
   Shield,
   User,
   LogOut,
-  UserCheck
+  UserCheck,
+  Boxes
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import {
@@ -68,6 +68,7 @@ const AppSidebar = () => {
   // Premium features
   const premiumFeatures = [
     { title: "Księgowość", path: "/accounting", icon: Calculator },
+    { title: "Magazyn", path: "/inventory", icon: Boxes },
     { title: "KSeF", path: "/ksef", icon: Building },
   ];
 
