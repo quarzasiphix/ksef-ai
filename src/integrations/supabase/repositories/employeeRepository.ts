@@ -1,4 +1,3 @@
-
 import { supabase } from '../client';
 import { Employee, LabourHours, SalaryPayment, CreateEmployeeData, CreateLabourHoursData, CreateSalaryPaymentData } from '@/types/employee';
 
@@ -128,40 +127,57 @@ export const markLabourHoursAsPaid = async (ids: string[], paymentDate: string):
   if (error) throw error;
 };
 
-export const getSalaryPayments = async (employeeId?: string): Promise<SalaryPayment[]> => {
-  let query = supabase
-    .from('salary_payments')
-    .select(`
-      *,
-      employees (
-        first_name,
-        last_name
-      )
-    `)
-    .order('payment_date', { ascending: false });
+export async function getSalaryPayments(userId: string): Promise<SalaryPayment[]> {
+  try {
+    const { data, error } = await supabase
+      .from('salary_payments')
+      .select(`
+        *,
+        employees (
+          first_name,
+          last_name
+        )
+      `)
+      .eq('user_id', userId)
+      .order('payment_date', { ascending: false });
 
-  if (employeeId) {
-    query = query.eq('employee_id', employeeId);
+    if (error) {
+      console.error("Error fetching salary payments:", error);
+      throw error;
+    }
+
+    return (data || []).map(payment => ({
+      ...payment,
+      payment_type: payment.payment_type as "salary" | "hourly" | "bonus"
+    })) as SalaryPayment[];
+  } catch (error) {
+    console.error('Error in getSalaryPayments:', error);
+    throw error;
   }
+}
 
-  const { data, error } = await query;
-  if (error) throw error;
-  return data || [];
-};
+export async function createSalaryPayment(payment: Omit<SalaryPayment, 'id' | 'created_at' | 'updated_at'>): Promise<SalaryPayment> {
+  try {
+    const { data, error } = await supabase
+      .from('salary_payments')
+      .insert(payment)
+      .select()
+      .single();
 
-export const createSalaryPayment = async (paymentData: CreateSalaryPaymentData): Promise<SalaryPayment> => {
-  const { data: { user } } = await supabase.auth.getUser();
-  if (!user) throw new Error('User not authenticated');
+    if (error) {
+      console.error("Error creating salary payment:", error);
+      throw error;
+    }
 
-  const { data, error } = await supabase
-    .from('salary_payments')
-    .insert([{ ...paymentData, user_id: user.id }])
-    .select()
-    .single();
-
-  if (error) throw error;
-  return data;
-};
+    return {
+      ...data,
+      payment_type: data.payment_type as "salary" | "hourly" | "bonus"
+    } as SalaryPayment;
+  } catch (error) {
+    console.error('Error in createSalaryPayment:', error);
+    throw error;
+  }
+}
 
 export const getUnpaidLabourHours = async (employeeId: string): Promise<LabourHours[]> => {
   const { data, error } = await supabase
