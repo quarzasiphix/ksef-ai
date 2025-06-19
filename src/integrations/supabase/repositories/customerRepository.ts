@@ -10,16 +10,7 @@ export async function getCustomers(): Promise<Customer[]> {
   
   const { data, error } = await supabase
     .from("customers")
-    .select(`
-      *,
-      linked_business_profile:business_profiles!inner(
-        id,
-        name,
-        email,
-        phone,
-        user_id
-      )
-    `)
+    .select("*")
     .order("name");
 
   if (error) {
@@ -27,9 +18,17 @@ export async function getCustomers(): Promise<Customer[]> {
     throw error;
   }
 
+  // Get all business profiles to check for linked profiles
+  const { data: businessProfiles } = await supabase
+    .from("business_profiles")
+    .select("id, name, email, phone, user_id, tax_id");
+
   return data.map(item => {
-    // Type assertion to handle missing user_id and client_type in the database
-    const itemWithAny = item as any;
+    // Find linked business profile by matching tax_id
+    const linkedProfile = businessProfiles?.find(bp => 
+      bp.tax_id === item.tax_id && bp.tax_id
+    );
+
     return {
       id: item.id,
       name: item.name,
@@ -39,9 +38,15 @@ export async function getCustomers(): Promise<Customer[]> {
       city: item.city,
       email: item.email || undefined,
       phone: item.phone || undefined,
-      user_id: itemWithAny.user_id,
-      customerType: reverseTypeMap[itemWithAny.client_type] || 'odbiorca',
-      linkedBusinessProfile: itemWithAny.linked_business_profile?.[0] || null,
+      user_id: item.user_id,
+      customerType: reverseTypeMap[item.client_type as keyof typeof reverseTypeMap] || 'odbiorca',
+      linkedBusinessProfile: linkedProfile ? {
+        id: linkedProfile.id,
+        name: linkedProfile.name,
+        email: linkedProfile.email || undefined,
+        phone: linkedProfile.phone || undefined,
+        user_id: linkedProfile.user_id,
+      } : null,
     };
   });
 }
@@ -49,16 +54,7 @@ export async function getCustomers(): Promise<Customer[]> {
 export async function getCustomerWithLinkedProfile(customerId: string): Promise<Customer | null> {
   const { data, error } = await supabase
     .from("customers")
-    .select(`
-      *,
-      linked_business_profile:business_profiles(
-        id,
-        name,
-        email,
-        phone,
-        user_id
-      )
-    `)
+    .select("*")
     .eq("id", customerId)
     .single();
 
@@ -78,6 +74,26 @@ export async function getCustomerWithLinkedProfile(customerId: string): Promise<
     both: 'both',
   };
 
+  // Get linked business profile by tax_id
+  let linkedProfile = null;
+  if (data.tax_id) {
+    const { data: businessProfile } = await supabase
+      .from("business_profiles")
+      .select("id, name, email, phone, user_id")
+      .eq("tax_id", data.tax_id)
+      .single();
+
+    if (businessProfile) {
+      linkedProfile = {
+        id: businessProfile.id,
+        name: businessProfile.name,
+        email: businessProfile.email || undefined,
+        phone: businessProfile.phone || undefined,
+        user_id: businessProfile.user_id,
+      };
+    }
+  }
+
   return {
     id: data.id,
     name: data.name,
@@ -88,8 +104,8 @@ export async function getCustomerWithLinkedProfile(customerId: string): Promise<
     email: data.email || undefined,
     phone: data.phone || undefined,
     user_id: data.user_id,
-    customerType: reverseTypeMap[(data as any).client_type] || 'odbiorca',
-    linkedBusinessProfile: (data as any).linked_business_profile?.[0] || null,
+    customerType: reverseTypeMap[data.client_type as keyof typeof reverseTypeMap] || 'odbiorca',
+    linkedBusinessProfile: linkedProfile,
   } as Customer;
 }
 

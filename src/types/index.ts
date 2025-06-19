@@ -26,6 +26,7 @@ export interface Customer {
   address: string;
   postalCode: string;
   city: string;
+  country?: string; // Added optional country property
   email?: string;
   phone?: string;
   user_id: string; // Added for RLS

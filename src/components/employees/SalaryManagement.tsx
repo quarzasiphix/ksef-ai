@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -102,6 +103,8 @@ const SalaryManagement: React.FC<SalaryManagementProps> = ({ employee, refetch }
       payment_date: paymentDate.toISOString(),
       amount: amount,
       payment_type: paymentType,
+      period_start: paymentDate.toISOString(),
+      period_end: paymentDate.toISOString(),
     };
 
     await handleCreatePayment(paymentData);
@@ -194,7 +197,7 @@ const SalaryManagement: React.FC<SalaryManagementProps> = ({ employee, refetch }
       ) : payments.length > 0 ? (
         <div className="rounded-md border">
           <Table>
-            <TableCaption>Historia wypłat dla {employee.firstName} {employee.lastName}.</TableCaption>
+            <TableCaption>Historia wypłat dla {employee.first_name} {employee.last_name}.</TableCaption>
             <TableHeader>
               <TableRow>
                 <TableHead className="w-[100px]">Data</TableHead>
