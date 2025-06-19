@@ -132,7 +132,7 @@ export const EditableInvoiceItemsTable: React.FC<EditableInvoiceItemsTableProps>
 
     const item: InvoiceItem = {
       id: crypto.randomUUID(),
-      productId: product.id,
+      productId: product.id ?? undefined,
       name: product.name,
       description: product.name,
       quantity,

@@ -337,6 +337,11 @@ const NewInvoice: React.ForwardRefExoticComponent<
 
             return {
               ...item,
+              // Copy the rest of item but clear any local-only productId reference
+              ...{
+                ...item,
+                productId: undefined, // avoid FK error if product not in DB
+              },
               // Explicitly set product_id to null if productId is not a non-empty string
               product_id: item.productId && item.productId !== '' ? item.productId : null,
               // Ensure values are numbers and use snake_case for database
