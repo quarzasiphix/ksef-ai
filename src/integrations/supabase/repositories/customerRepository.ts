@@ -7,9 +7,19 @@ export async function getCustomers(): Promise<Customer[]> {
     supplier: 'sprzedawca',
     both: 'both',
   };
+  
   const { data, error } = await supabase
     .from("customers")
-    .select("*") // Will add user_id after DB update
+    .select(`
+      *,
+      linked_business_profile:business_profiles!inner(
+        id,
+        name,
+        email,
+        phone,
+        user_id
+      )
+    `)
     .order("name");
 
   if (error) {
@@ -31,8 +41,56 @@ export async function getCustomers(): Promise<Customer[]> {
       phone: item.phone || undefined,
       user_id: itemWithAny.user_id,
       customerType: reverseTypeMap[itemWithAny.client_type] || 'odbiorca',
+      linkedBusinessProfile: itemWithAny.linked_business_profile?.[0] || null,
     };
   });
+}
+
+export async function getCustomerWithLinkedProfile(customerId: string): Promise<Customer | null> {
+  const { data, error } = await supabase
+    .from("customers")
+    .select(`
+      *,
+      linked_business_profile:business_profiles(
+        id,
+        name,
+        email,
+        phone,
+        user_id
+      )
+    `)
+    .eq("id", customerId)
+    .single();
+
+  if (error) {
+    if (error.code === "PGRST116") {
+      return null;
+    }
+    console.error("Error fetching customer by ID:", error);
+    throw error;
+  }
+
+  if (!data) return null;
+
+  const reverseTypeMap = {
+    buyer: 'odbiorca',
+    supplier: 'sprzedawca',
+    both: 'both',
+  };
+
+  return {
+    id: data.id,
+    name: data.name,
+    taxId: data.tax_id || undefined,
+    address: data.address,
+    postalCode: data.postal_code,
+    city: data.city,
+    email: data.email || undefined,
+    phone: data.phone || undefined,
+    user_id: data.user_id,
+    customerType: reverseTypeMap[(data as any).client_type] || 'odbiorca',
+    linkedBusinessProfile: (data as any).linked_business_profile?.[0] || null,
+  } as Customer;
 }
 
 export async function saveCustomer(customer: Customer): Promise<Customer> {

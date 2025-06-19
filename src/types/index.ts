@@ -1,4 +1,3 @@
-
 export interface BusinessProfile {
   id: string;
   user_id?: string; // Added for RLS, making optional for compatibility
@@ -22,16 +21,22 @@ export interface BusinessProfile {
 
 export interface Customer {
   id: string;
-  user_id: string; // Added for RLS
   name: string;
   taxId?: string; // NIP
   address: string;
   postalCode: string;
   city: string;
-  country?: string; // Added optional country property
   email?: string;
   phone?: string;
+  user_id: string; // Added for RLS
   customerType: 'odbiorca' | 'sprzedawca' | 'both';
+  linkedBusinessProfile?: {
+    id: string;
+    name: string;
+    email?: string;
+    phone?: string;
+    user_id: string;
+  } | null;
 }
 
 export interface Product {

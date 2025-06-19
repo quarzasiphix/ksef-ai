@@ -36,6 +36,7 @@ const CLIENT_TYPE_LABELS: Record<string, string> = {
 const CustomerCard = ({ customer }: { customer: Customer }) => {
   const [showMenu, setShowMenu] = useState(false);
   const cardRef = React.useRef<HTMLDivElement>(null);
+  const isLinkedToUser = customer.linkedBusinessProfile?.user_id;
 
   // Right-click handler
   const handleContextMenu = (e: React.MouseEvent) => {
@@ -65,8 +66,15 @@ const CustomerCard = ({ customer }: { customer: Customer }) => {
                 <Badge variant="outline" className="text-white border-white text-xs">NIP: {customer.taxId}</Badge>
               )}
               {customer.customerType && (
-                <Badge variant="outline" className={`text-xs ${customer.customerType === 'odbiorca' ? 'border-green-400 text-green-400' : customer.customerType === 'sprzedawca' ? 'border-blue-400 text-blue-400' : 'border-yellow-400 text-yellow-400'}`}>{CLIENT_TYPE_LABELS[customer.customerType]}</Badge>
-            )}
+                <Badge variant="outline" className={`text-xs ${customer.customerType === 'odbiorca' ? 'border-green-400 text-green-400' : customer.customerType === 'sprzedawca' ? 'border-blue-400 text-blue-400' : 'border-yellow-400 text-yellow-400'}`}>
+                  {CLIENT_TYPE_LABELS[customer.customerType]}
+                </Badge>
+              )}
+              {isLinkedToUser && (
+                <Badge variant="outline" className="text-xs border-emerald-400 text-emerald-400">
+                  Połączony
+                </Badge>
+              )}
             </div>
           </div>
           
