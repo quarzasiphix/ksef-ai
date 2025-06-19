@@ -1,391 +1,337 @@
-import React, { useEffect, useState, useRef } from "react";
-import { useParams, useNavigate, Link } from "react-router-dom";
-import jsPDF from 'jspdf';
-import html2canvas from 'html2canvas';
-import { Capacitor } from '@capacitor/core';
-import { Filesystem, Directory, Encoding } from '@capacitor/filesystem';
-import { Share } from '@capacitor/share';
-import { Invoice, InvoiceType, BusinessProfile, Customer, KsefInfo } from "@/types";
-import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { getInvoice, updateInvoicePaymentStatus } from "@/integrations/supabase/repositories/invoiceRepository";
-import { getExpense } from "@/integrations/supabase/repositories/expenseRepository";
-import { getBusinessProfileById } from "@/integrations/supabase/repositories/businessProfileRepository";
-import { getCustomerById } from "@/integrations/supabase/repositories/customerRepository";
-import { useToast } from "@/components/ui/use-toast";
-import { InvoiceHeader } from "@/components/invoices/detail/InvoiceHeader";
-import { InvoiceDetailsCard } from "@/components/invoices/detail/InvoiceDetailsCard";
-import { InvoiceItemsCard } from "@/components/invoices/detail/InvoiceItemsCard";
-import ContractorCard from "@/components/invoices/detail/ContractorCard";
-import { InvoicePdfTemplate } from '@/components/invoices/pdf/InvoicePdfTemplate';
-import TotalsSummary from "@/components/invoices/detail/TotalsSummary";
-import { CardTitle } from "@/components/ui/card";
+
+import React, { useState } from "react";
+import { useParams, Link, useNavigate } from "react-router-dom";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { ArrowLeft, Pencil, Plus, Printer, FilePlus, FileDown, Share2 } from "lucide-react";
-import { generateElementPdf, getInvoiceFileName } from '@/lib/pdf-utils';
-import { calculateInvoiceTotals } from '@/lib/invoice-utils';
-import { useIsMobile } from "@/hooks/use-mobile";
-import { cn } from "@/lib/utils";
+import { Badge } from "@/components/ui/badge";
 import { formatCurrency } from "@/lib/invoice-utils";
+import { format } from "date-fns";
+import { pl } from "date-fns/locale";
+import { 
+  ArrowLeft, 
+  Edit, 
+  Download, 
+  Eye, 
+  Trash2, 
+  CheckCircle,
+  Share2,
+  DollarSign
+} from "lucide-react";
+import { useGlobalData } from "@/hooks/use-global-data";
+import { TransactionType } from "@/types/common";
+import InvoicePDFViewer from "@/components/invoices/InvoicePDFViewer";
+import { toast } from "sonner";
+import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
+import ShareInvoiceDialog from "@/components/invoices/ShareInvoiceDialog";
 
 interface InvoiceDetailProps {
-  type: 'income' | 'expense';
+  type: "income" | "expense";
 }
 
 const InvoiceDetail: React.FC<InvoiceDetailProps> = ({ type }) => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
-  const { toast } = useToast();
-  const containerRef = useRef<HTMLDivElement>(null);
-  const printRef = useRef<HTMLDivElement>(null);
-  const isMobile = useIsMobile();
-  const queryClient = useQueryClient();
-  const { user, isPremium } = useAuth();
+  const { user } = useAuth();
+  const { invoices: { data: invoices, isLoading }, refreshAllData } = useGlobalData();
+  const [showPDF, setShowPDF] = useState(false);
+  const [showShareDialog, setShowShareDialog] = useState(false);
+  const [isUpdatingPaid, setIsUpdatingPaid] = useState(false);
 
-  // State hooks
-  const [pdfLoading, setPdfLoading] = useState(false);
-  const [canSharePdf, setCanSharePdf] = useState(false);
-  const [isStickyVisible, setIsStickyVisible] = useState(false);
+  const invoice = invoices.find(inv => inv.id === id);
 
-  // Fetch the invoice (with items) directly
-  const { data: selectedInvoice, isLoading: isLoadingInvoice, error: invoiceError } = useQuery({
-    queryKey: [type === 'expense' ? 'expense' : 'invoice', id],
-    queryFn: () => {
-      if (!id) throw new Error('Document ID is required');
-      return type === 'expense' ? (getExpense as any)(id) : getInvoice(id);
-    },
-    enabled: !!id
-  });
+  const handleTogglePaid = async () => {
+    if (!invoice || !user?.id) return;
+    
+    setIsUpdatingPaid(true);
+    try {
+      const { error } = await supabase
+        .from('invoices')
+        .update({ is_paid: !invoice.isPaid })
+        .eq('id', invoice.id)
+        .eq('user_id', user.id);
 
-  console.log('InvoiceDetail - Fetched selectedInvoice.vat:', selectedInvoice?.vat as any);
+      if (error) throw error;
 
-  // Fetch the full business profile for the seller
-  const { data: sellerProfile, isLoading: isLoadingSeller, error: sellerError } = useQuery({
-    queryKey: ['businessProfile', selectedInvoice?.businessProfileId],
-    queryFn: () => getBusinessProfileById(selectedInvoice!.businessProfileId, selectedInvoice!.user_id),
-    enabled: !!selectedInvoice?.businessProfileId,
-  });
-
-  // Fetch the full customer profile for the buyer
-  const { data: buyerCustomer, isLoading: isLoadingBuyer, error: buyerError } = useQuery({
-    queryKey: ['customer', selectedInvoice?.customerId],
-    queryFn: () => {
-      if (!selectedInvoice?.customerId) return null;
-      return getCustomerById(selectedInvoice.customerId);
-    },
-    enabled: !!selectedInvoice?.customerId,
-  });
-
-  const isLoading = isLoadingInvoice || isLoadingSeller || isLoadingBuyer;
-  const error = invoiceError || sellerError || buyerError;
-
-  // PDF sharing capability check
-  useEffect(() => {
-    if (Capacitor.isNativePlatform() || (navigator as any).share) {
-      setCanSharePdf(true);
+      await refreshAllData();
+      toast.success(
+        invoice.isPaid 
+          ? "Faktura oznaczona jako nieopłacona" 
+          : "Faktura oznaczona jako opłacona"
+      );
+    } catch (error) {
+      console.error("Error updating payment status:", error);
+      toast.error("Nie udało się zaktualizować statusu płatności");
+    } finally {
+      setIsUpdatingPaid(false);
     }
-  }, []);
+  };
 
-  // Back button handler for mobile
-  useEffect(() => {
-    const handleBackButton = (e: BeforeUnloadEvent) => {
-      if (Capacitor.isNativePlatform()) {
-        e.preventDefault();
-        navigate(-1);
-      }
-    };
-    window.addEventListener('beforeunload', handleBackButton);
-    return () => window.removeEventListener('beforeunload', handleBackButton);
-  }, [navigate]);
+  const handleDelete = async () => {
+    if (!invoice || !user?.id) return;
+    
+    if (!confirm("Czy na pewno chcesz usunąć tę fakturę?")) return;
 
-  // Early returns after all hooks
-  if (!id) {
-    return <div className="p-4">Brak ID faktury</div>;
-  }
+    try {
+      const { error } = await supabase
+        .from('invoices')
+        .delete()
+        .eq('id', invoice.id)
+        .eq('user_id', user.id);
+
+      if (error) throw error;
+
+      toast.success("Faktura została usunięta");
+      navigate(type === "income" ? "/income" : "/expense");
+    } catch (error) {
+      console.error("Error deleting invoice:", error);
+      toast.error("Nie udało się usunąć faktury");
+    }
+  };
+
   if (isLoading) {
-    return (
-      <div className="flex flex-col items-center justify-center min-h-[50vh] space-y-4">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div>
-        <p className="text-muted-foreground">Ładowanie danych faktury...</p>
-      </div>
-    );
-  }
-  if (error) {
-    console.error('Error loading invoice data:', error);
-    return (
-      <div className="flex flex-col items-center justify-center min-h-[50vh] p-4 text-center">
-        <div className="bg-red-50 dark:bg-red-900/20 p-4 rounded-lg max-w-md w-full">
-          <h3 className="text-lg font-medium text-red-800 dark:text-red-200">Wystąpił błąd</h3>
-          <p className="mt-2 text-sm text-red-700 dark:text-red-300">
-            {error instanceof Error ? error.message : 'Nie udało się załadować danych faktury.'}
-          </p>
-          <Button 
-            variant="outline" 
-            className="mt-4"
-            onClick={() => window.location.reload()}
-          >
-            Spróbuj ponownie
-          </Button>
-        </div>
-      </div>
-    );
-  }
-  if (!selectedInvoice) {
-    return <div className="flex flex-col items-center justify-center min-h-[50vh] p-6 text-center">
-      <div className="max-w-md w-full bg-card p-6 rounded-lg border">
-        <h2 className="text-xl font-semibold mb-3">Nie znaleziono faktury</h2>
-        <p className="text-muted-foreground mb-6">Faktura o podanym ID nie istnieje lub nie masz do niej dostępu.</p>
-        <div className="flex flex-col sm:flex-row gap-3 justify-center">
-          <Button 
-            variant="outline" 
-            onClick={() => navigate(type === 'income' ? '/income' : '/expense')}
-            className="flex-1 sm:flex-none"
-          >
-            <ArrowLeft className="mr-2 h-4 w-4" />
-            Wróć do listy {type === 'income' ? 'przychodów' : 'kosztów'}
-          </Button>
-          <Button 
-            onClick={() => navigate(`/${type}/new`)}
-            className="flex-1 sm:flex-none"
-          >
-            <Plus className="mr-2 h-4 w-4" />
-            Dodaj nową fakturę
-          </Button>
-        </div>
-      </div>
-    </div>;
+    return <div className="text-center py-8">Ładowanie...</div>;
   }
 
-  // Prepare seller and buyer data for contractor cards
-  // Use data from the newly fetched sellerProfile and buyerCustomer
-  const sellerCardData = sellerProfile ? {
-    name: selectedInvoice.businessName || sellerProfile.name,
-    ...sellerProfile,
-    bankAccount: sellerProfile.bankAccount ?? '',
-  } : {
-    name: selectedInvoice.businessName || 'Brak danych sprzedawcy',
-  } as any;
+  if (!invoice) {
+    return <div className="text-center py-8">Faktura nie została znaleziona</div>;
+  }
 
-  const buyerCardData = buyerCustomer ? {
-    name: selectedInvoice.customerName || buyerCustomer.name,
-    ...buyerCustomer,
-    customerType: 'odbiorca' as const,
-  } : {
-    id: selectedInvoice.customerId || '',
-    name: selectedInvoice.customerName || 'Brak danych nabywcy',
-    taxId: '',
-    address: '',
-    postalCode: '',
-    city: '',
-    phone: '',
-    email: '',
-    user_id: selectedInvoice.user_id,
-    customerType: 'odbiorca',
-    created_at: new Date().toISOString(),
-    updated_at: new Date().toISOString()
-  } as Customer;
-
-  const handleGeneratePdf = async (): Promise<string | null> => {
-    if (!printRef.current) return null;
-    
-    setPdfLoading(true);
-    try {
-      const fileName = getInvoiceFileName(selectedInvoice);
-      const success = await generateElementPdf(printRef.current, { filename: fileName });
-      return success ? fileName : null;
-    } catch (error) {
-      console.error('Error generating PDF:', error);
-      return null;
-    } finally {
-      setPdfLoading(false);
+  const getInvoiceTypeLabel = (invoiceType: string) => {
+    switch (invoiceType) {
+      case 'sales':
+        return 'Faktura VAT';
+      case 'receipt':
+        return 'Rachunek';
+      default:
+        return invoiceType;
     }
   };
 
-  const handleSharePdf = async (): Promise<void> => {
-    if (!printRef.current) return;
-    
-    setPdfLoading(true);
-    try {
-      const fileName = getInvoiceFileName(selectedInvoice);
-      
-      if (Capacitor.isNativePlatform()) {
-        // For mobile platforms, generate PDF and share
-        const success = await generateElementPdf(printRef.current, { filename: fileName });
-        if (success) {
-          // The PDF will be automatically shared on mobile platforms
-          // No need to do anything else as the PDF is already in RAM
-        }
-      } else {
-        // For desktop, just download
-        await handleGeneratePdf();
-      }
-    } catch (error) {
-      console.error('Error sharing PDF:', error);
-    } finally {
-      setPdfLoading(false);
-    }
-  };
-
-  // Handle marking invoice as paid
-  const handleMarkAsPaid = async () => {
-    if (!id || !selectedInvoice) return;
-    
-    try {
-      await updateInvoicePaymentStatus(id, true);
-      
-      // Update the local state immediately for a better UX
-      const updatedInvoice = { ...selectedInvoice, isPaid: true };
-      queryClient.setQueryData(['invoice', id], updatedInvoice);
-      
-      toast({
-        title: "Sukces",
-        description: "Status faktury został zaktualizowany na 'Zapłacono'.",
-        variant: "default",
-      });
-    } catch (error) {
-      console.error('Error updating payment status:', error);
-      toast({
-        title: "Błąd",
-        description: "Nie udało się zaktualizować statusu płatności. Spróbuj ponownie.",
-        variant: "destructive",
-      });
-    }
-  };
-
-  // Handle premium requirement
-  const handleRequirePremiumClick = () => {
-    toast({
-      title: "Funkcja Premium",
-      description: "Ta funkcja wymaga aktywnego abonamentu Premium.",
-      variant: "default",
-    });
-  };
-
-  // Calculate totals using the utility function
-  const calculatedTotals = selectedInvoice ? calculateInvoiceTotals((selectedInvoice as any).items || []) : {
-    totalNetValue: 0,
-    totalVatValue: 0,
-    totalGrossValue: 0
-  };
+  const isIncome = invoice.transactionType === TransactionType.INCOME;
+  const editPath = isIncome ? `/income/edit/${invoice.id}` : `/expense/${invoice.id}/edit`;
 
   return (
-    <div ref={containerRef} className="flex-1 space-y-3 lg:space-y-4 relative pt-16 md:pt-0">
-      {/* Original Static header content */}
-      {selectedInvoice && (
-        <InvoiceHeader 
-          id={selectedInvoice.id}
-          number={selectedInvoice.number}
-          type={selectedInvoice.type}
-          pdfLoading={pdfLoading}
-          handleGeneratePdf={handleGeneratePdf}
-          handleSharePdf={handleSharePdf}
-          canSharePdf={canSharePdf}
-          transactionType={selectedInvoice.transactionType}
-          isPaid={selectedInvoice.isPaid}
-          isPremium={isPremium || false}
-          onRequirePremiumClick={handleRequirePremiumClick}
+    <div className="space-y-6 max-w-full pb-20">
+      {/* Header */}
+      <div className="flex items-center justify-between">
+        <div className="flex items-center space-x-4">
+          <Button variant="ghost" size="icon" asChild>
+            <Link to={isIncome ? "/income" : "/expense"}>
+              <ArrowLeft className="h-4 w-4" />
+            </Link>
+          </Button>
+          <div>
+            <h1 className="text-3xl font-bold">{invoice.number}</h1>
+            <p className="text-muted-foreground">
+              {getInvoiceTypeLabel(invoice.type)} • {format(new Date(invoice.issueDate), "dd.MM.yyyy", { locale: pl })}
+            </p>
+          </div>
+        </div>
+        <div className="flex space-x-2">
+          <Button 
+            variant="outline" 
+            onClick={() => setShowPDF(true)}
+          >
+            <Eye className="h-4 w-4 mr-2" />
+            Podgląd
+          </Button>
+          <Button asChild>
+            <Link to={editPath}>
+              <Edit className="h-4 w-4 mr-2" />
+              Edytuj
+            </Link>
+          </Button>
+        </div>
+      </div>
+
+      {/* Status and Actions */}
+      <div className="flex items-center justify-between">
+        <div className="flex items-center space-x-4">
+          <Badge variant={invoice.isPaid ? "default" : "secondary"}>
+            {invoice.isPaid ? "Opłacone" : "Nieopłacone"}
+          </Badge>
+          <Badge variant="outline">
+            {isIncome ? "Przychód" : "Wydatek"}
+          </Badge>
+        </div>
+        <div className="flex space-x-2">
+          {isIncome && (
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setShowShareDialog(true)}
+            >
+              <Share2 className="h-4 w-4 mr-2" />
+              Udostępnij
+            </Button>
+          )}
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={handleTogglePaid}
+            disabled={isUpdatingPaid}
+          >
+            <DollarSign className="h-4 w-4 mr-2" />
+            {invoice.isPaid ? "Oznacz jako nieopłacone" : "Oznacz jako opłacone"}
+          </Button>
+          <Button
+            variant="destructive"
+            size="sm"
+            onClick={handleDelete}
+          >
+            <Trash2 className="h-4 w-4 mr-2" />
+            Usuń
+          </Button>
+        </div>
+      </div>
+
+      {/* Invoice Details Grid */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        {/* Seller/Business Profile Info */}
+        <Card>
+          <CardHeader>
+            <CardTitle>{isIncome ? "Sprzedawca" : "Nabywca"}</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-2">
+              <div className="font-semibold">{invoice.businessName}</div>
+              {/* Add more business profile details if available */}
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Buyer/Customer Info */}
+        <Card>
+          <CardHeader>
+            <CardTitle>{isIncome ? "Nabywca" : "Sprzedawca"}</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-2">
+              <div className="font-semibold">{invoice.customerName}</div>
+              {/* Add more customer details if available */}
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Invoice Details */}
+        <Card>
+          <CardHeader>
+            <CardTitle>Szczegóły faktury</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-3">
+            <div className="flex justify-between">
+              <span className="text-muted-foreground">Typ:</span>
+              <span>{getInvoiceTypeLabel(invoice.type)}</span>
+            </div>
+            <div className="flex justify-between">
+              <span className="text-muted-foreground">Data wystawienia:</span>
+              <span>{format(new Date(invoice.issueDate), "dd.MM.yyyy", { locale: pl })}</span>
+            </div>
+            <div className="flex justify-between">
+              <span className="text-muted-foreground">Data sprzedaży:</span>
+              <span>{format(new Date(invoice.sellDate), "dd.MM.yyyy", { locale: pl })}</span>
+            </div>
+            <div className="flex justify-between">
+              <span className="text-muted-foreground">Termin płatności:</span>
+              <span>{format(new Date(invoice.dueDate), "dd.MM.yyyy", { locale: pl })}</span>
+            </div>
+            <div className="flex justify-between">
+              <span className="text-muted-foreground">Sposób płatności:</span>
+              <span>
+                {invoice.paymentMethod === 'transfer' ? 'Przelew' :
+                 invoice.paymentMethod === 'cash' ? 'Gotówka' :
+                 invoice.paymentMethod === 'card' ? 'Karta' : 'Inne'}
+              </span>
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Financial Summary */}
+        <Card>
+          <CardHeader>
+            <CardTitle>Podsumowanie finansowe</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-3">
+            <div className="flex justify-between">
+              <span className="text-muted-foreground">Wartość netto:</span>
+              <span>{formatCurrency(invoice.totalNetValue)}</span>
+            </div>
+            <div className="flex justify-between">
+              <span className="text-muted-foreground">Podatek VAT:</span>
+              <span>{formatCurrency(invoice.totalVatValue)}</span>
+            </div>
+            <div className="flex justify-between font-semibold text-lg border-t pt-3">
+              <span>Wartość brutto:</span>
+              <span className="text-green-600">{formatCurrency(invoice.totalGrossValue)}</span>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* Invoice Items */}
+      <Card>
+        <CardHeader>
+          <CardTitle>Pozycje faktury</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="overflow-x-auto">
+            <table className="w-full">
+              <thead>
+                <tr className="border-b">
+                  <th className="text-left py-2">Nazwa</th>
+                  <th className="text-right py-2">Ilość</th>
+                  <th className="text-right py-2">Cena netto</th>
+                  <th className="text-right py-2">VAT</th>
+                  <th className="text-right py-2">Wartość brutto</th>
+                </tr>
+              </thead>
+              <tbody>
+                {invoice.items.map((item, index) => (
+                  <tr key={index} className="border-b">
+                    <td className="py-2">{item.name}</td>
+                    <td className="text-right py-2">{item.quantity} {item.unit}</td>
+                    <td className="text-right py-2">{formatCurrency(item.unitPrice)}</td>
+                    <td className="text-right py-2">{item.vatRate}%</td>
+                    <td className="text-right py-2">{formatCurrency(item.totalGrossValue)}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Comments */}
+      {invoice.comments && (
+        <Card>
+          <CardHeader>
+            <CardTitle>Uwagi</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <p className="text-muted-foreground">{invoice.comments}</p>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* PDF Viewer Dialog */}
+      {showPDF && (
+        <InvoicePDFViewer 
+          invoice={invoice} 
+          isOpen={showPDF} 
+          onClose={() => setShowPDF(false)} 
         />
       )}
 
-      <div className="space-y-8">
-        <div className="grid grid-cols-1 xl:grid-cols-3 gap-6">
-          <div className="xl:col-span-2 space-y-6">
-            <div className="bg-card p-6 rounded-lg border">
-              <div className="flex justify-between items-center mb-4">
-                <CardTitle className="text-lg">Szczegóły dokumentu</CardTitle>
-                {!selectedInvoice.isPaid && (
-                  <Button 
-                    variant="outline" 
-                    size="sm"
-                    onClick={handleMarkAsPaid}
-                    className="ml-auto"
-                  >
-                    Oznacz jako zapłacone
-                  </Button>
-                )}
-              </div>
-              <InvoiceDetailsCard
-                number={selectedInvoice.number}
-                issueDate={selectedInvoice.issueDate}
-                dueDate={selectedInvoice.dueDate}
-                sellDate={selectedInvoice.sellDate}
-                paymentMethod={selectedInvoice.paymentMethod}
-                isPaid={selectedInvoice.isPaid || false}
-                ksef={selectedInvoice.ksef}
-                comments={selectedInvoice.comments}
-                type={selectedInvoice.type}
-                bankAccount={sellerCardData?.bankAccount}
-                vat={selectedInvoice.vat}
-              />
-            </div>
-            <div className="bg-card p-6 rounded-lg border">
-
-              <InvoiceItemsCard
-                items={Array.isArray(selectedInvoice.items) ? selectedInvoice.items : []}
-                totalNetValue={calculatedTotals.totalNetValue}
-                totalVatValue={calculatedTotals.totalVatValue}
-                totalGrossValue={calculatedTotals.totalGrossValue}
-                type={selectedInvoice.type}
-              />
-            </div>
-          </div>
-          <div className="xl:block hidden">
-            <div className="bg-card p-6 rounded-lg border">
-              <CardTitle className="text-lg mb-4">Dane Kontrahentów</CardTitle>
-              <div className="space-y-6">
-                <ContractorCard title="Sprzedawca" contractor={sellerCardData} />
-                <ContractorCard title="Nabywca" contractor={buyerCardData} />
-              </div>
-            </div>
-          </div>
-        </div>
-        {/* Mobile and tablet view for Contractor Cards */}
-        <div className="xl:hidden">
-          <div className="bg-card p-6 rounded-lg border">
-            <CardTitle className="text-lg mb-4">Dane Kontrahentów</CardTitle>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              <ContractorCard title="Sprzedawca" contractor={sellerCardData} />
-              <ContractorCard title="Nabywca" contractor={buyerCardData} />
-            </div>
-          </div>
-        </div>
-        <div className="bg-card p-6 rounded-lg border">
-          <TotalsSummary
-            totalNetValue={calculatedTotals.totalNetValue}
-            totalVatValue={calculatedTotals.totalVatValue}
-            totalGrossValue={calculatedTotals.totalGrossValue}
-            type={selectedInvoice.type}
-          />
-        </div>
-      </div> 
-      {/* Hidden PDF template */}
-      <div 
-        ref={printRef} 
-        style={{ 
-          position: 'absolute', 
-          left: '-9999px', 
-          width: '794px',
-          height: '1123px',
-          backgroundColor: 'white',
-          boxSizing: 'border-box',
-          margin: 0,
-          padding: 0
-        }}
-      >
-        <InvoicePdfTemplate
-          invoice={selectedInvoice}
-          businessProfile={sellerProfile || {
-            id: selectedInvoice.businessProfileId,
-            name: selectedInvoice.businessName || '',
-            taxId: '',
-            address: '',
-            postalCode: '',
-            city: '',
-            user_id: selectedInvoice.user_id
-          }}
-          customer={buyerCardData}
+      {/* Share Invoice Dialog */}
+      {showShareDialog && (
+        <ShareInvoiceDialog
+          isOpen={showShareDialog}
+          onClose={() => setShowShareDialog(false)}
+          invoiceId={invoice.id}
+          invoiceNumber={invoice.number}
         />
-      </div>
+      )}
     </div>
   );
 };

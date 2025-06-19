@@ -1,3 +1,4 @@
+
 import { supabase } from "../client";
 import type { BusinessProfile } from "../../../types";
 import { queryClient } from "../../../lib/queryClient";
@@ -141,8 +142,44 @@ export async function getBusinessProfileById(id: string, userId: string): Promis
   };
 }
 
+export async function checkTaxIdExists(taxId: string, currentUserId: string): Promise<{ exists: boolean, ownerName?: string }> {
+  try {
+    const { data, error } = await supabase.rpc('find_user_by_tax_id', {
+      tax_id_param: taxId
+    });
+
+    if (error) {
+      console.error("Error checking tax ID:", error);
+      throw error;
+    }
+
+    if (data && data.length > 0) {
+      const existingProfile = data[0];
+      // If the existing profile belongs to the current user, it's OK
+      if (existingProfile.user_id === currentUserId) {
+        return { exists: false };
+      }
+      return { 
+        exists: true, 
+        ownerName: existingProfile.business_name 
+      };
+    }
+
+    return { exists: false };
+  } catch (error) {
+    console.error('Error in checkTaxIdExists:', error);
+    throw error;
+  }
+}
+
 export async function saveBusinessProfile(profile: BusinessProfile): Promise<BusinessProfile> {
   try {
+    // Check if tax ID already exists (for other users)
+    const taxIdCheck = await checkTaxIdExists(profile.taxId, profile.user_id);
+    if (taxIdCheck.exists) {
+      throw new Error(`NIP ${profile.taxId} jest już używany przez firmę: ${taxIdCheck.ownerName}`);
+    }
+
     // Invalidate the cache before making changes
     await queryClient.invalidateQueries({ queryKey: ['businessProfiles'] });
     

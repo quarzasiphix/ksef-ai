@@ -1,7 +1,7 @@
 import React from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import * as z from "zod";
+import { z } from "zod";
 import { useNavigate } from "react-router-dom";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
@@ -19,13 +19,6 @@ import { BusinessProfile } from "@/types";
 import { saveBusinessProfile } from "@/integrations/supabase/repositories/businessProfileRepository";
 import { useAuth } from "@/hooks/useAuth";
 import { useIsMobile } from "@/hooks/use-mobile";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
 
 const formSchema = z.object({
   name: z.string().min(1, "Nazwa jest wymagana"),
@@ -33,13 +26,11 @@ const formSchema = z.object({
   address: z.string().min(1, "Adres jest wymagany"),
   postalCode: z.string().min(1, "Kod pocztowy jest wymagany"),
   city: z.string().min(1, "Miasto jest wymagane"),
-  regon: z.string().optional().or(z.literal("")),
-  bankAccount: z.string().optional().or(z.literal("")),
+  regon: z.string().optional(),
+  bankAccount: z.string().optional(),
   email: z.string().email("Niepoprawny format email").optional().or(z.literal("")),
-  phone: z.string().optional().or(z.literal("")),
+  phone: z.string().optional(),
   isDefault: z.boolean().default(false),
-  tax_type: z.enum(["skala", "liniowy", "ryczalt"]).optional(),
-  accountant_email: z.string().email("Niepoprawny format email").optional().or(z.literal("")),
 });
 
 interface BusinessProfileFormProps {
@@ -69,8 +60,6 @@ const BusinessProfileForm = ({
       email: initialData?.email || "",
       phone: initialData?.phone || "",
       isDefault: initialData?.isDefault || false,
-      tax_type: initialData?.tax_type,
-      accountant_email: initialData?.accountant_email || "",
     },
   });
 
@@ -95,7 +84,6 @@ const BusinessProfileForm = ({
         isDefault: values.isDefault,
         logo: initialData?.logo || "", // Preserve existing logo if any
         user_id: user.id, // Enforce RLS: always include user_id
-        tax_type: values.tax_type as ('skala' | 'liniowy' | 'ryczalt') | undefined,
       };
 
       await saveBusinessProfile(profile);
@@ -110,10 +98,15 @@ const BusinessProfileForm = ({
       }
     } catch (error) {
       console.error("Error saving business profile:", error);
-      toast.error("Wystąpił błąd podczas zapisywania profilu");
+      if (error instanceof Error && error.message.includes("NIP")) {
+        toast.error(error.message);
+      } else {
+        toast.error("Wystąpił błąd podczas zapisywania profilu");
+      }
     }
   };
 
+  
   return (
     <Form {...form}>
       <form
@@ -122,73 +115,6 @@ const BusinessProfileForm = ({
       >
         <div className="space-y-4">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            
-          <FormField
-              control={form.control}
-              name="taxId"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>NIP</FormLabel>
-                  <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
-                    <FormControl>
-                      <Input placeholder="NIP" maxLength={10} {...field} />
-                    </FormControl>
-                    <Button
-                      type="button"
-                      size="sm"
-                      variant="secondary"
-                      style={{ minWidth: 60, padding: '0 10px' }}
-                      onClick={async () => {
-                        const nip = form.getValues("taxId");
-                        if (!nip || nip.length !== 10) {
-                          toast.error("Podaj poprawny NIP (10 cyfr)");
-                          return;
-                        }
-                        try {
-                          const today = new Date().toISOString().slice(0, 10);
-                          const res = await fetch(`https://wl-api.mf.gov.pl/api/search/nip/${nip}?date=${today}`);
-
-                          if (!res.ok) {
-                            const errorData = await res.json();
-                            const errorMessage = errorData.error ? errorData.error.message : `Błąd HTTP: ${res.status} ${res.statusText}`;
-                            toast.error(`Błąd pobierania danych: ${errorMessage}`);
-                            return;
-                          }
-
-                          const data = await res.json();
-
-                          if (data.result && data.result.subject) {
-                            const subject = data.result.subject;
-                            form.setValue("name", subject.name || "");
-                            form.setValue("address", subject.workingAddress || subject.residenceAddress || "");
-                            // Try to extract postal code and city from address
-                            if (subject.workingAddress || subject.residenceAddress) {
-                              const addr = subject.workingAddress || subject.residenceAddress;
-                              const match = addr.match(/(\d{2}-\d{3})\s+(.+)/);
-                              if (match) {
-                                form.setValue("postalCode", match[1]);
-                                form.setValue("city", match[2]);
-                              }
-                            }
-                            toast.success("Dane firmy pobrane z GUS");
-                          } else {
-                            toast.error("Nie znaleziono firmy dla podanego NIP");
-                          }
-                        } catch (err: any) {
-                          toast.error(`Błąd podczas pobierania danych z API: ${err.message || err}`);
-                        }
-                      }}
-                    >
-                      Szukaj
-                    </Button>
-                  </div>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-
-            <br></br>
-
             <FormField
               control={form.control}
               name="name"
@@ -197,6 +123,19 @@ const BusinessProfileForm = ({
                   <FormLabel>Nazwa firmy</FormLabel>
                   <FormControl>
                     <Input placeholder="Nazwa firmy" {...field} />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+            <FormField
+              control={form.control}
+              name="taxId"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>NIP</FormLabel>
+                  <FormControl>
+                    <Input placeholder="NIP" {...field} />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
@@ -306,43 +245,6 @@ const BusinessProfileForm = ({
 
           <FormField
             control={form.control}
-            name="tax_type"
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel>Forma opodatkowania</FormLabel>
-                <Select onValueChange={field.onChange} defaultValue={field.value}>
-                  <FormControl>
-                    <SelectTrigger>
-                      <SelectValue placeholder="Wybierz formę opodatkowania" />
-                    </SelectTrigger>
-                  </FormControl>
-                  <SelectContent>
-                    <SelectItem value="skala">Skala podatkowa</SelectItem>
-                    <SelectItem value="liniowy">Podatek liniowy (19%)</SelectItem>
-                    <SelectItem value="ryczalt">Ryczałt ewidencjonowany</SelectItem>
-                  </SelectContent>
-                </Select>
-                <FormMessage />
-              </FormItem>
-            )}
-          />
-
-          <FormField
-            control={form.control}
-            name="accountant_email"
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel>Email księgowej/księgowego (opcjonalnie)</FormLabel>
-                <FormControl>
-                  <Input placeholder="Email księgowej/księgowego" {...field} />
-                </FormControl>
-                <FormMessage />
-              </FormItem>
-            )}
-          />
-
-          <FormField
-            control={form.control}
             name="isDefault"
             render={({ field }) => (
               <FormItem className="flex flex-row items-start space-x-3 space-y-0 rounded-md border p-4">
@@ -360,24 +262,22 @@ const BusinessProfileForm = ({
           />
         </div>
         
-        {!onSuccess && (
-          <div
-            className="fixed bottom-0 left-0 w-full z-[100] bg-background border-t p-3 py-4 mb-[13px] flex justify-end space-x-2 pointer-events-auto sm:static sm:bg-transparent sm:border-0 sm:p-0 sm:pt-4 sm:mb-0"
-            style={{ boxShadow: '0 -2px 8px rgba(0,0,0,0.04)', marginBottom: 0, paddingBottom: 12 }}
+        <div
+      className="fixed bottom-0 left-0 w-full z-[100] bg-background border-t p-3 py-4 mb-[13px] flex justify-end space-x-2 pointer-events-auto sm:static sm:bg-transparent sm:border-0 sm:p-0 sm:pt-4 sm:mb-0"
+      style={{ boxShadow: '0 -2px 8px rgba(0,0,0,0.04)', marginBottom: 0, paddingBottom: 12 }}
+    >
+          <Button
+            type="button"
+            variant="outline"
+            onClick={() => navigate("/settings")}
+            className={isMobile ? 'w-full' : ''}
           >
-            <Button
-              type="button"
-              variant="outline"
-              onClick={() => navigate("/settings")}
-              className={isMobile ? 'w-full' : ''}
-            >
-              Anuluj
-            </Button>
-            <Button type="submit" className={isMobile ? 'w-full' : ''}>
-              {isEditing ? "Aktualizuj" : "Utwórz"} profil
-            </Button>
-          </div>
-        )}
+            Anuluj
+          </Button>
+          <Button type="submit" className={isMobile ? 'w-full' : ''}>
+            {isEditing ? "Aktualizuj" : "Utwórz"} profil
+          </Button>
+        </div>
       </form>
     </Form>
   );

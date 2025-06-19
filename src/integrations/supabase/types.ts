@@ -387,6 +387,66 @@ export type Database = {
           },
         ]
       }
+      invoice_shares: {
+        Row: {
+          created_at: string
+          id: string
+          invoice_id: string
+          notes: string | null
+          receiver_business_profile_id: string | null
+          receiver_user_id: string
+          responded_at: string | null
+          sender_user_id: string
+          shared_at: string
+          status: string
+          updated_at: string
+          viewed_at: string | null
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          invoice_id: string
+          notes?: string | null
+          receiver_business_profile_id?: string | null
+          receiver_user_id: string
+          responded_at?: string | null
+          sender_user_id: string
+          shared_at?: string
+          status?: string
+          updated_at?: string
+          viewed_at?: string | null
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          invoice_id?: string
+          notes?: string | null
+          receiver_business_profile_id?: string | null
+          receiver_user_id?: string
+          responded_at?: string | null
+          sender_user_id?: string
+          shared_at?: string
+          status?: string
+          updated_at?: string
+          viewed_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "invoice_shares_invoice_id_fkey"
+            columns: ["invoice_id"]
+            isOneToOne: false
+            referencedRelation: "invoices"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "invoice_shares_receiver_business_profile_id_fkey"
+            columns: ["receiver_business_profile_id"]
+            isOneToOne: false
+            referencedRelation: "business_profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       invoices: {
         Row: {
           business_profile_id: string
@@ -747,7 +807,14 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      find_user_by_tax_id: {
+        Args: { tax_id_param: string }
+        Returns: {
+          user_id: string
+          business_profile_id: string
+          business_name: string
+        }[]
+      }
     }
     Enums: {
       business_profile_tax_type: "skala" | "liniowy" | "ryczalt"

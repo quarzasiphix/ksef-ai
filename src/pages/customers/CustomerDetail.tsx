@@ -1,185 +1,211 @@
-import React, { useState, useEffect } from "react";
-import { Link, useParams, useNavigate } from "react-router-dom";
-import { Button } from "@/components/ui/button";
+
+import React, { useState } from "react";
+import { useParams, Link } from "react-router-dom";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Customer, Invoice } from "@/types";
-import { getCustomers } from "@/integrations/supabase/repositories/customerRepository";
-import { getInvoices } from "@/integrations/supabase/repositories/invoiceRepository";
-import { ArrowLeft, User, Mail, Phone, MapPin, Building, FileText, Edit, Plus } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Badge } from "@/components/ui/badge";
+import { formatCurrency } from "@/lib/invoice-utils";
+import { format } from "date-fns";
+import { pl } from "date-fns/locale";
+import { Edit, ArrowLeft, FileText, Plus } from "lucide-react";
+import { useGlobalData } from "@/hooks/use-global-data";
 import InvoiceCard from "@/components/invoices/InvoiceCard";
-import { useAuth } from "@/context/AuthContext";
+import ReceivedInvoicesTab from "@/components/invoices/ReceivedInvoicesTab";
 
 const CustomerDetail = () => {
   const { id } = useParams<{ id: string }>();
-  const navigate = useNavigate();
-  const { user } = useAuth();
-  const [customer, setCustomer] = useState<Customer | null>(null);
-  const [customerInvoices, setCustomerInvoices] = useState<Invoice[]>([]);
-  const [loading, setLoading] = useState(true);
+  const { customers: { data: customers, isLoading: customersLoading }, invoices: { data: invoices, isLoading: invoicesLoading } } = useGlobalData();
   
-  useEffect(() => {
-    const fetchData = async () => {
-      if (!id) return;
-      
-      setLoading(true);
-      try {
-        // Get all customers and find the one with matching ID
-        const customers = await getCustomers();
-        const foundCustomer = customers.find(c => c.id === id) || null;
-        setCustomer(foundCustomer);
-        
-        // Get invoices for this customer
-        if (foundCustomer) {
-          if (!user?.id) {
-            console.error("No user ID available");
-            return;
-          }
-          const allInvoices = await getInvoices(user.id);
-          const filteredInvoices = allInvoices.filter(inv => inv.customerId === id);
-          setCustomerInvoices(filteredInvoices);
-        }
-      } catch (error) {
-        console.error("Error fetching customer data:", error);
-      } finally {
-        setLoading(false);
-      }
-    };
-    
-    fetchData();
-  }, [id]);
-  
-  if (loading) {
-    return (
-      <div className="text-center py-8">
-        Ładowanie...
-      </div>
-    );
+  const customer = customers.find(c => c.id === id);
+  const customerInvoices = invoices.filter(inv => inv.customerId === id);
+
+  if (customersLoading || invoicesLoading) {
+    return <div className="text-center py-8">Ładowanie...</div>;
   }
-  
+
   if (!customer) {
-    return (
-      <div>
-        <div className="flex items-center gap-2 mb-6">
-          <Button variant="outline" size="icon" onClick={() => navigate("/customers")}>
-            <ArrowLeft className="h-4 w-4" />
-          </Button>
-          <h1 className="text-2xl font-bold">Nie znaleziono klienta</h1>
-        </div>
-        <Card>
-          <CardContent className="text-center py-8">
-            <p>Klient o podanym ID nie istnieje.</p>
-            <Button className="mt-4" asChild>
-              <Link to="/customers">Wróć do listy klientów</Link>
-            </Button>
-          </CardContent>
-        </Card>
-      </div>
-    );
+    return <div className="text-center py-8">Klient nie został znaleziony</div>;
   }
-  
+
+  const totalRevenue = customerInvoices.reduce((sum, inv) => sum + (inv.totalGrossValue || 0), 0);
+  const paidInvoices = customerInvoices.filter(inv => inv.isPaid);
+  const unpaidInvoices = customerInvoices.filter(inv => !inv.isPaid);
+
   return (
-    <div className="space-y-6">
-      <div className="flex flex-col sm:flex-row gap-4 justify-between">
-        <div className="flex items-center gap-2">
-          <Button variant="outline" size="icon" asChild>
+    <div className="space-y-6 max-w-full pb-20">
+      {/* Header */}
+      <div className="flex items-center justify-between">
+        <div className="flex items-center space-x-4">
+          <Button variant="ghost" size="icon" asChild>
             <Link to="/customers">
               <ArrowLeft className="h-4 w-4" />
             </Link>
           </Button>
           <div>
-            <h1 className="text-2xl font-bold">{customer.name}</h1>
-            {customer.taxId && <p className="text-muted-foreground">NIP: {customer.taxId}</p>}
+            <h1 className="text-3xl font-bold">{customer.name}</h1>
+            <p className="text-muted-foreground">
+              {customer.customerType === 'odbiorca' ? 'Odbiorca' : 
+               customer.customerType === 'sprzedawca' ? 'Sprzedawca' : 'Odbiorca i Sprzedawca'}
+            </p>
           </div>
         </div>
-        <div className="flex gap-2">
-          <Button asChild variant="secondary">
-            <Link to={`/invoices/new?customerId=${customer.id}`}>
-              <FileText className="mr-2 h-4 w-4" />
-              Wystaw fakturę dla klienta
+        <div className="flex space-x-2">
+          <Button asChild>
+            <Link to={`/customers/edit/${customer.id}`}>
+              <Edit className="h-4 w-4 mr-2" />
+              Edytuj
             </Link>
           </Button>
           <Button asChild>
-            <Link to={`/customers/edit/${customer.id}`}>
-              <Edit className="mr-2 h-4 w-4" />
-              Edytuj klienta
+            <Link to={`/income/new?customerId=${customer.id}`}>
+              <Plus className="h-4 w-4 mr-2" />
+              Nowa faktura
             </Link>
           </Button>
         </div>
       </div>
-      
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        <div className="lg:col-span-1">
-          <Card>
-            <CardHeader>
-              <CardTitle>Informacje o kliencie</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="flex items-start gap-3">
-                <Building className="h-5 w-5 text-muted-foreground mt-0.5" />
-                <div>
-                  <p className="font-medium">{customer.name}</p>
-                  {customer.taxId && <p className="text-sm text-muted-foreground">NIP: {customer.taxId}</p>}
-                </div>
-              </div>
-              
-              <div className="flex items-start gap-3">
-                <MapPin className="h-5 w-5 text-muted-foreground mt-0.5" />
-                <div>
-                  <p>{customer.address}</p>
-                  <p>{customer.postalCode} {customer.city}</p>
-                </div>
-              </div>
-              
-              {customer.email && (
-                <div className="flex items-center gap-3">
-                  <Mail className="h-5 w-5 text-muted-foreground" />
-                  <p>{customer.email}</p>
-                </div>
-              )}
-              
-              {customer.phone && (
-                <div className="flex items-center gap-3">
-                  <Phone className="h-5 w-5 text-muted-foreground" />
-                  <p>{customer.phone}</p>
-                </div>
-              )}
-            </CardContent>
-          </Card>
-        </div>
+
+      {/* Customer Info Cards */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <Card>
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm font-medium text-muted-foreground">
+              Łączne przychody
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold text-green-600">
+              {formatCurrency(totalRevenue)}
+            </div>
+          </CardContent>
+        </Card>
         
-        <div className="lg:col-span-2">
-          <Card>
-            <CardHeader className="flex flex-row justify-between items-center pb-2">
-              <CardTitle>Faktury klienta</CardTitle>
-              <Button variant="outline" size="sm" asChild>
-                <Link to={`/invoices/new?customerId=${customer.id}`}>
-                  <Plus className="mr-2 h-4 w-4" />
-                  Nowa faktura
-                </Link>
-              </Button>
-            </CardHeader>
-            <CardContent>
+        <Card>
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm font-medium text-muted-foreground">
+              Zapłacone faktury
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold text-blue-600">
+              {paidInvoices.length}
+            </div>
+          </CardContent>
+        </Card>
+        
+        <Card>
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm font-medium text-muted-foreground">
+              Niezapłacone faktury
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold text-amber-600">
+              {unpaidInvoices.length}
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* Customer Details */}
+      <Card>
+        <CardHeader>
+          <CardTitle>Szczegóły klienta</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div>
+              <h4 className="font-semibold mb-2">Informacje podstawowe</h4>
+              <div className="space-y-2 text-sm">
+                <div>
+                  <span className="font-medium">Nazwa:</span> {customer.name}
+                </div>
+                {customer.taxId && (
+                  <div>
+                    <span className="font-medium">NIP:</span> {customer.taxId}
+                  </div>
+                )}
+                <div>
+                  <span className="font-medium">Typ:</span>{" "}
+                  {customer.customerType === 'odbiorca' ? 'Odbiorca' : 
+                   customer.customerType === 'sprzedawca' ? 'Sprzedawca' : 'Odbiorca i Sprzedawca'}
+                </div>
+              </div>
+            </div>
+            
+            <div>
+              <h4 className="font-semibold mb-2">Adres</h4>
+              <div className="space-y-2 text-sm">
+                <div>{customer.address}</div>
+                <div>
+                  {customer.postalCode} {customer.city}
+                </div>
+              </div>
+            </div>
+            
+            {(customer.email || customer.phone) && (
+              <div>
+                <h4 className="font-semibold mb-2">Kontakt</h4>
+                <div className="space-y-2 text-sm">
+                  {customer.email && (
+                    <div>
+                      <span className="font-medium">Email:</span> {customer.email}
+                    </div>
+                  )}
+                  {customer.phone && (
+                    <div>
+                      <span className="font-medium">Telefon:</span> {customer.phone}
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Invoices Tabs */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center space-x-2">
+            <FileText className="h-5 w-5" />
+            <span>Faktury</span>
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <Tabs defaultValue="issued" className="w-full">
+            <TabsList className="grid w-full grid-cols-2">
+              <TabsTrigger value="issued">Wystawione dla klienta</TabsTrigger>
+              <TabsTrigger value="received">Otrzymane od klienta</TabsTrigger>
+            </TabsList>
+            
+            <TabsContent value="issued" className="mt-6">
               {customerInvoices.length === 0 ? (
                 <div className="text-center py-8">
-                  <p>Brak faktur dla tego klienta</p>
-                  <Button className="mt-4" asChild>
-                    <Link to={`/invoices/new?customerId=${customer.id}`}>
-                      <FileText className="mr-2 h-4 w-4" />
-                      Wystaw fakturę
+                  <FileText className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
+                  <p className="text-muted-foreground">Brak faktur dla tego klienta</p>
+                  <Button asChild className="mt-4">
+                    <Link to={`/income/new?customerId=${customer.id}`}>
+                      Wystaw pierwszą fakturę
                     </Link>
                   </Button>
                 </div>
               ) : (
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   {customerInvoices.map((invoice) => (
-                    <InvoiceCard key={invoice.id} invoice={invoice} />
+                    <InvoiceCard key={invoice.id} invoice={invoice as any} />
                   ))}
                 </div>
               )}
-            </CardContent>
-          </Card>
-        </div>
-      </div>
+            </TabsContent>
+            
+            <TabsContent value="received" className="mt-6">
+              <ReceivedInvoicesTab />
+            </TabsContent>
+          </Tabs>
+        </CardContent>
+      </Card>
     </div>
   );
 };
