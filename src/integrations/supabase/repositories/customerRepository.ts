@@ -1,3 +1,4 @@
+
 import { supabase } from "../client";
 import type { Customer } from "@/types";
 
@@ -6,7 +7,7 @@ export async function getCustomers(): Promise<Customer[]> {
     buyer: 'odbiorca',
     supplier: 'sprzedawca',
     both: 'both',
-  };
+  } as const;
   
   const { data, error } = await supabase
     .from("customers")
