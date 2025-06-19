@@ -24,6 +24,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { supabase } from "@/integrations/supabase/client";
 
 const formSchema = z.object({
   name: z.string().min(1, "Nazwa jest wymagana"),
@@ -139,34 +140,102 @@ const CustomerForm = ({
                           const today = new Date().toISOString().slice(0, 10);
                           const res = await fetch(`https://wl-api.mf.gov.pl/api/search/nip/${nip}?date=${today}`);
 
-                          if (!res.ok) {
-                            const errorData = await res.json();
-                            const errorMessage = errorData.error ? errorData.error.message : `Błąd HTTP: ${res.status} ${res.statusText}`;
-                            toast.error(`Błąd pobierania danych: ${errorMessage}`);
-                            return;
+                          let found = false;
+
+                          if (res.ok) {
+                            const data = await res.json();
+                            if (data.result && data.result.subject) {
+                              const subject = data.result.subject;
+                              form.setValue("name", subject.name || "");
+                              form.setValue("address", subject.workingAddress || subject.residenceAddress || "");
+                              // Try to extract postal code and city from address
+                              if (subject.workingAddress || subject.residenceAddress) {
+                                const addr = subject.workingAddress || subject.residenceAddress;
+                                const match = addr.match(/(\d{2}-\d{3})\s+(.+)/);
+                                if (match) {
+                                  form.setValue("postalCode", match[1]);
+                                  form.setValue("city", match[2]);
+                                }
+                              }
+                              toast.success("Dane firmy pobrane z GUS");
+                              found = true;
+                            }
                           }
 
-                          const data = await res.json();
+                          // Second fallback: MojePaństwo KRS API
+                          if (!found) {
+                            try {
+                              const mpRes = await fetch(
+                                `https://api-v3.mojepanstwo.pl/dane/krs_podmioty.json?conditions%5Bpubliczny_nip%5D=${nip}&limit=1`
+                              );
 
-                          if (data.result && data.result.subject) {
-                            const subject = data.result.subject;
-                            form.setValue("name", subject.name || "");
-                            form.setValue("address", subject.workingAddress || subject.residenceAddress || "");
-                            // Try to extract postal code and city from address
-                            if (subject.workingAddress || subject.residenceAddress) {
-                              const addr = subject.workingAddress || subject.residenceAddress;
-                              const match = addr.match(/(\d{2}-\d{3})\s+(.+)/);
-                              if (match) {
-                                form.setValue("postalCode", match[1]);
-                                form.setValue("city", match[2]);
+                              if (mpRes.ok) {
+                                const mpJson: any = await mpRes.json();
+                                // The response format may include an array under "data" or "Dataobject" depending on API version.
+                                const mpItem =
+                                  mpJson?.data?.[0]?.data ||
+                                  mpJson?.Dataobject?.[0]?.data ||
+                                  mpJson?.items?.[0]?.data;
+
+                                if (mpItem) {
+                                  form.setValue("name", mpItem.nazwa || mpItem.name || "");
+
+                                  const addressField =
+                                    mpItem.adres ||
+                                    mpItem.siedziba ||
+                                    mpItem.working_address ||
+                                    mpItem.residence_address ||
+                                    "";
+
+                                  if (addressField) {
+                                    form.setValue("address", addressField);
+                                    const match = addressField.match(/(\d{2}-\d{3})\s+(.+)/);
+                                    if (match) {
+                                      form.setValue("postalCode", match[1]);
+                                      form.setValue("city", match[2]);
+                                    }
+                                  }
+
+                                  toast.success("Dane firmy pobrane z KRS (MojePaństwo)");
+                                  found = true;
+                                }
+                              }
+                            } catch (mpErr) {
+                              console.warn("MojePaństwo request failed", mpErr);
+                            }
+                          }
+
+                          // Fallback: search in internal database if not found via external APIs
+                          if (!found) {
+                            const { data: bpData, error: bpError } = await supabase.rpc("find_user_by_tax_id", {
+                              tax_id_param: nip,
+                            });
+
+                            if (bpError) {
+                              console.error("RPC error find_user_by_tax_id:", bpError);
+                            }
+
+                            if (bpData && bpData.length > 0) {
+                              const bp: any = bpData[0];
+                              form.setValue("name", bp.business_name || bp.name || "");
+                              if (bp.address) form.setValue("address", bp.address);
+                              if (bp.postal_code) form.setValue("postalCode", bp.postal_code);
+                              if (bp.city) form.setValue("city", bp.city);
+                              toast.success("Dane firmy pobrane z bazy");
+                            } else {
+                              // If API responded with error earlier, show that; otherwise generic not found
+                              if (!res.ok) {
+                                const errorData = await res.json().catch(() => null);
+                                const errorMessage = errorData?.error ? errorData.error.message : `Błąd HTTP: ${res.status} ${res.statusText}`;
+                                toast.error(`Błąd pobierania danych: ${errorMessage}`);
+                              } else {
+                                toast.error("Nie znaleziono firmy dla podanego NIP");
                               }
                             }
-                            toast.success("Dane firmy pobrane z GUS");
-                          } else {
-                            toast.error("Nie znaleziono firmy dla podanego NIP");
                           }
                         } catch (err: any) {
-                          toast.error(`Błąd podczas pobierania danych z API: ${err.message || err}`);
+                          console.error("Error during NIP search:", err);
+                          toast.error(`Błąd podczas wyszukiwania danych: ${err.message || err}`);
                         }
                       }}
                     >

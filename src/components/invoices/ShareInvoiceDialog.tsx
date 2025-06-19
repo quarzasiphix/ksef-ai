@@ -1,4 +1,3 @@
-
 import React, { useState } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
@@ -8,24 +7,40 @@ import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
 import { shareInvoiceWithUser } from "@/integrations/supabase/repositories/invoiceShareRepository";
 import { useAuth } from "@/hooks/useAuth";
+import { CustomerSelector } from "@/components/invoices/selectors/CustomerSelector";
+import { useGlobalData } from "@/hooks/use-global-data";
 
 interface ShareInvoiceDialogProps {
   isOpen: boolean;
   onClose: () => void;
   invoiceId: string;
   invoiceNumber: string;
+  defaultReceiverTaxId?: string;
+  defaultCustomerId?: string;
 }
 
 const ShareInvoiceDialog: React.FC<ShareInvoiceDialogProps> = ({
   isOpen,
   onClose,
   invoiceId,
-  invoiceNumber
+  invoiceNumber,
+  defaultReceiverTaxId,
+  defaultCustomerId,
 }) => {
   const { user } = useAuth();
-  const [receiverTaxId, setReceiverTaxId] = useState("");
+  const { customers: { data: customers } } = useGlobalData();
+  const [receiverTaxId, setReceiverTaxId] = useState(defaultReceiverTaxId || "");
+  const [selectedCustomerId, setSelectedCustomerId] = useState<string | undefined>(defaultCustomerId);
   const [notes, setNotes] = useState("");
   const [isLoading, setIsLoading] = useState(false);
+
+  const handleCustomerChange = (id: string, _name?: string) => {
+    setSelectedCustomerId(id);
+    const cust = customers.find(c => c.id === id);
+    if (cust?.taxId) {
+      setReceiverTaxId(cust.taxId);
+    }
+  };
 
   const handleShare = async () => {
     if (!user?.id) {
@@ -65,10 +80,18 @@ const ShareInvoiceDialog: React.FC<ShareInvoiceDialogProps> = ({
         </DialogHeader>
         <div className="space-y-4 py-4">
           <div className="space-y-2">
+            <Label>Wybierz klienta</Label>
+            <CustomerSelector
+              value={selectedCustomerId || ""}
+              onChange={(cid, name) => handleCustomerChange(cid, name)}
+              showBusinessProfiles={false}
+            />
+          </div>
+          <div className="space-y-2">
             <Label htmlFor="receiverTaxId">NIP odbiorcy</Label>
             <Input
               id="receiverTaxId"
-              placeholder="Wprowadź NIP użytkownika, któremu chcesz udostępnić fakturę"
+              placeholder="Podaj NIP odbiorcy"
               value={receiverTaxId}
               onChange={(e) => setReceiverTaxId(e.target.value)}
             />

@@ -59,7 +59,7 @@ export const EditableInvoiceItemsTable: React.FC<EditableInvoiceItemsTableProps>
     const vatRate = Number(newItem.vatRate) || 0;
 
     const totalNetValue = quantity * unitPrice;
-    const totalVatValue = documentType === InvoiceType.RECEIPT ? 0 : (totalNetValue * vatRate) / 100;
+    const totalVatValue = (documentType === InvoiceType.RECEIPT || fakturaBezVAT || vatRate <= 0) ? 0 : (totalNetValue * vatRate) / 100;
     const totalGrossValue = totalNetValue + totalVatValue;
 
     const item: InvoiceItem = {
@@ -97,7 +97,7 @@ export const EditableInvoiceItemsTable: React.FC<EditableInvoiceItemsTableProps>
     const vatRate = fakturaBezVAT ? -1 : (documentType === InvoiceType.RECEIPT ? 0 : product.vatRate);
 
     const totalNetValue = quantity * unitPrice;
-    const totalVatValue = documentType === InvoiceType.RECEIPT || fakturaBezVAT ? 0 : (totalNetValue * vatRate) / 100;
+    const totalVatValue = (documentType === InvoiceType.RECEIPT || fakturaBezVAT || vatRate <= 0) ? 0 : (totalNetValue * vatRate) / 100;
     const totalGrossValue = totalNetValue + totalVatValue;
 
     const item: InvoiceItem = {
@@ -118,7 +118,33 @@ export const EditableInvoiceItemsTable: React.FC<EditableInvoiceItemsTableProps>
   };
 
   const handleNewProductAdded = async (product: Omit<Product, 'id'> & { id?: string }) => {
+    // Ensure we have latest products
     await refetchProducts();
+
+    // Auto-add newly created product to the invoice
+    const quantity = 1;
+    const unitPrice = product.unitPrice;
+    const vatRate = fakturaBezVAT ? -1 : (documentType === InvoiceType.RECEIPT ? 0 : Number(product.vatRate));
+
+    const totalNetValue = quantity * unitPrice;
+    const totalVatValue = (documentType === InvoiceType.RECEIPT || fakturaBezVAT || vatRate <= 0) ? 0 : (totalNetValue * vatRate) / 100;
+    const totalGrossValue = totalNetValue + totalVatValue;
+
+    const item: InvoiceItem = {
+      id: crypto.randomUUID(),
+      productId: product.id,
+      name: product.name,
+      description: product.name,
+      quantity,
+      unitPrice,
+      vatRate,
+      unit: product.unit,
+      totalNetValue: Number(totalNetValue.toFixed(2)),
+      totalVatValue: Number(totalVatValue.toFixed(2)),
+      totalGrossValue: Number(totalGrossValue.toFixed(2)),
+    } as InvoiceItem;
+
+    onAddItem(item);
   };
 
   // Calculate totals

@@ -23,6 +23,8 @@ import { cn } from "@/lib/utils";
 import { useAuth } from "@/context/AuthContext";
 import { InvoiceFormActions } from "@/components/invoices/forms/InvoiceFormActions";
 import { Switch } from '@/components/ui/switch';
+import { calculateItemValues } from "@/lib/invoice-utils";
+import { PaymentMethodDb } from "@/types/common";
 
 const EditInvoice = () => {
   const { id } = useParams<{ id: string }>();
@@ -152,7 +154,7 @@ const EditInvoice = () => {
         issueDate: invoice.issueDate,
         dueDate: invoice.dueDate,
         sellDate: invoice.sellDate,
-        paymentMethod: invoice.paymentMethod,
+        paymentMethod: invoice.paymentMethod || PaymentMethodDb.TRANSFER,
         status: invoice.status,
         comments: invoice.comments || '',
         totalNetValue: invoice.totalNetValue || 0,
@@ -221,8 +223,7 @@ const EditInvoice = () => {
       ...invoice,
       // Ensure items have all required fields with proper defaults
       items: (invoice.items || []).map((item, idx) => {
-        console.log('Processing item:', item);
-        const transformedItem = {
+        const base = {
           ...item,
           id: item.id || `${invoice.id}-item-${idx}`,
           description: item.description || item.name || '',
@@ -230,19 +231,18 @@ const EditInvoice = () => {
           unitPrice: Number(item.unitPrice) || 0,
           vatRate: item.vatRate !== undefined ? Number(item.vatRate) : 23,
           unit: item.unit || 'szt.',
-          totalNetValue: item.totalNetValue !== undefined ? Number(item.totalNetValue) : 0,
-          totalVatValue: item.totalVatValue !== undefined ? Number(item.totalVatValue) : 0,
-          totalGrossValue: item.totalGrossValue !== undefined ? Number(item.totalGrossValue) : 0,
           name: item.name || item.description || '',
           productId: item.productId || undefined,
-        };
-        console.log('Transformed item:', transformedItem);
-        return transformedItem;
+        } as any;
+        // Re-calculate monetary values so VAT -1 yields 0
+        const withVals = calculateItemValues(base);
+        return withVals;
       }),
       buyer: isExpense ? invoice.seller : invoice.buyer,
       seller: isExpense ? invoice.buyer : invoice.seller,
       fakturaBezVAT: !(invoice as any).vat, // Explicitly cast to any to access vat
       vatExemptionReason: invoice.vatExemptionReason, // Pass through the VAT exemption reason
+      paymentMethod: invoice.paymentMethod || PaymentMethodDb.TRANSFER,
     };
     console.log('Final transformed data:', transformed);
     return transformed;
@@ -315,6 +315,7 @@ const EditInvoice = () => {
             type={invoice.transactionType as any}
             onSave={handleUpdate}
             ref={newInvoiceRef}
+            hideHeader
           />
         </div>
 

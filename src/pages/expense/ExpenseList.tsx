@@ -26,7 +26,13 @@ export default function ExpenseList() {
     if (!allExpenses) return [];
 
     const list = allExpenses.filter(expense => {
-      if (selectedProfileId && expense.businessProfileId !== selectedProfileId) return false;
+      const isShared = typeof expense.id === 'string' && expense.id.startsWith('share-');
+
+      // Apply business profile filter only to own expenses; always include shared ones
+      if (!isShared && selectedProfileId && expense.businessProfileId !== selectedProfileId) {
+        return false;
+      }
+
       const type = (expense.transactionType || (expense as any).transaction_type || "").toString().toLowerCase();
       return type === "expense";
     });

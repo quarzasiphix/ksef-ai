@@ -4,6 +4,8 @@ import { toPaymentMethodUi, toPaymentMethodDb } from "@/lib/invoice-utils";
 import { useAuth } from "@/hooks/useAuth";
 import { format } from 'date-fns';
 import { getPeriodDates } from '@/lib/date-utils';
+import { shareInvoiceWithUser } from "./invoiceShareRepository";
+import { getCustomers } from "./customerRepository";
 
 interface DatabaseInvoiceResponse {
   id: string;
@@ -335,6 +337,30 @@ export async function saveInvoice(invoice: Omit<Invoice, 'id' | 'ksef' | 'vat' |
       }
       throw new Error(`Error saving invoice items: ${itemsError.message}`);
     }
+  }
+
+  /* =========================================================
+     Auto-share to connected buyer account (if applicable)
+     -------------------------------------------------------
+     When this is an INCOME invoice and the chosen customer
+     belongs to another registered user (linked via NIP), we
+     automatically create an invoice_share record so that the
+     receiver sees it in their account (and Expenses view).
+  =========================================================*/
+
+  try {
+    if (invoice.transactionType === TransactionType.INCOME && invoice.customerId) {
+      // Fetch customer with linked profile information (lightweight)
+      const customers = await getCustomers();
+      const cust = customers.find(c => c.id === invoice.customerId);
+
+      if (cust && cust.linkedBusinessProfile && cust.linkedBusinessProfile.user_id && cust.linkedBusinessProfile.user_id !== invoice.user_id) {
+        // Create share (ignore duplicate errors)
+        await shareInvoiceWithUser(invoiceId, invoice.user_id, cust.taxId || "");
+      }
+    }
+  } catch (shareErr) {
+    console.warn("Auto-share failed (non-blocking):", shareErr?.message || shareErr);
   }
 
   // Fetch the complete invoice with items

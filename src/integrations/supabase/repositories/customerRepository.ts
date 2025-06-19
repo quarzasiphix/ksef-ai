@@ -1,6 +1,32 @@
-
 import { supabase } from "../client";
 import type { Customer } from "@/types";
+
+// Helper to find a business profile by tax ID across all users via RPC (bypasses RLS)
+async function findBusinessProfileByTaxId(taxId: string) {
+  if (!taxId) return null;
+
+  const { data, error } = await supabase.rpc("find_user_by_tax_id", {
+    tax_id_param: taxId,
+  });
+
+  if (error) {
+    console.error("Error checking tax ID via RPC:", error);
+    return null;
+  }
+
+  if (data && data.length > 0) {
+    const bp: any = data[0];
+    return {
+      id: bp.id || "",
+      name: bp.business_name || bp.name || "",
+      email: bp.email || undefined,
+      phone: bp.phone || undefined,
+      user_id: bp.user_id,
+    };
+  }
+
+  return null;
+}
 
 export async function getCustomers(): Promise<Customer[]> {
   const reverseTypeMap = {
@@ -19,37 +45,51 @@ export async function getCustomers(): Promise<Customer[]> {
     throw error;
   }
 
-  // Get all business profiles to check for linked profiles
+  // Attempt to fetch current user's business profiles (may be limited by RLS)
   const { data: businessProfiles } = await supabase
     .from("business_profiles")
     .select("id, name, email, phone, user_id, tax_id");
 
-  return data.map(item => {
-    // Find linked business profile by matching tax_id
-    const linkedProfile = businessProfiles?.find(bp => 
-      bp.tax_id === item.tax_id && bp.tax_id
-    );
+  // Map customers and ensure linked profile detection even across accounts
+  const customersWithLinks: Customer[] = await Promise.all(
+    data.map(async (item) => {
+      // First, try to find linked profile from the pre-fetched list (fast path)
+      let linkedProfile: any = businessProfiles?.find(
+        (bp: any) => bp.tax_id === item.tax_id && bp.tax_id,
+      );
 
-    return {
-      id: item.id,
-      name: item.name,
-      taxId: item.tax_id || undefined,
-      address: item.address,
-      postalCode: item.postal_code,
-      city: item.city,
-      email: item.email || undefined,
-      phone: item.phone || undefined,
-      user_id: item.user_id,
-      customerType: reverseTypeMap[item.client_type as keyof typeof reverseTypeMap] || 'odbiorca',
-      linkedBusinessProfile: linkedProfile ? {
-        id: linkedProfile.id,
-        name: linkedProfile.name,
-        email: linkedProfile.email || undefined,
-        phone: linkedProfile.phone || undefined,
-        user_id: linkedProfile.user_id,
-      } : null,
-    };
-  });
+      // If not found (likely due to RLS), fall back to RPC lookup
+      if (!linkedProfile && item.tax_id) {
+        linkedProfile = await findBusinessProfileByTaxId(item.tax_id);
+      }
+
+      return {
+        id: item.id,
+        name: item.name,
+        taxId: item.tax_id || undefined,
+        address: item.address,
+        postalCode: item.postal_code,
+        city: item.city,
+        email: item.email || undefined,
+        phone: item.phone || undefined,
+        user_id: item.user_id,
+        customerType:
+          reverseTypeMap[item.client_type as keyof typeof reverseTypeMap] ||
+          "odbiorca",
+        linkedBusinessProfile: linkedProfile
+          ? {
+              id: linkedProfile.id,
+              name: linkedProfile.name,
+              email: linkedProfile.email || undefined,
+              phone: linkedProfile.phone || undefined,
+              user_id: linkedProfile.user_id,
+            }
+          : null,
+      } as Customer;
+    }),
+  );
+
+  return customersWithLinks;
 }
 
 export async function getCustomerWithLinkedProfile(customerId: string): Promise<Customer | null> {
@@ -80,18 +120,23 @@ export async function getCustomerWithLinkedProfile(customerId: string): Promise<
   if (data.tax_id) {
     const { data: businessProfile } = await supabase
       .from("business_profiles")
-      .select("id, name, email, phone, user_id")
+      .select("id, name, email, phone, user_id, tax_id")
       .eq("tax_id", data.tax_id)
-      .single();
+      .maybeSingle();
 
     if (businessProfile) {
       linkedProfile = {
         id: businessProfile.id,
         name: businessProfile.name,
-        email: businessProfile.email || undefined,
-        phone: businessProfile.phone || undefined,
+        email: (businessProfile as any).email || undefined,
+        phone: (businessProfile as any).phone || undefined,
         user_id: businessProfile.user_id,
       };
+    }
+
+    // If not found via direct select (due to RLS), use RPC fallback
+    if (!linkedProfile) {
+      linkedProfile = await findBusinessProfileByTaxId(data.tax_id);
     }
   }
 

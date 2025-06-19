@@ -1,4 +1,3 @@
-
 import React, { useState } from "react";
 import { useParams, Link, useNavigate } from "react-router-dom";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -24,6 +23,11 @@ import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import ShareInvoiceDialog from "@/components/invoices/ShareInvoiceDialog";
+import { calculateItemValues } from "@/lib/invoice-utils";
+import ContractorCard from "@/components/invoices/detail/ContractorCard";
+import { BusinessProfile, Customer } from "@/types";
+import { generateInvoicePdf, getInvoiceFileName } from "@/lib/pdf-utils";
+import InvoiceItemsCard from "@/components/invoices/detail/InvoiceItemsCard";
 
 interface InvoiceDetailProps {
   type: "income" | "expense";
@@ -39,6 +43,47 @@ const InvoiceDetail: React.FC<InvoiceDetailProps> = ({ type }) => {
   const [isUpdatingPaid, setIsUpdatingPaid] = useState(false);
 
   const invoice = invoices.find(inv => inv.id === id);
+
+  // Preprocess items to ensure correct VAT values
+  const processedItems = invoice?.items?.map(calculateItemValues) || [];
+
+  // Recalculate totals on the fly based on processed items
+  const totals = processedItems.reduce(
+    (acc, item) => {
+      acc.net += item.totalNetValue || 0;
+      acc.vat += item.totalVatValue || 0;
+      acc.gross += item.totalGrossValue || 0;
+      return acc;
+    },
+    { net: 0, vat: 0, gross: 0 }
+  );
+
+  // Fetch full contractor info if available
+  const { businessProfiles: { data: profiles }, customers: { data: customersList } } = useGlobalData();
+
+  const sellerProfile: BusinessProfile | undefined = profiles.find(p => p.id === invoice?.businessProfileId);
+  const buyerCustomer: Customer | undefined = customersList.find(c => c.id === invoice?.customerId);
+
+  const isIncomeDocument = invoice?.transactionType === TransactionType.INCOME;
+
+  const sellerData = isIncomeDocument ? sellerProfile : buyerCustomer;
+  const buyerData = isIncomeDocument ? buyerCustomer : sellerProfile;
+
+  if (!invoice) {
+    return <div className="text-center py-8">Faktura nie została znaleziona</div>;
+  }
+
+  const isIncome = invoice.transactionType === TransactionType.INCOME;
+  const editPath = isIncome ? `/income/edit/${invoice.id}` : `/expense/${invoice.id}/edit`;
+
+  const handleDownloadPdf = async () => {
+    await generateInvoicePdf({
+      invoice,
+      businessProfile: sellerProfile,
+      customer: buyerCustomer,
+      filename: getInvoiceFileName(invoice),
+    });
+  };
 
   const handleTogglePaid = async () => {
     if (!invoice || !user?.id) return;
@@ -93,10 +138,6 @@ const InvoiceDetail: React.FC<InvoiceDetailProps> = ({ type }) => {
     return <div className="text-center py-8">Ładowanie...</div>;
   }
 
-  if (!invoice) {
-    return <div className="text-center py-8">Faktura nie została znaleziona</div>;
-  }
-
   const getInvoiceTypeLabel = (invoiceType: string) => {
     switch (invoiceType) {
       case 'sales':
@@ -108,11 +149,8 @@ const InvoiceDetail: React.FC<InvoiceDetailProps> = ({ type }) => {
     }
   };
 
-  const isIncome = invoice.transactionType === TransactionType.INCOME;
-  const editPath = isIncome ? `/income/edit/${invoice.id}` : `/expense/${invoice.id}/edit`;
-
   return (
-    <div className="space-y-6 max-w-full pb-20">
+    <div id="invoice-detail-print" className="space-y-6 max-w-full pb-20">
       {/* Header */}
       <div className="flex items-center justify-between">
         <div className="flex items-center space-x-4">
@@ -128,34 +166,28 @@ const InvoiceDetail: React.FC<InvoiceDetailProps> = ({ type }) => {
             </p>
           </div>
         </div>
-        <div className="flex space-x-2">
+        {/* Preview & Edit buttons */}
+        <div className="flex flex-col sm:flex-row gap-2">
           <Button 
             variant="outline" 
             onClick={() => setShowPDF(true)}
           >
             <Eye className="h-4 w-4 mr-2" />
-            Podgląd
+            <span>Podgląd</span>
           </Button>
           <Button asChild>
             <Link to={editPath}>
               <Edit className="h-4 w-4 mr-2" />
-              Edytuj
+              <span>Edytuj</span>
             </Link>
           </Button>
         </div>
       </div>
 
       {/* Status and Actions */}
-      <div className="flex items-center justify-between">
-        <div className="flex items-center space-x-4">
-          <Badge variant={invoice.isPaid ? "default" : "secondary"}>
-            {invoice.isPaid ? "Opłacone" : "Nieopłacone"}
-          </Badge>
-          <Badge variant="outline">
-            {isIncome ? "Przychód" : "Wydatek"}
-          </Badge>
-        </div>
-        <div className="flex space-x-2">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 flex-wrap">
+        {/* Actions */}
+        <div className="flex flex-wrap gap-2 order-1">
           {isIncome && (
             <Button
               variant="outline"
@@ -163,9 +195,17 @@ const InvoiceDetail: React.FC<InvoiceDetailProps> = ({ type }) => {
               onClick={() => setShowShareDialog(true)}
             >
               <Share2 className="h-4 w-4 mr-2" />
-              Udostępnij
+              <span>Udostępnij</span>
             </Button>
           )}
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={handleDownloadPdf}
+          >
+            <Download className="h-4 w-4 mr-2" />
+            <span>PDF</span>
+          </Button>
           <Button
             variant="outline"
             size="sm"
@@ -173,7 +213,7 @@ const InvoiceDetail: React.FC<InvoiceDetailProps> = ({ type }) => {
             disabled={isUpdatingPaid}
           >
             <DollarSign className="h-4 w-4 mr-2" />
-            {invoice.isPaid ? "Oznacz jako nieopłacone" : "Oznacz jako opłacone"}
+            <span>{invoice.isPaid ? "Nieopłacona" : "Opłacona"}</span>
           </Button>
           <Button
             variant="destructive"
@@ -181,38 +221,53 @@ const InvoiceDetail: React.FC<InvoiceDetailProps> = ({ type }) => {
             onClick={handleDelete}
           >
             <Trash2 className="h-4 w-4 mr-2" />
-            Usuń
+            <span>Usuń</span>
           </Button>
+        </div>
+
+        {/* Status badges */}
+        <div className="flex items-center space-x-4 order-2 sm:order-1">
+          <Badge variant={invoice.isPaid ? "default" : "secondary"}>
+            {invoice.isPaid ? "Opłacone" : "Nieopłacone"}
+          </Badge>
+          <Badge variant="outline">
+            {isIncome ? "Przychód" : "Wydatek"}
+          </Badge>
         </div>
       </div>
 
       {/* Invoice Details Grid */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {/* Seller/Business Profile Info */}
-        <Card>
-          <CardHeader>
-            <CardTitle>{isIncome ? "Sprzedawca" : "Nabywca"}</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-2">
-              <div className="font-semibold">{invoice.businessName}</div>
-              {/* Add more business profile details if available */}
-            </div>
-          </CardContent>
-        </Card>
+        <ContractorCard
+          title={isIncome ? "Sprzedawca" : "Nabywca"}
+          contractor={{
+            id: sellerData?.id,
+            name: sellerData?.name || (isIncomeDocument ? invoice.businessName : invoice.customerName) || "",
+            taxId: (sellerData as any)?.taxId,
+            regon: (sellerData as any)?.regon,
+            address: (sellerData as any)?.address,
+            postalCode: (sellerData as any)?.postalCode,
+            city: (sellerData as any)?.city,
+            email: (sellerData as any)?.email,
+            phone: (sellerData as any)?.phone,
+            bankAccount: (sellerData as any)?.bankAccount,
+          }}
+        />
 
-        {/* Buyer/Customer Info */}
-        <Card>
-          <CardHeader>
-            <CardTitle>{isIncome ? "Nabywca" : "Sprzedawca"}</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-2">
-              <div className="font-semibold">{invoice.customerName}</div>
-              {/* Add more customer details if available */}
-            </div>
-          </CardContent>
-        </Card>
+        <ContractorCard
+          title={isIncome ? "Nabywca" : "Sprzedawca"}
+          contractor={{
+            id: buyerData?.id,
+            name: buyerData?.name || (isIncomeDocument ? invoice.customerName : invoice.businessName) || "",
+            taxId: (buyerData as any)?.taxId,
+            regon: (buyerData as any)?.regon,
+            address: (buyerData as any)?.address,
+            postalCode: (buyerData as any)?.postalCode,
+            city: (buyerData as any)?.city,
+            email: (buyerData as any)?.email,
+            phone: (buyerData as any)?.phone,
+          }}
+        />
 
         {/* Invoice Details */}
         <Card>
@@ -255,52 +310,28 @@ const InvoiceDetail: React.FC<InvoiceDetailProps> = ({ type }) => {
           <CardContent className="space-y-3">
             <div className="flex justify-between">
               <span className="text-muted-foreground">Wartość netto:</span>
-              <span>{formatCurrency(invoice.totalNetValue)}</span>
+              <span>{formatCurrency(totals.net)}</span>
             </div>
             <div className="flex justify-between">
               <span className="text-muted-foreground">Podatek VAT:</span>
-              <span>{formatCurrency(invoice.totalVatValue)}</span>
+              <span>{formatCurrency(totals.vat)}</span>
             </div>
             <div className="flex justify-between font-semibold text-lg border-t pt-3">
               <span>Wartość brutto:</span>
-              <span className="text-green-600">{formatCurrency(invoice.totalGrossValue)}</span>
+              <span className="text-green-600">{formatCurrency(totals.gross)}</span>
             </div>
           </CardContent>
         </Card>
       </div>
 
       {/* Invoice Items */}
-      <Card>
-        <CardHeader>
-          <CardTitle>Pozycje faktury</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="overflow-x-auto">
-            <table className="w-full">
-              <thead>
-                <tr className="border-b">
-                  <th className="text-left py-2">Nazwa</th>
-                  <th className="text-right py-2">Ilość</th>
-                  <th className="text-right py-2">Cena netto</th>
-                  <th className="text-right py-2">VAT</th>
-                  <th className="text-right py-2">Wartość brutto</th>
-                </tr>
-              </thead>
-              <tbody>
-                {invoice.items.map((item, index) => (
-                  <tr key={index} className="border-b">
-                    <td className="py-2">{item.name}</td>
-                    <td className="text-right py-2">{item.quantity} {item.unit}</td>
-                    <td className="text-right py-2">{formatCurrency(item.unitPrice)}</td>
-                    <td className="text-right py-2">{item.vatRate}%</td>
-                    <td className="text-right py-2">{formatCurrency(item.totalGrossValue)}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        </CardContent>
-      </Card>
+      <InvoiceItemsCard
+        items={processedItems as any}
+        totalNetValue={totals.net}
+        totalVatValue={totals.vat}
+        totalGrossValue={totals.gross}
+        type={invoice.type as any}
+      />
 
       {/* Comments */}
       {invoice.comments && (
@@ -330,6 +361,8 @@ const InvoiceDetail: React.FC<InvoiceDetailProps> = ({ type }) => {
           onClose={() => setShowShareDialog(false)}
           invoiceId={invoice.id}
           invoiceNumber={invoice.number}
+          defaultReceiverTaxId={buyerCustomer?.taxId}
+          defaultCustomerId={buyerCustomer?.id}
         />
       )}
     </div>

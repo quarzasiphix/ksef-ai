@@ -5,6 +5,9 @@ import { Capacitor } from '@capacitor/core';
 import { Share } from '@capacitor/share';
 import { Filesystem, Directory } from '@capacitor/filesystem';
 import html2canvas from 'html2canvas';
+import React from 'react';
+import { BusinessProfile, Customer } from '@/types';
+import { InvoicePdfTemplate } from '@/components/invoices/pdf/InvoicePdfTemplate';
 
 interface PdfOptions {
   filename?: string;
@@ -161,5 +164,72 @@ export const generateElementPdfBlob = async (
   } catch (error) {
     console.error('Error generating PDF blob:', error);
     return null;
+  }
+};
+
+// ================================================================
+// Generate PDF directly from InvoicePdfTemplate react component
+// This gives consistent layout instead of capturing the page HTML
+// ================================================================
+
+interface GenerateInvoicePdfParams {
+  invoice: Invoice;
+  businessProfile: BusinessProfile | null | undefined;
+  customer: Customer | null | undefined;
+  filename?: string;
+}
+
+export const generateInvoicePdf = async ({
+  invoice,
+  businessProfile,
+  customer,
+  filename,
+}: GenerateInvoicePdfParams): Promise<boolean> => {
+  try {
+    // 1. Render the template into an off-screen container
+    const container = document.createElement('div');
+    container.style.position = 'fixed';
+    container.style.left = '-9999px';
+    container.style.top = '0';
+    container.style.width = '794px'; // Width of A4 @ 96dpi
+    container.style.background = '#ffffff';
+    document.body.appendChild(container);
+
+    // Render react component to static HTML and inject into container
+    const { renderToStaticMarkup } = await import('react-dom/server');
+    const markup = renderToStaticMarkup(
+      React.createElement(InvoicePdfTemplate, {
+        invoice,
+        businessProfile,
+        customer,
+      })
+    );
+    container.innerHTML = markup;
+
+    // 2. Use html2canvas to capture the container
+    const canvas = await html2canvas(container, {
+      scale: 2,
+      useCORS: true,
+      logging: false,
+      backgroundColor: '#ffffff',
+      width: container.offsetWidth,
+      height: container.offsetHeight,
+    });
+
+    // 3. Generate PDF with jsPDF
+    const { jsPDF } = await import('jspdf');
+    const pdf = new jsPDF({ orientation: 'portrait', unit: 'px', format: 'a4' });
+    const imgWidth = pdf.internal.pageSize.getWidth();
+    const imgHeight = (canvas.height * imgWidth) / canvas.width;
+    pdf.addImage(canvas.toDataURL('image/jpeg', 1.0), 'JPEG', 0, 0, imgWidth, imgHeight);
+
+    pdf.save(filename || getInvoiceFileName(invoice));
+
+    // 4. Cleanup
+    document.body.removeChild(container);
+    return true;
+  } catch (err) {
+    console.error('Error generating invoice PDF:', err);
+    return false;
   }
 };

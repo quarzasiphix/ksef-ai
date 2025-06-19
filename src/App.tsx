@@ -41,6 +41,7 @@ import LabourHoursPage from '@/pages/employees/LabourHoursPage';
 import NotFound from '@/pages/NotFound';
 import InventoryPage from '@/pages/inventory/InventoryPage';
 import Accounting from '@/pages/accounting/Accounting';
+import Welcome from '@/components/welcome/Welcome';
 
 import { queryClient } from '@/lib/queryClient';
 import { useAuth } from '@/hooks/useAuth';
@@ -105,6 +106,22 @@ const RequirePremium = ({ children }: { children: React.ReactNode }) => {
     openPremiumDialog();
     return <Navigate to="/settings" replace />;
   }
+  return <>{children}</>;
+};
+
+const OnboardingRoute = ({ children }: { children: React.ReactNode }) => {
+  const { user, isLoading } = useAuth();
+  const isAuthenticated = !!user;
+  const location = useLocation();
+
+  if (isLoading) {
+    return <AppLoadingScreen />;
+  }
+
+  if (!isAuthenticated) {
+    return <Navigate to="/auth/login" replace state={{ from: location }} />;
+  }
+
   return <>{children}</>;
 };
 
@@ -274,6 +291,13 @@ const App = () => {
                       <Accounting />
                     </RequirePremium>
                   </ProtectedRoute>
+                } />
+
+                {/* Onboarding / Welcome setup (full-page, no layout) */}
+                <Route path="/welcome" element={
+                  <OnboardingRoute>
+                    <Welcome />
+                  </OnboardingRoute>
                 } />
 
                 {/* Catch all route */}

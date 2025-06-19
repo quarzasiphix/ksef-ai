@@ -48,6 +48,7 @@ interface NewInvoiceProps {
   type?: TransactionType;
   showFormActions?: boolean;
   onSave?: (formData: InvoiceFormValues & { items: InvoiceItem[] }) => Promise<void>;
+  hideHeader?: boolean;
 }
 
 const NewInvoice: React.ForwardRefExoticComponent<
@@ -56,7 +57,7 @@ const NewInvoice: React.ForwardRefExoticComponent<
     handleSubmit: (onValid: (data: any) => Promise<void>) => (e?: React.BaseSyntheticEvent) => Promise<void>;
   }>
 > = React.forwardRef(
-  ({ initialData, type = TransactionType.EXPENSE, showFormActions = true, onSave }, ref) => {
+  ({ initialData, type = TransactionType.EXPENSE, showFormActions = true, onSave, hideHeader = false }, ref) => {
     const { state } = useSidebar()
 
     // All hooks at the top, always called in the same order
@@ -66,19 +67,10 @@ const NewInvoice: React.ForwardRefExoticComponent<
     const location = useLocation();
     const queryClient = useQueryClient();
 
+    // Helpers to determine if current path is for income or expense invoice creation/edit
     const isIncomeRoute = location.pathname === "/income/new" || location.pathname.startsWith("/income/edit/");
     const isExpenseRoute = location.pathname === "/expense/new" || location.pathname.startsWith("/expense/edit/");
     const hideTransactionButtons = isIncomeRoute || isExpenseRoute || location.pathname === "/invoices/new";
-
-    // --- NEW: Transaction type prompt logic ---
-    const [showTransactionTypePrompt, setShowTransactionTypePrompt] = useState(() => {
-      // Only skip prompt if on /income/new or /expense/new or initialData has transactionType
-      return !(
-        isIncomeRoute ||
-        isExpenseRoute ||
-        (initialData && initialData.transactionType)
-      );
-    });
 
     // --- NEW: Prefill customer/product logic ---
     const urlCustomerId = searchParams.get("customerId") || "";
@@ -88,8 +80,8 @@ const NewInvoice: React.ForwardRefExoticComponent<
     // --- Transaction type state ---
     const [transactionType, setTransactionType] = useState<TransactionType | undefined>(() => {
       if (initialData?.transactionType) return initialData.transactionType;
-      if (isIncomeRoute) return TransactionType.INCOME;
-      if (isExpenseRoute) return TransactionType.EXPENSE;
+      if (location.pathname === "/income/new" || location.pathname.startsWith("/income/edit/")) return TransactionType.INCOME;
+      if (location.pathname === "/expense/new" || location.pathname.startsWith("/expense/edit/")) return TransactionType.EXPENSE;
       return undefined;
     });
     const [documentType, setDocumentType] = useState<InvoiceType>(
@@ -151,6 +143,36 @@ const NewInvoice: React.ForwardRefExoticComponent<
     console.log('NewInvoice - Initial Data VAT:', (initialData as any)?.vat);
     console.log('NewInvoice - Initial Data VAT Exemption Reason:', initialData?.vatExemptionReason);
     console.log('NewInvoice - Form Default FakturaBezVAT:', (initialData as any)?.vat === false);
+
+    /* ---------- Unsaved changes tracking (must run every render) ---------- */
+    const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
+
+    // Form dirty state
+    useEffect(() => {
+      if (form.formState.isDirty) {
+        setHasUnsavedChanges(true);
+      }
+    }, [form.formState.isDirty]);
+
+    // Items modifications
+    const initialItemsRef = React.useRef<string>(JSON.stringify(initialData?.items || []));
+    useEffect(() => {
+      if (JSON.stringify(items) !== initialItemsRef.current) {
+        setHasUnsavedChanges(true);
+      }
+    }, [items]);
+
+    // Warn on unload
+    useEffect(() => {
+      const handler = (e: BeforeUnloadEvent) => {
+        if (hasUnsavedChanges) {
+          e.preventDefault();
+          e.returnValue = "Masz niezapisane zmiany. Czy na pewno chcesz opuścić stronę?";
+        }
+      };
+      window.addEventListener('beforeunload', handler);
+      return () => window.removeEventListener('beforeunload', handler);
+    }, [hasUnsavedChanges]);
 
     // Get form values
     const businessProfileId = form.watch('businessProfileId');
@@ -272,11 +294,6 @@ const NewInvoice: React.ForwardRefExoticComponent<
       handleSubmit: form.handleSubmit,
     }));
 
-    // --- EARLY RETURN after all hooks ---
-    if (!documentSettingsLoaded) {
-      return <div className="text-center py-8">Ładowanie ustawień...</div>;
-    }
-
     // Submit handler
     const onSubmit = async (formData: InvoiceFormValues) => {
       console.log('onSubmit called with formData:', formData);
@@ -361,6 +378,7 @@ const NewInvoice: React.ForwardRefExoticComponent<
            console.log('Using provided onSave prop.');
           // When using onSave, we pass the original form data and items, as the parent component handles the final save structure
           await onSave({...formData, items: items});
+          setHasUnsavedChanges(false);
         } else {
           if (formData.transactionType === TransactionType.EXPENSE) {
             console.log('Saving as expense...');
@@ -382,6 +400,7 @@ const NewInvoice: React.ForwardRefExoticComponent<
 
             // Invalidate expense queries
             queryClient.invalidateQueries({ queryKey: ['expenses'] });
+            setHasUnsavedChanges(false);
             navigate(`/expense/${savedExpense.id}`);
             toast.success('Wydatek zapisany pomyślnie');
           } else {
@@ -391,7 +410,7 @@ const NewInvoice: React.ForwardRefExoticComponent<
 
             queryClient.invalidateQueries({ queryKey: ['invoices'] });
             queryClient.invalidateQueries({ queryKey: ['invoice', savedInvoice.id] });
-
+            setHasUnsavedChanges(false);
             navigate(`/income/${savedInvoice.id}`);
             toast.success(`Dokument ${savedInvoice.number} zapisany pomyślnie`);
           }
@@ -500,6 +519,15 @@ const NewInvoice: React.ForwardRefExoticComponent<
     };
 
     // --- Transaction type prompt modal ---
+    const [showTransactionTypePrompt, setShowTransactionTypePrompt] = useState(() => {
+      // Only skip prompt if on /income/new or /expense/new or initialData has transactionType
+      return !(
+        location.pathname === "/income/new" ||
+        location.pathname === "/expense/new" ||
+        (initialData && initialData.transactionType)
+      );
+    });
+
     if (showTransactionTypePrompt && !transactionType) {
       return (
         <div className="flex flex-col items-center justify-center min-h-[40vh] p-8">
@@ -530,6 +558,10 @@ const NewInvoice: React.ForwardRefExoticComponent<
       );
     }
 
+    if (!documentSettingsLoaded) {
+      return <div className="text-center py-8">Ładowanie ustawień...</div>;
+    }
+
     return (
       <div className="space-y-4 pb-24 md:pb-4">
         <Form {...form}>
@@ -541,6 +573,7 @@ const NewInvoice: React.ForwardRefExoticComponent<
             className="space-y-4"
           >
             {/* Header */}
+            {!hideHeader && (
             <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
               <div className="flex items-center gap-4">
                 <InvoiceFormHeader
@@ -593,6 +626,7 @@ const NewInvoice: React.ForwardRefExoticComponent<
                 </div>
               )}
             </div>
+            )}
 
             {/* Form sections - Wrapped in a flex-1, overflow-y-auto div */}
             <div className="flex-1 overflow-y-auto space-y-6">

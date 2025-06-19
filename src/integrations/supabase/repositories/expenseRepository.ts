@@ -3,6 +3,7 @@ import { Expense, TransactionType } from '../../../types';
 import { useAuth } from '@/hooks/useAuth';
 import { format } from 'date-fns';
 import { InvoiceType } from "@/types";
+import { getInvoiceSharesReceived } from './invoiceShareRepository';
 
 // Function to get start and end dates based on selected period - Duplicated from Accounting.tsx for now
 const getPeriodDates = (period: string): { startDate: string, endDate: string } => {
@@ -84,9 +85,36 @@ export const getExpenses = async (userId: string, businessProfileId?: string, pe
     return [];
   }
 
+  /* -------------------------------------------------------------
+     Fetch invoices shared with this user and convert to expenses
+  --------------------------------------------------------------*/
+  let receivedShares: any[] = [];
+  try {
+    receivedShares = await getInvoiceSharesReceived(userId);
+  } catch (shareErr) {
+    console.warn('Unable to fetch received invoice shares:', shareErr?.message || shareErr);
+  }
+
+  const sharedExpenses: Expense[] = (receivedShares || []).map((share) => {
+    const inv = share.invoices;
+    if (!inv) return null;
+    return {
+      id: `share-${share.id}`,
+      userId,
+      businessProfileId: inv.business_profiles?.id || undefined,
+      issueDate: inv.issue_date,
+      amount: Number(inv.total_gross_value) || 0,
+      currency: 'PLN',
+      description: `Faktura od ${inv.business_profiles?.name || 'kontrahenta'} (${inv.number})`,
+      createdAt: share.shared_at,
+      transactionType: TransactionType.EXPENSE,
+      date: inv.issue_date,
+    } as Expense;
+  }).filter(Boolean) as Expense[];
+
   // Map the raw data to the Expense interface
   // Assuming Expense type has fields like id, user_id, business_profile_id, issue_date, amount, currency, description, created_at
-  return data.map((dbExpense: any) => ({
+  const mappedExpenses = data.map((dbExpense: any) => ({
     id: dbExpense.id,
     userId: dbExpense.user_id,
     businessProfileId: dbExpense.business_profile_id,
@@ -101,6 +129,9 @@ export const getExpenses = async (userId: string, businessProfileId?: string, pe
     transactionType: TransactionType.EXPENSE, // Assuming all fetched here are expenses
     date: dbExpense.issue_date, // Alias for compatibility if needed
   }));
+
+  // Combine real expenses with shared ones
+  return [...mappedExpenses, ...sharedExpenses];
 };
 
 export const saveExpense = async (expense: Omit<Expense, 'id' | 'createdAt'> & { id?: string }) => {

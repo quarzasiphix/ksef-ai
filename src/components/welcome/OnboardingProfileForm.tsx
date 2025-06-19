@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useImperativeHandle, forwardRef } from 'react';
 import { useAuth } from "@/hooks/useAuth";
 import { Label } from '@/components/ui/label';
@@ -38,6 +37,7 @@ const OnboardingProfileForm = forwardRef<OnboardingProfileFormHandle, Onboarding
         .maybeSingle();
       if (error) {
         setProfile(null);
+        toast.error("Nie udało się pobrać danych profilu.");
       } else if (data) {
         setProfile(data);
         setFullName(data.full_name || '');
