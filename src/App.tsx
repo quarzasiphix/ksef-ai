@@ -235,7 +235,7 @@ const App = () => {
                     <NewBusinessProfile />
                   </ProtectedRoute>
                 } />
-                <Route path="/settings/business-profiles/edit/:id" element={
+                <Route path="/settings/business-profiles/:id/edit" element={
                   <ProtectedRoute>
                     <EditBusinessProfile />
                   </ProtectedRoute>

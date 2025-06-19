@@ -14,6 +14,7 @@ import SalaryManagement from '@/components/employees/SalaryManagement';
 import { createEmployee, updateEmployee } from '@/integrations/supabase/repositories/employeeRepository';
 import { CreateEmployeeData } from '@/types/employee';
 import { useNavigate } from 'react-router-dom';
+import { useIsMobile } from '@/hooks/use-mobile';
 
 const EmployeesList = () => {
   const [selectedEmployee, setSelectedEmployee] = useState<Employee | null>(null);
@@ -23,6 +24,7 @@ const EmployeesList = () => {
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const navigate = useNavigate();
+  const isMobile = useIsMobile();
 
   const { data: employees = [], isLoading } = useQuery({
     queryKey: ['employees'],
@@ -168,11 +170,12 @@ const EmployeesList = () => {
           </CardContent>
         </Card>
       ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+        <div className={isMobile ? 'space-y-4' : 'grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6'}>
           {employees.map((employee) => (
-            <EmployeeCard 
-              key={employee.id} 
+            <EmployeeCard
+              key={employee.id}
               employee={employee}
+              isMobile={isMobile}
               onEdit={() => {
                 setSelectedEmployee(employee);
                 setIsEditDialogOpen(true);
@@ -247,6 +250,7 @@ const EmployeeCard: React.FC<{
   onDelete: () => void;
   onManageSalary: () => void;
   getContractTypeBadge: (contractType: string) => React.ReactNode;
+  isMobile: boolean;
 }> = ({ employee, onEdit, onDelete, onManageSalary, getContractTypeBadge }) => {
   const { data: salaryStats } = useQuery({
     queryKey: ['salary_stats', employee.id],
@@ -254,11 +258,11 @@ const EmployeeCard: React.FC<{
   });
 
   return (
-    <Card className="hover:shadow-lg transition-shadow">
+    <Card className="hover:shadow-lg transition-shadow p-4">
       <CardHeader>
         <div className="flex justify-between items-start">
           <div>
-            <CardTitle className="text-lg">
+            <CardTitle className="text-base md:text-lg">
               {employee.first_name} {employee.last_name}
             </CardTitle>
             <p className="text-sm text-muted-foreground">{employee.position}</p>
@@ -270,7 +274,7 @@ const EmployeeCard: React.FC<{
         </div>
       </CardHeader>
       <CardContent>
-        <div className="space-y-2">
+        <div className="space-y-1 text-sm">
           <div className="flex justify-between">
             <span className="text-sm font-medium">PESEL:</span>
             <span className="text-sm">{employee.pesel}</span>
@@ -307,7 +311,7 @@ const EmployeeCard: React.FC<{
           )}
         </div>
 
-        <div className="flex justify-end space-x-2 mt-4 pt-4 border-t">
+        <div className="flex justify-end space-x-2 mt-3 pt-3 border-t">
           <Button
             variant="outline"
             size="sm"

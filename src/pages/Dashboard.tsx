@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { formatCurrency } from "@/lib/invoice-utils";
@@ -33,7 +32,7 @@ import {
   Boxes
 } from "lucide-react";
 import AccountOnboardingWidget from '@/components/welcome/AccountOnboardingWidget';
-import { TaxTasksCard } from '@/components/accounting/TaxTasksCard';
+import TaxReportsCard, { TaxReport } from '@/components/accounting/TaxReportsCard';
 
 const Dashboard = () => {
   const [monthlySummaries, setMonthlySummaries] = useState<any[]>([]);
@@ -90,13 +89,18 @@ const Dashboard = () => {
     setMonthlySummaries(formattedSummaries);
   };
 
-  // Calculate tax obligations for current month
+  // Tax obligations list for current month (re-use logic from Accounting)
   const currentMonth = new Date().getMonth();
-  const taxTasks = [
-    { name: "VAT-7", dueDay: 25 },
-    { name: "PIT", dueDay: 20 },
-    { name: "ZUS", dueDay: 15 }
-  ];
+  const getMonthlyReports = (monthIdx: number): TaxReport[] => {
+    const reports: TaxReport[] = [
+      { id: `jpk-${monthIdx}`, name: "JPK_V7M", dueDay: 25 },
+      { id: `zus-${monthIdx}`, name: "Deklaracja ZUS (DRA)", dueDay: 20 },
+    ];
+    if ([2, 5, 8, 11].includes(monthIdx)) {
+      reports.push({ id: `pit-${monthIdx}`, name: "PIT zaliczka", dueDay: 20 });
+    }
+    return reports;
+  };
 
   // Premium accounting data calculations
   const totalRevenue = invoices.reduce((sum, inv) => sum + (inv.totalGrossValue || 0), 0);
@@ -285,7 +289,7 @@ const Dashboard = () => {
 
       {/* Stats Overview */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-        <Card className={isPremium ? 'border-amber-200 bg-gradient-to-br from-amber-50/50 to-yellow-50/50' : ''}>
+        <Card>
           <CardContent className="p-6">
             <div className="flex items-center space-x-2">
               <FileText className={`h-5 w-5 ${isPremium ? 'text-amber-600' : 'text-blue-500'}`} />
@@ -297,7 +301,7 @@ const Dashboard = () => {
           </CardContent>
         </Card>
 
-        <Card className={isPremium ? 'border-amber-200 bg-gradient-to-br from-amber-50/50 to-yellow-50/50' : ''}>
+        <Card>
           <CardContent className="p-6">
             <div className="flex items-center space-x-2">
               <TrendingUp className="h-5 w-5 text-amber-500" />
@@ -309,7 +313,7 @@ const Dashboard = () => {
           </CardContent>
         </Card>
 
-        <Card className={isPremium ? 'border-amber-200 bg-gradient-to-br from-amber-50/50 to-yellow-50/50' : ''}>
+        <Card>
           <CardContent className="p-6">
             <div className="flex items-center space-x-2">
               <CreditCard className={`h-5 w-5 ${isPremium ? 'text-amber-600' : 'text-green-500'}`} />
@@ -321,7 +325,7 @@ const Dashboard = () => {
           </CardContent>
         </Card>
 
-        <Card className={isPremium ? 'border-amber-200 bg-gradient-to-br from-amber-50/50 to-yellow-50/50' : ''}>
+        <Card>
           <CardContent className="p-6">
             <div className="flex items-center space-x-2">
               <Receipt className={`h-5 w-5 ${isPremium ? 'text-amber-600' : 'text-red-500'}`} />
@@ -333,19 +337,10 @@ const Dashboard = () => {
           </CardContent>
         </Card>
       </div>
-
-      {/* Premium Tax Obligations */}
-      {isPremium && (
-        <TaxTasksCard 
-          monthIndex={currentMonth}
-          tasks={taxTasks}
-        />
-      )}
-
       {/* Navigation Sections */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
         {/* Management Tools */}
-        <Card className={isPremium ? 'border-amber-200 bg-gradient-to-br from-amber-50/30 to-yellow-50/30' : ''}>
+        <Card>
           <CardHeader>
             <CardTitle className="flex items-center space-x-2">
               <Settings className={`h-5 w-5 ${isPremium ? 'text-amber-600' : ''}`} />
@@ -368,7 +363,7 @@ const Dashboard = () => {
         </Card>
 
         {/* Premium Features */}
-        <Card className={!isPremium ? "border-amber-200" : "border-amber-200 bg-gradient-to-br from-amber-50/30 to-yellow-50/30"}>
+        <Card>
           <CardHeader>
             <CardTitle className="flex items-center space-x-2">
               {isPremium ? <Shield className="h-5 w-5 text-amber-500" /> : <Crown className="h-5 w-5 text-amber-500" />}
@@ -417,11 +412,13 @@ const Dashboard = () => {
         </Card>
       </div>
 
+      
+
       {/* Chart - Different for Premium vs Free */}
       {isPremium ? (
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
           {/* Premium Accounting Overview */}
-          <Card className="border-amber-200 bg-gradient-to-br from-amber-50/30 to-yellow-50/30">
+          <Card>
             <CardHeader>
               <CardTitle className="flex items-center space-x-2">
                 <Calculator className="h-5 w-5 text-amber-600" />
@@ -445,7 +442,7 @@ const Dashboard = () => {
                         <Cell key={`cell-${index}`} fill={entry.color} />
                       ))}
                     </Pie>
-                    <Tooltip formatter={(value: number) => formatCurrency(value)} />
+                    <Tooltip formatter={(value) => formatCurrency(Number(value))} />
                   </PieChart>
                 </ResponsiveContainer>
               </div>
@@ -456,14 +453,16 @@ const Dashboard = () => {
                 </div>
                 <div className="flex justify-between items-center">
                   <span className="text-sm font-medium">Szacowany podatek:</span>
-                  <span className="font-bold text-amber-600">{formatCurrency(taxEstimate)}</span>
+                  <span className="font-bold text-amber-600">{formatCurrency(Number(taxEstimate))}</span>
                 </div>
               </div>
             </CardContent>
           </Card>
 
+          
+
           {/* Premium Monthly Revenue */}
-          <Card className="border-amber-200 bg-gradient-to-br from-amber-50/30 to-yellow-50/30">
+          <Card>
             <CardHeader>
               <CardTitle className="flex items-center space-x-2">
                 <BarChart3 className="h-5 w-5 text-amber-600" />
@@ -476,7 +475,7 @@ const Dashboard = () => {
                   <BarChart data={monthlySummaries}>
                     <XAxis dataKey="monthLabel" fontSize={10} />
                     <YAxis fontSize={10} />
-                    <Tooltip formatter={(value: number) => formatCurrency(value)} />
+                    <Tooltip formatter={(value) => formatCurrency(Number(value))} />
                     <Bar dataKey="totalGrossValue" name="Brutto" fill="#d97706" />
                   </BarChart>
                 </ResponsiveContainer>
@@ -511,7 +510,7 @@ const Dashboard = () => {
                     tickFormatter={(value) => isMobile ? value.toLocaleString('pl-PL', {notation: 'compact'}) : value.toLocaleString('pl-PL')}
                   />
                   <Tooltip
-                    formatter={(value: number) => formatCurrency(value)}
+                    formatter={(value) => formatCurrency(Number(value))}
                     labelFormatter={(label) => `Miesiąc: ${label}`}
                     contentStyle={{ fontSize: isMobile ? '10px' : '12px' }}
                   />
@@ -531,8 +530,18 @@ const Dashboard = () => {
         </Card>
       )}
 
+      
+      {/* Premium Tax Obligations with generate buttons */}
+      {isPremium && (
+        <TaxReportsCard
+          monthIndex={currentMonth}
+          reports={getMonthlyReports(currentMonth)}
+        />
+      )}
+
+
       {/* Recent Invoices */}
-      <Card className={isPremium ? 'border-amber-200 bg-gradient-to-br from-amber-50/20 to-yellow-50/20' : ''}>
+      <Card>
         <CardHeader>
           <div className="flex justify-between items-center">
             <CardTitle className="flex items-center space-x-2">
@@ -568,7 +577,7 @@ const Dashboard = () => {
       </Card>
 
       {/* Recent Expenses */}
-      <Card className={isPremium ? 'border-amber-200 bg-gradient-to-br from-amber-50/20 to-yellow-50/20' : ''}>
+      <Card>
         <CardHeader>
           <div className="flex justify-between items-center">
             <CardTitle className="flex items-center space-x-2">

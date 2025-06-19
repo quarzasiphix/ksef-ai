@@ -1,7 +1,7 @@
 import React from "react";
 import { SidebarTrigger } from "@/components/ui/sidebar";
 import { Button } from "@/components/ui/button";
-import { Plus, ArrowDownCircle, ArrowUpCircle, PiggyBank, UserPlus, PackagePlus } from "lucide-react";
+import { Plus, ArrowDownCircle, ArrowUpCircle, PiggyBank, UserPlus, PackagePlus, DollarSign } from "lucide-react";
 import { useNavigate, Link } from "react-router-dom";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { ThemeToggle } from "@/components/theme/ThemeToggle";
@@ -47,12 +47,6 @@ const Header = () => {
               <DropdownMenuItem asChild>
                 <Link to="/income/new?type=receipt">Rachunek</Link>
               </DropdownMenuItem>
-              <DropdownMenuItem asChild>
-                <Link to="/income/new?type=proforma">Faktura proforma</Link>
-              </DropdownMenuItem>
-              <DropdownMenuItem asChild>
-                <Link to="/income/new?type=correction">Faktura korygująca</Link>
-              </DropdownMenuItem>
             </DropdownMenuGroup>
             <DropdownMenuSeparator />
             {/* Expense Section */}
@@ -66,12 +60,7 @@ const Header = () => {
               <DropdownMenuItem asChild>
                 <Link to="/expense/new?type=receipt">Rachunek</Link>
               </DropdownMenuItem>
-              <DropdownMenuItem asChild>
-                <Link to="/expense/new?type=proforma">Faktura proforma</Link>
-              </DropdownMenuItem>
-              <DropdownMenuItem asChild>
-                <Link to="/expense/new?type=correction">Faktura korygująca</Link>
-              </DropdownMenuItem>
+
             </DropdownMenuGroup>
             <DropdownMenuSeparator />
             {/* ZUS Option */}
@@ -93,6 +82,16 @@ const Header = () => {
               <DropdownMenuItem asChild>
                 <Link to="/products/new" className="flex items-center gap-2">
                   <PackagePlus className="h-4 w-4 mr-2 text-green-600" /> Dodaj produkt
+                </Link>
+              </DropdownMenuItem>
+              <DropdownMenuItem asChild>
+                <Link to="/employees?create=1" className="flex items-center gap-2">
+                  <UserPlus className="h-4 w-4 mr-2 text-violet-600" /> Dodaj pracownika
+                </Link>
+              </DropdownMenuItem>
+              <DropdownMenuItem asChild>
+                <Link to="/labour-hours?create=1" className="flex items-center gap-2">
+                  <DollarSign className="h-4 w-4 mr-2 text-amber-600" /> Dodaj wypłatę
                 </Link>
               </DropdownMenuItem>
             </DropdownMenuGroup>
