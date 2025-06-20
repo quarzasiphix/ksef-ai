@@ -187,6 +187,33 @@ export default function Home() {
         </div>
       </section>
 
+      {/* Free Trial Section */}
+      <section className="py-20 relative">
+        <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_left,_var(--tw-gradient-stops))] from-blue-500/10 via-purple-500/10 to-transparent pointer-events-none" />
+        <div className="container mx-auto px-4 text-center space-y-6">
+          <h2 className="text-3xl md:text-4xl font-bold text-white">
+            Wypróbuj KsiegaI za darmo przez 7&nbsp;dni
+          </h2>
+          <p className="text-lg text-neutral-300 max-w-2xl mx-auto">
+            Zarejestruj się lub zaloguj, aby natychmiast aktywować 7-dniowy okres próbny. <br className="hidden sm:inline" />
+            Nie wymagamy karty kredytowej.
+          </p>
+          <div className="flex flex-col sm:flex-row justify-center gap-4">
+            <Link to="/auth/register" className="block">
+              <Button size="lg" className="bg-gradient-to-r from-emerald-500 to-emerald-600 hover:from-emerald-600 hover:to-emerald-700 text-lg px-8">
+                Rozpocznij darmowy okres próbny
+                <ArrowRight className="ml-2 h-5 w-5" />
+              </Button>
+            </Link>
+            <Link to="/auth/login" className="block">
+              <Button variant="outline" size="lg" className="text-white border-neutral-600 hover:bg-neutral-800/50">
+                Mam już konto
+              </Button>
+            </Link>
+          </div>
+        </div>
+      </section>
+
       {/* Features Section */}
       <section id="features" className="py-20 relative">
         <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_right,_var(--tw-gradient-stops))] from-purple-900/30 via-blue-900/20 to-neutral-950/80 pointer-events-none" />

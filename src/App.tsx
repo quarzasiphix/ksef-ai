@@ -42,6 +42,7 @@ import NotFound from '@/pages/NotFound';
 import InventoryPage from '@/pages/inventory/InventoryPage';
 import Accounting from '@/pages/accounting/Accounting';
 import Welcome from '@/components/welcome/Welcome';
+import Premium from '@/pages/Premium';
 
 import { queryClient } from '@/lib/queryClient';
 import { useAuth } from '@/hooks/useAuth';
@@ -125,6 +126,26 @@ const OnboardingRoute = ({ children }: { children: React.ReactNode }) => {
   return <>{children}</>;
 };
 
+// Route that chooses layout based on auth
+const PremiumRoute = () => {
+  const { user, isLoading } = useAuth();
+  if (isLoading) return <AppLoadingScreen />;
+  // Logged-in users see Premium inside the app layout
+  if (user) {
+    return (
+      <ProtectedRoute>
+        <Premium />
+      </ProtectedRoute>
+    );
+  }
+  // Visitors see public marketing version
+  return (
+    <PublicLayout>
+      <Premium />
+    </PublicLayout>
+  );
+};
+
 const App = () => {
   return (
     <ThemeProvider defaultTheme="system">
@@ -150,6 +171,9 @@ const App = () => {
                     <Register />
                   </PublicRoute>
                 } />
+
+                {/* Premium marketing / upgrade page */}
+                <Route path="/premium" element={<PremiumRoute />} />
 
                 {/* Protected routes */}
                 <Route path="/dashboard" element={

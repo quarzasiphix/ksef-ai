@@ -1,4 +1,3 @@
-
 import React, { useEffect, useState, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
@@ -167,7 +166,11 @@ const Welcome = () => {
             Gratulacje! Twoje konto jest gotowe do pracy. Możesz już w pełni korzystać z KsiegaI.
           </p>
           <div className="flex flex-wrap items-center justify-center gap-4">
-             <Button size="lg" variant="outline" onClick={() => navigate('/income/new')}>
+            <Button size="lg" className="bg-gradient-to-r from-emerald-500 to-emerald-600 hover:from-emerald-600 hover:to-emerald-700 text-white" onClick={() => navigate('/premium')}> 
+              Wypróbuj 7-dniowy trial
+              <Star className="ml-2 h-5 w-5" />
+            </Button>
+            <Button size="lg" variant="outline" onClick={() => navigate('/income/new')}>
               Wystaw pierwszą fakturę
             </Button>
             <Button size="lg" onClick={() => navigate('/dashboard')}>
