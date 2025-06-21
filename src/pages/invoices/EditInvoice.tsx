@@ -25,6 +25,7 @@ import { InvoiceFormActions } from "@/components/invoices/forms/InvoiceFormActio
 import { Switch } from '@/components/ui/switch';
 import { calculateItemValues } from "@/lib/invoice-utils";
 import { PaymentMethodDb } from "@/types/common";
+import ContractsForInvoice from "@/components/invoices/ContractsForInvoice";
 
 const EditInvoice = () => {
   const { id } = useParams<{ id: string }>();
@@ -317,6 +318,13 @@ const EditInvoice = () => {
             ref={newInvoiceRef}
             hideHeader
           />
+
+          {/* Contracts linked to this invoice */}
+          {id && (
+            <div className="mt-6">
+              <ContractsForInvoice invoiceId={id} />
+            </div>
+          )}
         </div>
 
         {/* Sticky form actions - Rendered by EditInvoice */}

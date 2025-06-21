@@ -26,6 +26,8 @@ import { Button } from "@/components/ui/button";
 import { useSidebar } from "@/components/ui/sidebar";
 import { cn } from "@/lib/utils";
 import { PaymentMethod } from "@/types";
+import ContractsPicker from "@/components/contracts/ContractsPicker";
+import { addLink as addContractLink } from "@/integrations/supabase/repositories/contractInvoiceLinkRepository";
 
 // Schema
 const invoiceFormSchema = z.object({
@@ -96,6 +98,16 @@ const NewInvoice: React.ForwardRefExoticComponent<
       // If productId in URL, prefill with that product (will be handled in useEffect)
       return [];
     });
+
+    // --- linking contracts prior to save ---
+    const [contractsToLink, setContractsToLink] = useState<string[]>([]);
+
+    const handleAddContract = (id: string) => {
+      setContractsToLink((prev) => [...prev, id]);
+    };
+    const handleRemoveContract = (id: string) => {
+      setContractsToLink((prev) => prev.filter((c) => c !== id));
+    };
 
     // Update items when initialData changes
     useEffect(() => {
@@ -418,6 +430,11 @@ const NewInvoice: React.ForwardRefExoticComponent<
             setHasUnsavedChanges(false);
             navigate(`/income/${savedInvoice.id}`);
             toast.success(`Dokument ${savedInvoice.number} zapisany pomyślnie`);
+
+            // create links
+            if (contractsToLink.length) {
+              await Promise.all(contractsToLink.map((cid) => addContractLink(user.id, cid, savedInvoice.id)));
+            }
           }
         }
         
@@ -659,6 +676,20 @@ const NewInvoice: React.ForwardRefExoticComponent<
                   vatExemptionReason={form.watch('vatExemptionReason')}
                 />
               </div>
+
+              {/* Contracts linking section (only on create) */}
+              {!isEditing && (
+                <div className="space-y-2">
+                  <h3 className="font-semibold">Powiąż umowę</h3>
+                  {contractsToLink.map((cid) => (
+                    <div key={cid} className="flex items-center gap-2 text-sm">
+                      <span>{cid}</span>
+                      <Button variant="ghost" size="icon" onClick={() => handleRemoveContract(cid)}>×</Button>
+                    </div>
+                  ))}
+                  <ContractsPicker selected={contractsToLink} onAdd={handleAddContract} />
+                </div>
+              )}
             </div>
 
             {/* InvoiceFormActions component and its positioning div - Moved outside the scrollable div */}

@@ -28,6 +28,9 @@ import ContractorCard from "@/components/invoices/detail/ContractorCard";
 import { BusinessProfile, Customer } from "@/types";
 import { generateInvoicePdf, getInvoiceFileName } from "@/lib/pdf-utils";
 import InvoiceItemsCard from "@/components/invoices/detail/InvoiceItemsCard";
+import { useQuery } from "@tanstack/react-query";
+import { getLinksForInvoice } from "@/integrations/supabase/repositories/contractInvoiceLinkRepository";
+import { getContract } from "@/integrations/supabase/repositories/contractRepository";
 
 interface InvoiceDetailProps {
   type: "income" | "expense";
@@ -68,6 +71,23 @@ const InvoiceDetail: React.FC<InvoiceDetailProps> = ({ type }) => {
 
   const sellerData = isIncomeDocument ? sellerProfile : buyerCustomer;
   const buyerData = isIncomeDocument ? buyerCustomer : sellerProfile;
+
+  // Fetch linked contracts
+  const { data: contractLinks = [] } = useQuery({
+    queryKey: ["invoiceLinks", id],
+    queryFn: () => (id ? getLinksForInvoice(id) : Promise.resolve([])),
+    enabled: !!id,
+  });
+
+  const { data: linkedContracts = [] } = useQuery({
+    queryKey: ["linkedContracts", contractLinks.map((l:any)=>l.contractId).join("|")],
+    queryFn: async () => {
+      if (!contractLinks.length) return [] as any[];
+      const arr = await Promise.all(contractLinks.map((l:any)=> getContract(l.contractId)));
+      return arr.filter(Boolean);
+    },
+    enabled: contractLinks.length>0,
+  });
 
   if (!invoice) {
     return <div className="text-center py-8">Faktura nie została znaleziona</div>;
@@ -332,6 +352,22 @@ const InvoiceDetail: React.FC<InvoiceDetailProps> = ({ type }) => {
         totalGrossValue={totals.gross}
         type={invoice.type as any}
       />
+
+      {/* Linked contracts */}
+      {linkedContracts.length > 0 && (
+        <Card>
+          <CardHeader>
+            <CardTitle>Powiązane umowy</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-2">
+            {linkedContracts.map((c:any)=>(
+              <Link key={c.id} to={`/contracts/${c.id}`} className="underline block">
+                {c.number}
+              </Link>
+            ))}
+          </CardContent>
+        </Card>
+      )}
 
       {/* Comments */}
       {invoice.comments && (

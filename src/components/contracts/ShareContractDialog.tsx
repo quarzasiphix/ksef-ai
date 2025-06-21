@@ -1,0 +1,91 @@
+import React, { useState } from "react";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Button } from "@/components/ui/button";
+import { Label } from "@/components/ui/label";
+import { Switch } from "@/components/ui/switch";
+import { Copy } from "lucide-react";
+import { toast } from "sonner";
+import { createPublicShareLink, getExistingContractShare } from "@/integrations/supabase/repositories/publicShareRepository";
+import { useAuth } from "@/hooks/useAuth";
+
+interface ShareContractDialogProps {
+  isOpen: boolean;
+  onClose: () => void;
+  contractId: string;
+  contractNumber: string;
+}
+
+const ShareContractDialog: React.FC<ShareContractDialogProps> = ({ isOpen, onClose, contractId, contractNumber }) => {
+  const { user } = useAuth();
+  const [viewOnce, setViewOnce] = useState(false);
+  const [generatedLink, setGeneratedLink] = useState<string | null>(null);
+  const [isLoading, setIsLoading] = useState(false);
+
+  const fetchExisting = async () => {
+    try {
+      const share = await getExistingContractShare(contractId);
+      if (share) {
+        setGeneratedLink(`${window.location.origin}/share/${share.slug}`);
+      }
+    } catch (err) {
+      console.error(err);
+    }
+  };
+
+  React.useEffect(() => {
+    if (isOpen) fetchExisting();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isOpen]);
+
+  const handleGenerateLink = async () => {
+    if (!user?.id) {
+      toast.error("Musisz być zalogowany");
+      return;
+    }
+    setIsLoading(true);
+    try {
+      const share = await createPublicShareLink({ contractId, type: "contract", viewOnce });
+      const url = `${window.location.origin}/share/${share.slug}`;
+      setGeneratedLink(url);
+      await navigator.clipboard.writeText(url);
+      toast.success("Link został skopiowany do schowka");
+    } catch (err) {
+      console.error("Error generating share link", err);
+      toast.error("Nie udało się wygenerować linku");
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  return (
+    <Dialog open={isOpen} onOpenChange={onClose}>
+      <DialogContent className="sm:max-w-[500px]">
+        <DialogHeader>
+          <DialogTitle>Udostępnij umowę {contractNumber}</DialogTitle>
+        </DialogHeader>
+        <div className="space-y-4 py-4">
+          <div className="flex items-center justify-between">
+            <Label htmlFor="viewOnce">Tylko jednorazowe wyświetlenie</Label>
+            <Switch id="viewOnce" checked={viewOnce} onCheckedChange={setViewOnce} />
+          </div>
+          <Button variant="outline" onClick={handleGenerateLink} disabled={isLoading}>
+            {generatedLink ? (isLoading ? "Generowanie..." : "Generuj nowy link") : (isLoading ? "Generowanie..." : "Wygeneruj i skopiuj link")}
+          </Button>
+          {generatedLink && (
+            <div className="flex items-center gap-2 bg-muted p-2 rounded text-sm">
+              <span className="truncate flex-1">{generatedLink}</span>
+              <Button variant="ghost" size="icon" onClick={() => navigator.clipboard.writeText(generatedLink!)}>
+                <Copy className="h-4 w-4" />
+              </Button>
+            </div>
+          )}
+        </div>
+        <div className="flex justify-end">
+          <Button variant="outline" onClick={onClose}>Zamknij</Button>
+        </div>
+      </DialogContent>
+    </Dialog>
+  );
+};
+
+export default ShareContractDialog; 

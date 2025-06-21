@@ -21,6 +21,13 @@ import { saveBusinessProfile, getBusinessProfiles, checkTaxIdExists } from "@/in
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { useIsMobile } from "@/hooks/use-mobile";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 
 const formSchema = z.object({
   name: z.string().min(1, "Nazwa jest wymagana"),
@@ -33,6 +40,7 @@ const formSchema = z.object({
   email: z.string().email("Niepoprawny format email").optional().or(z.literal("")),
   phone: z.string().optional(),
   isDefault: z.boolean().default(false),
+  entityType: z.enum(["dzialalnosc", "sp_zoo", "sa"]).default("dzialalnosc"),
 });
 
 interface BusinessProfileFormProps {
@@ -62,6 +70,7 @@ const BusinessProfileForm = ({
       email: initialData?.email || "",
       phone: initialData?.phone || "",
       isDefault: initialData?.isDefault || false,
+      entityType: initialData?.entityType || "dzialalnosc",
     },
   });
 
@@ -94,6 +103,7 @@ const BusinessProfileForm = ({
         email: values.email || "", // Optional field
         phone: values.phone || "", // Optional field
         isDefault: values.isDefault,
+        entityType: values.entityType || "dzialalnosc",
         logo: initialData?.logo || "", // Preserve existing logo if any
         user_id: user.id, // Enforce RLS: always include user_id
       };
@@ -427,6 +437,29 @@ const BusinessProfileForm = ({
                 <div className="space-y-1 leading-none">
                   <FormLabel>Ustaw jako domyślny profil firmy</FormLabel>
                 </div>
+              </FormItem>
+            )}
+          />
+
+          <FormField
+            control={form.control}
+            name="entityType"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>Forma prawna</FormLabel>
+                <Select onValueChange={field.onChange} value={field.value}>
+                  <FormControl>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Wybierz formę prawną" />
+                    </SelectTrigger>
+                  </FormControl>
+                  <SelectContent>
+                    <SelectItem value="dzialalnosc">Działalność gospodarcza</SelectItem>
+                    <SelectItem value="sp_zoo">Spółka z o.o.</SelectItem>
+                    <SelectItem value="sa">Spółka akcyjna (S.A.)</SelectItem>
+                  </SelectContent>
+                </Select>
+                <FormMessage />
               </FormItem>
             )}
           />

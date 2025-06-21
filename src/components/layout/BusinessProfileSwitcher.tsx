@@ -72,7 +72,12 @@ export const BusinessProfileSwitcher: React.FC<BusinessProfileSwitcherProps> = (
             <div className="flex items-center gap-2 min-w-0">
               <Building2 className="h-4 w-4 flex-shrink-0" />
               {!isCollapsed && selectedProfile && (
-                <span className="truncate text-sm">{selectedProfile.name}</span>
+                <span className="truncate text-sm flex items-center gap-1">
+                  {selectedProfile.name}
+                  <span className="ml-1 bg-slate-200 dark:bg-slate-700 rounded px-1.5 text-[10px] font-medium text-slate-700 dark:text-slate-300">
+                    {selectedProfile.entityType === 'sp_zoo' ? 'Sp. z o.o.' : selectedProfile.entityType === 'sa' ? 'S.A.' : 'DG'}
+                  </span>
+                </span>
               )}
             </div>
             {!isCollapsed && <ChevronDown className="h-4 w-4 flex-shrink-0" />}
@@ -91,8 +96,11 @@ export const BusinessProfileSwitcher: React.FC<BusinessProfileSwitcherProps> = (
               <Building2 className="h-4 w-4" />
               <div className="flex-1 min-w-0">
                 <div className="truncate font-medium">{profile.name}</div>
-                <div className="text-xs text-muted-foreground truncate">
+                <div className="text-xs text-muted-foreground truncate flex items-center gap-1">
                   NIP: {profile.taxId}
+                  <span className="bg-slate-100 dark:bg-slate-700 px-1.5 rounded text-[9px]">
+                    {profile.entityType === 'sp_zoo' ? 'Sp. z o.o.' : profile.entityType === 'sa' ? 'S.A.' : 'DG'}
+                  </span>
                 </div>
               </div>
               {profile.isDefault && (

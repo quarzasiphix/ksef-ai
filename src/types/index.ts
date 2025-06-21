@@ -13,6 +13,7 @@ export interface BusinessProfile {
   phone?: string;
   logo?: string;
   isDefault?: boolean;
+  entityType?: 'dzialalnosc' | 'sp_zoo' | 'sa'; // Forma prawna: DG (default), Sp. z o.o., S.A.
   tax_type?: "skala" | "liniowy" | "ryczalt" | null;
   monthlySocialSecurity?: number; // Monthly social security contribution amount
   monthlyHealthInsurance?: number; // Monthly health insurance contribution amount
@@ -244,4 +245,30 @@ export interface Expense {
   date: string; // Alias for compatibility
   items?: InvoiceItem[];
   customerId?: string;
+}
+
+// Contract entity used for contract management
+export interface Contract {
+  id: string;
+  user_id: string; // Owner user ID (RLS)
+  businessProfileId: string; // Seller / our company
+  customerId: string; // Counterparty
+  number: string; // Contract number / identifier
+  issueDate: string; // Date of signing / issue
+  validFrom?: string; // Effective start date
+  validTo?: string; // Effective end date
+  subject?: string; // Brief subject/ title
+  content?: string; // Long-form HTML / Markdown body stored in DB
+  pdfUrl?: string; // Stored PDF reference if generated
+  isActive: boolean;
+  created_at?: string;
+  updated_at?: string;
+}
+
+export interface ContractInvoiceLink {
+  id: string;
+  user_id: string;
+  contractId: string;
+  invoiceId: string;
+  created_at?: string;
 }

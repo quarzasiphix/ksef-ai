@@ -43,6 +43,10 @@ import InventoryPage from '@/pages/inventory/InventoryPage';
 import Accounting from '@/pages/accounting/Accounting';
 import Welcome from '@/components/welcome/Welcome';
 import Premium from '@/pages/Premium';
+import ShareDocuments from '@/pages/public/ShareDocuments';
+import ContractList from '@/pages/contracts/ContractList';
+import ContractNew from '@/pages/contracts/ContractNew';
+import ContractDetails from '@/pages/contracts/ContractDetails';
 
 import { queryClient } from '@/lib/queryClient';
 import { useAuth } from '@/hooks/useAuth';
@@ -322,6 +326,31 @@ const App = () => {
                   <OnboardingRoute>
                     <Welcome />
                   </OnboardingRoute>
+                } />
+
+                {/* Public shared documents route */}
+                <Route path="/share/:slug" element={<PublicLayout><ShareDocuments /></PublicLayout>} />
+
+                {/* Contracts routes */}
+                <Route path="/contracts" element={
+                  <ProtectedRoute>
+                    <ContractList />
+                  </ProtectedRoute>
+                } />
+                <Route path="/contracts/new" element={
+                  <ProtectedRoute>
+                    <ContractNew />
+                  </ProtectedRoute>
+                } />
+                <Route path="/contracts/:id" element={
+                  <ProtectedRoute>
+                    <ContractDetails />
+                  </ProtectedRoute>
+                } />
+                <Route path="/contracts/:id/edit" element={
+                  <ProtectedRoute>
+                    <ContractNew />
+                  </ProtectedRoute>
                 } />
 
                 {/* Catch all route */}

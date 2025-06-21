@@ -16,6 +16,7 @@ import {
   UserCheck,
   Boxes,
   LucideIcon,
+  Signature,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import {
@@ -65,6 +66,7 @@ const AppSidebar = () => {
   const accountingItem: SidebarItem = { title: "Księgowość", path: "/accounting", icon: Calculator, premium: true };
   const clientsItem = { title: "Klienci", path: "/customers", icon: Users } as SidebarItem;
   const productsItem = { title: "Produkty", path: "/products", icon: Package } as SidebarItem;
+  const contractsItem: SidebarItem = { title: "Umowy", path: "/contracts", icon: Signature };
   const inventoryItem: SidebarItem = { title: "Magazyn", path: "/inventory", icon: Boxes, premium: true };
   const employeesItem = { title: "Pracownicy", path: "/employees", icon: UserCheck } as SidebarItem;
   const ksefItem: SidebarItem = { title: "KSeF", path: "/ksef", icon: Building, premium: true };
@@ -77,7 +79,7 @@ const AppSidebar = () => {
   const financeItems: SidebarItem[] = [invoiceItem, expenseItem, ...(isPremium ? [accountingItem] : [])];
 
   // Customers & Offer section
-  const offerItems: SidebarItem[] = [clientsItem, productsItem, ...(isPremium ? [inventoryItem] : [])];
+  const offerItems: SidebarItem[] = [clientsItem, productsItem, contractsItem, ...(isPremium ? [inventoryItem] : [])];
 
   // Administration section
   const adminItems: SidebarItem[] = [employeesItem, ...(isPremium ? [ksefItem] : []), settingsItem];

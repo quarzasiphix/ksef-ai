@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -9,6 +9,11 @@ import { shareInvoiceWithUser } from "@/integrations/supabase/repositories/invoi
 import { useAuth } from "@/hooks/useAuth";
 import { CustomerSelector } from "@/components/invoices/selectors/CustomerSelector";
 import { useGlobalData } from "@/hooks/use-global-data";
+import { createPublicShareLink, getExistingInvoiceShare } from "@/integrations/supabase/repositories/publicShareRepository";
+import { Switch } from "@/components/ui/switch";
+import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
+import { Copy } from "lucide-react";
+import { supabase } from "@/integrations/supabase/client";
 
 interface ShareInvoiceDialogProps {
   isOpen: boolean;
@@ -33,12 +38,63 @@ const ShareInvoiceDialog: React.FC<ShareInvoiceDialogProps> = ({
   const [selectedCustomerId, setSelectedCustomerId] = useState<string | undefined>(defaultCustomerId);
   const [notes, setNotes] = useState("");
   const [isLoading, setIsLoading] = useState(false);
+  const [generatedLink, setGeneratedLink] = useState<string | null>(null);
+  const [viewOnce, setViewOnce] = useState(false);
+  const [currentTab, setCurrentTab] = useState<'user' | 'link'>('user');
 
   const handleCustomerChange = (id: string, _name?: string) => {
     setSelectedCustomerId(id);
     const cust = customers.find(c => c.id === id);
     if (cust?.taxId) {
       setReceiverTaxId(cust.taxId);
+    }
+  };
+
+  const fetchExisting = async () => {
+    try {
+      const share = await getExistingInvoiceShare(invoiceId);
+      if (share) {
+        setGeneratedLink(`${window.location.origin}/share/${share.slug}`);
+      }
+    } catch (err) { console.error(err); }
+  };
+
+  useEffect(() => {
+    if (isOpen && currentTab==='link') fetchExisting();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isOpen, currentTab]);
+
+  const handleGenerateLink = async () => {
+    if (!user?.id) {
+      toast.error("Musisz być zalogowany");
+      return;
+    }
+    try {
+      let bankAccount: string | null = null;
+      // Fetch invoice with related business profile to get bank account if payment method is transfer
+      const { data: inv } = await (supabase as any)
+        .from("invoices")
+        .select("payment_method,business_profiles:business_profile_id(bank_account)")
+        .eq("id", invoiceId)
+        .single();
+
+      if (inv?.payment_method === "transfer") {
+        bankAccount = inv?.business_profiles?.bank_account || null;
+      }
+
+      const share = await createPublicShareLink({
+        invoiceId,
+        type: "invoice",
+        bankAccount,
+        viewOnce,
+      });
+      const url = `${window.location.origin}/share/${share.slug}`;
+      setGeneratedLink(url);
+      await navigator.clipboard.writeText(url);
+      toast.success("Link został skopiowany do schowka");
+    } catch (err) {
+      console.error("Error generating share link", err);
+      toast.error("Nie udało się wygenerować linku");
     }
   };
 
@@ -74,46 +130,84 @@ const ShareInvoiceDialog: React.FC<ShareInvoiceDialogProps> = ({
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="sm:max-w-[425px]">
+      <DialogContent
+        className="sm:max-w-[540px]"
+        aria-describedby="share-invoice-description"
+      >
+        {/* Visually hidden description for a11y */}
+        <span id="share-invoice-description" className="sr-only">
+          Wybierz opcję udostępniania faktury: bezpośrednio do klienta w systemie lub poprzez publiczny link.
+        </span>
         <DialogHeader>
           <DialogTitle>Udostępnij fakturę {invoiceNumber}</DialogTitle>
         </DialogHeader>
         <div className="space-y-4 py-4">
-          <div className="space-y-2">
-            <Label>Wybierz klienta</Label>
-            <CustomerSelector
-              value={selectedCustomerId || ""}
-              onChange={(cid, name) => handleCustomerChange(cid, name)}
-              showBusinessProfiles={false}
-            />
-          </div>
-          <div className="space-y-2">
-            <Label htmlFor="receiverTaxId">NIP odbiorcy</Label>
-            <Input
-              id="receiverTaxId"
-              placeholder="Podaj NIP odbiorcy"
-              value={receiverTaxId}
-              onChange={(e) => setReceiverTaxId(e.target.value)}
-            />
-          </div>
-          <div className="space-y-2">
-            <Label htmlFor="notes">Notatka (opcjonalnie)</Label>
-            <Textarea
-              id="notes"
-              placeholder="Dodaj notatkę do udostępnionej faktury..."
-              value={notes}
-              onChange={(e) => setNotes(e.target.value)}
-              rows={3}
-            />
-          </div>
+          <Tabs value={currentTab} onValueChange={(val) => setCurrentTab(val as any)} className="w-full">
+            <TabsList className="grid w-full grid-cols-2 mb-4">
+              <TabsTrigger value="user">Klient w systemie</TabsTrigger>
+              <TabsTrigger value="link">Publiczny link</TabsTrigger>
+            </TabsList>
+
+            {/* ------- Share to user tab ------- */}
+            <TabsContent value="user" className="space-y-4">
+              <div className="space-y-2">
+                <Label>Wybierz klienta</Label>
+                <CustomerSelector
+                  value={selectedCustomerId || ""}
+                  onChange={(cid, name) => handleCustomerChange(cid, name)}
+                  showBusinessProfiles={false}
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="receiverTaxId">NIP odbiorcy</Label>
+                <Input
+                  id="receiverTaxId"
+                  placeholder="Podaj NIP odbiorcy"
+                  value={receiverTaxId}
+                  onChange={(e) => setReceiverTaxId(e.target.value)}
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="notes">Notatka (opcjonalnie)</Label>
+                <Textarea
+                  id="notes"
+                  placeholder="Dodaj notatkę..."
+                  value={notes}
+                  onChange={(e) => setNotes(e.target.value)}
+                  rows={3}
+                />
+              </div>
+            </TabsContent>
+
+            {/* ------- Public link tab ------- */}
+            <TabsContent value="link" className="space-y-4">
+              <div className="flex items-center justify-between">
+                <Label htmlFor="viewOnce">Tylko jednorazowe wyświetlenie</Label>
+                <Switch id="viewOnce" checked={viewOnce} onCheckedChange={setViewOnce} />
+              </div>
+              <Button variant="outline" onClick={handleGenerateLink} disabled={isLoading || !!generatedLink}>
+                {generatedLink ? "Skopiuj link" : isLoading ? "Generowanie..." : "Wygeneruj i skopiuj link"}
+              </Button>
+              {generatedLink && (
+                <div className="flex items-center gap-2 bg-muted p-2 rounded text-sm">
+                  <span className="truncate flex-1">{generatedLink}</span>
+                  <Button variant="ghost" size="icon" onClick={() => navigator.clipboard.writeText(generatedLink!)}>
+                    <Copy className="h-4 w-4" />
+                  </Button>
+                </div>
+              )}
+            </TabsContent>
+          </Tabs>
         </div>
         <div className="flex justify-end space-x-2">
           <Button variant="outline" onClick={onClose}>
-            Anuluj
+            Zamknij
           </Button>
-          <Button onClick={handleShare} disabled={isLoading}>
-            {isLoading ? "Udostępnianie..." : "Udostępnij"}
-          </Button>
+          {currentTab === 'user' && (
+            <Button onClick={handleShare} disabled={isLoading}>
+              {isLoading ? "Udostępnianie..." : "Wyślij klientowi"}
+            </Button>
+          )}
         </div>
       </DialogContent>
     </Dialog>

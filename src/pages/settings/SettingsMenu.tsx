@@ -164,6 +164,9 @@ const SettingsMenu = () => {
                       <div className="flex-1">
                         <h3 className="font-semibold text-lg">{profile.name}</h3>
                         <p className="text-sm text-muted-foreground">NIP: {profile.taxId}</p>
+                        <p className="text-sm text-muted-foreground">
+                          Forma: {profile.entityType === 'sp_zoo' ? 'Spółka z o.o.' : profile.entityType === 'sa' ? 'Spółka akcyjna' : 'Działalność gospodarcza'}
+                        </p>
                       </div>
                       {profile.isDefault && (
                         <Badge variant="secondary" className="bg-blue-100 text-blue-700">

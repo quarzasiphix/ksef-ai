@@ -1,4 +1,3 @@
-
 import { supabase } from "../client";
 import type { BusinessProfile } from "../../../types";
 import { queryClient } from "../../../lib/queryClient";
@@ -39,6 +38,7 @@ export async function getBusinessProfiles(userId: string): Promise<BusinessProfi
       phone: item.phone || undefined,
       logo: item.logo || undefined,
       isDefault: item.is_default || false,
+      entityType: (item as any).entity_type || 'dzialalnosc',
       user_id: item.user_id
     };
   });
@@ -58,6 +58,7 @@ interface BusinessProfileRow {
   phone: string | null;
   logo: string | null;
   is_default: boolean;
+  entity_type?: 'dzialalnosc' | 'sp_zoo' | 'sa';
   user_id: string | null;
   created_at: string;
   updated_at: string;
@@ -96,6 +97,7 @@ export async function getDefaultBusinessProfile(): Promise<BusinessProfile | nul
     phone: data.phone || undefined,
     logo: data.logo || undefined,
     isDefault: data.is_default || false,
+    entityType: (data as any).entity_type || 'dzialalnosc',
     user_id: data.user_id
   };
 }
@@ -138,6 +140,7 @@ export async function getBusinessProfileById(id: string, userId: string): Promis
     phone: data.phone || undefined,
     logo: data.logo || undefined,
     isDefault: data.is_default || false,
+    entityType: (data as any).entity_type || 'dzialalnosc',
     user_id: data.user_id
   };
 }
@@ -204,6 +207,7 @@ export async function saveBusinessProfile(profile: BusinessProfile): Promise<Bus
       phone: profile.phone || null,
       logo: profile.logo || null,
       is_default: profile.isDefault || false,
+      entity_type: profile.entityType || 'dzialalnosc',
       user_id: profile.user_id
     };
 
@@ -251,6 +255,7 @@ export async function saveBusinessProfile(profile: BusinessProfile): Promise<Bus
       phone: result.phone || undefined,
       logo: result.logo || undefined,
       isDefault: result.is_default || false,
+      entityType: (result as any).entity_type || 'dzialalnosc',
       user_id: result.user_id
     };
   } catch (error) {

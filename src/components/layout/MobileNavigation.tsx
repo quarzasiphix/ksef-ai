@@ -20,7 +20,8 @@ import {
   Monitor,
   Shield,
   UserCheck,
-  Boxes
+  Boxes,
+  Signature
 } from 'lucide-react';
 import { useTheme } from '@/components/theme/ThemeProvider';
 import { cn } from '@/lib/utils';
@@ -51,6 +52,7 @@ const MobileNavigation = () => {
 
   const managementItems = [
     { title: "Klienci", path: "/customers", icon: Users, premium: false },
+    { title: "Umowy", path: "/contracts", icon: Signature, premium: false },
     { title: "Pracownicy", path: "/employees", icon: UserCheck, premium: false },
     { title: "Produkty", path: "/products", icon: Package, premium: false },
     { title: "Magazyn", path: "/inventory", icon: Boxes, premium: true },
