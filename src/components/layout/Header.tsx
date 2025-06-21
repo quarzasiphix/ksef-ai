@@ -1,7 +1,6 @@
 import React from "react";
-import { SidebarTrigger } from "@/components/ui/sidebar";
 import { Button } from "@/components/ui/button";
-import { Plus, ArrowDownCircle, ArrowUpCircle, PiggyBank, UserPlus, PackagePlus, DollarSign } from "lucide-react";
+import { Plus, ArrowDownCircle, ArrowUpCircle, PiggyBank, UserPlus, PackagePlus, DollarSign, FileText, CreditCard, Banknote, Calculator } from "lucide-react";
 import { useNavigate, Link } from "react-router-dom";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { ThemeToggle } from "@/components/theme/ThemeToggle";
@@ -20,19 +19,42 @@ const Header = () => {
   const isMobile = useIsMobile();
 
   return (
-    <header className="sticky top-0 z-40 border-b px-4 md:px-6 py-3 flex items-center justify-between bg-background md:static">
-      <div className="flex items-center">
-        <SidebarTrigger className="mr-4 hidden md:flex" />
-        <h1 className={`font-bold text-invoice ${isMobile ? "text-base" : "text-lg"}`}>
-          {isMobile ? "KsiegaI" : "KsiegaI"}
-        </h1>
+    <header className="sticky top-0 z-40 border-b px-4 md:px-6 py-3 flex items-center justify-between bg-background">
+      <div className="flex items-center gap-2 md:gap-4">
+        {/* Desktop/Tablet: Finance buttons */}
+        <div className="hidden md:flex items-center gap-2">
+          <Button asChild variant="default" className="font-bold px-5 py-2 text-base flex items-center gap-2">
+            <Link to="/income">
+              <FileText className="w-5 h-5 mr-1" /> Faktury
+            </Link>
+          </Button>
+          <Button asChild variant="outline" className="px-4 py-2 text-base flex items-center gap-2">
+            <Link to="/expense">
+              <CreditCard className="w-5 h-5 mr-1" /> Wydatki
+            </Link>
+          </Button>
+          {/* Show these only on large screens */}
+          <div className="hidden lg:flex items-center gap-2">
+            <Button asChild variant="outline" className="px-4 py-2 text-base flex items-center gap-2">
+              <Link to="/bank">
+                <Banknote className="w-5 h-5 mr-1" /> Bankowość
+              </Link>
+            </Button>
+            <Button asChild variant="outline" className="px-4 py-2 text-base flex items-center gap-2">
+              <Link to="/accounting">
+                <Calculator className="w-5 h-5 mr-1" /> Księgowość
+              </Link>
+            </Button>
+          </div>
+        </div>
+        <h1 className={`font-bold text-invoice ${isMobile ? "text-base" : "text-lg"}`}>KsiegaI</h1>
       </div>
       <div className="flex items-center gap-4">
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
-            <Button>
+            <Button size="sm">
               <Plus className="mr-2 h-4 w-4" />
-              Nowy dokument
+              Nowy
             </Button>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end">
@@ -60,7 +82,6 @@ const Header = () => {
               <DropdownMenuItem asChild>
                 <Link to="/expense/new?type=receipt">Rachunek</Link>
               </DropdownMenuItem>
-
             </DropdownMenuGroup>
             <DropdownMenuSeparator />
             {/* ZUS Option */}
@@ -82,6 +103,11 @@ const Header = () => {
               <DropdownMenuItem asChild>
                 <Link to="/products/new" className="flex items-center gap-2">
                   <PackagePlus className="h-4 w-4 mr-2 text-green-600" /> Dodaj produkt
+                </Link>
+              </DropdownMenuItem>
+              <DropdownMenuItem asChild>
+                <Link to="/contracts/new" className="flex items-center gap-2">
+                  <FileText className="h-4 w-4 mr-2 text-violet-600" /> Dodaj umowę
                 </Link>
               </DropdownMenuItem>
               <DropdownMenuItem asChild>

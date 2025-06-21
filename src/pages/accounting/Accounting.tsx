@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { useAuth } from "@/context/AuthContext";
 import { Button } from "@/components/ui/button";
-import { Star, TrendingUp, TrendingDown, Calendar, Download, AlertTriangle, CheckCircle, Clock, Building } from "lucide-react";
+import { Star, TrendingUp, TrendingDown, Calendar, Download, AlertTriangle, CheckCircle, Clock, Building, Plus, ChevronDown } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { useBusinessProfile } from "@/context/BusinessProfileContext";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -18,6 +18,27 @@ import { Input } from '@/components/ui/input';
 import { toast } from 'sonner';
 import TaxTimeline from "@/components/accounting/TaxTimeline";
 import TaxReportsCard, { TaxReport } from "@/components/accounting/TaxReportsCard";
+import ZusPaymentDialog from "@/components/accounting/ZusPaymentDialog";
+import { getZusPayments, addZusPayment, updateZusPayment } from "@/integrations/supabase/repositories/zusRepository";
+import type { ZusPayment, ZusType } from "@/types/zus";
+import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuItem } from "@/components/ui/dropdown-menu";
+import { uploadTaxForm, saveFiledTaxForm } from "@/integrations/supabase/repositories/taxFormRepository";
+
+const ZUS_TYPES: ZusType[] = ["społeczne", "zdrowotne", "FP", "FGŚP", "inne"];
+const monthNamesFull = [
+  "Styczeń",
+  "Luty",
+  "Marzec",
+  "Kwiecień",
+  "Maj",
+  "Czerwiec",
+  "Lipiec",
+  "Sierpień",
+  "Wrzesień",
+  "Październik",
+  "Listopad",
+  "Grudzień",
+];
 
 const Accounting = () => {
   const { isPremium, openPremiumDialog, user } = useAuth();
@@ -40,6 +61,12 @@ const Accounting = () => {
 
   // Timeline selection state
   const [selectedMonthIdx, setSelectedMonthIdx] = useState<number>(new Date().getMonth());
+
+  const [zusPayments, setZusPayments] = useState<ZusPayment[]>([]);
+  const [zusDialogOpen, setZusDialogOpen] = useState(false);
+  const [zusDialogInitial, setZusDialogInitial] = useState<any>(null);
+  const [zusDialogMonth, setZusDialogMonth] = useState<string>("");
+  const [zusDialogType, setZusDialogType] = useState<ZusType | undefined>(undefined);
 
   const getMonthlyReports = (monthIdx: number): TaxReport[] => {
     const reports: TaxReport[] = [
@@ -312,9 +339,95 @@ const Accounting = () => {
     setSendToAccountantOpen(false);
   };
 
+  // Fetch ZUS payments for selected profile/month
+  useEffect(() => {
+    if (!user) return;
+    getZusPayments(user.id, undefined, selectedProfileId).then(setZusPayments);
+  }, [user, selectedProfileId]);
+
+  // Helper: get ZUS payment for month/type
+  const getZusForMonthType = (month: string, zusType: ZusType) =>
+    zusPayments.find(zp => zp.month === month && zp.zusType === zusType && (!selectedProfileId || zp.businessProfileId === selectedProfileId));
+
+  // Handler: open dialog for adding/editing ZUS
+  const handleAddEditZus = (month: string, zusType: ZusType) => {
+    setZusDialogMonth(month);
+    setZusDialogType(zusType);
+    const existing = getZusForMonthType(month, zusType);
+    setZusDialogInitial(existing ? { ...existing } : { month, zusType, businessProfileId: selectedProfileId });
+    setZusDialogOpen(true);
+  };
+
+  // Handler: save ZUS payment
+  const handleSaveZus = async (data: Omit<ZusPayment, "id" | "createdAt" | "updatedAt" | "userId">) => {
+    try {
+      let zus: ZusPayment | undefined;
+      const existing = getZusForMonthType(data.month, data.zusType);
+      if (existing) {
+        zus = await updateZusPayment(existing.id, data);
+      } else {
+        zus = await addZusPayment({ ...data, userId: user.id });
+      }
+      setZusPayments(prev => {
+        const filtered = prev.filter(zp => !(zp.month === zus!.month && zp.zusType === zus!.zusType && zp.businessProfileId === zus!.businessProfileId));
+        return [...filtered, zus!];
+      });
+      toast.success("Zapisano płatność ZUS");
+      // TODO: If marked as paid, create matching expense if not already present
+    } catch (err) {
+      toast.error("Błąd zapisu płatności ZUS");
+    }
+  };
+
+  // Generate -> upload -> save metadata
+  const handleGenerateTaxForm = async (report: TaxReport, monthIdx: number) => {
+    if (!selectedProfileId || !user) {
+      toast.error("Brak wybranego profilu lub użytkownika");
+      return;
+    }
+    try {
+      const year = currentYear;
+      const monthNumber = monthIdx + 1;
+      // TODO: swap this placeholder with real PDF/XML generation logic
+      const blob = new Blob([
+        `Generated form: ${report.name} for ${year}-${String(monthNumber).padStart(2, "0")}`
+      ], { type: "application/pdf" });
+
+      // 1. Upload to Storage
+      const storagePath = await uploadTaxForm({
+        businessProfileId: selectedProfileId,
+        year,
+        month: monthNumber,
+        formType: report.name,
+        file: blob,
+      });
+
+      // 2. Insert row into filed_tax_forms
+      await saveFiledTaxForm({
+        businessProfileId: selectedProfileId,
+        userId: user.id,
+        month: `${year}-${String(monthNumber).padStart(2, "0")}`,
+        formType: report.name,
+        storagePath,
+        status: "generated",
+      });
+
+      toast.success("Formularz zapisany w archiwum");
+    } catch (err) {
+      console.error(err);
+      toast.error("Nie udało się zapisać formularza");
+    }
+  };
+
   if (!isPremium) {
     return null;
   }
+
+  // In the timeline/month section, show ZUS status and add button
+  // Example for the selected month:
+  const zusMonthKey = `${currentYear}-${String(selectedMonthIdx + 1).padStart(2, "0")}`;
+  const zusForMonth = ZUS_TYPES.map(zusType => getZusForMonthType(zusMonthKey, zusType)).filter(Boolean) as ZusPayment[];
+  const zusUnpaidTypes = ZUS_TYPES.filter(zusType => !getZusForMonthType(zusMonthKey, zusType));
 
   return (
     <div className="space-y-6 pb-20 px-4 md:px-6">
@@ -328,36 +441,56 @@ const Accounting = () => {
       </div>
       <TaxTimeline selectedMonth={selectedMonthIdx} onMonthSelect={setSelectedMonthIdx} />
 
-      <TaxReportsCard monthIndex={selectedMonthIdx} reports={getMonthlyReports(selectedMonthIdx)} />
-
-      {/* Business Profile Selector 
-      <Card>
-        <CardHeader className="pb-3">
-          <CardTitle className="text-lg">Profil firmowy</CardTitle>
-        </CardHeader>
-        <CardContent>
-          {isLoadingProfiles ? (
-            <div className="animate-pulse h-10 bg-muted rounded-md"></div>
-          ) : profiles && profiles.length > 0 ? (
-            <Select value={selectedProfileId || ''} onValueChange={selectProfile}>
-              <SelectTrigger className="w-full">
-                <SelectValue placeholder="Wybierz profil" />
-              </SelectTrigger>
-              <SelectContent>
-                {profiles.map(profile => (
-                  <SelectItem key={profile.id} value={profile.id}>
-                    {profile.name}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          ) : (
-            <p className="text-sm text-muted-foreground">Brak dostępnych profili firmowych. Dodaj nowy profil w Ustawieniach.</p>
-          )}
-        </CardContent>
-      </Card>
-
-      */}
+      <TaxReportsCard
+        monthIndex={selectedMonthIdx}
+        reports={getMonthlyReports(selectedMonthIdx)}
+        zusPayments={zusPayments}
+        zusTypes={ZUS_TYPES}
+        zusMonthKey={zusMonthKey}
+        onAddEditZus={handleAddEditZus}
+        onGenerateTaxForm={handleGenerateTaxForm}
+      />
+      <div className="mt-4 flex items-center gap-4">
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button variant="outline" className="flex items-center gap-2">
+              Status ZUS <ChevronDown className="h-4 w-4" />
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="start">
+            {ZUS_TYPES.map(zusType => {
+              const zus = getZusForMonthType(zusMonthKey, zusType);
+              return (
+                <div key={zusType} className="flex items-center gap-2 px-3 py-1">
+                  <span className="w-28 font-medium">{zusType.charAt(0).toUpperCase() + zusType.slice(1)}:</span>
+                  {zus ? (
+                    <span className={zus.isPaid ? "text-green-700" : "text-amber-700"}>
+                      {zus.isPaid ? `Opłacone: ${zus.amount} PLN` : `Do zapłaty: ${zus.amount} PLN`}
+                      {zus.isPaid && zus.paidAt ? ` (${zus.paidAt})` : ""}
+                    </span>
+                  ) : (
+                    <span className="text-muted-foreground">Brak danych</span>
+                  )}
+                </div>
+              );
+            })}
+          </DropdownMenuContent>
+        </DropdownMenu>
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button size="sm" variant="outline" className="flex items-center gap-2">
+              <Plus className="h-4 w-4" /> Dodaj ZUS
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end">
+            {ZUS_TYPES.map(zusType => (
+              <DropdownMenuItem key={zusType} onClick={() => handleAddEditZus(zusMonthKey, zusType)}>
+                {zusType.charAt(0).toUpperCase() + zusType.slice(1)}
+              </DropdownMenuItem>
+            ))}
+          </DropdownMenuContent>
+        </DropdownMenu>
+      </div>
 
       {/* Financial Overview Cards */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
@@ -678,6 +811,13 @@ const Accounting = () => {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      <ZusPaymentDialog
+        open={zusDialogOpen}
+        onClose={() => setZusDialogOpen(false)}
+        onSave={handleSaveZus}
+        initialValue={zusDialogInitial}
+      />
     </div>
   );
 };

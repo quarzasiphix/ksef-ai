@@ -1,15 +1,10 @@
 import React from "react";
 import { NavLink, useLocation, useNavigate } from "react-router-dom";
 import { 
-  BarChart, 
-  FileText, 
-  CreditCard, 
+  Plus,
   Users, 
   Package, 
   Settings, 
-  Plus,
-  Calculator,
-  Building,
   Crown,
   User,
   LogOut,
@@ -17,8 +12,10 @@ import {
   Boxes,
   LucideIcon,
   Signature,
+  Building,
+  BarChart,
   Banknote,
-  Home,
+  Calculator,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import {
@@ -59,13 +56,17 @@ const AppSidebar = () => {
     path: string;
     icon: LucideIcon;
     premium?: boolean;
+    className?: string;
   }
 
-  // Define base items
+  // Dashboard item
   const dashboardItem: SidebarItem = { title: "Dashboard", path: "/", icon: BarChart };
-  const invoiceItem = { title: "Faktury", path: "/income", icon: FileText } as SidebarItem;
-  const expenseItem = { title: "Wydatki", path: "/expense", icon: CreditCard } as SidebarItem;
-  const accountingItem: SidebarItem = { title: "Księgowość", path: "/accounting", icon: Calculator, premium: true };
+
+  // Tablet-only finance items
+  const bankItem: SidebarItem = { title: "Bankowość", path: "/bank", icon: Banknote, className: "md:flex lg:hidden" };
+  const accountingItem: SidebarItem = { title: "Księgowość", path: "/accounting", icon: Calculator, className: "md:flex lg:hidden" };
+
+  // Define base items (finance links removed)
   const clientsItem = { title: "Klienci", path: "/customers", icon: Users } as SidebarItem;
   const productsItem = { title: "Produkty", path: "/products", icon: Package } as SidebarItem;
   const contractsItem: SidebarItem = { title: "Umowy", path: "/contracts", icon: Signature };
@@ -73,13 +74,6 @@ const AppSidebar = () => {
   const employeesItem = { title: "Pracownicy", path: "/employees", icon: UserCheck } as SidebarItem;
   const ksefItem: SidebarItem = { title: "KSeF", path: "/ksef", icon: Building, premium: true };
   const settingsItem = { title: "Ustawienia", path: "/settings", icon: Settings } as SidebarItem;
-  const bankAccountsItem: SidebarItem = { title: "Konta bankowe", path: "/bank", icon: Banknote };
-
-  // Sections depending on premium
-  const mainNavItems: SidebarItem[] = [dashboardItem, bankAccountsItem];
-
-  // Finance section
-  const financeItems: SidebarItem[] = [invoiceItem, expenseItem, ...(isPremium ? [accountingItem] : [])];
 
   // Customers & Offer section
   const offerItems: SidebarItem[] = [clientsItem, productsItem, contractsItem, ...(isPremium ? [inventoryItem] : [])];
@@ -88,21 +82,23 @@ const AppSidebar = () => {
   const adminItems: SidebarItem[] = [employeesItem, ...(isPremium ? [ksefItem] : []), settingsItem];
 
   // Premium section for non-premium users (upsell)
-  const premiumFeatures: SidebarItem[] = [accountingItem, inventoryItem, ksefItem];
+  const premiumFeatures: SidebarItem[] = [inventoryItem, ksefItem];
 
   const isActive = (path: string) => {
     if (path === "/") return location.pathname === "/";
     return location.pathname.startsWith(path);
   };
 
-  const getNavClassName = (path: string, premiumItem?: boolean) => {
+  const getNavClassName = (path: string, premiumItem?: boolean, extraClass?: string) => {
     const base = "flex items-center px-3 py-2 rounded-lg transition-all duration-200 w-full";
     const align = isCollapsed ? "justify-center" : "gap-3 justify-start";
+    const extra = extraClass || "";
 
     if (premiumItem && isPremium) {
       return cn(
         base,
         align,
+        extra,
         isActive(path)
           ? "bg-amber-600 text-white shadow-sm"
           : "bg-gradient-to-r from-amber-500 to-orange-600 text-white hover:from-amber-600 hover:to-orange-700"
@@ -112,6 +108,7 @@ const AppSidebar = () => {
     return cn(
       base,
       align,
+      extra,
       isActive(path)
         ? "bg-primary text-primary-foreground font-medium shadow-sm"
         : "hover:bg-muted text-foreground/80 hover:text-foreground dark:text-foreground/90 dark:hover:text-foreground"
@@ -123,8 +120,56 @@ const AppSidebar = () => {
     navigate("/auth/login");
   };
 
+  // Profile info for sidebar footer
+  const SidebarUserInfo = () => {
+    if (!user) return null;
+    const Avatar = (
+      <div
+        className={`relative w-10 h-10 rounded-full flex items-center justify-center ${isPremium ? "bg-gradient-to-br from-amber-500 to-amber-700" : "bg-muted"}`}
+      >
+        <User className="h-5 w-5 text-white" />
+        {isPremium && (
+          <div className="absolute -top-1 -right-1 bg-amber-500 rounded-full p-0.5">
+            <Crown className="h-3 w-3 text-white" />
+          </div>
+        )}
+      </div>
+    );
+    return (
+      <div className="flex items-center gap-3">
+        <NavLink to="/settings" className="flex items-center gap-3 flex-1 min-w-0 group" aria-label="Ustawienia profilu">
+          {Avatar}
+          {!isCollapsed && (
+            <div className="flex-1 min-w-0">
+              <p className="text-sm font-medium truncate group-hover:underline">
+                {user.email}
+              </p>
+              {isPremium && (
+                <span className="inline-flex items-center gap-1 bg-gradient-to-r from-amber-500 to-amber-600 text-white text-[10px] px-1.5 py-0.5 rounded-full">
+                  <Crown className="h-2.5 w-2.5" />
+                  <span>PREMIUM</span>
+                </span>
+              )}
+            </div>
+          )}
+        </NavLink>
+        {!isCollapsed && (
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={handleLogout}
+            className="h-8 w-8"
+            aria-label="Wyloguj"
+          >
+            <LogOut className="h-4 w-4" />
+          </Button>
+        )}
+      </div>
+    );
+  };
+
   return (
-    <Sidebar className={cn("border-r-2 transition-all duration-300", isCollapsed ? "w-32" : "w-64")}>
+    <Sidebar className={cn("border-r-2 transition-all duration-300", isCollapsed ? "w-32" : "w-64")}>  
       <SidebarHeader className="border-b">
         <div className="flex items-center gap-2 px-2">
           {!isCollapsed && (
@@ -148,6 +193,51 @@ const AppSidebar = () => {
           <BusinessProfileSwitcher isCollapsed={isCollapsed} />
         </div>
 
+        {/* Dashboard button */}
+        <SidebarGroup>
+          <SidebarGroupContent>
+            <SidebarMenu>
+              <SidebarMenuItem key={dashboardItem.path}>
+                <SidebarMenuButton
+                  asChild
+                  isActive={isActive(dashboardItem.path)}
+                  tooltip={isCollapsed ? dashboardItem.title : undefined}
+                >
+                  <NavLink to={dashboardItem.path} className={getNavClassName(dashboardItem.path, dashboardItem.premium)}>
+                    <dashboardItem.icon className="h-5 w-5 flex-shrink-0" />
+                    {!isCollapsed && <span>{dashboardItem.title}</span>}
+                  </NavLink>
+                </SidebarMenuButton>
+              </SidebarMenuItem>
+              {/* Tablet-only: Bankowość and Księgowość */}
+              <SidebarMenuItem key={bankItem.path} className="md:flex lg:hidden">
+                <SidebarMenuButton
+                  asChild
+                  isActive={isActive(bankItem.path)}
+                  tooltip={isCollapsed ? bankItem.title : undefined}
+                >
+                  <NavLink to={bankItem.path} className={getNavClassName(bankItem.path, bankItem.premium, bankItem.className)}>
+                    <bankItem.icon className="h-5 w-5 flex-shrink-0" />
+                    {!isCollapsed && <span>{bankItem.title}</span>}
+                  </NavLink>
+                </SidebarMenuButton>
+              </SidebarMenuItem>
+              <SidebarMenuItem key={accountingItem.path} className="md:flex lg:hidden">
+                <SidebarMenuButton
+                  asChild
+                  isActive={isActive(accountingItem.path)}
+                  tooltip={isCollapsed ? accountingItem.title : undefined}
+                >
+                  <NavLink to={accountingItem.path} className={getNavClassName(accountingItem.path, accountingItem.premium, accountingItem.className)}>
+                    <accountingItem.icon className="h-5 w-5 flex-shrink-0" />
+                    {!isCollapsed && <span>{accountingItem.title}</span>}
+                  </NavLink>
+                </SidebarMenuButton>
+              </SidebarMenuItem>
+            </SidebarMenu>
+          </SidebarGroupContent>
+        </SidebarGroup>
+
         {/* Quick Actions */}
         <SidebarGroup>
           {!isCollapsed && <SidebarGroupLabel>SZYBKIE AKCJE</SidebarGroupLabel>}
@@ -159,73 +249,17 @@ const AppSidebar = () => {
                     asChild
                     tooltip={isCollapsed ? action.title : undefined}
                   >
-                    <NavLink
-                      to={action.path}
-                      className={cn(
-                        "flex items-center rounded-lg bg-muted hover:bg-muted/80 transition-colors w-full dark:bg-muted/50 dark:hover:bg-muted/70",
-                        isCollapsed ? "justify-center h-10 px-0" : "gap-3 px-3 py-2"
-                      )}
-                    >
+                    <a href={action.path} className={cn(
+                      "flex items-center rounded-lg bg-muted hover:bg-muted/80 transition-colors w-full dark:bg-muted/50 dark:hover:bg-muted/70",
+                      isCollapsed ? "justify-center h-10 px-0" : "gap-3 px-3 py-2"
+                    )}>
                       <action.icon className={`h-5 w-5 flex-shrink-0 ${action.color} dark:opacity-90`} />
                       {!isCollapsed && (
                         <span className="font-medium text-foreground/90 dark:text-foreground">
                           {action.title}
                         </span>
                       )}
-                    </NavLink>
-                  </SidebarMenuButton>
-                </SidebarMenuItem>
-              ))}
-            </SidebarMenu>
-          </SidebarGroupContent>
-        </SidebarGroup>
-
-        {/* Main */}
-        <SidebarGroup>
-          {!isCollapsed && <SidebarGroupLabel>GŁÓWNE</SidebarGroupLabel>}
-          <SidebarGroupContent>
-            <SidebarMenu>
-              {mainNavItems.map((item) => (
-                <SidebarMenuItem key={item.path}>
-                  <SidebarMenuButton
-                    asChild
-                    isActive={isActive(item.path)}
-                    tooltip={isCollapsed ? item.title : undefined}
-                  >
-                    <NavLink to={item.path} className={getNavClassName(item.path, item.premium)}>
-                      <item.icon className="h-5 w-5 flex-shrink-0" />
-                      {!isCollapsed && <span>{item.title}</span>}
-                    </NavLink>
-                  </SidebarMenuButton>
-                </SidebarMenuItem>
-              ))}
-            </SidebarMenu>
-          </SidebarGroupContent>
-        </SidebarGroup>
-
-        {/* Finance */}
-        <SidebarGroup>
-          {!isCollapsed && <SidebarGroupLabel>FINANSE</SidebarGroupLabel>}
-          <SidebarGroupContent>
-            <SidebarMenu>
-              {financeItems.map((item) => (
-                <SidebarMenuItem key={item.path}>
-                  <SidebarMenuButton
-                    asChild
-                    isActive={isActive(item.path)}
-                    tooltip={isCollapsed ? item.title : undefined}
-                  >
-                    <NavLink to={item.path} className={getNavClassName(item.path, item.premium)}>
-                      <item.icon className="h-5 w-5 flex-shrink-0" />
-                      {!isCollapsed && (
-                        <span className="flex items-center gap-1">
-                          {item.title}
-                          {item.premium && (
-                            <Crown className={cn("h-3 w-3", isPremium ? "text-white" : "text-amber-500")} />
-                          )}
-                        </span>
-                      )}
-                    </NavLink>
+                    </a>
                   </SidebarMenuButton>
                 </SidebarMenuItem>
               ))}
@@ -247,14 +281,7 @@ const AppSidebar = () => {
                   >
                     <NavLink to={item.path} className={getNavClassName(item.path, item.premium)}>
                       <item.icon className="h-5 w-5 flex-shrink-0" />
-                      {!isCollapsed && (
-                        <span className="flex items-center gap-1">
-                          {item.title}
-                          {item.premium && (
-                            <Crown className={cn("h-3 w-3", isPremium ? "text-white" : "text-amber-500")} />
-                          )}
-                        </span>
-                      )}
+                      {!isCollapsed && <span>{item.title}</span>}
                     </NavLink>
                   </SidebarMenuButton>
                 </SidebarMenuItem>
@@ -277,14 +304,7 @@ const AppSidebar = () => {
                   >
                     <NavLink to={item.path} className={getNavClassName(item.path, item.premium)}>
                       <item.icon className="h-5 w-5 flex-shrink-0" />
-                      {!isCollapsed && (
-                        <span className="flex items-center gap-1">
-                          {item.title}
-                          {item.premium && (
-                            <Crown className={cn("h-3 w-3", isPremium ? "text-white" : "text-amber-500")} />
-                          )}
-                        </span>
-                      )}
+                      {!isCollapsed && <span>{item.title}</span>}
                     </NavLink>
                   </SidebarMenuButton>
                 </SidebarMenuItem>
@@ -331,106 +351,14 @@ const AppSidebar = () => {
                 ))}
               </SidebarMenu>
             </SidebarGroupContent>
-
-            {!isCollapsed && (
-              <div className="px-2 mt-2">
-                <Button
-                  onClick={openPremiumDialog}
-                  className="w-full bg-gradient-to-r from-amber-500 to-orange-600 hover:from-amber-600 hover:to-orange-700 text-white"
-                  size="sm"
-                >
-                  <Crown className="mr-2 h-4 w-4" />
-                  Kup Premium
-                </Button>
-              </div>
-            )}
           </SidebarGroup>
         )}
       </SidebarContent>
-      
-      {/* beginning of footer */}
+
       <SidebarFooter className="border-t p-4">
-        <SidebarUserInfo isCollapsed={isCollapsed} user={user} isPremium={isPremium} handleLogout={handleLogout} />
+        <SidebarUserInfo />
       </SidebarFooter>
     </Sidebar>
-  );
-};
-
-// Desktop sidebar user info styled like mobile
-const SidebarUserInfo = ({
-  isCollapsed,
-  user,
-  isPremium,
-  handleLogout,
-}: {
-  isCollapsed: boolean;
-  user: { email?: string } | null;
-  isPremium: boolean;
-  handleLogout: () => void;
-}) => {
-  if (!user) return null;
-
-  // Shared avatar markup to reuse between collapsed & expanded views
-  const Avatar = (
-    <div
-      className={`relative w-10 h-10 rounded-full flex items-center justify-center ${isPremium ? "bg-gradient-to-br from-amber-500 to-amber-700" : "bg-muted"}`}
-    >
-      <User className="h-5 w-5 text-white" />
-      {isPremium && (
-        <div className="absolute -top-1 -right-1 bg-amber-500 rounded-full p-0.5">
-          <Crown className="h-3 w-3 text-white" />
-        </div>
-      )}
-    </div>
-  );
-
-  if (isCollapsed) {
-    return (
-      <div className="flex items-center justify-center w-full">
-        <NavLink to="/settings" className="flex-shrink-0" aria-label="Ustawienia profilu">
-          {Avatar}
-        </NavLink>
-        <Button
-          variant="ghost"
-          size="icon"
-          onClick={handleLogout}
-          className="ml-2 h-8 w-8"
-        >
-          <LogOut className="h-4 w-4" />
-        </Button>
-      </div>
-    );
-  }
-
-  return (
-    <div className="w-full">
-      <div className="flex items-center gap-3">
-        <NavLink to="/settings" className="flex items-center gap-3 flex-1 min-w-0 group" aria-label="Ustawienia profilu">
-          {Avatar}
-          <div className="flex-1 min-w-0">
-            <p className="text-sm font-medium truncate group-hover:underline">
-              {user.email}
-            </p>
-            {isPremium && (
-              <span className="inline-flex items-center gap-1 bg-gradient-to-r from-amber-500 to-amber-600 text-white text-[10px] px-1.5 py-0.5 rounded-full">
-                <Crown className="h-2.5 w-2.5" />
-                <span>PREMIUM</span>
-              </span>
-            )}
-          </div>
-        </NavLink>
-
-        <Button
-          variant="ghost"
-          size="icon"
-          onClick={handleLogout}
-          className="h-8 w-8"
-          aria-label="Wyloguj"
-        >
-          <LogOut className="h-4 w-4" />
-        </Button>
-      </div>
-    </div>
   );
 };
 

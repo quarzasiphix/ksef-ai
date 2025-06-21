@@ -29,7 +29,8 @@ import {
   ArrowRight,
   Calendar,
   UserCheck,
-  Boxes
+  Boxes,
+  Banknote
 } from "lucide-react";
 import AccountOnboardingWidget from '@/components/welcome/AccountOnboardingWidget';
 import TaxReportsCard, { TaxReport } from '@/components/accounting/TaxReportsCard';
@@ -200,6 +201,13 @@ const Dashboard = () => {
       description: "Integracja z KSeF",
       icon: Building,
       path: "/ksef",
+      premium: true,
+    },
+    {
+      title: "Bankowość",
+      description: "Importuj i analizuj transakcje bankowe",
+      icon: Banknote,
+      path: "/bank",
       premium: true,
     },
     ...(isPremium ? [{

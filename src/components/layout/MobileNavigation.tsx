@@ -21,7 +21,8 @@ import {
   Shield,
   UserCheck,
   Boxes,
-  Signature
+  Signature,
+  Banknote
 } from 'lucide-react';
 import { useTheme } from '@/components/theme/ThemeProvider';
 import { cn } from '@/lib/utils';
@@ -34,6 +35,8 @@ import { useBusinessProfile } from '@/context/BusinessProfileContext';
 const MobileNavigation = () => {
   const { theme, setTheme } = useTheme();
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
+  const { isPremium, openPremiumDialog } = useAuth();
+
   // Main bottom navigation items - most used features
   const mainNavItems = [
     { title: "Dashboard", path: "/", icon: BarChart },
@@ -48,8 +51,6 @@ const MobileNavigation = () => {
   ];
 
   // Management items for the side menu (inventory is premium gated)
-  const { isPremium, openPremiumDialog } = useAuth();
-
   const managementItems = [
     { title: "Klienci", path: "/customers", icon: Users, premium: false },
     { title: "Umowy", path: "/contracts", icon: Signature, premium: false },
@@ -59,21 +60,41 @@ const MobileNavigation = () => {
     { title: "Ustawienia", path: "/settings", icon: Settings, premium: false },
   ];
 
-  // Premium features for the side menu (Magazyn moved to management)
+  // Premium features
   const premiumFeatures = [
-    { title: "Księgowość", path: "/accounting", icon: Calculator, premium: true },
-    { title: "KSeF", path: "/ksef", icon: Building, premium: true },
+    { title: "Księgowość", path: "/accounting", icon: Calculator, premium: true, group: "finanse" },
+    { title: "KSeF", path: "/ksef", icon: Building, premium: true, group: "zarzadzanie" },
   ];
 
-  const getNavClassName = ({ isActive }: { isActive: boolean }) => {
-    const { profiles, selectedProfileId, isLoadingProfiles } = useBusinessProfile();
-    const { user, isPremium } = useAuth();
+  // Finanse group
+  const finanseItems = [
+    { title: "Faktury", path: "/income", icon: FileText },
+    { title: "Wydatki", path: "/expense", icon: CreditCard },
+    { title: "Bankowość", path: "/bank", icon: Banknote },
+  ];
+  if (isPremium) {
+    finanseItems.push(premiumFeatures[0]); // Księgowość
+  }
 
-    return cn(
-      "flex flex-col items-center justify-center px-4 py-2",
-      isActive ? "text-primary" : "text-muted-foreground"
-    );
-  };
+  // Zarządzanie group
+  const zarzadzanieItems = [
+    { title: "Klienci", path: "/customers", icon: Users },
+    { title: "Produkty", path: "/products", icon: Package },
+    { title: "Umowy", path: "/contracts", icon: Signature },
+    { title: "Pracownicy", path: "/employees", icon: UserCheck },
+    { title: "Magazyn", path: "/inventory", icon: Boxes, premium: true },
+  ];
+  if (isPremium) {
+    zarzadzanieItems.push(premiumFeatures[1]); // KSeF
+  }
+
+  // Ustawienia group
+  const ustawieniaItems = [
+    { title: "Ustawienia", path: "/settings", icon: Settings },
+  ];
+
+  // For non-premium users, show premium features in a separate section
+  const showPremiumSection = !isPremium;
 
   const location = useLocation();
   const hideNav = location.pathname.startsWith('/invoices/new') || 
@@ -91,13 +112,17 @@ const MobileNavigation = () => {
           key={item.path}
           to={item.path}
           end={item.path === "/"}
-          className={getNavClassName}
+          className={({ isActive }) =>
+            cn(
+              "flex flex-col items-center justify-center px-4 py-2",
+              isActive ? "text-primary" : "text-muted-foreground"
+            )
+          }
         >
           <item.icon className="h-5 w-5" />
           <span className="text-xs mt-1">{item.title}</span>
         </NavLink>
       ))}
-      
       <Sheet>
         <SheetTrigger className="flex flex-col items-center justify-center px-4 py-2 text-muted-foreground">
           <Menu className="h-5 w-5" />
@@ -107,11 +132,17 @@ const MobileNavigation = () => {
           {/* Scrollable content area */}
           <div className="flex-1 overflow-y-auto scrollbar-hide pt-6">
             <div className="flex flex-col space-y-6 px-6">
-              
-              {/* Premium Features Section - Moved to top */}
-              <PremiumSection features={premiumFeatures} />
-
-              {/* Quick Actions Section */}
+              {/* Premium badge at top if premium */}
+              {isPremium && (
+                <div className="flex items-center justify-between mb-3 px-2">
+                  <h3 className="text-sm font-semibold text-muted-foreground">PREMIUM</h3>
+                  <div className="flex items-center gap-1">
+                    <Crown className="h-3 w-3 text-amber-500" />
+                    <span className="text-xs text-amber-600 font-medium">AKTYWNE</span>
+                  </div>
+                </div>
+              )}
+              {/* Quick Actions */}
               <div>
                 <h3 className="text-sm font-semibold text-muted-foreground mb-3 px-2">SZYBKIE AKCJE</h3>
                 <div className="space-y-2">
@@ -127,12 +158,30 @@ const MobileNavigation = () => {
                   ))}
                 </div>
               </div>
-
-              {/* Management Section */}
+              {/* Finanse Section */}
+              <div>
+                <h3 className="text-sm font-semibold text-muted-foreground mb-3 px-2">FINANSE</h3>
+                <div className="space-y-1">
+                  {finanseItems.map((item) => (
+                    <NavLink
+                      key={item.path}
+                      to={item.path}
+                      className={({ isActive }) =>
+                        cn("flex items-center gap-3 px-3 py-2 rounded-lg transition-colors",
+                          isActive ? "bg-primary/10 text-primary font-medium" : "text-foreground hover:bg-muted")
+                      }
+                    >
+                      <item.icon className="h-5 w-5" />
+                      <span>{item.title}</span>
+                    </NavLink>
+                  ))}
+                </div>
+              </div>
+              {/* Zarządzanie Section */}
               <div>
                 <h3 className="text-sm font-semibold text-muted-foreground mb-3 px-2">ZARZĄDZANIE</h3>
                 <div className="space-y-1">
-                  {managementItems.map((item) => (
+                  {zarzadzanieItems.map((item) => (
                     item.premium && !isPremium ? (
                       <div
                         key={item.title}
@@ -147,9 +196,9 @@ const MobileNavigation = () => {
                       <NavLink
                         key={item.path}
                         to={item.path}
-                        className={({ isActive }) => 
-                          cn("flex items-center gap-3 px-3 py-2 rounded-lg transition-colors", 
-                             isActive ? "bg-primary/10 text-primary font-medium" : "text-foreground hover:bg-muted")
+                        className={({ isActive }) =>
+                          cn("flex items-center gap-3 px-3 py-2 rounded-lg transition-colors",
+                            isActive ? "bg-primary/10 text-primary font-medium" : "text-foreground hover:bg-muted")
                         }
                       >
                         <item.icon className="h-5 w-5" />
@@ -159,7 +208,25 @@ const MobileNavigation = () => {
                   ))}
                 </div>
               </div>
-              
+              {/* Premium Section for non-premium users */}
+              {showPremiumSection && (
+                <div>
+                  <h3 className="text-sm font-semibold text-muted-foreground mb-3 px-2">PREMIUM</h3>
+                  <div className="space-y-1">
+                    {premiumFeatures.map((feature) => (
+                      <div
+                        key={feature.title}
+                        className="flex items-center gap-3 px-3 py-2 rounded-lg bg-amber-50 border border-amber-200 cursor-pointer"
+                        onClick={openPremiumDialog}
+                      >
+                        <feature.icon className="h-5 w-5 text-amber-600" />
+                        <span className="text-amber-900 font-medium flex-1">{feature.title}</span>
+                        <Crown className="h-4 w-4 text-amber-600" />
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
               {/* Theme Toggle */}
               <div className="border-t pt-4">
                 <div className="px-3">
@@ -177,7 +244,6 @@ const MobileNavigation = () => {
                       </div>
                       <ChevronDown className={`h-4 w-4 text-muted-foreground transition-transform ${isDropdownOpen ? 'rotate-180' : ''}`} />
                     </button>
-                    
                     {isDropdownOpen && (
                       <div className="absolute z-50 w-full mt-1 bg-popover rounded-md shadow-lg border border-border overflow-hidden">
                         <button
@@ -215,7 +281,6 @@ const MobileNavigation = () => {
                   </div>
                 </div>
               </div>
-
               {/* Policies Section */}
               <div className="border-t pt-4">
                 <div className="px-3">
@@ -223,9 +288,9 @@ const MobileNavigation = () => {
                   <div className="space-y-1">
                     <NavLink
                       to="/policies/privacy"
-                      className={({ isActive }) => 
-                        cn("flex items-center gap-3 px-3 py-2 rounded-lg transition-colors", 
-                           isActive ? "bg-primary/10 text-primary font-medium" : "text-foreground hover:bg-muted")
+                      className={({ isActive }) =>
+                        cn("flex items-center gap-3 px-3 py-2 rounded-lg transition-colors",
+                          isActive ? "bg-primary/10 text-primary font-medium" : "text-foreground hover:bg-muted")
                       }
                     >
                       <Shield className="h-5 w-5" />
@@ -233,9 +298,9 @@ const MobileNavigation = () => {
                     </NavLink>
                     <NavLink
                       to="/policies/tos"
-                      className={({ isActive }) => 
-                        cn("flex items-center gap-3 px-3 py-2 rounded-lg transition-colors", 
-                           isActive ? "bg-primary/10 text-primary font-medium" : "text-foreground hover:bg-muted")
+                      className={({ isActive }) =>
+                        cn("flex items-center gap-3 px-3 py-2 rounded-lg transition-colors",
+                          isActive ? "bg-primary/10 text-primary font-medium" : "text-foreground hover:bg-muted")
                       }
                     >
                       <FileText className="h-5 w-5" />
@@ -243,9 +308,9 @@ const MobileNavigation = () => {
                     </NavLink>
                     <NavLink
                       to="/policies/refunds"
-                      className={({ isActive }) => 
-                        cn("flex items-center gap-3 px-3 py-2 rounded-lg transition-colors", 
-                           isActive ? "bg-primary/10 text-primary font-medium" : "text-foreground hover:bg-muted")
+                      className={({ isActive }) =>
+                        cn("flex items-center gap-3 px-3 py-2 rounded-lg transition-colors",
+                          isActive ? "bg-primary/10 text-primary font-medium" : "text-foreground hover:bg-muted")
                       }
                     >
                       <CreditCard className="h-5 w-5" />
@@ -254,7 +319,6 @@ const MobileNavigation = () => {
                   </div>
                 </div>
               </div>
-
               {/* Extra padding to ensure content doesn't hide behind sticky footer */}
               <div className="h-20"></div>
             </div>
@@ -267,63 +331,6 @@ const MobileNavigation = () => {
         </SheetContent>
       </Sheet>
     </nav>
-  );
-};
-
-const PremiumSection = ({ features }: { features: any[] }) => {
-  const { isPremium, openPremiumDialog } = useAuth();
-
-  return (
-    <div>
-      <div className="flex items-center justify-between mb-3 px-2">
-        <h3 className="text-sm font-semibold text-muted-foreground">PREMIUM</h3>
-        {isPremium && (
-          <div className="flex items-center gap-1">
-            <Crown className="h-3 w-3 text-amber-500" />
-            <span className="text-xs text-amber-600 font-medium">AKTYWNE</span>
-          </div>
-        )}
-      </div>
-      
-      <div className="space-y-1">
-        {features.map((feature) => (
-          <div key={feature.path}>
-            {isPremium ? (
-              <NavLink
-                to={feature.path}
-                className={({ isActive }) => 
-                  cn("flex items-center gap-3 px-3 py-2 rounded-lg transition-colors", 
-                     isActive ? "bg-amber-100 text-amber-900 font-medium" : "text-foreground hover:bg-muted")
-                }
-              >
-                <feature.icon className="h-5 w-5 text-amber-600" />
-                <span>{feature.title}</span>
-              </NavLink>
-            ) : (
-              <div 
-                className="flex items-center gap-3 px-3 py-2 rounded-lg bg-amber-50 border border-amber-200 cursor-pointer"
-                onClick={openPremiumDialog}
-              >
-                <feature.icon className="h-5 w-5 text-amber-600" />
-                <span className="text-amber-900 font-medium">{feature.title}</span>
-                <Crown className="h-4 w-4 text-amber-600 ml-auto" />
-              </div>
-            )}
-          </div>
-        ))}
-      </div>
-
-      {!isPremium && (
-        <Button 
-          onClick={openPremiumDialog}
-          className="w-full mt-3 bg-gradient-to-r from-amber-500 to-orange-600 hover:from-amber-600 hover:to-orange-700"
-          size="sm"
-        >
-          <Crown className="mr-2 h-4 w-4" />
-          Kup Premium
-        </Button>
-      )}
-    </div>
   );
 };
 
