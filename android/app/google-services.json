@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "934948347959",
+    "project_id": "ksiegai",
+    "storage_bucket": "ksiegai.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:934948347959:android:5abbbb015633e8560d1fb2",
+        "android_client_info": {
+          "package_name": "pl.ksiegai.mobile"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyB641QfrEUDGZrnvKpLocbsCaJG9vviiz4"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

@@ -47,6 +47,7 @@ import ShareDocuments from '@/pages/public/ShareDocuments';
 import ContractList from '@/pages/contracts/ContractList';
 import ContractNew from '@/pages/contracts/ContractNew';
 import ContractDetails from '@/pages/contracts/ContractDetails';
+import BankAccounts from "@/pages/bank/BankAccounts";
 
 import { queryClient } from '@/lib/queryClient';
 import { useAuth } from '@/hooks/useAuth';
@@ -183,6 +184,11 @@ const App = () => {
                 <Route path="/dashboard" element={
                   <ProtectedRoute>
                     <Dashboard />
+                  </ProtectedRoute>
+                } />
+                <Route path="/bank" element={
+                  <ProtectedRoute>
+                    <BankAccounts />
                   </ProtectedRoute>
                 } />
                 <Route path="/income" element={

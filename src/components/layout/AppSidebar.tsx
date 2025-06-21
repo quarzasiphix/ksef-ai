@@ -17,6 +17,8 @@ import {
   Boxes,
   LucideIcon,
   Signature,
+  Banknote,
+  Home,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import {
@@ -71,9 +73,10 @@ const AppSidebar = () => {
   const employeesItem = { title: "Pracownicy", path: "/employees", icon: UserCheck } as SidebarItem;
   const ksefItem: SidebarItem = { title: "KSeF", path: "/ksef", icon: Building, premium: true };
   const settingsItem = { title: "Ustawienia", path: "/settings", icon: Settings } as SidebarItem;
+  const bankAccountsItem: SidebarItem = { title: "Konta bankowe", path: "/bank", icon: Banknote };
 
   // Sections depending on premium
-  const mainNavItems: SidebarItem[] = [dashboardItem];
+  const mainNavItems: SidebarItem[] = [dashboardItem, bankAccountsItem];
 
   // Finance section
   const financeItems: SidebarItem[] = [invoiceItem, expenseItem, ...(isPremium ? [accountingItem] : [])];

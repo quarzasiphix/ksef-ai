@@ -1,7 +1,7 @@
 import { CapacitorConfig } from '@capacitor/cli';
 
 const config: CapacitorConfig = {
-  appId: 'pl.ksiegai.app',
+  appId: 'pl.ksiegai.mobile',
   appName: 'KsiegaI',
   webDir: 'dist',
   server: {
