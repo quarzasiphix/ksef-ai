@@ -23,6 +23,7 @@ import { getZusPayments, addZusPayment, updateZusPayment } from "@/integrations/
 import type { ZusPayment, ZusType } from "@/types/zus";
 import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuItem } from "@/components/ui/dropdown-menu";
 import { uploadTaxForm, saveFiledTaxForm } from "@/integrations/supabase/repositories/taxFormRepository";
+import { listFiledTaxForms, FiledTaxForm, updateFiledTaxFormStatus } from "@/integrations/supabase/repositories/filedTaxFormsRepository";
 
 const ZUS_TYPES: ZusType[] = ["społeczne", "zdrowotne", "FP", "FGŚP", "inne"];
 const monthNamesFull = [
@@ -67,6 +68,17 @@ const Accounting = () => {
   const [zusDialogInitial, setZusDialogInitial] = useState<any>(null);
   const [zusDialogMonth, setZusDialogMonth] = useState<string>("");
   const [zusDialogType, setZusDialogType] = useState<ZusType | undefined>(undefined);
+
+  // Filed forms state
+  const [filedForms, setFiledForms] = useState<FiledTaxForm[]>([]);
+
+  // Load filed forms when profile changes
+  useEffect(() => {
+    if (!selectedProfileId) return;
+    listFiledTaxForms(selectedProfileId)
+      .then(setFiledForms)
+      .catch(err => console.error("Failed to load filed forms", err));
+  }, [selectedProfileId]);
 
   const getMonthlyReports = (monthIdx: number): TaxReport[] => {
     const reports: TaxReport[] = [
@@ -393,6 +405,14 @@ const Accounting = () => {
         `Generated form: ${report.name} for ${year}-${String(monthNumber).padStart(2, "0")}`
       ], { type: "application/pdf" });
 
+      // Trigger download for user
+      const tempUrl = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = tempUrl;
+      a.download = `${report.name}_${year}-${String(monthNumber).padStart(2, "0")}.pdf`;
+      a.click();
+      URL.revokeObjectURL(tempUrl);
+
       // 1. Upload to Storage
       const storagePath = await uploadTaxForm({
         businessProfileId: selectedProfileId,
@@ -403,19 +423,91 @@ const Accounting = () => {
       });
 
       // 2. Insert row into filed_tax_forms
+      const monthStr = `${year}-${String(monthNumber).padStart(2, "0")}`;
       await saveFiledTaxForm({
         businessProfileId: selectedProfileId,
         userId: user.id,
-        month: `${year}-${String(monthNumber).padStart(2, "0")}`,
+        month: monthStr,
         formType: report.name,
         storagePath,
         status: "generated",
       });
 
+      setFiledForms(prev => [...prev, {
+        id: crypto.randomUUID(),
+        business_profile_id: selectedProfileId,
+        user_id: user.id,
+        month: monthStr,
+        form_type: report.name,
+        file_url: storagePath,
+        status: "generated",
+        generated_at: new Date().toISOString(),
+        filed_at: null,
+      }]);
+
       toast.success("Formularz zapisany w archiwum");
     } catch (err) {
       console.error(err);
       toast.error("Nie udało się zapisać formularza");
+    }
+  };
+
+  // Upload existing PDF/XML
+  const handleUploadTaxForm = async (report: TaxReport, monthIdx: number, file: File) => {
+    if (!selectedProfileId || !user) return;
+    try {
+      const year = currentYear;
+      const monthNumber = monthIdx + 1;
+      const storagePath = await uploadTaxForm({
+        businessProfileId: selectedProfileId,
+        year,
+        month: monthNumber,
+        formType: report.name,
+        file,
+      });
+
+      const monthStr = `${year}-${String(monthNumber).padStart(2, "0")}`;
+      await saveFiledTaxForm({
+        businessProfileId: selectedProfileId,
+        userId: user.id,
+        month: monthStr,
+        formType: report.name,
+        storagePath,
+        status: "filed",
+        filedAt: new Date().toISOString(),
+      });
+
+      toast.success("Plik przesłany i oznaczony jako złożony");
+      setFiledForms(prev => [...prev, {
+        id: crypto.randomUUID(),
+        business_profile_id: selectedProfileId,
+        user_id: user.id,
+        month: monthStr,
+        form_type: report.name,
+        file_url: storagePath,
+        status: "filed",
+        generated_at: new Date().toISOString(),
+        filed_at: new Date().toISOString(),
+      }]);
+    } catch (err) {
+      toast.error("Nie udało się przesłać pliku");
+    }
+  };
+
+  // Mark existing generated form as filed
+  const handleMarkFiled = async (report: TaxReport, monthIdx: number) => {
+    const monthStr = `${currentYear}-${String(monthIdx + 1).padStart(2, "0")}`;
+    const existing = filedForms.find(f => f.month === monthStr && f.form_type === report.name);
+    if (!existing) {
+      toast.error("Brak wygenerowanego pliku do oznaczenia");
+      return;
+    }
+    try {
+      await updateFiledTaxFormStatus(existing.id, "filed", new Date().toISOString());
+      setFiledForms(prev => prev.map(f => f.id === existing.id ? { ...f, status: "filed", filed_at: new Date().toISOString() } : f));
+      toast.success("Oznaczono jako złożone");
+    } catch {
+      toast.error("Nie udało się oznaczyć");
     }
   };
 
@@ -449,48 +541,12 @@ const Accounting = () => {
         zusMonthKey={zusMonthKey}
         onAddEditZus={handleAddEditZus}
         onGenerateTaxForm={handleGenerateTaxForm}
+        onUploadTaxForm={handleUploadTaxForm}
+        onMarkFiled={handleMarkFiled}
+        monthIncome={totalIncome}
+        monthExpenses={totalExpenses}
+        filedForms={filedForms}
       />
-      <div className="mt-4 flex items-center gap-4">
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <Button variant="outline" className="flex items-center gap-2">
-              Status ZUS <ChevronDown className="h-4 w-4" />
-            </Button>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent align="start">
-            {ZUS_TYPES.map(zusType => {
-              const zus = getZusForMonthType(zusMonthKey, zusType);
-              return (
-                <div key={zusType} className="flex items-center gap-2 px-3 py-1">
-                  <span className="w-28 font-medium">{zusType.charAt(0).toUpperCase() + zusType.slice(1)}:</span>
-                  {zus ? (
-                    <span className={zus.isPaid ? "text-green-700" : "text-amber-700"}>
-                      {zus.isPaid ? `Opłacone: ${zus.amount} PLN` : `Do zapłaty: ${zus.amount} PLN`}
-                      {zus.isPaid && zus.paidAt ? ` (${zus.paidAt})` : ""}
-                    </span>
-                  ) : (
-                    <span className="text-muted-foreground">Brak danych</span>
-                  )}
-                </div>
-              );
-            })}
-          </DropdownMenuContent>
-        </DropdownMenu>
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <Button size="sm" variant="outline" className="flex items-center gap-2">
-              <Plus className="h-4 w-4" /> Dodaj ZUS
-            </Button>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent align="end">
-            {ZUS_TYPES.map(zusType => (
-              <DropdownMenuItem key={zusType} onClick={() => handleAddEditZus(zusMonthKey, zusType)}>
-                {zusType.charAt(0).toUpperCase() + zusType.slice(1)}
-              </DropdownMenuItem>
-            ))}
-          </DropdownMenuContent>
-        </DropdownMenu>
-      </div>
 
       {/* Financial Overview Cards */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">

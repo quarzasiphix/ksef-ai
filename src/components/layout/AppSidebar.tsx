@@ -169,7 +169,7 @@ const AppSidebar = () => {
   };
 
   return (
-    <Sidebar className={cn("border-r-2 transition-all duration-300", isCollapsed ? "w-32" : "w-64")}>  
+    <Sidebar className={cn("border-r-2 transition-all duration-300", isCollapsed ? "w-32" : "w-64")}>
       <SidebarHeader className="border-b">
         <div className="flex items-center gap-2 px-2">
           {!isCollapsed && (
@@ -250,8 +250,8 @@ const AppSidebar = () => {
                     tooltip={isCollapsed ? action.title : undefined}
                   >
                     <a href={action.path} className={cn(
-                      "flex items-center rounded-lg bg-muted hover:bg-muted/80 transition-colors w-full dark:bg-muted/50 dark:hover:bg-muted/70",
-                      isCollapsed ? "justify-center h-10 px-0" : "gap-3 px-3 py-2"
+                        "flex items-center rounded-lg bg-muted hover:bg-muted/80 transition-colors w-full dark:bg-muted/50 dark:hover:bg-muted/70",
+                        isCollapsed ? "justify-center h-10 px-0" : "gap-3 px-3 py-2"
                     )}>
                       <action.icon className={`h-5 w-5 flex-shrink-0 ${action.color} dark:opacity-90`} />
                       {!isCollapsed && (
@@ -354,7 +354,7 @@ const AppSidebar = () => {
           </SidebarGroup>
         )}
       </SidebarContent>
-
+      
       <SidebarFooter className="border-t p-4">
         <SidebarUserInfo />
       </SidebarFooter>

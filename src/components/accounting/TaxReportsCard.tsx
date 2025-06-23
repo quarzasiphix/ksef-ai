@@ -7,6 +7,8 @@ import { pl } from "date-fns/locale";
 import { toast } from "sonner";
 import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuItem } from "@/components/ui/dropdown-menu";
 import type { ZusPayment, ZusType } from "@/types/zus";
+import type { FiledTaxForm } from "@/integrations/supabase/repositories/filedTaxFormsRepository";
+import TaxReportDialog from "./TaxReportDialog";
 
 export interface TaxReport {
   id: string;
@@ -23,6 +25,11 @@ interface TaxReportsCardProps {
   zusMonthKey?: string;
   onAddEditZus?: (month: string, zusType: ZusType) => void;
   onGenerateTaxForm?: (report: TaxReport, monthIndex: number) => void | Promise<void>;
+  filedForms?: FiledTaxForm[];
+  onUploadTaxForm?: (report: TaxReport, monthIndex: number, file: File) => void | Promise<void>;
+  onMarkFiled?: (report: TaxReport, monthIndex: number) => void | Promise<void>;
+  monthIncome?: number;
+  monthExpenses?: number;
 }
 
 const monthNamesFull = [
@@ -40,8 +47,10 @@ const monthNamesFull = [
   "Grudzień",
 ];
 
-export const TaxReportsCard: React.FC<TaxReportsCardProps> = ({ monthIndex, reports, year = new Date().getFullYear(), zusPayments = [], zusTypes = [], zusMonthKey = "", onAddEditZus, onGenerateTaxForm }) => {
+export const TaxReportsCard: React.FC<TaxReportsCardProps> = ({ monthIndex, reports, year = new Date().getFullYear(), zusPayments = [], zusTypes = [], zusMonthKey = "", onAddEditZus, onGenerateTaxForm, filedForms = [], onUploadTaxForm, onMarkFiled, monthIncome = 0, monthExpenses = 0 }) => {
   const today = new Date();
+  const [dialogOpen, setDialogOpen] = React.useState(false);
+  const [selectedReport, setSelectedReport] = React.useState<TaxReport | null>(null);
 
   const getStatus = (dueDate: Date) => {
     const diff = dueDate.getTime() - today.getTime();
@@ -54,6 +63,11 @@ export const TaxReportsCard: React.FC<TaxReportsCardProps> = ({ monthIndex, repo
   // Helper: get ZUS payment for month/type
   const getZusForMonthType = (month: string, zusType: ZusType) =>
     zusPayments.find(zp => zp.month === month && zp.zusType === zusType);
+
+  const openDialogFor = (rep: TaxReport) => {
+    setSelectedReport(rep);
+    setDialogOpen(true);
+  };
 
   return (
     <Card>
@@ -69,29 +83,27 @@ export const TaxReportsCard: React.FC<TaxReportsCardProps> = ({ monthIndex, repo
 
           const borderColor = status === "overdue" ? "border-red-500" : status === "due-soon" ? "border-amber-500" : "border-green-500";
 
+          const monthKey = `${year}-${String(monthIndex + 1).padStart(2, "0")}`;
+          const filed = filedForms.find(f => f.month === monthKey && f.form_type === rep.name);
+
           return (
             <div
               key={rep.id}
-              className={`flex items-center justify-between p-3 rounded-md bg-muted border ${borderColor} border-l-4`}
-            >
+              onClick={() => openDialogFor(rep)}
+              className={`flex items-center justify-between p-3 rounded-md bg-muted border ${borderColor} border-l-4 cursor-pointer hover:bg-accent`}>
               <div className="flex items-center gap-2">
                 {icon}
                 <div className="text-sm">
                   <p className="font-medium text-foreground">{rep.name}</p>
                   <p className="text-xs text-muted-foreground">Termin: {dueLabel}</p>
+                  {filed && (
+                    <a href={filed.file_url} target="_blank" rel="noopener noreferrer" className="text-xs text-blue-600 underline">Pobierz plik</a>
+                  )}
                 </div>
               </div>
               <div className="flex items-center gap-3">
                 <span className="text-sm">{statusText}</span>
-                <Button size="sm" onClick={async () => {
-                  if (onGenerateTaxForm) {
-                    await onGenerateTaxForm(rep, monthIndex);
-                  } else {
-                    toast.success(`Wygenerowano plik ${rep.name} (${monthNamesFull[monthIndex]} ${year})`);
-                  }
-                }}>
-                  Generuj
-                </Button>
+                {filed && <span className="text-green-600 text-xs">{filed.status === "filed" ? "Złożone" : "Wygenerowane"}</span>}
               </div>
             </div>
           );
@@ -139,6 +151,20 @@ export const TaxReportsCard: React.FC<TaxReportsCardProps> = ({ monthIndex, repo
               </DropdownMenuContent>
             </DropdownMenu>
           </div>
+        )}
+        {selectedReport && (
+          <TaxReportDialog
+            open={dialogOpen}
+            onOpenChange={setDialogOpen}
+            report={selectedReport}
+            monthLabel={`${String(monthIndex + 1).padStart(2,"0")}/${year}`}
+            filed={filedForms.find(f => f.month === `${year}-${String(monthIndex + 1).padStart(2,"0")}` && f.form_type === selectedReport.name)}
+            monthIncome={monthIncome}
+            monthExpenses={monthExpenses}
+            onGenerate={() => onGenerateTaxForm && onGenerateTaxForm(selectedReport, monthIndex)}
+            onUpload={file => onUploadTaxForm && onUploadTaxForm(selectedReport, monthIndex, file)}
+            onMarkFiled={() => onMarkFiled && onMarkFiled(selectedReport, monthIndex)}
+          />
         )}
       </CardContent>
     </Card>
