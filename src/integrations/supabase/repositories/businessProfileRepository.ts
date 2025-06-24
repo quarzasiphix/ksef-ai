@@ -177,10 +177,14 @@ export async function checkTaxIdExists(taxId: string, currentUserId: string): Pr
 
 export async function saveBusinessProfile(profile: BusinessProfile): Promise<BusinessProfile> {
   try {
-    // Check if tax ID already exists (for other users)
-    const taxIdCheck = await checkTaxIdExists(profile.taxId, profile.user_id);
-    if (taxIdCheck.exists) {
-      throw new Error(`NIP ${profile.taxId} jest już używany przez firmę: ${taxIdCheck.ownerName}`);
+    // Check duplicate NIP only when creating new profile
+    if (!profile.id) {
+      const taxIdCheck = await checkTaxIdExists(profile.taxId, profile.user_id);
+      if (taxIdCheck.exists) {
+        throw new Error(
+          `NIP ${profile.taxId} jest już używany przez firmę: ${taxIdCheck.ownerName}`
+        );
+      }
     }
 
     // Invalidate the cache before making changes

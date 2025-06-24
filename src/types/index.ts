@@ -18,6 +18,10 @@ export interface BusinessProfile {
   monthlySocialSecurity?: number; // Monthly social security contribution amount
   monthlyHealthInsurance?: number; // Monthly health insurance contribution amount
   accountant_email?: string; // Email for accountant
+  /**
+   * Lista kodów PKD przypisanych do profilu firmy. Używane m.in. przy ryczałcie do wyliczania stawek podatkowych.
+   */
+  pkdCodes?: string[];
 }
 
 export interface Customer {

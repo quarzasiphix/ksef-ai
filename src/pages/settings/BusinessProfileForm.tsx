@@ -28,6 +28,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import PkdSelector from "@/components/inputs/PkdSelector";
 
 const formSchema = z.object({
   name: z.string().min(1, "Nazwa jest wymagana"),
@@ -41,6 +42,8 @@ const formSchema = z.object({
   phone: z.string().optional(),
   isDefault: z.boolean().default(false),
   entityType: z.enum(["dzialalnosc", "sp_zoo", "sa"]).default("dzialalnosc"),
+  taxType: z.enum(["skala", "liniowy", "ryczalt", "karta"]).default("skala"),
+  pkdCodes: z.array(z.string()).optional(),
 });
 
 interface BusinessProfileFormProps {
@@ -71,6 +74,8 @@ const BusinessProfileForm = ({
       phone: initialData?.phone || "",
       isDefault: initialData?.isDefault || false,
       entityType: initialData?.entityType || "dzialalnosc",
+      taxType: (initialData as any)?.taxType || "skala",
+      pkdCodes: (initialData as any)?.pkdCodes || [],
     },
   });
 
@@ -104,6 +109,8 @@ const BusinessProfileForm = ({
         phone: values.phone || "", // Optional field
         isDefault: values.isDefault,
         entityType: values.entityType || "dzialalnosc",
+        tax_type: (values as any).taxType,
+        pkdCodes: values.pkdCodes || [],
         logo: initialData?.logo || "", // Preserve existing logo if any
         user_id: user.id, // Enforce RLS: always include user_id
       };
@@ -128,9 +135,9 @@ const BusinessProfileForm = ({
     } catch (error) {
       console.error("Error saving business profile:", error);
 
-      // Duplicate NIP handling
+      // Duplicate NIP handling – only relevant when creating a new profile
       const errMsg = (error as any)?.message ? (error as any).message : String(error);
-      if (errMsg.toLowerCase().includes("nip") && errMsg.toLowerCase().includes("już")) {
+      if (!isEditing && errMsg.toLowerCase().includes("nip") && errMsg.toLowerCase().includes("już")) {
         const nip = form.getValues("taxId");
 
         // Spróbuj pobrać więcej danych o właścicielu tego NIP-u
@@ -459,6 +466,47 @@ const BusinessProfileForm = ({
                     <SelectItem value="sa">Spółka akcyjna (S.A.)</SelectItem>
                   </SelectContent>
                 </Select>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <FormField
+              control={form.control}
+              name="taxType"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Forma opodatkowania</FormLabel>
+                  <Select onValueChange={field.onChange} value={field.value}>
+                    <FormControl>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Wybierz formę opodatkowania" />
+                      </SelectTrigger>
+                    </FormControl>
+                    <SelectContent>
+                      <SelectItem value="skala">Skala podatkowa</SelectItem>
+                      <SelectItem value="liniowy">Podatek liniowy 19%</SelectItem>
+                      <SelectItem value="ryczalt">Ryczałt od przychodów ewidencjonowanych</SelectItem>
+                      <SelectItem value="karta">Karta podatkowa</SelectItem>
+                    </SelectContent>
+                  </Select>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+          </div>
+
+          <FormField
+            control={form.control}
+            name="pkdCodes"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>Kody PKD działalności</FormLabel>
+                <PkdSelector
+                  selected={field.value || []}
+                  onChange={field.onChange}
+                />
                 <FormMessage />
               </FormItem>
             )}
