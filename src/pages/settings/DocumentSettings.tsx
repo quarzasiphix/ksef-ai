@@ -1,9 +1,8 @@
-
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { ArrowLeft, FileText, Settings } from 'lucide-react';
+import { ArrowLeft, FileText, Settings, Share2 } from 'lucide-react';
 
 const DocumentSettings = () => {
   const navigate = useNavigate();
@@ -54,6 +53,20 @@ const DocumentSettings = () => {
               </div>
             </div>
           </div>
+        </CardContent>
+      </Card>
+
+      {/* Shared Links management */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Share2 className="h-5 w-5" />
+            Udostępnione linki
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <p className="text-muted-foreground mb-4">Przeglądaj i usuwaj aktywne linki publiczne do Twoich dokumentów.</p>
+          <Button onClick={() => navigate('/shares')}>Zarządzaj linkami</Button>
         </CardContent>
       </Card>
     </div>

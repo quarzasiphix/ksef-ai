@@ -37,6 +37,7 @@ import NewBusinessProfile from '@/pages/settings/NewBusinessProfile';
 import EditBusinessProfile from '@/pages/settings/EditBusinessProfile';
 import DocumentSettings from '@/pages/settings/DocumentSettings';
 import EmployeesList from '@/pages/employees/EmployeesList';
+import NewEmployee from '@/pages/employees/NewEmployee';
 import LabourHoursPage from '@/pages/employees/LabourHoursPage';
 import NotFound from '@/pages/NotFound';
 import InventoryPage from '@/pages/inventory/InventoryPage';
@@ -48,6 +49,8 @@ import ContractList from '@/pages/contracts/ContractList';
 import ContractNew from '@/pages/contracts/ContractNew';
 import ContractDetails from '@/pages/contracts/ContractDetails';
 import BankAccounts from "@/pages/bank/BankAccounts";
+import Index from "./pages/Index";
+import SharedLinksPage from "./pages/SharedLinks";
 
 import { queryClient } from '@/lib/queryClient';
 import { useAuth } from '@/hooks/useAuth';
@@ -303,6 +306,11 @@ const App = () => {
                     <EmployeesList />
                   </ProtectedRoute>
                 } />
+                <Route path="/employees/new" element={
+                  <ProtectedRoute>
+                    <NewEmployee />
+                  </ProtectedRoute>
+                } />
                 <Route path="/labour-hours" element={
                   <ProtectedRoute>
                     <LabourHoursPage />
@@ -361,6 +369,13 @@ const App = () => {
 
                 {/* Catch all route */}
                 <Route path="*" element={<NotFound />} />
+
+                {/* New route for shared links */}
+                <Route path="/shares" element={
+                  <ProtectedRoute>
+                    <SharedLinksPage />
+                  </ProtectedRoute>
+                } />
               </Routes>
             </Router>
           </AuthProvider>

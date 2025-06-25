@@ -5,9 +5,12 @@ import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { Copy } from "lucide-react";
 import { toast } from "sonner";
-import { createPublicShareLink, getExistingContractShare } from "@/integrations/supabase/repositories/publicShareRepository";
+import { createPublicShareLink, getExistingContractShare, listShares, deleteShare, PublicShare } from "@/integrations/supabase/repositories/publicShareRepository";
 import { getLinksForContract } from "@/integrations/supabase/repositories/contractInvoiceLinkRepository";
 import { useAuth } from "@/hooks/useAuth";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { Badge } from "@/components/ui/badge";
+import { Trash2 } from "lucide-react";
 
 interface ShareContractDialogProps {
   isOpen: boolean;
@@ -21,6 +24,27 @@ const ShareContractDialog: React.FC<ShareContractDialogProps> = ({ isOpen, onClo
   const [viewOnce, setViewOnce] = useState(false);
   const [generatedLink, setGeneratedLink] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
+
+  const queryClient = useQueryClient();
+
+  // Active shares for this contract
+  const { data: activeShares = [], isLoading: sharesLoading } = useQuery({
+    queryKey: ["contractShares", contractId],
+    queryFn: async () => {
+      const all = await listShares();
+      return all.filter((s) => s.contract_id === contractId);
+    },
+    enabled: isOpen,
+  });
+
+  const delMutation = useMutation({
+    mutationFn: (id: string) => deleteShare(id),
+    onSuccess: () => {
+      toast.success("Link usunięty");
+      queryClient.invalidateQueries({ queryKey: ["contractShares", contractId] });
+    },
+    onError: () => toast.error("Nie udało się usunąć linku"),
+  });
 
   const fetchExisting = async () => {
     try {
@@ -94,6 +118,46 @@ const ShareContractDialog: React.FC<ShareContractDialogProps> = ({ isOpen, onClo
               <Button variant="ghost" size="icon" onClick={() => navigator.clipboard.writeText(generatedLink!)}>
                 <Copy className="h-4 w-4" />
               </Button>
+            </div>
+          )}
+
+          {/* Active links */}
+          {sharesLoading ? (
+            <div className="text-sm text-muted-foreground">Ładowanie aktywnych linków...</div>
+          ) : activeShares.length > 0 && (
+            <div className="space-y-2 mt-4">
+              <p className="text-sm font-medium">Aktywne linki ({activeShares.length})</p>
+              {activeShares.map((s: PublicShare) => (
+                <div key={s.id} className="flex items-center gap-2 bg-muted/50 p-2 rounded">
+                  <a
+                    href={`/share/${s.slug}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="underline truncate flex-1"
+                  >
+                    {window.location.origin}/share/{s.slug}
+                  </a>
+                  {s.view_once && <Badge variant="secondary">Jednorazowy</Badge>}
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    onClick={() => {
+                      navigator.clipboard.writeText(`${window.location.origin}/share/${s.slug}`);
+                      toast.success("Skopiowano");
+                    }}
+                  >
+                    <Copy className="h-4 w-4" />
+                  </Button>
+                  <Button
+                    variant="destructive"
+                    size="icon"
+                    onClick={() => delMutation.mutate(s.id)}
+                    disabled={delMutation.isPending}
+                  >
+                    <Trash2 className="h-4 w-4" />
+                  </Button>
+                </div>
+              ))}
             </div>
           )}
         </div>

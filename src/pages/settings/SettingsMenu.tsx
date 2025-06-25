@@ -250,6 +250,26 @@ const SettingsMenu = () => {
             </Button>
           </CardContent>
         </Card>
+
+        {/* Shared Links */}
+        <Card className="hover:shadow-lg transition-shadow">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Star className="h-5 w-5 text-indigo-500" />
+              Udostępnione linki
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <p className="text-muted-foreground mb-4">Zarządzaj aktywnymi publicznymi linkami do dokumentów</p>
+            <Button 
+              variant="outline" 
+              onClick={() => navigate('/shares')}
+              className="w-full"
+            >
+              Przeglądaj linki
+            </Button>
+          </CardContent>
+        </Card>
       </div>
 
       <PremiumCheckoutModal 

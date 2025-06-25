@@ -9,12 +9,14 @@ import { shareInvoiceWithUser } from "@/integrations/supabase/repositories/invoi
 import { useAuth } from "@/hooks/useAuth";
 import { CustomerSelector } from "@/components/invoices/selectors/CustomerSelector";
 import { useGlobalData } from "@/hooks/use-global-data";
-import { createPublicShareLink, getExistingInvoiceShare } from "@/integrations/supabase/repositories/publicShareRepository";
+import { createPublicShareLink, getExistingInvoiceShare, listShares, deleteShare, PublicShare } from "@/integrations/supabase/repositories/publicShareRepository";
 import { getLinksForInvoice } from "@/integrations/supabase/repositories/contractInvoiceLinkRepository";
 import { Switch } from "@/components/ui/switch";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
-import { Copy } from "lucide-react";
+import { Copy, Trash2 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { Badge } from "@/components/ui/badge";
 
 interface ShareInvoiceDialogProps {
   isOpen: boolean;
@@ -42,6 +44,28 @@ const ShareInvoiceDialog: React.FC<ShareInvoiceDialogProps> = ({
   const [generatedLink, setGeneratedLink] = useState<string | null>(null);
   const [viewOnce, setViewOnce] = useState(false);
   const [currentTab, setCurrentTab] = useState<'user' | 'link'>('user');
+
+  const queryClient = useQueryClient();
+
+  // Fetch active share links for this invoice
+  const { data: activeShares = [], isLoading: sharesLoading } = useQuery({
+    queryKey: ["invoiceShares", invoiceId],
+    queryFn: async () => {
+      const all = await listShares();
+      return all.filter((s) => s.invoice_id === invoiceId);
+    },
+    enabled: isOpen && currentTab === 'link',
+  });
+
+  // Delete share mutation
+  const delMutation = useMutation({
+    mutationFn: (id: string) => deleteShare(id),
+    onSuccess: () => {
+      toast.success("Link usunięty");
+      queryClient.invalidateQueries({ queryKey: ["invoiceShares", invoiceId] });
+    },
+    onError: () => toast.error("Nie udało się usunąć linku"),
+  });
 
   const handleCustomerChange = (id: string, _name?: string) => {
     setSelectedCustomerId(id);
@@ -209,6 +233,46 @@ const ShareInvoiceDialog: React.FC<ShareInvoiceDialogProps> = ({
                   <Button variant="ghost" size="icon" onClick={() => navigator.clipboard.writeText(generatedLink!)}>
                     <Copy className="h-4 w-4" />
                   </Button>
+                </div>
+              )}
+
+              {/* Existing active links */}
+              {sharesLoading ? (
+                <div className="text-sm text-muted-foreground">Ładowanie aktywnych linków...</div>
+              ) : activeShares.length > 0 && (
+                <div className="space-y-2 mt-4">
+                  <p className="text-sm font-medium">Aktywne linki ({activeShares.length})</p>
+                  {activeShares.map((s: PublicShare) => (
+                    <div key={s.id} className="flex items-center gap-2 bg-muted/50 p-2 rounded">
+                      <a
+                        href={`/share/${s.slug}`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="underline truncate flex-1"
+                      >
+                        {window.location.origin}/share/{s.slug}
+                      </a>
+                      {s.view_once && <Badge variant="secondary">Jednorazowy</Badge>}
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        onClick={() => {
+                          navigator.clipboard.writeText(`${window.location.origin}/share/${s.slug}`);
+                          toast.success("Skopiowano");
+                        }}
+                      >
+                        <Copy className="h-4 w-4" />
+                      </Button>
+                      <Button
+                        variant="destructive"
+                        size="icon"
+                        onClick={() => delMutation.mutate(s.id)}
+                        disabled={delMutation.isPending}
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
+                    </div>
+                  ))}
                 </div>
               )}
             </TabsContent>

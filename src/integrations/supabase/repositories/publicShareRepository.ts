@@ -107,4 +107,24 @@ export async function getExistingContractShare(contractId: string): Promise<Publ
     .maybeSingle();
   if (error) throw error;
   return data as PublicShare | null;
+}
+
+// List all shares belonging to a user
+export async function listShares(): Promise<PublicShare[]> {
+  const { data, error } = await (supabase as any)
+    .from("shared")
+    .select("*")
+    .order("id", { ascending: false });
+
+  if (error) throw error;
+  return data as PublicShare[];
+}
+
+// Delete share by id (or slug)
+export async function deleteShare(id: string): Promise<void> {
+  const { error } = await (supabase as any)
+    .from("shared")
+    .delete()
+    .eq("id", id);
+  if (error) throw error;
 } 
