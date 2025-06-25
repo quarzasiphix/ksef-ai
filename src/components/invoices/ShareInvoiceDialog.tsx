@@ -10,6 +10,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { CustomerSelector } from "@/components/invoices/selectors/CustomerSelector";
 import { useGlobalData } from "@/hooks/use-global-data";
 import { createPublicShareLink, getExistingInvoiceShare } from "@/integrations/supabase/repositories/publicShareRepository";
+import { getLinksForInvoice } from "@/integrations/supabase/repositories/contractInvoiceLinkRepository";
 import { Switch } from "@/components/ui/switch";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Copy } from "lucide-react";
@@ -71,6 +72,9 @@ const ShareInvoiceDialog: React.FC<ShareInvoiceDialogProps> = ({
     }
     try {
       let bankAccount: string | null = null;
+      // Detect linked contract (first one)
+      let linkedContractId: string | undefined;
+
       // Fetch invoice with related business profile to get bank account if payment method is transfer
       const { data: inv } = await (supabase as any)
         .from("invoices")
@@ -82,9 +86,20 @@ const ShareInvoiceDialog: React.FC<ShareInvoiceDialogProps> = ({
         bankAccount = inv?.business_profiles?.bank_account || null;
       }
 
+      // Fetch linked contract ID (if any)
+      try {
+        const links = await getLinksForInvoice(invoiceId);
+        if (links.length) {
+          linkedContractId = links[0].contractId;
+        }
+      } catch (err) {
+        console.error("Error fetching invoice links", err);
+      }
+
       const share = await createPublicShareLink({
         invoiceId,
-        type: "invoice",
+        contractId: linkedContractId,
+        type: linkedContractId ? "combo" : "invoice",
         bankAccount,
         viewOnce,
       });
@@ -185,8 +200,8 @@ const ShareInvoiceDialog: React.FC<ShareInvoiceDialogProps> = ({
                 <Label htmlFor="viewOnce">Tylko jednorazowe wyświetlenie</Label>
                 <Switch id="viewOnce" checked={viewOnce} onCheckedChange={setViewOnce} />
               </div>
-              <Button variant="outline" onClick={handleGenerateLink} disabled={isLoading || !!generatedLink}>
-                {generatedLink ? "Skopiuj link" : isLoading ? "Generowanie..." : "Wygeneruj i skopiuj link"}
+              <Button variant="outline" onClick={handleGenerateLink} disabled={isLoading}>
+                {generatedLink ? (isLoading ? "Generowanie..." : "Generuj nowy link") : (isLoading ? "Generowanie..." : "Wygeneruj i skopiuj link")}
               </Button>
               {generatedLink && (
                 <div className="flex items-center gap-2 bg-muted p-2 rounded text-sm">

@@ -203,9 +203,7 @@ const ShareDocuments: React.FC = () => {
     return <div className="text-center py-10">Nie znaleziono dokumentu</div>;
   }
 
-  if (contract) {
-    const seller = contract.business_profiles;
-    const buyer = contract.customers;
+  if (contract && !invoice) {
     return (
       <div className="max-w-3xl mx-auto px-4 py-8 space-y-6">
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
@@ -360,6 +358,27 @@ const ShareDocuments: React.FC = () => {
         totalGrossValue={totals.gross}
         type={invoice.type as InvoiceType}
       />
+
+      {/* Attached contract display */}
+      {contract && (
+        <div className="mt-10 space-y-6">
+          <h2 className="text-2xl font-bold">Powiązana umowa</h2>
+          <Card>
+            <CardHeader>
+              <CardTitle>Umowa {contract.number}</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-3 text-sm">
+              <div>Data: {format(new Date(contract.issue_date), "dd.MM.yyyy")}</div>
+              {contract.valid_from && <div>Obowiązuje od: {format(new Date(contract.valid_from), "dd.MM.yyyy")}</div>}
+              {contract.valid_to && <div>Obowiązuje do: {format(new Date(contract.valid_to), "dd.MM.yyyy")}</div>}
+              {contract.subject && <div>Temat: {contract.subject}</div>}
+              {contract.content && (
+                <p className="whitespace-pre-line text-sm text-muted-foreground border p-3 rounded bg-muted/30 mt-2">{contract.content}</p>
+              )}
+            </CardContent>
+          </Card>
+        </div>
+      )}
 
       {/* Advertisement banner */}
       <Card className="mt-10 text-center">

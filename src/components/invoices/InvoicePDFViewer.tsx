@@ -1,18 +1,22 @@
-
 import React from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Download, X } from "lucide-react";
-import { Invoice } from "@/types";
+import { Invoice, BusinessProfile, Customer } from "@/types";
+import { InvoicePdfTemplate } from "@/components/invoices/pdf/InvoicePdfTemplate";
 
 interface InvoicePDFViewerProps {
   invoice: Invoice;
+  businessProfile?: BusinessProfile;
+  customer?: Customer;
   isOpen: boolean;
   onClose: () => void;
 }
 
 const InvoicePDFViewer: React.FC<InvoicePDFViewerProps> = ({
   invoice,
+  businessProfile,
+  customer,
   isOpen,
   onClose
 }) => {
@@ -38,15 +42,12 @@ const InvoicePDFViewer: React.FC<InvoicePDFViewerProps> = ({
             </div>
           </div>
         </DialogHeader>
-        <div className="mt-4 p-6 bg-white border rounded-lg overflow-auto max-h-[70vh]">
-          <div className="text-center py-12">
-            <p className="text-muted-foreground">
-              Podgląd PDF zostanie wkrótce zaimplementowany
-            </p>
-            <p className="text-sm text-muted-foreground mt-2">
-              Faktura: {invoice.number}
-            </p>
-          </div>
+        <div className="mt-4 p-4 bg-white border rounded-lg overflow-auto max-h-[70vh] min-h-[60vh]">
+          <InvoicePdfTemplate
+            invoice={invoice}
+            businessProfile={businessProfile as any}
+            customer={customer as any}
+          />
         </div>
       </DialogContent>
     </Dialog>

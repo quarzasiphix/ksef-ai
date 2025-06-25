@@ -14,7 +14,8 @@ import {
   Trash2, 
   CheckCircle,
   Share2,
-  DollarSign
+  DollarSign,
+  FilePlus
 } from "lucide-react";
 import { useGlobalData } from "@/hooks/use-global-data";
 import { TransactionType } from "@/types/common";
@@ -229,6 +230,17 @@ const InvoiceDetail: React.FC<InvoiceDetailProps> = ({ type }) => {
           <Button
             variant="outline"
             size="sm"
+            onClick={() => {
+              const base = isIncome ? "/income/new" : "/expense/new";
+              navigate(`${base}?duplicateId=${invoice.id}`);
+            }}
+          >
+            <FilePlus className="h-4 w-4 mr-2" />
+            <span>Duplikuj</span>
+          </Button>
+          <Button
+            variant="outline"
+            size="sm"
             onClick={handleTogglePaid}
             disabled={isUpdatingPaid}
           >
@@ -384,8 +396,10 @@ const InvoiceDetail: React.FC<InvoiceDetailProps> = ({ type }) => {
       {/* PDF Viewer Dialog */}
       {showPDF && (
         <InvoicePDFViewer 
-          invoice={invoice} 
-          isOpen={showPDF} 
+          invoice={invoice}
+          businessProfile={sellerProfile as any}
+          customer={buyerCustomer as any}
+          isOpen={showPDF}
           onClose={() => setShowPDF(false)} 
         />
       )}

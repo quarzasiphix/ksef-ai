@@ -6,6 +6,7 @@ import { Switch } from "@/components/ui/switch";
 import { Copy } from "lucide-react";
 import { toast } from "sonner";
 import { createPublicShareLink, getExistingContractShare } from "@/integrations/supabase/repositories/publicShareRepository";
+import { getLinksForContract } from "@/integrations/supabase/repositories/contractInvoiceLinkRepository";
 import { useAuth } from "@/hooks/useAuth";
 
 interface ShareContractDialogProps {
@@ -44,7 +45,23 @@ const ShareContractDialog: React.FC<ShareContractDialogProps> = ({ isOpen, onClo
     }
     setIsLoading(true);
     try {
-      const share = await createPublicShareLink({ contractId, type: "contract", viewOnce });
+      // Detect linked invoice (first one)
+      let linkedInvoiceId: string | undefined;
+      try {
+        const links = await getLinksForContract(contractId);
+        if (links.length) {
+          linkedInvoiceId = links[0].invoiceId;
+        }
+      } catch (err) {
+        console.error("Error fetching contract links", err);
+      }
+
+      const share = await createPublicShareLink({
+        contractId,
+        invoiceId: linkedInvoiceId,
+        type: linkedInvoiceId ? "combo" : "contract",
+        viewOnce,
+      });
       const url = `${window.location.origin}/share/${share.slug}`;
       setGeneratedLink(url);
       await navigator.clipboard.writeText(url);

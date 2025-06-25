@@ -15,7 +15,7 @@ import {
   toPaymentMethodDb,
   toPaymentMethodUi,
 } from "@/lib/invoice-utils";
-import { saveInvoice } from "@/integrations/supabase/repositories/invoiceRepository";
+import { saveInvoice, getInvoice } from "@/integrations/supabase/repositories/invoiceRepository";
 import { saveExpense } from "@/integrations/supabase/repositories/expenseRepository";
 import { InvoiceFormHeader } from "@/components/invoices/forms/InvoiceFormHeader";
 import { InvoiceBasicInfoForm } from "@/components/invoices/forms/InvoiceBasicInfoForm";
@@ -77,7 +77,9 @@ const NewInvoice: React.ForwardRefExoticComponent<
     // --- NEW: Prefill customer/product logic ---
     const urlCustomerId = searchParams.get("customerId") || "";
     const urlProductId = searchParams.get("productId") || "";
+    const duplicateId = searchParams.get("duplicateId") || "";
     const [prefilled, setPrefilled] = useState(false);
+    const [isDuplicate, setIsDuplicate] = useState(false);
 
     // --- Transaction type state ---
     const [transactionType, setTransactionType] = useState<TransactionType | undefined>(() => {
@@ -129,7 +131,12 @@ const NewInvoice: React.ForwardRefExoticComponent<
       initialData?.customerName || ""
     );
     
-    const today = new Date().toISOString().split("T")[0];
+    // Today and default due date (+7 days)
+    const todayDate = new Date();
+    const today = todayDate.toISOString().split("T")[0];
+    const dueIn7 = new Date(todayDate.getTime() + 7 * 24 * 60 * 60 * 1000)
+      .toISOString()
+      .split("T")[0];
 
     const form = useForm<InvoiceFormValues & { transactionType: TransactionType }>({
       resolver: zodResolver(invoiceFormSchema),
@@ -139,7 +146,7 @@ const NewInvoice: React.ForwardRefExoticComponent<
           initialData?.number || generateInvoiceNumber(new Date(), 1),
         issueDate: initialData?.issueDate || today,
         sellDate: initialData?.sellDate || today,
-        dueDate: initialData?.dueDate || today,
+        dueDate: initialData?.dueDate || dueIn7,
         paymentMethod: initialData?.paymentMethod
           ? toPaymentMethodUi(initialData.paymentMethod as PaymentMethodDb)
           : PaymentMethod.TRANSFER,
@@ -299,7 +306,45 @@ const NewInvoice: React.ForwardRefExoticComponent<
         });
         changed = true;
       }
-      if (changed) setPrefilled(true);
+
+      // Duplicate existing invoice
+      if (duplicateId && !changed) {
+        (async () => {
+          try {
+            const dup = await getInvoice(duplicateId);
+            if (dup) {
+              console.log("Prefilling duplicate invoice", dup);
+              // Reset form with duplicated values but new number
+              form.reset({
+                ...form.getValues(),
+                number: `${dup.number}-DUP`,
+                issueDate: today,
+                sellDate: today,
+                dueDate: today,
+                paymentMethod: toPaymentMethodUi(dup.paymentMethod as PaymentMethodDb),
+                comments: dup.comments || "",
+                transactionType: dup.transactionType,
+                customerId: dup.customerId || "",
+                businessProfileId: dup.businessProfileId || "",
+                fakturaBezVAT: (dup as any).vat === false,
+                vatExemptionReason: dup.vatExemptionReason,
+              });
+              import("@/lib/invoice-utils").then(({ calculateItemValues }) => {
+                setItems((dup.items || []).map(calculateItemValues));
+              });
+              setTransactionType(dup.transactionType as any);
+              setIsDuplicate(true);
+              changed = true;
+            }
+          } catch (err) {
+            console.error("Error duplicating invoice", err);
+          } finally {
+            setPrefilled(true);
+          }
+        })();
+      }
+
+      if (changed && !duplicateId) setPrefilled(true);
     }, [urlCustomerId, urlProductId, form, items.length, user, prefilled]);
 
     useImperativeHandle(ref, () => ({
@@ -341,10 +386,11 @@ const NewInvoice: React.ForwardRefExoticComponent<
           items: items.map(item => {
             const quantity = Number(item.quantity) || 0; // Ensure quantity is a number
             const unitPrice = Number(item.unitPrice) || 0; // Ensure unitPrice is a number
-            const vatRate = Number(item.vatRate) || 0; // Ensure vatRate is a number
+            const rawVatRate = Number(item.vatRate) || 0; // -1 indicates zwolniony
+            const effectiveVatRate = rawVatRate < 0 ? 0 : rawVatRate;
 
             const totalNetValue = quantity * unitPrice;
-            const totalVatValue = (totalNetValue * vatRate) / 100;
+            const totalVatValue = (totalNetValue * effectiveVatRate) / 100;
             const totalGrossValue = totalNetValue + totalVatValue;
 
             return {
@@ -359,7 +405,7 @@ const NewInvoice: React.ForwardRefExoticComponent<
               // Ensure values are numbers and use snake_case for database
               quantity: quantity,
               unit_price: unitPrice,
-              vat_rate: vatRate,
+              vat_rate: rawVatRate, // preserve -1 for zwolniony in DB
               total_net_value: Number(totalNetValue.toFixed(2)),
               total_vat_value: Number(totalVatValue.toFixed(2)),
               total_gross_value: Number(totalGrossValue.toFixed(2)),
@@ -594,6 +640,13 @@ const NewInvoice: React.ForwardRefExoticComponent<
             }} 
             className="space-y-4"
           >
+            {/* Duplicate Banner */}
+            {isDuplicate && (
+              <div className="p-3 bg-blue-50 border border-blue-200 rounded text-sm text-blue-800">
+                Tworzysz duplikat dokumentu
+              </div>
+            )}
+
             {/* Header */}
             {!hideHeader && (
             <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
