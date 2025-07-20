@@ -17,12 +17,16 @@ export enum Bank {
 
 export interface BankAccount {
   id: string;
-  bank: Bank;
+  businessProfileId: string;
+  bankName: string;
   accountNumber: string;
-  accountName: string;
-  balance: number;
+  accountName?: string;
   currency: string;
+  type?: 'main' | 'vat' | 'tax' | 'other';
+  balance: number;
   connectedAt: string;
+  createdAt: string;
+  updatedAt: string;
 }
 
 export interface BankTransaction {

@@ -17,6 +17,8 @@ import OnboardingCustomerForm, { OnboardingCustomerFormHandle } from './Onboardi
 import OnboardingProductForm, { OnboardingProductFormHandle } from './OnboardingProductForm';
 import OnboardingProfileForm, { OnboardingProfileFormHandle } from './OnboardingProfileForm';
 import StepNavigation from './StepNavigation';
+import { BankAccountEditDialog } from '@/components/bank/BankAccountEditDialog';
+import { getBankAccountsForProfile } from '@/integrations/supabase/repositories/bankAccountRepository';
 
 const Welcome = () => {
   const { user } = useAuth();
@@ -34,6 +36,9 @@ const Welcome = () => {
 
   const [step, setStep] = useState(0);
   const [hasBusinessProfile, setHasBusinessProfile] = useState(false);
+  const [showAddBankDialog, setShowAddBankDialog] = useState(false);
+  const [addingBankForProfileId, setAddingBankForProfileId] = useState<string | null>(null);
+  const [bankAccounts, setBankAccounts] = useState<any[]>([]);
 
   const profileFormRef = useRef<OnboardingProfileFormHandle>(null);
   const customerFormRef = useRef<OnboardingCustomerFormHandle>(null);
@@ -44,6 +49,20 @@ const Welcome = () => {
       setHasBusinessProfile(true);
     }
   }, [profiles]);
+
+  // Po utworzeniu profilu firmy, jeśli nie ma konta bankowego, otwórz dialog
+  useEffect(() => {
+    if (step === 3 && profiles.length > 0) {
+      const profileId = profiles[0].id;
+      getBankAccountsForProfile(profileId).then((accounts) => {
+        setBankAccounts(accounts);
+        if (accounts.length === 0) {
+          setAddingBankForProfileId(profileId);
+          setShowAddBankDialog(true);
+        }
+      });
+    }
+  }, [step, profiles]);
 
   const steps = [
     {
@@ -102,6 +121,18 @@ const Welcome = () => {
               setStep(3);
             }}
           />
+          {/* Dialog dodawania konta bankowego po utworzeniu profilu */}
+          {showAddBankDialog && addingBankForProfileId && (
+            <BankAccountEditDialog
+              trigger={null}
+              onSave={async (data) => {
+                // Dodaj konto do profilu
+                await getBankAccountsForProfile(addingBankForProfileId);
+                setShowAddBankDialog(false);
+                setStep(3); // przejdź dalej
+              }}
+            />
+          )}
         </>
       ),
     },

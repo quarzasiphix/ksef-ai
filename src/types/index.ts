@@ -8,6 +8,9 @@ export interface BusinessProfile {
   city: string;
   country?: string; // Added optional country property
   regon?: string;
+  /**
+   * @deprecated Używaj tabeli bank_accounts dla wielu kont bankowych.
+   */
   bankAccount?: string;
   email?: string;
   phone?: string;

@@ -29,6 +29,10 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import PkdSelector from "@/components/inputs/PkdSelector";
+import { getBankAccountsForProfile, addBankAccount, deleteBankAccount } from '@/integrations/supabase/repositories/bankAccountRepository';
+import BankAccountCard from '@/components/bank/BankAccountCard';
+import { BankAccount } from '@/types/bank';
+import { BankAccountEditDialog } from '@/components/bank/BankAccountEditDialog';
 
 const formSchema = z.object({
   name: z.string().min(1, "Nazwa jest wymagana"),
@@ -37,7 +41,6 @@ const formSchema = z.object({
   postalCode: z.string().min(1, "Kod pocztowy jest wymagany"),
   city: z.string().min(1, "Miasto jest wymagane"),
   regon: z.string().optional(),
-  bankAccount: z.string().optional(),
   email: z.string().email("Niepoprawny format email").optional().or(z.literal("")),
   phone: z.string().optional(),
   isDefault: z.boolean().default(false),
@@ -60,6 +63,66 @@ const BusinessProfileForm = ({
   const isEditing = !!initialData?.id;
   const isMobile = useIsMobile();
 
+  // Stan i obsługa kont bankowych
+  const [bankAccounts, setBankAccounts] = React.useState<BankAccount[]>([]);
+  const [loadingAccounts, setLoadingAccounts] = React.useState(false);
+  const [showAdd, setShowAdd] = React.useState(false);
+  const [newAccount, setNewAccount] = React.useState({
+    bankName: '',
+    accountNumber: '',
+    accountName: '',
+    currency: 'PLN',
+    type: 'main',
+    balance: 0,
+  });
+
+  React.useEffect(() => {
+    if (initialData?.id) {
+      setLoadingAccounts(true);
+      getBankAccountsForProfile(initialData.id)
+        .then(setBankAccounts)
+        .finally(() => setLoadingAccounts(false));
+    }
+  }, [initialData?.id]);
+
+  const handleAddAccount = async (data: BankAccount) => {
+    if (!initialData?.id) return;
+    try {
+      const acc = await addBankAccount({
+        ...data,
+        businessProfileId: initialData.id,
+        connectedAt: new Date().toISOString(),
+      });
+      setBankAccounts((prev) => [...prev, acc]);
+      toast.success('Dodano konto bankowe');
+    } catch (e) {
+      toast.error('Błąd dodawania konta');
+    }
+  };
+
+  const handleDeleteAccount = async (id: string) => {
+    try {
+      await deleteBankAccount(id);
+      setBankAccounts((prev) => prev.filter(acc => acc.id !== id));
+      toast.success('Usunięto konto bankowe');
+    } catch (e) {
+      toast.error('Błąd usuwania konta');
+    }
+  };
+
+  const handleSetDefaultAccount = async (id: string) => {
+    try {
+      await supabase.rpc("set_default_bank_account", {
+        business_profile_id: initialData?.id,
+        bank_account_id: id,
+      });
+      setBankAccounts((prev) => prev.map(acc => ({ ...acc, isDefault: acc.id === id })));
+      toast.success('Ustawiono domyślne konto bankowe');
+    } catch (e) {
+      toast.error('Błąd ustawiania domyślnego konta');
+    }
+  };
+
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
     defaultValues: {
@@ -69,7 +132,6 @@ const BusinessProfileForm = ({
       postalCode: initialData?.postalCode || "",
       city: initialData?.city || "",
       regon: initialData?.regon || "",
-      bankAccount: initialData?.bankAccount || "",
       email: initialData?.email || "",
       phone: initialData?.phone || "",
       isDefault: initialData?.isDefault || false,
@@ -104,7 +166,6 @@ const BusinessProfileForm = ({
         postalCode: values.postalCode, // Required field from form
         city: values.city,         // Required field from form
         regon: values.regon,       // Optional field
-        bankAccount: values.bankAccount, // Optional field
         email: values.email || "", // Optional field
         phone: values.phone || "", // Optional field
         isDefault: values.isDefault,
@@ -387,19 +448,34 @@ const BusinessProfileForm = ({
             )}
           />
 
-          <FormField
-            control={form.control}
-            name="bankAccount"
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel>Numer konta bankowego (opcjonalnie)</FormLabel>
-                <FormControl>
-                  <Input placeholder="Numer konta bankowego" {...field} />
-                </FormControl>
-                <FormMessage />
-              </FormItem>
+          <section className="mt-8">
+            <h3 className="font-semibold mb-2">Konta bankowe</h3>
+            <div className="flex flex-col gap-2">
+              {bankAccounts.map((acc) => (
+                <BankAccountCard
+                  key={acc.id}
+                  account={acc}
+                  selected={false}
+                  onSelect={() => handleSetDefaultAccount(acc.id)}
+                  onDisconnect={() => handleDeleteAccount(acc.id)}
+                />
+              ))}
+              <BankAccountEditDialog
+                trigger={<Button variant="outline">Dodaj konto</Button>}
+                onSave={async (data) => {
+                  await handleAddAccount(data);
+                  setShowAdd(false);
+                }}
+              />
+            </div>
+            {/* Backwards compatibility: stare pole bankAccount */}
+            {initialData?.bankAccount && (
+              <div className="mt-4 p-3 bg-muted rounded text-xs text-muted-foreground">
+                <div className="font-semibold mb-1">Konto archiwalne (tylko do podglądu):</div>
+                <div>{initialData.bankAccount}</div>
+              </div>
             )}
-          />
+          </section>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <FormField
