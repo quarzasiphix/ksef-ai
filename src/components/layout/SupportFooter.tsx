@@ -1,10 +1,9 @@
-
 import React, { useState } from 'react';
-import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { MessageCircle, HelpCircle, Mail } from "lucide-react";
 import { useSidebar } from "@/components/ui/sidebar";
 import { cn } from "@/lib/utils";
+import { ChatWidget } from "@/components/chat/ChatWidget";
 
 const SupportFooter = () => {
   const [isChatOpen, setIsChatOpen] = useState(false);
@@ -74,47 +73,7 @@ const SupportFooter = () => {
       </div>
 
       {/* Chat Widget */}
-      {isChatOpen && (
-        <Card 
-          className={cn(
-            "fixed bottom-20 shadow-lg z-50 w-80 h-96",
-            "md:bottom-24",
-            state === "expanded" ? "md:right-4" : "md:right-4"
-          )}
-        >
-          <div className="h-full flex flex-col">
-            <div className="p-4 border-b flex justify-between items-center">
-              <h3 className="font-semibold">Chat z asystentem</h3>
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={() => setIsChatOpen(false)}
-                className="h-6 w-6 p-0"
-              >
-                ×
-              </Button>
-            </div>
-            <div className="flex-1 p-4 overflow-y-auto">
-              <div className="text-sm text-muted-foreground">
-                Asystent AI będzie dostępny wkrótce. W międzyczasie możesz skontaktować się z nami przez email.
-              </div>
-            </div>
-            <div className="p-4 border-t">
-              <div className="flex gap-2">
-                <input
-                  type="text"
-                  placeholder="Napisz wiadomość..."
-                  className="flex-1 px-3 py-2 text-sm border rounded-md"
-                  disabled
-                />
-                <Button size="sm" disabled>
-                  Wyślij
-                </Button>
-              </div>
-            </div>
-          </div>
-        </Card>
-      )}
+      {isChatOpen && <ChatWidget onClose={() => setIsChatOpen(false)} />}
     </>
   );
 };

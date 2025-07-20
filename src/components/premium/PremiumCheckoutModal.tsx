@@ -59,6 +59,16 @@ const PremiumCheckoutModal: React.FC<PremiumCheckoutModalProps> = ({ isOpen, onC
       interval: 'rok',
       savings: 'Oszczędzasz 78 zł',
       popular: true,
+    },
+    {
+      id: 'lifetime',
+      name: 'Dożywotni',
+      price: '999 zł',
+      cardPriceId: 'price_1Ree8yHFbUxWftPsTXELigg7',
+      blikPriceId: 'price_1Ree8yHFbUxWftPsTXELigg7',
+      productId: 'prod_LIFETIME',
+      interval: 'jednorazowo',
+      savings: 'Najlepsza wartość',
     }
   ];
 
@@ -127,12 +137,21 @@ const PremiumCheckoutModal: React.FC<PremiumCheckoutModalProps> = ({ isOpen, onC
   };
 
   const handlePlanSelect = (plan: PlanDetails) => {
-    // Don't allow selection of current plan
+    // Prevent selecting current plan
     if (isPremium && currentSubscription === plan.id) {
       return;
     }
-    
+
     setSelectedPlan(plan);
+
+    // For lifetime plan, skip payment-method choice and go straight to checkout
+    if (plan.id === 'lifetime') {
+      setPaymentMethod('card'); // default, backend/Stripe will show options
+      // allow state to update then trigger checkout
+      setTimeout(() => handleCheckout(), 0);
+      return;
+    }
+
     setStep('payment');
   };
 

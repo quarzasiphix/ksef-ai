@@ -29,12 +29,12 @@ const ShareContractDialog: React.FC<ShareContractDialogProps> = ({ isOpen, onClo
 
   // Active shares for this contract
   const { data: activeShares = [], isLoading: sharesLoading } = useQuery({
-    queryKey: ["contractShares", contractId],
+    queryKey: ["contractShares", contractId, user?.id],
     queryFn: async () => {
-      const all = await listShares();
+      const all = await listShares(user!.id);
       return all.filter((s) => s.contract_id === contractId);
     },
-    enabled: isOpen,
+    enabled: isOpen && !!user?.id,
   });
 
   const delMutation = useMutation({
@@ -169,4 +169,4 @@ const ShareContractDialog: React.FC<ShareContractDialogProps> = ({ isOpen, onClo
   );
 };
 
-export default ShareContractDialog; 
+export default ShareContractDialog;

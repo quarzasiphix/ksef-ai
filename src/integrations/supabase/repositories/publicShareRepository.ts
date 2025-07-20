@@ -109,13 +109,18 @@ export async function getExistingContractShare(contractId: string): Promise<Publ
   return data as PublicShare | null;
 }
 
-// List all shares belonging to a user
-export async function listShares(): Promise<PublicShare[]> {
-  const { data, error } = await (supabase as any)
+// List shares. If userId provided, returns only links created by that user.
+export async function listShares(userId?: string): Promise<PublicShare[]> {
+  let query = (supabase as any)
     .from("shared")
     .select("*")
     .order("id", { ascending: false });
 
+  if (userId) {
+    query = query.eq("user_id", userId);
+  }
+
+  const { data, error } = await query;
   if (error) throw error;
   return data as PublicShare[];
 }

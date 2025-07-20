@@ -26,8 +26,9 @@ const SharedLinksPage: React.FC = () => {
   const { invoices: { data: invoices } } = useGlobalData();
 
   const { data: shares = [], isLoading } = useQuery({
-    queryKey: ["shares"],
-    queryFn: () => listShares(),
+    queryKey: ["shares", user?.id],
+    queryFn: () => listShares(user!.id),
+    enabled: !!user?.id,
   });
 
   const delMutation = useMutation({

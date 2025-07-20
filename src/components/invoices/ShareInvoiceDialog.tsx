@@ -49,12 +49,12 @@ const ShareInvoiceDialog: React.FC<ShareInvoiceDialogProps> = ({
 
   // Fetch active share links for this invoice
   const { data: activeShares = [], isLoading: sharesLoading } = useQuery({
-    queryKey: ["invoiceShares", invoiceId],
+    queryKey: ["invoiceShares", invoiceId, user?.id],
     queryFn: async () => {
-      const all = await listShares();
+      const all = await listShares(user!.id);
       return all.filter((s) => s.invoice_id === invoiceId);
     },
-    enabled: isOpen && currentTab === 'link',
+    enabled: isOpen && currentTab === 'link' && !!user?.id,
   });
 
   // Delete share mutation
@@ -121,6 +121,7 @@ const ShareInvoiceDialog: React.FC<ShareInvoiceDialogProps> = ({
       }
 
       const share = await createPublicShareLink({
+        userId: user.id,
         invoiceId,
         contractId: linkedContractId,
         type: linkedContractId ? "combo" : "invoice",
