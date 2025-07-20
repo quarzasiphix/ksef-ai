@@ -56,6 +56,7 @@ import { queryClient } from '@/lib/queryClient';
 import { useAuth } from '@/hooks/useAuth';
 import { TransactionType } from '@/types/common';
 import SettingsMenu from './pages/settings/SettingsMenu';
+import ProfileSettings from './pages/settings/ProfileSettings';
 
 const AppLoadingScreen = () => (
   <div className="flex items-center justify-center h-screen">
@@ -282,6 +283,11 @@ const App = () => {
                 <Route path="/settings" element={
                   <ProtectedRoute>
                       <SettingsMenu />
+                  </ProtectedRoute>
+                } />
+                <Route path="/settings/profile" element={
+                  <ProtectedRoute>
+                    <ProfileSettings />
                   </ProtectedRoute>
                 } />
                 <Route path="/settings/business-profiles/new" element={
