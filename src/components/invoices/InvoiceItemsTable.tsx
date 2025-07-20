@@ -4,6 +4,7 @@ import { Button } from "@/components/ui/button";
 import { formatCurrency } from "@/lib/invoice-utils";
 import { X } from "lucide-react";
 import { Input } from "@/components/ui/input";
+import { MobileInvoiceItemsList } from "./invoice-items/MobileInvoiceItemsList";
 
 interface InvoiceItemsTableProps {
   items: InvoiceItem[];
@@ -11,6 +12,7 @@ interface InvoiceItemsTableProps {
   onUpdateItem: (id: string, updates: Partial<InvoiceItem>) => void;
   documentType: InvoiceType;
   readOnly?: boolean;
+  currency?: string;
 }
 
 export const InvoiceItemsTable: React.FC<InvoiceItemsTableProps> = ({
@@ -18,7 +20,8 @@ export const InvoiceItemsTable: React.FC<InvoiceItemsTableProps> = ({
   onRemoveItem,
   onUpdateItem,
   documentType,
-  readOnly = false
+  readOnly = false,
+  currency = 'PLN',
 }) => {
   const isReceipt = documentType === InvoiceType.RECEIPT;
   
@@ -49,90 +52,19 @@ export const InvoiceItemsTable: React.FC<InvoiceItemsTableProps> = ({
   // Mobile view
   if (window.innerWidth < 768) {
     return (
-      <div className="space-y-4">
-        {items.map((item, index) => (
-          <div key={item.id} className="border rounded-md p-3">
-            <div className="flex justify-between items-center mb-2">
-              <span className="font-medium">{index + 1}. {item.name}</span>
-              {!readOnly && (
-                <Button 
-                  variant="ghost" 
-                  size="icon" 
-                  onClick={() => onRemoveItem(item.id)}
-                >
-                  <X className="h-4 w-4" />
-                </Button>
-              )}
-            </div>
-            <div className="grid grid-cols-2 gap-2 text-sm">
-              <div>
-                <label className="text-xs text-muted-foreground">Ilość:</label>
-                {readOnly ? (
-                  <p>{item.quantity} {item.unit}</p>
-                ) : (
-                  <Input
-                    type="number"
-                    min="0"
-                    step="1"
-                    value={item.quantity}
-                    onChange={(e) => handleQuantityChange(item.id, e.target.value)}
-                    className="h-7 mt-1"
-                  />
-                )}
-              </div>
-              <div>
-                <label className="text-xs text-muted-foreground">Cena netto:</label>
-                <p>{formatCurrency(item.unitPrice)}</p>
-              </div>
-              <div>
-                <label className="text-xs text-muted-foreground">Wartość netto:</label>
-                <p>{formatCurrency(item.totalNetValue || 0)}</p>
-              </div>
-              {!isReceipt && (
-                <>
-                  <div>
-                    <label className="text-xs text-muted-foreground">VAT:</label>
-                    <p>{item.vatRate}%</p>
-                  </div>
-                  <div>
-                    <label className="text-xs text-muted-foreground">Kwota VAT:</label>
-                    <p>{formatCurrency(item.totalVatValue || 0)}</p>
-                  </div>
-                </>
-              )}
-              <div className={isReceipt ? "col-span-2" : ""}>
-                <label className="text-xs text-muted-foreground">Wartość brutto:</label>
-                <p className="font-medium">{formatCurrency(item.totalGrossValue || 0)}</p>
-              </div>
-            </div>
-          </div>
-        ))}
-        
-        {items.length > 0 && (
-          <div className="bg-slate-50 p-3 rounded-md border">
-            <div className="grid grid-cols-2 gap-2 text-sm">
-              <div className="text-right font-medium">Razem netto:</div>
-              <div>{formatCurrency(totalNetValue)}</div>
-              
-              {!isReceipt && (
-                <>
-                  <div className="text-right font-medium">Razem VAT:</div>
-                  <div>{formatCurrency(totalVatValue)}</div>
-                </>
-              )}
-              
-              <div className="text-right font-medium">Razem brutto:</div>
-              <div className="font-bold">{formatCurrency(totalGrossValue)}</div>
-            </div>
-          </div>
-        )}
-        
-        {items.length === 0 && (
-          <div className="text-center py-4 text-muted-foreground">
-            Brak pozycji na dokumencie
-          </div>
-        )}
-      </div>
+      <MobileInvoiceItemsList
+        items={items}
+        documentType={documentType}
+        isReceipt={isReceipt}
+        totalNetValue={totalNetValue}
+        totalVatValue={totalVatValue}
+        totalGrossValue={totalGrossValue}
+        onRemoveItem={onRemoveItem}
+        onUpdateItem={onUpdateItem}
+        fakturaBezVAT={undefined}
+        vatExemptionReason={undefined}
+        currency={currency}
+      />
     );
   }
   
@@ -180,15 +112,15 @@ export const InvoiceItemsTable: React.FC<InvoiceItemsTableProps> = ({
                 )}
               </td>
               <td className="px-2 py-2 text-right">{item.unit}</td>
-              <td className="px-2 py-2 text-right">{formatCurrency(item.unitPrice)}</td>
-              <td className="px-2 py-2 text-right">{formatCurrency(item.totalNetValue || 0)}</td>
+              <td className="px-2 py-2 text-right">{formatCurrency(item.unitPrice, currency)}</td>
+              <td className="px-2 py-2 text-right">{formatCurrency(item.totalNetValue || 0, currency)}</td>
               {!isReceipt && (
                 <>
                   <td className="px-2 py-2 text-right">{item.vatRate}%</td>
-                  <td className="px-2 py-2 text-right">{formatCurrency(item.totalVatValue || 0)}</td>
+                  <td className="px-2 py-2 text-right">{formatCurrency(item.totalVatValue || 0, currency)}</td>
                 </>
               )}
-              <td className="px-2 py-2 text-right font-medium">{formatCurrency(item.totalGrossValue || 0)}</td>
+              <td className="px-2 py-2 text-right font-medium">{formatCurrency(item.totalGrossValue || 0, currency)}</td>
               {!readOnly && (
                 <td className="px-2 py-2 text-center">
                   <Button 
@@ -218,14 +150,14 @@ export const InvoiceItemsTable: React.FC<InvoiceItemsTableProps> = ({
               <td colSpan={isReceipt ? 5 : 5} className="px-2 py-2 text-right">
                 Razem:
               </td>
-              <td className="px-2 py-2 text-right">{formatCurrency(totalNetValue)}</td>
+              <td className="px-2 py-2 text-right">{formatCurrency(totalNetValue, currency)}</td>
               {!isReceipt && (
                 <>
                   <td></td>
-                  <td className="px-2 py-2 text-right">{formatCurrency(totalVatValue)}</td>
+                  <td className="px-2 py-2 text-right">{formatCurrency(totalVatValue, currency)}</td>
                 </>
               )}
-              <td className="px-2 py-2 text-right font-bold">{formatCurrency(totalGrossValue)}</td>
+              <td className="px-2 py-2 text-right font-bold">{formatCurrency(totalGrossValue, currency)}</td>
               {!readOnly && <td></td>}
             </tr>
           </tfoot>

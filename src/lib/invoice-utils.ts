@@ -2,11 +2,11 @@ import { InvoiceItem, PaymentMethod } from "@/types";
 import { PaymentMethodDb } from "@/types/common";
 import * as z from "zod";
 
-// Format number to Polish currency
-export const formatCurrency = (amount: number): string => {
-  return new Intl.NumberFormat("pl-PL", {
-    style: "currency",
-    currency: "PLN",
+// Format number to currency (dynamic)
+export const formatCurrency = (amount: number, currency: string = 'PLN'): string => {
+  return new Intl.NumberFormat(currency === 'PLN' ? 'pl-PL' : 'en-US', {
+    style: 'currency',
+    currency,
   }).format(amount);
 };
 
@@ -210,3 +210,14 @@ export const invoiceItemSchema = z.object({
   totalGrossValue: z.number().optional(),
   totalVatValue: z.number().optional(),
 });
+
+// Pobierz kurs NBP dla danej waluty i daty (YYYY-MM-DD)
+export async function getNbpExchangeRate(currency: string, date: string): Promise<number> {
+  if (currency === 'PLN') return 1;
+  // NBP API: kurs z dnia poprzedzającego
+  const url = `https://api.nbp.pl/api/exchangerates/rates/A/${currency}/${date}/?format=json`;
+  const res = await fetch(url);
+  if (!res.ok) throw new Error('Nie udało się pobrać kursu NBP');
+  const data = await res.json();
+  return data.rates[0].mid;
+}

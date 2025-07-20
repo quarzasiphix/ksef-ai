@@ -13,6 +13,7 @@ interface ProductSelectorProps {
   refetchProducts: () => Promise<void>;
   onProductSavedAndSync?: (product: Product) => void;
   userId: string;
+  currency?: string;
 }
 
 export const ProductSelector: React.FC<ProductSelectorProps> = ({
@@ -23,7 +24,8 @@ export const ProductSelector: React.FC<ProductSelectorProps> = ({
   onNewProductAdded,
   refetchProducts,
   onProductSavedAndSync,
-  userId
+  userId,
+  currency = 'PLN',
 }) => {
   const [selectedProductId, setSelectedProductId] = useState<string>("");
   
@@ -54,7 +56,7 @@ export const ProductSelector: React.FC<ProductSelectorProps> = ({
             {products.length > 0 ? (
               products.map((product) => (
                 <SelectItem key={product.id} value={product.id}>
-                  {product.name} - {product.unitPrice.toFixed(2)} zł
+                  {product.name} - {new Intl.NumberFormat('pl-PL', { style: 'currency', currency }).format(product.unitPrice)}
                 </SelectItem>
               ))
             ) : (

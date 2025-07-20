@@ -21,7 +21,7 @@ export const BankAccountEditDialog = ({
   const [bankName, setBankName] = useState(initial?.bankName || "");
   const [accountNumber, setAccountNumber] = useState(initial?.accountNumber || "");
   const [accountName, setAccountName] = useState(initial?.accountName || "");
-  const [currency, setCurrency] = useState(initial?.currency || "PLN");
+  const [currency, setCurrency] = useState(initial?.currency || 'PLN');
   const [type, setType] = useState(initial?.type || "main");
   const [isDefault, setIsDefault] = useState(initial?.isDefault || false);
 

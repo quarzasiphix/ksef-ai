@@ -14,6 +14,7 @@ interface MobileInvoiceItemsListProps {
   onUpdateItem: (id: string, updates: Partial<InvoiceItem>) => void;
   fakturaBezVAT?: boolean;
   vatExemptionReason?: string | null;
+  currency?: string;
 }
 
 export const MobileInvoiceItemsList: React.FC<MobileInvoiceItemsListProps> = ({
@@ -26,7 +27,8 @@ export const MobileInvoiceItemsList: React.FC<MobileInvoiceItemsListProps> = ({
   onRemoveItem,
   onUpdateItem,
   fakturaBezVAT,
-  vatExemptionReason
+  vatExemptionReason,
+  currency = 'PLN',
 }) => {
   return (
     <div className="space-y-4">
@@ -41,6 +43,7 @@ export const MobileInvoiceItemsList: React.FC<MobileInvoiceItemsListProps> = ({
           onUpdateItem={onUpdateItem}
           fakturaBezVAT={fakturaBezVAT}
           vatExemptionReason={vatExemptionReason}
+          currency={currency}
         />
       ))}
       
@@ -56,6 +59,7 @@ export const MobileInvoiceItemsList: React.FC<MobileInvoiceItemsListProps> = ({
           totalVatValue={totalVatValue}
           totalGrossValue={totalGrossValue}
           isReceipt={isReceipt}
+          currency={currency}
         />
       )}
     </div>

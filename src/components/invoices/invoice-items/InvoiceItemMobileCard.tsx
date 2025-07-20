@@ -17,6 +17,7 @@ interface InvoiceItemMobileCardProps {
   onUpdateItem: (id: string, updates: Partial<InvoiceItem>) => void;
   fakturaBezVAT?: boolean;
   vatExemptionReason?: string | null;
+  currency?: string;
 }
 
 export const InvoiceItemMobileCard: React.FC<InvoiceItemMobileCardProps> = ({
@@ -25,7 +26,10 @@ export const InvoiceItemMobileCard: React.FC<InvoiceItemMobileCardProps> = ({
   isReceipt,
   documentType,
   onRemoveItem,
-  onUpdateItem
+  onUpdateItem,
+  fakturaBezVAT,
+  vatExemptionReason,
+  currency = 'PLN',
 }) => {
   const handleQuantityChange = (value: string) => {
     const quantity = Number(value);
@@ -109,7 +113,7 @@ export const InvoiceItemMobileCard: React.FC<InvoiceItemMobileCardProps> = ({
         </div>
         <div>
           <label className="text-xs text-muted-foreground">Wartość netto:</label>
-          <p>{formatCurrency(item.totalNetValue || 0)}</p>
+          <p>{formatCurrency(item.totalNetValue || 0, currency)}</p>
         </div>
         {!isReceipt && (
           <>
@@ -133,13 +137,13 @@ export const InvoiceItemMobileCard: React.FC<InvoiceItemMobileCardProps> = ({
             </div>
             <div>
               <label className="text-xs text-muted-foreground">Kwota VAT:</label>
-              <p>{formatCurrency(item.totalVatValue || 0)}</p>
+              <p>{formatCurrency(item.totalVatValue || 0, currency)}</p>
             </div>
           </>
         )}
         <div className={isReceipt ? "col-span-2" : ""}>
           <label className="text-xs text-muted-foreground">Wartość brutto:</label>
-          <p className="font-medium">{formatCurrency(item.totalGrossValue || 0)}</p>
+          <p className="font-medium">{formatCurrency(item.totalGrossValue || 0, currency)}</p>
         </div>
       </div>
     </div>

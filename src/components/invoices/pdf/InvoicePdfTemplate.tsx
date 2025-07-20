@@ -20,30 +20,48 @@ const formatPercent = (value: number) => {
     return `${value}%`;
 };
 
-const formatCurrency = (value: number) => {
+const formatCurrency = (value: number, currency: string) => {
     return new Intl.NumberFormat('pl-PL', {
         style: 'currency',
-        currency: 'PLN',
+        currency: currency,
         minimumFractionDigits: 2,
         maximumFractionDigits: 2
     }).format(value);
 };
 
 // Format amount in words with proper handling of grosze
-const formatAmountInWords = (amount: number) => {
+const formatAmountInWords = (amount: number, currency: string = 'PLN') => {
     const zlote = Math.floor(amount);
     const grosze = Math.round((amount - zlote) * 100);
 
     let result = toWords(zlote);
 
-    // Handle złoty forms
-    if (zlote === 1) {
-        result += ' złoty';
-    } else if (zlote % 10 >= 2 && zlote % 10 <= 4 && (zlote % 100 < 10 || zlote % 100 >= 20)) {
-        result += ' złote';
-    } else {
-        result += ' złotych';
+    // Dynamiczna nazwa waluty
+    let currencyWord = 'złotych';
+    if (currency === 'EUR') {
+        currencyWord = 'euro';
+    } else if (currency === 'USD') {
+        currencyWord = 'dolarów';
+    } else if (currency === 'GBP') {
+        currencyWord = 'funtów';
+    } else if (currency === 'CHF') {
+        currencyWord = 'franków';
+    } else if (currency === 'CZK') {
+        currencyWord = 'koron czeskich';
+    } else if (currency === 'UAH') {
+        currencyWord = 'hrywien';
+    } else if (currency === 'PLN') {
+        // Oryginalna odmiana złoty
+        if (zlote === 1) {
+            currencyWord = 'złoty';
+        } else if (zlote % 10 >= 2 && zlote % 10 <= 4 && (zlote % 100 < 10 || zlote % 100 >= 20)) {
+            currencyWord = 'złote';
+        } else {
+            currencyWord = 'złotych';
+        }
     }
+
+    result += ' ' + currencyWord;
 
     // Handle grosze
     if (grosze > 0) {
@@ -218,6 +236,8 @@ export const InvoicePdfTemplate: React.FC<InvoicePdfTemplateProps> = ({ invoice,
     const itemsWithValues = rawItems.map(calculateItemValues);
     const { totalNetValue, totalVatValue, totalGrossValue } = calculateInvoiceTotals(rawItems);
 
+    const currency = invoice.currency || 'PLN';
+
     // Format address with postal code and city
     const formatAddress = (address: string, postalCode: string, city: string) => {
         return `${address}, ${postalCode} ${city}`;
@@ -367,11 +387,11 @@ export const InvoicePdfTemplate: React.FC<InvoicePdfTemplateProps> = ({ invoice,
                                 <td style={{ padding: 6, border: '1px solid #e5e7eb' }}>{idx + 1}</td>
                                 <td style={{ padding: 6, border: '1px solid #e5e7eb' }}>{item.name}</td>
                                 <td style={{ padding: 6, border: '1px solid #e5e7eb', textAlign: 'right' }}>{item.quantity}</td>
-                                <td style={{ padding: '4px 6px', border: '1px solid #e5e7eb', textAlign: 'right' }}>{formatCurrencyUtil(item.unitPrice)}</td>
-                                <td style={{ padding: '4px 6px', border: '1px solid #e5e7eb', textAlign: 'right' }}>{formatCurrencyUtil(item.totalNetValue || 0)}</td>
+                                <td style={{ padding: '4px 6px', border: '1px solid #e5e7eb', textAlign: 'right' }}>{formatCurrencyUtil(item.unitPrice, currency)}</td>
+                                <td style={{ padding: '4px 6px', border: '1px solid #e5e7eb', textAlign: 'right' }}>{formatCurrencyUtil(item.totalNetValue || 0, currency)}</td>
                                 {isReceipt ? null : <td style={{ padding: 6, border: '1px solid #e5e7eb', textAlign: 'right' }}>{item.vatRate === -1 ? 'zw' : `${item.vatRate}%`}</td>}
-                                {isReceipt ? null : <td style={{ padding: '4px 6px', border: '1px solid #e5e7eb', textAlign: 'right' }}>{formatCurrencyUtil(item.totalVatValue || 0)}</td>}
-                                <td style={{ padding: '4px 6px', border: '1px solid #e5e7eb', textAlign: 'right' }}>{formatCurrencyUtil(item.totalGrossValue || 0)}</td>
+                                {isReceipt ? null : <td style={{ padding: '4px 6px', border: '1px solid #e5e7eb', textAlign: 'right' }}>{formatCurrencyUtil(item.totalVatValue || 0, currency)}</td>}
+                                <td style={{ padding: '4px 6px', border: '1px solid #e5e7eb', textAlign: 'right' }}>{formatCurrencyUtil(item.totalGrossValue || 0, currency)}</td>
                             </tr>
                         ))}
                     </tbody>
@@ -384,17 +404,17 @@ export const InvoicePdfTemplate: React.FC<InvoicePdfTemplateProps> = ({ invoice,
                             <>
                                 <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 13, marginBottom: 2 }}>
                                     <span>Razem netto:</span>
-                                    <span>{formatCurrencyUtil(totalNetValue || 0)}</span>
+                                    <span>{formatCurrencyUtil(totalNetValue || 0, currency)}</span>
                                 </div>
                                 <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 13, marginBottom: 2 }}>
                                     <span>VAT:</span>
-                                    <span>{formatCurrencyUtil(totalVatValue || 0)}</span>
+                                    <span>{formatCurrencyUtil(totalVatValue || 0, currency)}</span>
                                 </div>
                             </>
                         )}
                         <div style={{ display: 'flex', justifyContent: 'space-between', fontWeight: 700, fontSize: 14, marginTop: 6 }}>
                             <span>Razem brutto:</span>
-                            <span>{formatCurrencyUtil(totalGrossValue || 0)}</span>
+                            <span>{formatCurrencyUtil(totalGrossValue || 0, currency)}</span>
                         </div>
                     </div>
                 </div>
@@ -402,10 +422,10 @@ export const InvoicePdfTemplate: React.FC<InvoicePdfTemplateProps> = ({ invoice,
                 {/* Amount in Words Section at the bottom */}
                 <div style={{ marginTop: '32px', paddingTop: '20px', borderTop: '2px solid #dee2e6', textAlign: 'left' }}>
                     <div style={{ fontSize: '20px', color: '#212529', marginBottom: '8px', fontWeight: 700 }}>
-                        Do zapłaty: <span style={{ color: '#2c2930' }}>{formatCurrency(totalGrossValue)}</span>
+                        Do zapłaty: <span style={{ color: '#2c2930' }}>{formatCurrencyUtil(totalGrossValue, currency)}</span>
                     </div>
                     <div style={{ fontSize: '15px', color: '#495057', fontStyle: 'italic' }}>
-                        Słownie: {formatAmountInWords(totalGrossValue)}
+                        Słownie: {formatAmountInWords(totalGrossValue, currency)}
                     </div>
 
                     {/* Payment Method and Bank Account */}

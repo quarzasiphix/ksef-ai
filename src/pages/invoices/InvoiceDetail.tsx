@@ -62,6 +62,9 @@ const InvoiceDetail: React.FC<InvoiceDetailProps> = ({ type }) => {
     { net: 0, vat: 0, gross: 0 }
   );
 
+  // 1. Pobierz currency z invoice
+  const currency = invoice?.currency || 'PLN';
+
   // Fetch full contractor info if available
   const { businessProfiles: { data: profiles }, customers: { data: customersList } } = useGlobalData();
 
@@ -331,6 +334,10 @@ const InvoiceDetail: React.FC<InvoiceDetailProps> = ({ type }) => {
                  invoice.paymentMethod === 'card' ? 'Karta' : 'Inne'}
               </span>
             </div>
+            <div className="flex justify-between">
+              <span className="text-muted-foreground">Waluta:</span>
+              <span>{currency}</span>
+            </div>
           </CardContent>
         </Card>
 
@@ -342,15 +349,15 @@ const InvoiceDetail: React.FC<InvoiceDetailProps> = ({ type }) => {
           <CardContent className="space-y-3">
             <div className="flex justify-between">
               <span className="text-muted-foreground">Wartość netto:</span>
-              <span>{formatCurrency(totals.net)}</span>
+              <span>{formatCurrency(totals.net, currency)}</span>
             </div>
             <div className="flex justify-between">
               <span className="text-muted-foreground">Podatek VAT:</span>
-              <span>{formatCurrency(totals.vat)}</span>
+              <span>{formatCurrency(totals.vat, currency)}</span>
             </div>
             <div className="flex justify-between font-semibold text-lg border-t pt-3">
               <span>Wartość brutto:</span>
-              <span className="text-green-600">{formatCurrency(totals.gross)}</span>
+              <span className="text-green-600">{formatCurrency(totals.gross, currency)}</span>
             </div>
           </CardContent>
         </Card>
@@ -363,6 +370,7 @@ const InvoiceDetail: React.FC<InvoiceDetailProps> = ({ type }) => {
         totalVatValue={totals.vat}
         totalGrossValue={totals.gross}
         type={invoice.type as any}
+        currency={currency}
       />
 
       {/* Linked contracts */}

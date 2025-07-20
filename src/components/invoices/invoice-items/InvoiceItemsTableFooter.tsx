@@ -7,13 +7,15 @@ interface InvoiceItemsTableFooterProps {
   totalVatValue: number;
   totalGrossValue: number;
   isReceipt: boolean;
+  currency?: string;
 }
 
 export const InvoiceItemsTableFooter: React.FC<InvoiceItemsTableFooterProps> = ({
   totalNetValue,
   totalVatValue,
   totalGrossValue,
-  isReceipt
+  isReceipt,
+  currency = 'PLN',
 }) => {
   return (
     <tfoot>
@@ -21,14 +23,14 @@ export const InvoiceItemsTableFooter: React.FC<InvoiceItemsTableFooterProps> = (
         <td colSpan={5} className="px-2 py-2 text-right">
           Razem:
         </td>
-        <td className="px-2 py-2 text-right">{formatCurrency(totalNetValue)}</td>
+        <td className="px-2 py-2 text-right">{formatCurrency(totalNetValue, currency)}</td>
         {!isReceipt && (
           <>
             <td></td>
-            <td className="px-2 py-2 text-right">{formatCurrency(totalVatValue)}</td>
+            <td className="px-2 py-2 text-right">{formatCurrency(totalVatValue, currency)}</td>
           </>
         )}
-        <td className="px-2 py-2 text-right font-bold">{formatCurrency(totalGrossValue)}</td>
+        <td className="px-2 py-2 text-right font-bold">{formatCurrency(totalGrossValue, currency)}</td>
         <td></td>
       </tr>
     </tfoot>

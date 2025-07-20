@@ -42,6 +42,7 @@ const invoiceFormSchema = z.object({
   transactionType: z.nativeEnum(TransactionType),
   fakturaBezVAT: z.boolean().optional().default(false),
   vatExemptionReason: z.nativeEnum(VatExemptionReason).optional(),
+  currency: z.string().default('PLN'),
 });
 type InvoiceFormValues = z.infer<typeof invoiceFormSchema>;
 
@@ -156,6 +157,7 @@ const NewInvoice: React.ForwardRefExoticComponent<
         businessProfileId: initialData?.businessProfileId || "",
         fakturaBezVAT: (initialData as any)?.vat === false,
         vatExemptionReason: initialData?.vatExemptionReason,
+        currency: initialData?.currency || 'PLN',
       },
     });
     
@@ -630,6 +632,8 @@ const NewInvoice: React.ForwardRefExoticComponent<
       return <div className="text-center py-8">Ładowanie ustawień...</div>;
     }
 
+    const currency = form.watch('currency') || 'PLN';
+
     return (
       <div className="space-y-4 pb-24 md:pb-4">
         <Form {...form}>
@@ -708,6 +712,7 @@ const NewInvoice: React.ForwardRefExoticComponent<
               <InvoiceBasicInfoForm 
                 form={form}
                 documentTitle={documentTitle}
+                businessProfileId={businessProfileId}
               />
 
               <InvoicePartiesForm 
@@ -727,6 +732,7 @@ const NewInvoice: React.ForwardRefExoticComponent<
                   userId={user?.id || ''}
                   fakturaBezVAT={form.watch('fakturaBezVAT')}
                   vatExemptionReason={form.watch('vatExemptionReason')}
+                  currency={form.watch('currency') || 'PLN'}
                 />
               </div>
 

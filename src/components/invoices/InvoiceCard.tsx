@@ -7,9 +7,10 @@ import { Calendar, FileText, User, CreditCard } from "lucide-react";
 
 type InvoiceCardProps = {
   invoice: Invoice;
+  currency?: string;
 };
 
-const InvoiceCard: React.FC<InvoiceCardProps> = ({ invoice }) => {
+const InvoiceCard: React.FC<InvoiceCardProps> = ({ invoice, currency = invoice.currency || 'PLN' }) => {
   // Helper function to determine status badge color
   const getStatusBadge = () => {
     if (invoice.paid || invoice.isPaid) {
@@ -99,7 +100,7 @@ const InvoiceCard: React.FC<InvoiceCardProps> = ({ invoice }) => {
             <div className="flex justify-between">
               {!isReceipt && invoice.totalVatValue !== undefined && (
                 <span className="text-xs text-gray-300">
-                  VAT: {formatCurrency(invoice.totalVatValue >= 0 ? invoice.totalVatValue : 0)}
+                  VAT: {formatCurrency(invoice.totalVatValue >= 0 ? invoice.totalVatValue : 0, currency)}
                 </span>
               )}
               <span className="font-bold text-base">
@@ -108,7 +109,8 @@ const InvoiceCard: React.FC<InvoiceCardProps> = ({ invoice }) => {
                   // Otherwise use gross value if it's valid
                   invoice.totalVatValue <= 0 
                     ? (invoice.totalNetValue || invoice.totalAmount || 0)
-                    : (invoice.totalGrossValue || invoice.totalAmount || 0)
+                    : (invoice.totalGrossValue || invoice.totalAmount || 0),
+                  currency
                 )}
               </span>
             </div>

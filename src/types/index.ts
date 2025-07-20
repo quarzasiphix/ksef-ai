@@ -221,13 +221,15 @@ export interface Invoice {
   buyer: Company;
   businessName?: string;
   customerName?: string;
-  bankAccountId?: string;
+  bankAccountId?: string | null;
   bankAccountNumber?: string;
+  currency?: string;
   created_at?: string;
   updated_at?: string;
   vat?: boolean;
   vatExemptionReason?: VatExemptionReason;
   fakturaBezVAT?: boolean;
+  exchangeRate?: number;
 }
 
 // For Analytics Panel

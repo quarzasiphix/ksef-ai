@@ -15,6 +15,7 @@ interface InvoicePaymentCardProps {
   totalVatValue: number;
   totalGrossValue: number;
   type: InvoiceType;
+  currency?: string;
 }
 
 export const InvoicePaymentCard: React.FC<InvoicePaymentCardProps> = ({
@@ -23,6 +24,7 @@ export const InvoicePaymentCard: React.FC<InvoicePaymentCardProps> = ({
   totalVatValue,
   totalGrossValue,
   type,
+  currency = 'PLN',
 }) => {
   const isReceipt = type === InvoiceType.RECEIPT;
   
@@ -43,17 +45,17 @@ export const InvoicePaymentCard: React.FC<InvoicePaymentCardProps> = ({
         <div className="bg-muted p-3 rounded-md">
           <div className="flex items-center justify-between text-sm">
             <p className="text-muted-foreground">Wartość netto:</p>
-            <p>{formatCurrency(totalNetValue || 0)}</p>
+            <p>{formatCurrency(totalNetValue || 0, currency)}</p>
           </div>
           {!isReceipt && (
             <div className="flex items-center justify-between text-sm mt-1">
               <p className="text-muted-foreground">Kwota VAT:</p>
-              <p>{formatCurrency(totalVatValue || 0)}</p>
+              <p>{formatCurrency(totalVatValue || 0, currency)}</p>
             </div>
           )}
           <div className="flex items-center justify-between mt-2 text-base font-bold">
             <p>Do zapłaty:</p>
-            <p>{formatCurrency(totalGrossValue || 0)}</p>
+            <p>{formatCurrency(totalGrossValue || 0, currency)}</p>
           </div>
         </div>
       </CardContent>

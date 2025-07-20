@@ -62,6 +62,7 @@ interface DatabaseInvoiceResponse {
     total_vat_value: number;
     vat_exempt: boolean;
   }[];
+  currency: string;
 }
 
 export async function saveInvoice(invoice: Omit<Invoice, 'id' | 'ksef' | 'vat' | 'vatExemptionReason' | 'date' | 'paid' | 'totalAmount' | 'seller' | 'buyer' | 'businessName' | 'customerName' | 'bankAccountId' | 'bankAccountNumber' | 'created_at' | 'updated_at'> & {
@@ -181,6 +182,7 @@ export async function saveInvoice(invoice: Omit<Invoice, 'id' | 'ksef' | 'vat' |
     transaction_type: "income" | "expense";
     vat: boolean;
     vat_exemption_reason: VatExemptionReason | null;
+    currency: string;
   };
 
   // Ensure payment method is in the correct format for the database
@@ -226,6 +228,7 @@ export async function saveInvoice(invoice: Omit<Invoice, 'id' | 'ksef' | 'vat' |
     ksef_reference_number: invoice.ksef?.referenceNumber || null,
     vat: invoice.vat || true,
     vat_exemption_reason: invoice.vatExemptionReason || null,
+    currency: invoice.currency || 'PLN',
   };
 
   console.log('Prepared invoice payload:', basePayload);
@@ -392,6 +395,7 @@ export async function getInvoice(id: string): Promise<Invoice> {
     updated_at,
     vat,
     vat_exemption_reason,
+    currency,
     business_profiles!inner(id, name, user_id, tax_id, address, city, postal_code),
     customers!inner(id, name, user_id, tax_id, address, city, postal_code),
     invoice_items(id, product_id, name, quantity, unit_price, vat_rate, unit, total_net_value, total_gross_value, total_vat_value, vat_exempt)
@@ -484,7 +488,8 @@ export async function getInvoice(id: string): Promise<Invoice> {
     updated_at: data.updated_at,
     vat: data.vat || true,
     vatExemptionReason: data.vat_exemption_reason as VatExemptionReason | undefined || undefined,
-    fakturaBezVAT: undefined
+    fakturaBezVAT: undefined,
+    currency: data.currency || 'PLN'
   };
 
   return invoice;
@@ -616,7 +621,8 @@ export async function getInvoices(userId: string, businessProfileId?: string, pe
       updated_at: dbInvoice.updated_at,
       vat: dbInvoice.vat || true,
       vatExemptionReason: dbInvoice.vat_exemption_reason as VatExemptionReason | undefined || undefined,
-      fakturaBezVAT: undefined
+      fakturaBezVAT: undefined,
+      currency: dbInvoice.currency || 'PLN'
     };
 
     return invoice;

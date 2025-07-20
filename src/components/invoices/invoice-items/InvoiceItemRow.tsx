@@ -19,6 +19,7 @@ interface InvoiceItemRowProps {
   fakturaBezVAT?: boolean;
   vatExemptionReason?: string | null;
   onClick?: (event: React.MouseEvent<HTMLTableRowElement, MouseEvent>) => void;
+  currency?: string;
 }
 
 export const InvoiceItemRow: React.FC<InvoiceItemRowProps> = ({
@@ -31,7 +32,8 @@ export const InvoiceItemRow: React.FC<InvoiceItemRowProps> = ({
   userId,
   fakturaBezVAT,
   vatExemptionReason,
-  onClick
+  onClick,
+  currency = 'PLN',
 }) => {
   const handleQuantityChange = (value: string) => {
     const quantity = Number(value);
@@ -100,7 +102,7 @@ export const InvoiceItemRow: React.FC<InvoiceItemRowProps> = ({
           className="h-7 w-24 inline-block text-right"
         />
       </td>
-      <td className="px-2 py-2 text-right">{formatCurrency(item.totalNetValue || 0)}</td>
+      <td className="px-2 py-2 text-right">{formatCurrency(item.totalNetValue || 0, currency)}</td>
       {!isReceipt && (
         <>
           <td className="px-2 py-2 text-right">
@@ -120,10 +122,10 @@ export const InvoiceItemRow: React.FC<InvoiceItemRowProps> = ({
               </SelectContent>
             </Select>
           </td>
-          <td className="px-2 py-2 text-right">{formatCurrency(item.totalVatValue || 0)}</td>
+          <td className="px-2 py-2 text-right">{formatCurrency(item.totalVatValue || 0, currency)}</td>
         </>
       )}
-      <td className="px-2 py-2 text-right font-medium">{formatCurrency(item.totalGrossValue || 0)}</td>
+      <td className="px-2 py-2 text-right font-medium">{formatCurrency(item.totalGrossValue || 0, currency)}</td>
       <td className="px-2 py-2 text-center">
         <div className="flex justify-center items-center gap-1">
           {item.productId && (

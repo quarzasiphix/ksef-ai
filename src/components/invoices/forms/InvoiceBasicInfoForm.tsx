@@ -6,16 +6,20 @@ import { CardHeader, CardTitle, CardContent, Card } from "@/components/ui/card";
 import { UseFormReturn } from "react-hook-form";
 import { PaymentMethod, VatExemptionReason } from "@/types";
 import { Checkbox } from "@/components/ui/checkbox";
+import { BankAccountSelector } from "@/components/invoices/selectors/BankAccountSelector";
 
 interface InvoiceBasicInfoFormProps {
   form: UseFormReturn<any, any>;
   documentTitle: string;
+  businessProfileId?: string;
 }
 
 export const InvoiceBasicInfoForm: React.FC<InvoiceBasicInfoFormProps> = ({
   form,
-  documentTitle
+  documentTitle,
+  businessProfileId
 }) => {
+  const currency = form.watch('currency') || 'PLN';
   return (
     <Card className="md:col-span-1">
       <CardHeader className="py-4">
@@ -100,6 +104,45 @@ export const InvoiceBasicInfoForm: React.FC<InvoiceBasicInfoFormProps> = ({
                   ))}
                 </SelectContent>
               </Select>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
+        
+        <FormField
+          control={form.control}
+          name="currency"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel>Waluta</FormLabel>
+              <Select onValueChange={field.onChange} value={field.value || 'PLN'}>
+                <FormControl>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Wybierz walutę" />
+                  </SelectTrigger>
+                </FormControl>
+                <SelectContent>
+                  <SelectItem value="PLN">PLN</SelectItem>
+                  <SelectItem value="EUR">EUR</SelectItem>
+                  <SelectItem value="USD">USD</SelectItem>
+                </SelectContent>
+              </Select>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
+        <FormField
+          control={form.control}
+          name="bankAccountId"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel>Konto bankowe</FormLabel>
+              <BankAccountSelector
+                businessProfileId={businessProfileId || ''}
+                value={field.value}
+                onChange={field.onChange}
+                currency={currency}
+              />
               <FormMessage />
             </FormItem>
           )}

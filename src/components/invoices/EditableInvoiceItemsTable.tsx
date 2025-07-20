@@ -7,6 +7,7 @@ import { TransactionType } from "@/types/common";
 import { Trash2, Plus } from "lucide-react";
 import { ProductSelector } from "./invoice-items/ProductSelector";
 import { InvoiceItemMobileCard } from "./invoice-items/InvoiceItemMobileCard";
+import { formatCurrency } from "@/lib/invoice-utils";
 
 interface EditableInvoiceItemsTableProps {
   items: InvoiceItem[];
@@ -20,6 +21,7 @@ interface EditableInvoiceItemsTableProps {
   userId: string;
   fakturaBezVAT?: boolean;
   vatExemptionReason?: VatExemptionReason;
+  currency?: string;
 }
 
 export const EditableInvoiceItemsTable: React.FC<EditableInvoiceItemsTableProps> = ({
@@ -33,7 +35,8 @@ export const EditableInvoiceItemsTable: React.FC<EditableInvoiceItemsTableProps>
   refetchProducts,
   userId,
   fakturaBezVAT,
-  vatExemptionReason
+  vatExemptionReason,
+  currency = 'PLN',
 }) => {
   const [newItem, setNewItem] = useState<Partial<InvoiceItem>>({
     name: "",
@@ -252,9 +255,9 @@ export const EditableInvoiceItemsTable: React.FC<EditableInvoiceItemsTableProps>
                       </SelectContent>
                     </Select>
                   </td>
-                  <td className="p-2 text-right">{(item.totalNetValue || 0).toFixed(2)} zł</td>
-                  <td className="p-2 text-right">{(item.totalVatValue || 0).toFixed(2)} zł</td>
-                  <td className="p-2 text-right">{(item.totalGrossValue || 0).toFixed(2)} zł</td>
+                  <td className="p-2 text-right">{formatCurrency(item.totalNetValue || 0, currency)}</td>
+                  <td className="p-2 text-right">{formatCurrency(item.totalVatValue || 0, currency)}</td>
+                  <td className="p-2 text-right">{formatCurrency(item.totalGrossValue || 0, currency)}</td>
                   <td className="p-2">
                     <Button
                       variant="ghost"
@@ -349,15 +352,15 @@ export const EditableInvoiceItemsTable: React.FC<EditableInvoiceItemsTableProps>
         <div className="bg-gray-900 p-4 rounded-lg space-y-2 text-white">
           <div className="flex justify-between">
             <span>Suma netto:</span>
-            <span className="font-medium">{totalNet.toFixed(2)} zł</span>
+            <span className="font-medium">{formatCurrency(totalNet, currency)}</span>
           </div>
           <div className="flex justify-between">
             <span>Suma VAT:</span>
-            <span className="font-medium">{totalVat.toFixed(2)} zł</span>
+            <span className="font-medium">{formatCurrency(totalVat, currency)}</span>
           </div>
           <div className="flex justify-between text-lg font-bold border-t pt-2">
             <span>Suma brutto:</span>
-            <span>{totalGross.toFixed(2)} zł</span>
+            <span>{formatCurrency(totalGross, currency)}</span>
           </div>
         </div>
       )}

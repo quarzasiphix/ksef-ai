@@ -15,6 +15,7 @@ interface InvoiceItemsFormProps {
   userId: string;
   fakturaBezVAT?: boolean;
   vatExemptionReason?: VatExemptionReason;
+  currency?: string;
 }
 
 export const InvoiceItemsForm: React.FC<InvoiceItemsFormProps> = ({
@@ -24,7 +25,8 @@ export const InvoiceItemsForm: React.FC<InvoiceItemsFormProps> = ({
   onItemsChange,
   userId,
   fakturaBezVAT,
-  vatExemptionReason
+  vatExemptionReason,
+  currency = 'PLN',
 }) => {
   const [products, setProducts] = useState<Product[]>([]);
   const [productsLoading, setProductsLoading] = useState(true);
@@ -89,6 +91,7 @@ export const InvoiceItemsForm: React.FC<InvoiceItemsFormProps> = ({
           userId={userId}
           fakturaBezVAT={fakturaBezVAT}
           vatExemptionReason={vatExemptionReason}
+          currency={currency}
         />
         {productsLoading && (
           <div className="text-sm text-muted-foreground">Ładowanie produktów...</div>
