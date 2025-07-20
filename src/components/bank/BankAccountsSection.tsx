@@ -9,7 +9,7 @@ import ImportBankStatementDialog from "./ImportBankStatementDialog";
 import BankAnalyticsDashboard from "./BankAnalyticsDashboard";
 import { getBankAccountsForProfile, addBankAccount, deleteBankAccount } from '@/integrations/supabase/repositories/bankAccountRepository';
 import { useBusinessProfile } from '@/context/BusinessProfileContext';
-import { BankAccountEditDialog } from '@/components/bank/BankAccountEditDialog';
+import { BankAccountEditDialog } from './BankAccountEditDialog';
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from '@/components/ui/select';
 import { Label } from '@/components/ui/label';
 import { Building2 } from 'lucide-react';
@@ -71,10 +71,10 @@ const BankAccountsSection: React.FC = () => {
   const selectedProfile = profiles.find(p => p.id === selectedProfileId);
 
   return (
-    <div className="max-w-4xl mx-auto p-4 space-y-8">
-      <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 mb-4">
+    <div className="max-w-4xl mx-auto p-2 sm:p-4 space-y-8 w-full overflow-x-hidden">
+      <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 mb-4 w-full">
         {/* Selector profilu firmy jako karta z dropdownem */}
-        <div className="flex-1 min-w-[220px]">
+        <div className="flex-1 min-w-[220px] max-w-full">
           <Label htmlFor="profile-select" className="mb-1 block text-sm font-medium text-muted-foreground">Profil firmy</Label>
           <Select
             value={selectedProfileId || ''}
@@ -83,7 +83,7 @@ const BankAccountsSection: React.FC = () => {
           >
             <SelectTrigger id="profile-select" className="w-full bg-white dark:bg-neutral-900 border border-blue-200 rounded-xl shadow-sm px-4 py-3 flex items-center gap-3">
               {selectedProfile ? (
-                <div className="flex items-center gap-3">
+                <div className="flex items-center gap-3 min-w-0">
                   <div className="bg-blue-100 rounded-full p-2">
                     {selectedProfile.logo ? (
                       <img src={selectedProfile.logo} alt={selectedProfile.name} className="h-8 w-8 rounded-full object-cover" />
@@ -91,9 +91,9 @@ const BankAccountsSection: React.FC = () => {
                       <Building2 className="h-7 w-7 text-blue-600" />
                     )}
                   </div>
-                  <div className="flex flex-col text-left">
-                    <span className="font-semibold text-base text-blue-900 dark:text-blue-200">{selectedProfile.name}</span>
-                    <span className="text-xs text-muted-foreground">NIP: {selectedProfile.taxId}</span>
+                  <div className="flex flex-col text-left min-w-0">
+                    <span className="font-semibold text-base text-blue-900 dark:text-blue-200 truncate">{selectedProfile.name}</span>
+                    <span className="text-xs text-muted-foreground truncate">NIP: {selectedProfile.taxId}</span>
                   </div>
                 </div>
               ) : (
@@ -111,9 +111,9 @@ const BankAccountsSection: React.FC = () => {
                         <Building2 className="h-6 w-6 text-blue-600" />
                       )}
                     </div>
-                    <div className="flex flex-col text-left">
-                      <span className="font-semibold text-sm">{p.name}</span>
-                      <span className="text-xs text-muted-foreground">NIP: {p.taxId}</span>
+                    <div className="flex flex-col text-left min-w-0">
+                      <span className="font-semibold text-sm truncate">{p.name}</span>
+                      <span className="text-xs text-muted-foreground truncate">NIP: {p.taxId}</span>
                     </div>
                   </div>
                 </SelectItem>
@@ -122,48 +122,50 @@ const BankAccountsSection: React.FC = () => {
           </Select>
           {/* Domyślne konto archiwalne z profilu */}
           {selectedProfile?.bankAccount && (
-            <div className="mt-3 p-2 bg-muted rounded text-xs text-muted-foreground border border-dashed border-blue-200">
+            <div className="mt-3 p-2 bg-muted rounded text-xs text-muted-foreground border border-dashed border-blue-200 overflow-x-auto">
               <span className="font-semibold">Domyślne konto (archiwalne): </span>
               <span>{selectedProfile.bankAccount}</span>
             </div>
           )}
         </div>
         {/* Przycisk dodawania konta */}
-        <div className="flex-shrink-0">
+        <div className="flex-shrink-0 w-full md:w-auto">
           <BankAccountEditDialog
             onSave={handleAddAccount}
-            trigger={<Button size="lg" className="rounded-xl shadow bg-blue-600 hover:bg-blue-700 text-white">Dodaj konto bankowe</Button>}
+            trigger={<Button size="lg" className="rounded-xl shadow bg-blue-600 hover:bg-blue-700 text-white w-full md:w-auto">Dodaj konto bankowe</Button>}
           />
         </div>
       </div>
       {/* Lista kont bankowych */}
-      <div className="grid gap-6 sm:grid-cols-2">
+      <div className="grid gap-6 sm:grid-cols-2 w-full overflow-x-auto pb-2">
         {loadingAccounts ? (
           <div className="text-muted-foreground col-span-2">Ładowanie kont...</div>
         ) : accounts.length === 0 ? (
           <div className="text-muted-foreground col-span-2">Brak kont bankowych dla wybranego profilu.</div>
         ) : (
           accounts.map((acc) => (
-            <BankAccountCard
-              key={acc.id}
-              account={acc}
-              selected={selectedAccount?.id === acc.id}
-              onSelect={() => setSelectedAccount(acc)}
+          <BankAccountCard
+            key={acc.id}
+            account={acc}
+            selected={selectedAccount?.id === acc.id}
+            onSelect={() => setSelectedAccount(acc)}
               onDisconnect={() => handleDeleteAccount(acc.id)}
-            />
+          />
           ))
         )}
       </div>
       {/* Analytics i transakcje */}
       {selectedAccount && selectedTransactions.length > 0 && (
+        <div className="overflow-x-auto">
         <BankAnalyticsDashboard
           transactions={selectedTransactions}
           filterType={filterType}
           onFilterTypeChange={setFilterType}
         />
+        </div>
       )}
       {selectedAccount && (
-        <Card className="mt-6">
+        <Card className="mt-6 overflow-x-auto">
           <CardHeader>
             <CardTitle>Transakcje – {selectedAccount.accountName}</CardTitle>
           </CardHeader>

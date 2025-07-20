@@ -1,5 +1,4 @@
-import { InvoiceItem, PaymentMethod } from "@/types";
-import { PaymentMethodDb } from "@/types/common";
+import { Invoice, InvoiceItem, InvoiceType, PaymentMethod, PaymentMethodDb, VatExemptionReason } from "@/types";
 import * as z from "zod";
 
 // Format number to currency (dynamic)
@@ -212,12 +211,36 @@ export const invoiceItemSchema = z.object({
 });
 
 // Pobierz kurs NBP dla danej waluty i daty (YYYY-MM-DD)
-export async function getNbpExchangeRate(currency: string, date: string): Promise<number> {
-  if (currency === 'PLN') return 1;
-  // NBP API: kurs z dnia poprzedzającego
-  const url = `https://api.nbp.pl/api/exchangerates/rates/A/${currency}/${date}/?format=json`;
-  const res = await fetch(url);
-  if (!res.ok) throw new Error('Nie udało się pobrać kursu NBP');
-  const data = await res.json();
-  return data.rates[0].mid;
+export async function getNbpExchangeRate(currency: string, date: string): Promise<{ rate: number, rateDate: string }> {
+  if (currency === 'PLN') return { rate: 1, rateDate: date };
+  let tryDate = new Date(date);
+  for (let i = 0; i < 7; i++) {
+    const tryDateStr = tryDate.toISOString().split('T')[0];
+    const url = `https://api.nbp.pl/api/exchangerates/rates/A/${currency}/${tryDateStr}/?format=json`;
+    const res = await fetch(url);
+    if (res.ok) {
+      const data = await res.json();
+      return { rate: data.rates[0].mid, rateDate: data.rates[0].effectiveDate };
+    }
+    // cofnij o jeden dzień
+    tryDate.setDate(tryDate.getDate() - 1);
+  }
+  throw new Error('Brak kursu NBP w ostatnich dniach');
+}
+
+export function getInvoiceValueInPLN(invoice: Invoice): number {
+  console.log('getInvoiceValueInPLN called with:', {
+    currency: invoice.currency,
+    exchangeRate: invoice.exchangeRate,
+    totalGrossValue: invoice.totalGrossValue
+  });
+  
+  if (invoice.currency === 'PLN' || !invoice.exchangeRate) {
+    console.log('Returning original value:', invoice.totalGrossValue);
+    return invoice.totalGrossValue;
+  }
+  
+  const result = invoice.totalGrossValue * invoice.exchangeRate;
+  console.log('Returning converted value:', result);
+  return result;
 }

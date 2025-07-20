@@ -22,6 +22,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { useAuth } from "@/context/AuthContext";
+import { getInvoiceValueInPLN, formatCurrency } from '@/lib/invoice-utils';
 
 // Helper function to translate invoice type to Polish
 const translateInvoiceType = (type: string): string => {
@@ -44,6 +45,25 @@ const InvoiceList = () => {
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedType, setSelectedType] = useState<string>("all");
   const isMobile = useIsMobile();
+  
+  // Debug - sprawdź faktury z walutą ≠ PLN
+  useEffect(() => {
+    const nonPLNInvoices = invoices.filter(inv => inv.currency && inv.currency !== 'PLN');
+    if (nonPLNInvoices.length > 0) {
+      console.log('Non-PLN invoices found:', nonPLNInvoices.map(inv => ({
+        number: inv.number,
+        currency: inv.currency,
+        exchangeRate: inv.exchangeRate,
+        totalGrossValue: inv.totalGrossValue
+      })));
+    } else {
+      console.log('No non-PLN invoices found. All invoices:', invoices.map(inv => ({
+        number: inv.number,
+        currency: inv.currency,
+        exchangeRate: inv.exchangeRate
+      })));
+    }
+  }, [invoices]);
   
   // Get unique invoice types that exist in the data
   const availableTypes = useMemo(() => {
@@ -190,9 +210,33 @@ const InvoiceList = () => {
             </div>
           ) : (
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
-              {filteredInvoices.map(invoice => (
-                <InvoiceCard key={invoice.id} invoice={invoice} />
-              ))}
+              {filteredInvoices.map(invoice => {
+                // Debug - sprawdź pierwszą fakturę
+                if (invoice.number === 'F/16') {
+                  console.log('First invoice details:', {
+                    number: invoice.number,
+                    currency: invoice.currency,
+                    exchangeRate: invoice.exchangeRate,
+                    totalGrossValue: invoice.totalGrossValue
+                  });
+                }
+                
+                const plnValue = getInvoiceValueInPLN(invoice);
+                
+                return (
+                  <div key={invoice.id}>
+                    <InvoiceCard invoice={invoice} />
+                    <div className="text-sm text-right">
+                      {invoice.exchangeRate && invoice.exchangeRate > 1 && (
+                        <div className="text-green-600 font-semibold">
+                          {formatCurrency(plnValue, 'PLN')} PLN
+                        </div>
+                      )}
+                      <span>{formatCurrency(invoice.totalGrossValue, invoice.currency || 'PLN')} {invoice.currency || 'PLN'}</span>
+                    </div>
+                  </div>
+                );
+              })}
             </div>
           )}
         </CardContent>

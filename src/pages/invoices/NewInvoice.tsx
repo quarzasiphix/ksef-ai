@@ -14,6 +14,8 @@ import {
   generateInvoiceNumber,
   toPaymentMethodDb,
   toPaymentMethodUi,
+  getNbpExchangeRate,
+  formatCurrency,
 } from "@/lib/invoice-utils";
 import { saveInvoice, getInvoice } from "@/integrations/supabase/repositories/invoiceRepository";
 import { saveExpense } from "@/integrations/supabase/repositories/expenseRepository";
@@ -43,6 +45,10 @@ const invoiceFormSchema = z.object({
   fakturaBezVAT: z.boolean().optional().default(false),
   vatExemptionReason: z.nativeEnum(VatExemptionReason).optional(),
   currency: z.string().default('PLN'),
+  bankAccountId: z.string().optional(),
+  exchangeRate: z.number().min(0.0001, 'Kurs musi być większy od zera').optional(),
+  exchangeRateDate: z.string().optional(),
+  exchangeRateSource: z.enum(['NBP', 'manual']).optional(),
 });
 type InvoiceFormValues = z.infer<typeof invoiceFormSchema>;
 
@@ -104,6 +110,7 @@ const NewInvoice: React.ForwardRefExoticComponent<
 
     // --- linking contracts prior to save ---
     const [contractsToLink, setContractsToLink] = useState<string[]>([]);
+    const [exchangeRate, setExchangeRate] = useState<number>(initialData?.exchangeRate || 1);
 
     const handleAddContract = (id: string) => {
       setContractsToLink((prev) => [...prev, id]);
@@ -131,7 +138,7 @@ const NewInvoice: React.ForwardRefExoticComponent<
     const [customerName, setCustomerName] = useState<string>(
       initialData?.customerName || ""
     );
-    
+
     // Today and default due date (+7 days)
     const todayDate = new Date();
     const today = todayDate.toISOString().split("T")[0];
@@ -158,9 +165,42 @@ const NewInvoice: React.ForwardRefExoticComponent<
         fakturaBezVAT: (initialData as any)?.vat === false,
         vatExemptionReason: initialData?.vatExemptionReason,
         currency: initialData?.currency || 'PLN',
+        bankAccountId: initialData?.bankAccountId || "",
+        exchangeRate: initialData?.exchangeRate || 1,
+        exchangeRateDate: initialData?.exchangeRateDate || '',
+        exchangeRateSource: initialData?.exchangeRateSource || 'NBP',
       },
     });
-    
+
+    // Automatyczne pobieranie kursu NBP - po deklaracji form
+    useEffect(() => {
+      const currency = form.watch('currency');
+      const issueDate = form.watch('issueDate');
+      if (currency && currency !== 'PLN' && issueDate) {
+        const prevDate = new Date(issueDate);
+        prevDate.setDate(prevDate.getDate() - 1);
+        const prevDateStr = prevDate.toISOString().split('T')[0];
+        getNbpExchangeRate(currency, prevDateStr)
+          .then(({ rate, rateDate }) => {
+            setExchangeRate(rate);
+            form.setValue('exchangeRate', rate);
+            form.setValue('exchangeRateDate', rateDate);
+            form.setValue('exchangeRateSource', 'NBP');
+          })
+          .catch(() => {
+            setExchangeRate(1);
+            form.setValue('exchangeRate', 1);
+            form.setValue('exchangeRateDate', prevDateStr);
+            form.setValue('exchangeRateSource', 'NBP');
+          });
+      } else {
+        setExchangeRate(1);
+        form.setValue('exchangeRate', 1);
+        form.setValue('exchangeRateDate', '');
+        form.setValue('exchangeRateSource', 'NBP');
+      }
+    }, [form.watch('currency'), form.watch('issueDate')]);
+
     console.log('NewInvoice - Initial Data VAT:', (initialData as any)?.vat);
     console.log('NewInvoice - Initial Data VAT Exemption Reason:', initialData?.vatExemptionReason);
     console.log('NewInvoice - Form Default FakturaBezVAT:', (initialData as any)?.vat === false);
@@ -198,6 +238,7 @@ const NewInvoice: React.ForwardRefExoticComponent<
     // Get form values
     const businessProfileId = form.watch('businessProfileId');
     const customerId = form.watch('customerId');
+    const bankAccountId = form.watch('bankAccountId');
 
     // Watch for fakturaBezVAT changes
     const fakturaBezVAT = form.watch('fakturaBezVAT');
@@ -264,6 +305,10 @@ const NewInvoice: React.ForwardRefExoticComponent<
           businessProfileId: initialData.businessProfileId || "",
           fakturaBezVAT: (initialData as any).vat === false, // Explicitly set checkbox
           vatExemptionReason: initialData.vatExemptionReason, // Explicitly set reason
+          bankAccountId: initialData.bankAccountId || "",
+          exchangeRate: initialData.exchangeRate || 1,
+          exchangeRateDate: initialData.exchangeRateDate || '',
+          exchangeRateSource: initialData.exchangeRateSource || 'NBP',
         });
       }
     }, [initialData, type, form]);
@@ -330,6 +375,10 @@ const NewInvoice: React.ForwardRefExoticComponent<
                 businessProfileId: dup.businessProfileId || "",
                 fakturaBezVAT: (dup as any).vat === false,
                 vatExemptionReason: dup.vatExemptionReason,
+                bankAccountId: dup.bankAccountId || "",
+                exchangeRate: dup.exchangeRate || 1,
+                exchangeRateDate: dup.exchangeRateDate || '',
+                exchangeRateSource: dup.exchangeRateSource || 'NBP',
               });
               import("@/lib/invoice-utils").then(({ calculateItemValues }) => {
                 setItems((dup.items || []).map(calculateItemValues));
@@ -379,6 +428,10 @@ const NewInvoice: React.ForwardRefExoticComponent<
         setIsLoading(true);
         
         const invoiceTotals = calculateInvoiceTotals(items);
+        const currency = form.watch('currency') || 'PLN';
+        const totalGrossInPLN = currency !== 'PLN' && exchangeRate ? 
+          (invoiceTotals.totalGrossValue * exchangeRate) : 
+          invoiceTotals.totalGrossValue;
 
         const invoicePayload = { // Prepare payload for saveInvoice (income)
           ...formData,
@@ -407,7 +460,7 @@ const NewInvoice: React.ForwardRefExoticComponent<
               // Ensure values are numbers and use snake_case for database
               quantity: quantity,
               unit_price: unitPrice,
-              vat_rate: rawVatRate, // preserve -1 for zwolniony in DB
+              vat_rate: effectiveVatRate, // Save 0 instead of -1 for zwolniony in DB
               total_net_value: Number(totalNetValue.toFixed(2)),
               total_vat_value: Number(totalVatValue.toFixed(2)),
               total_gross_value: Number(totalGrossValue.toFixed(2)),
@@ -434,6 +487,8 @@ const NewInvoice: React.ForwardRefExoticComponent<
            comments: formData.comments || null, // Ensure comments is null if empty string
            businessProfileId: formData.businessProfileId,
            customerId: formData.customerId || null, // Ensure customerId is null if empty string
+           bankAccountId: bankAccountId || null,
+           exchangeRate: exchangeRate,
         };
 
         console.log('Invoice/Expense form payload prepared.');
@@ -632,8 +687,6 @@ const NewInvoice: React.ForwardRefExoticComponent<
       return <div className="text-center py-8">Ładowanie ustawień...</div>;
     }
 
-    const currency = form.watch('currency') || 'PLN';
-
     return (
       <div className="space-y-4 pb-24 md:pb-4">
         <Form {...form}>
@@ -713,6 +766,14 @@ const NewInvoice: React.ForwardRefExoticComponent<
                 form={form}
                 documentTitle={documentTitle}
                 businessProfileId={businessProfileId}
+                exchangeRate={exchangeRate}
+                exchangeRateDate={form.watch('exchangeRateDate')}
+                exchangeRateSource={form.watch('exchangeRateSource')}
+                onExchangeRateChange={(val) => {
+                  setExchangeRate(val);
+                  form.setValue('exchangeRate', val);
+                  form.setValue('exchangeRateSource', 'manual');
+                }}
               />
 
               <InvoicePartiesForm 
@@ -749,6 +810,25 @@ const NewInvoice: React.ForwardRefExoticComponent<
                   <ContractsPicker selected={contractsToLink} onAdd={handleAddContract} />
                 </div>
               )}
+
+              {/* Summary with PLN values */}
+              <div className="space-y-2 p-4 bg-muted rounded-lg">
+                <div className="flex justify-between">
+                  <span className="text-sm text-muted-foreground">Wartość brutto ({form.watch('currency') || 'PLN'}):</span>
+                  <span className="font-semibold">{formatCurrency(calculateInvoiceTotals(items).totalGrossValue, form.watch('currency') || 'PLN')}</span>
+                </div>
+                {form.watch('currency') !== 'PLN' && exchangeRate && (
+                  <div className="flex justify-between">
+                    <span className="text-sm text-muted-foreground">Wartość brutto (PLN):</span>
+                    <span className="font-semibold text-green-600">{formatCurrency(calculateInvoiceTotals(items).totalGrossValue * exchangeRate, 'PLN')}</span>
+                  </div>
+                )}
+                {form.watch('currency') !== 'PLN' && (
+                  <div className="text-xs text-muted-foreground">
+                    Kurs: 1 {form.watch('currency')} = {exchangeRate} PLN
+                  </div>
+                )}
+              </div>
             </div>
 
             {/* InvoiceFormActions component and its positioning div - Moved outside the scrollable div */}

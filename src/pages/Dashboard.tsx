@@ -34,6 +34,7 @@ import {
 } from "lucide-react";
 import AccountOnboardingWidget from '@/components/welcome/AccountOnboardingWidget';
 import TaxReportsCard, { TaxReport } from '@/components/accounting/TaxReportsCard';
+import { getInvoiceValueInPLN } from "@/lib/invoice-utils";
 
 const Dashboard = () => {
   const [monthlySummaries, setMonthlySummaries] = useState<any[]>([]);
@@ -104,10 +105,10 @@ const Dashboard = () => {
   };
 
   // Premium accounting data calculations
-  const totalRevenue = invoices.reduce((sum, inv) => sum + (inv.totalGrossValue || 0), 0);
+  const totalRevenue = invoices.reduce((sum, inv) => sum + getInvoiceValueInPLN(inv), 0);
   const totalExpensesCost = (invoices as any[])
     .filter(inv => inv.transactionType === 'expense')
-    .reduce((sum, inv) => sum + (inv.totalGrossValue || 0), 0);
+    .reduce((sum, inv) => sum + getInvoiceValueInPLN(inv), 0);
   const netProfit = totalRevenue - totalExpensesCost;
   const taxEstimate = calculateIncomeTax(netProfit, 'linear');
 
@@ -122,11 +123,7 @@ const Dashboard = () => {
   const unpaidInvoices = invoices.filter(inv => !inv.isPaid).length;
   
   const totalGross = invoices.reduce((invoiceSum, invoice) => {
-    const invoiceGross = (invoice.items || []).reduce((itemSum, item) => {
-      const itemGross = item.vatRate === -1 ? (item.totalNetValue || 0) : (item.totalGrossValue || 0);
-      return itemSum + Math.max(0, itemGross);
-    }, 0);
-    return invoiceSum + invoiceGross;
+    return invoiceSum + getInvoiceValueInPLN(invoice);
   }, 0);
 
   const totalTax = invoices.reduce((invoiceSum, invoice) => {
@@ -139,7 +136,7 @@ const Dashboard = () => {
 
   const totalExpenses = (invoices as any[])
     .filter(inv => inv.transactionType === 'expense')
-    .reduce((sum, inv) => sum + (inv.totalGrossValue || 0), 0);
+    .reduce((sum, inv) => sum + getInvoiceValueInPLN(inv), 0);
 
   // Quick action buttons for invoicing
   const quickActions = [

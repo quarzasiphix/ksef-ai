@@ -3,6 +3,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { Button } from "@/components/ui/button";
 import { Download, X } from "lucide-react";
 import { Invoice, BusinessProfile, Customer } from "@/types";
+import { BankAccount } from '@/types/bank';
 import { InvoicePdfTemplate } from "@/components/invoices/pdf/InvoicePdfTemplate";
 
 interface InvoicePDFViewerProps {
@@ -11,6 +12,7 @@ interface InvoicePDFViewerProps {
   customer?: Customer;
   isOpen: boolean;
   onClose: () => void;
+  bankAccounts?: BankAccount[];
 }
 
 const InvoicePDFViewer: React.FC<InvoicePDFViewerProps> = ({
@@ -18,7 +20,8 @@ const InvoicePDFViewer: React.FC<InvoicePDFViewerProps> = ({
   businessProfile,
   customer,
   isOpen,
-  onClose
+  onClose,
+  bankAccounts = [],
 }) => {
   const htmlRef = useRef<HTMLDivElement>(null);
 
@@ -66,6 +69,7 @@ const InvoicePDFViewer: React.FC<InvoicePDFViewerProps> = ({
             invoice={invoice}
             businessProfile={businessProfile as any}
             customer={customer as any}
+            bankAccounts={bankAccounts}
           />
         </div>
       </DialogContent>

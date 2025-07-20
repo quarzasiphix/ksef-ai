@@ -24,7 +24,7 @@ import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import ShareInvoiceDialog from "@/components/invoices/ShareInvoiceDialog";
-import { calculateItemValues } from "@/lib/invoice-utils";
+import { calculateItemValues, getInvoiceValueInPLN } from "@/lib/invoice-utils";
 import ContractorCard from "@/components/invoices/detail/ContractorCard";
 import { BusinessProfile, Customer } from "@/types";
 import { generateInvoicePdf, getInvoiceFileName } from "@/lib/pdf-utils";
@@ -32,6 +32,9 @@ import InvoiceItemsCard from "@/components/invoices/detail/InvoiceItemsCard";
 import { useQuery } from "@tanstack/react-query";
 import { getLinksForInvoice } from "@/integrations/supabase/repositories/contractInvoiceLinkRepository";
 import { getContract } from "@/integrations/supabase/repositories/contractRepository";
+import { getBankAccountsForProfile } from '@/integrations/supabase/repositories/bankAccountRepository';
+import { useEffect } from 'react';
+import { BankAccount } from '@/types/bank';
 
 interface InvoiceDetailProps {
   type: "income" | "expense";
@@ -45,8 +48,28 @@ const InvoiceDetail: React.FC<InvoiceDetailProps> = ({ type }) => {
   const [showPDF, setShowPDF] = useState(false);
   const [showShareDialog, setShowShareDialog] = useState(false);
   const [isUpdatingPaid, setIsUpdatingPaid] = useState(false);
+  const [selectedBankAccount, setSelectedBankAccount] = useState<any>(null);
+  const [bankAccounts, setBankAccounts] = useState<BankAccount[]>([]);
 
   const invoice = invoices.find(inv => inv.id === id);
+
+  useEffect(() => {
+    if (invoice?.bankAccountId && invoice.businessProfileId) {
+      getBankAccountsForProfile(invoice.businessProfileId).then(accs => {
+        setSelectedBankAccount(accs.find(a => a.id === invoice.bankAccountId) || null);
+      });
+    } else {
+      setSelectedBankAccount(null);
+    }
+  }, [invoice?.bankAccountId, invoice?.businessProfileId]);
+
+  useEffect(() => {
+    if (invoice?.businessProfileId) {
+      getBankAccountsForProfile(invoice.businessProfileId).then(setBankAccounts);
+    } else {
+      setBankAccounts([]);
+    }
+  }, [invoice?.businessProfileId]);
 
   // Preprocess items to ensure correct VAT values
   const processedItems = invoice?.items?.map(calculateItemValues) || [];
@@ -106,6 +129,7 @@ const InvoiceDetail: React.FC<InvoiceDetailProps> = ({ type }) => {
       businessProfile: sellerProfile,
       customer: buyerCustomer,
       filename: getInvoiceFileName(invoice),
+      bankAccounts,
     });
   };
 
@@ -285,7 +309,7 @@ const InvoiceDetail: React.FC<InvoiceDetailProps> = ({ type }) => {
             city: (sellerData as any)?.city,
             email: (sellerData as any)?.email,
             phone: (sellerData as any)?.phone,
-            bankAccount: (sellerData as any)?.bankAccount,
+            bankAccount: isIncome ? (selectedBankAccount?.accountNumber || (sellerData as any)?.bankAccount) : undefined,
           }}
         />
 
@@ -359,6 +383,23 @@ const InvoiceDetail: React.FC<InvoiceDetailProps> = ({ type }) => {
               <span>Wartość brutto:</span>
               <span className="text-green-600">{formatCurrency(totals.gross, currency)}</span>
             </div>
+            {invoice.currency !== 'PLN' && invoice.exchangeRate && (
+              <div className="flex justify-between font-semibold text-lg">
+                <span>Wartość brutto (PLN):</span>
+                <span className="text-green-600">{formatCurrency(getInvoiceValueInPLN(invoice), 'PLN')} PLN</span>
+              </div>
+            )}
+            {invoice.currency !== 'PLN' && invoice.exchangeRate && (
+              <div className="text-sm text-muted-foreground">
+                Kurs wymiany: 1 {invoice.currency} = {invoice.exchangeRate} PLN
+                {invoice.exchangeRateDate && (
+                  <span> (z dnia: {invoice.exchangeRateDate})</span>
+                )}
+                {invoice.exchangeRateSource && (
+                  <span> [źródło: {invoice.exchangeRateSource === 'NBP' ? 'NBP' : 'ręcznie'}]</span>
+                )}
+              </div>
+            )}
           </CardContent>
         </Card>
       </div>
@@ -403,12 +444,13 @@ const InvoiceDetail: React.FC<InvoiceDetailProps> = ({ type }) => {
 
       {/* PDF Viewer Dialog */}
       {showPDF && (
-        <InvoicePDFViewer 
+        <InvoicePDFViewer
           invoice={invoice}
           businessProfile={sellerProfile as any}
           customer={buyerCustomer as any}
+          bankAccounts={bankAccounts}
           isOpen={showPDF}
-          onClose={() => setShowPDF(false)} 
+          onClose={() => setShowPDF(false)}
         />
       )}
 

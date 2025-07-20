@@ -24,6 +24,7 @@ import type { ZusPayment, ZusType } from "@/types/zus";
 import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuItem } from "@/components/ui/dropdown-menu";
 import { uploadTaxForm, saveFiledTaxForm } from "@/integrations/supabase/repositories/taxFormRepository";
 import { listFiledTaxForms, FiledTaxForm, updateFiledTaxFormStatus } from "@/integrations/supabase/repositories/filedTaxFormsRepository";
+import { getInvoiceValueInPLN } from '@/lib/invoice-utils';
 
 const ZUS_TYPES: ZusType[] = ["społeczne", "zdrowotne", "FP", "FGŚP", "inne"];
 const monthNamesFull = [
@@ -103,8 +104,8 @@ const Accounting = () => {
     return d.getFullYear() === currentYear && d.getMonth() === selectedMonthIdx;
   });
 
-  const totalIncome = displayedInvoices.reduce((sum, invoice) => sum + (invoice.totalGrossValue || 0), 0);
-  const totalExpenses = displayedExpenses.reduce((sum, expense) => sum + (expense.amount || 0), 0);
+  const totalIncome = displayedInvoices.reduce((sum, invoice) => sum + getInvoiceValueInPLN(invoice), 0);
+  const totalExpenses = displayedExpenses.reduce((sum, expense) => sum + (expense.currency && expense.currency !== 'PLN' && expense.exchangeRate ? expense.amount * expense.exchangeRate : expense.amount), 0);
   const netProfit = totalIncome - totalExpenses;
 
   const selectedProfile = profiles?.find(p => p.id === selectedProfileId);

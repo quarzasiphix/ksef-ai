@@ -2,6 +2,7 @@ import toWords from 'numbers-to-words-pl';
 import React from 'react';
 import { Invoice, InvoiceType, BusinessProfile, Customer, PaymentMethod, PaymentMethodDb } from '@/types';
 import { calculateItemValues, calculateInvoiceTotals, formatCurrency as formatCurrencyUtil, getPolishPaymentMethod, toPaymentMethodUi } from '@/lib/invoice-utils';
+import { BankAccount } from '@/types/bank';
 
 // Helper to check for transfer payment method robustly
 function isTransfer(paymentMethod: string | PaymentMethod | PaymentMethodDb): boolean {
@@ -96,6 +97,7 @@ interface InvoicePdfTemplateProps {
     invoice: Invoice;
     businessProfile: BusinessProfile;
     customer: Customer;
+    bankAccounts?: BankAccount[];
 }
 
 const getInvoiceTypeTitle = (type: InvoiceType) => {
@@ -228,7 +230,7 @@ const pdfStyles: Record<string, React.CSSProperties> = {
     }
 };
 
-export const InvoicePdfTemplate: React.FC<InvoicePdfTemplateProps> = ({ invoice, businessProfile, customer }) => {
+export const InvoicePdfTemplate: React.FC<InvoicePdfTemplateProps> = ({ invoice, businessProfile, customer, bankAccounts = [] }) => {
     const isReceipt = invoice.type === InvoiceType.RECEIPT;
 
     // Always recalculate items and totals. Ensure we handle invoices that have no items array (e.g. some expenses)
@@ -242,6 +244,11 @@ export const InvoicePdfTemplate: React.FC<InvoicePdfTemplateProps> = ({ invoice,
     const formatAddress = (address: string, postalCode: string, city: string) => {
         return `${address}, ${postalCode} ${city}`;
     };
+
+    let selectedBankAccount = null;
+    if (invoice.bankAccountId && bankAccounts.length > 0) {
+        selectedBankAccount = bankAccounts.find(acc => acc.id === invoice.bankAccountId) || null;
+    }
 
     return (
         <div style={{
@@ -445,9 +452,9 @@ export const InvoicePdfTemplate: React.FC<InvoicePdfTemplateProps> = ({ invoice,
                     })()}
                     {/* Debugging Logs End */}
 
-                    {isTransfer(toPaymentMethodUi(invoice.paymentMethod as PaymentMethodDb)) && businessProfile?.bankAccount && (
+                    {isTransfer(toPaymentMethodUi(invoice.paymentMethod as PaymentMethodDb)) && (
                         <div style={{ marginTop: '4px', fontSize: '15px', color: '#495057' }}>
-                            Numer konta: <span style={{ fontWeight: 600 }}>{businessProfile.bankAccount}</span>
+                            Numer konta: <span style={{ fontWeight: 600 }}>{selectedBankAccount?.accountNumber || businessProfile?.bankAccount || ''}</span>
                         </div>
                     )}
                 </div>
