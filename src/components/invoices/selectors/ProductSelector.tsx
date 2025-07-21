@@ -121,7 +121,7 @@ export const ProductSelector: React.FC<ProductSelectorProps> = ({
               {products.length > 0 ? (
                 products.map((product) => (
                   <SelectItem key={product.id} value={product.id}>
-                    {product.name} - {product.unitPrice.toFixed(2)} zł
+                    <span style={{ whiteSpace: 'pre-wrap' }}>{product.name}</span> - {product.unitPrice.toFixed(2)} zł
                   </SelectItem>
                 ))
               ) : (

@@ -9,6 +9,8 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { BankAccountSelector } from "@/components/invoices/selectors/BankAccountSelector";
 import { Info } from 'lucide-react';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
+import { BankAccount } from "@/types/bank";
+import { InvoiceItem } from "@/types";
 
 interface InvoiceBasicInfoFormProps {
   form: UseFormReturn<any, any>;
@@ -18,6 +20,9 @@ interface InvoiceBasicInfoFormProps {
   exchangeRateDate?: string;
   exchangeRateSource?: 'NBP' | 'manual';
   onExchangeRateChange?: (rate: number) => void;
+  items?: InvoiceItem[];
+  bankAccounts?: BankAccount[];
+  onAddVatAccount?: () => void;
 }
 
 export const InvoiceBasicInfoForm: React.FC<InvoiceBasicInfoFormProps> = ({
@@ -27,9 +32,13 @@ export const InvoiceBasicInfoForm: React.FC<InvoiceBasicInfoFormProps> = ({
   exchangeRate,
   exchangeRateDate,
   exchangeRateSource,
-  onExchangeRateChange
+  onExchangeRateChange,
+  items = [],
+  bankAccounts = [],
+  onAddVatAccount
 }) => {
-  const currency = form.watch('currency') || 'PLN';
+    const currency = form.watch('currency') || 'PLN';
+  
   return (
     <Card className="md:col-span-1">
       <CardHeader className="py-4">
@@ -199,11 +208,15 @@ export const InvoiceBasicInfoForm: React.FC<InvoiceBasicInfoFormProps> = ({
                 value={field.value}
                 onChange={field.onChange}
                 currency={currency}
+                onAddVatAccount={onAddVatAccount}
+                showVatRecommendation={true}
               />
               <FormMessage />
             </FormItem>
           )}
         />
+
+        
         
         <FormField
           control={form.control}

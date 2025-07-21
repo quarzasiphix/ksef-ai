@@ -211,7 +211,7 @@ export const InvoiceItemsCard: React.FC<InvoiceItemsCardProps> = ({
         <CardContent className="p-3">
           <div 
             className="font-medium text-base mb-2" 
-            style={{ overflowWrap: 'break-word' }}
+            style={{ overflowWrap: 'break-word', whiteSpace: 'pre-wrap' }}
           >
             {index + 1}. {item.name}
           </div>
@@ -293,7 +293,7 @@ export const InvoiceItemsCard: React.FC<InvoiceItemsCardProps> = ({
             {safeItems.map((item, index) => (
               <tr key={item.id} className="border-b hover:bg-muted/30">
                 <td className="px-3 py-2">{index + 1}</td>
-                <td className="px-3 py-2">{item.name}</td>
+                <td className="px-3 py-2" style={{ whiteSpace: 'pre-wrap' }}>{item.name}</td>
                 <td className="px-3 py-2 text-right">{item.quantity}</td>
                 <td className="px-3 py-2 text-right">{item.unit}</td>
                 <td className="px-3 py-2 text-right">{formatCurrency(item.unitPrice, currency)}</td>

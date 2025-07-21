@@ -26,6 +26,8 @@ import { Switch } from '@/components/ui/switch';
 import { calculateItemValues } from "@/lib/invoice-utils";
 import { PaymentMethodDb } from "@/types/common";
 import ContractsForInvoice from "@/components/invoices/ContractsForInvoice";
+import { getBankAccountsForProfile } from "@/integrations/supabase/repositories/bankAccountRepository";
+import { BankAccount } from "@/types/bank";
 
 const EditInvoice = () => {
   const { id } = useParams<{ id: string }>();
@@ -34,6 +36,7 @@ const EditInvoice = () => {
   const [invoice, setInvoice] = useState<Invoice | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [bankAccounts, setBankAccounts] = useState<BankAccount[]>([]);
   const { state } = useSidebar();
   const { user } = useAuth();
   const newInvoiceRef = useRef<{ handleSubmit: (onValid: (data: any) => Promise<void>) => (e?: React.BaseSyntheticEvent) => Promise<void>; } | null>(null);
@@ -66,6 +69,15 @@ const EditInvoice = () => {
 
     fetchInvoice();
   }, [id]);
+
+  // Pobieranie kont bankowych
+  useEffect(() => {
+    if (invoice?.businessProfileId) {
+      getBankAccountsForProfile(invoice.businessProfileId)
+        .then(setBankAccounts)
+        .catch(console.error);
+    }
+  }, [invoice?.businessProfileId]);
 
   const handleUpdate = async (formData: any) => {
     console.log('EditInvoice handleUpdate - started');
@@ -317,6 +329,7 @@ const EditInvoice = () => {
             onSave={handleUpdate}
             ref={newInvoiceRef}
             hideHeader
+            bankAccounts={bankAccounts}
           />
 
           {/* Contracts linked to this invoice */}

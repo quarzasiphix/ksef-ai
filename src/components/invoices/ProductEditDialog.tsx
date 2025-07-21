@@ -2,6 +2,7 @@ import React, { useState } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Product, InvoiceType, VatType, TransactionType } from "@/types";
 import { Edit, Plus } from "lucide-react";
@@ -137,11 +138,12 @@ export const ProductEditDialog: React.FC<ProductEditDialogProps> = ({
         <div className="space-y-4 py-2">
           <div className="space-y-2">
             <Label htmlFor="name">Nazwa produktu</Label>
-            <Input 
+            <Textarea 
               id="name" 
               value={name} 
               onChange={(e) => setName(e.target.value)}
               placeholder="Nazwa produktu lub usługi"
+              className="min-h-[80px] resize-none"
             />
           </div>
           

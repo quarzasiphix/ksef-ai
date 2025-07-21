@@ -30,6 +30,9 @@ import { cn } from "@/lib/utils";
 import { PaymentMethod } from "@/types";
 import ContractsPicker from "@/components/contracts/ContractsPicker";
 import { addLink as addContractLink } from "@/integrations/supabase/repositories/contractInvoiceLinkRepository";
+import { getBankAccountsForProfile, addBankAccount } from "@/integrations/supabase/repositories/bankAccountRepository";
+import { BankAccount } from "@/types/bank";
+import { BankAccountEditDialog } from "@/components/bank/BankAccountEditDialog";
 
 // Schema
 const invoiceFormSchema = z.object({
@@ -58,6 +61,7 @@ interface NewInvoiceProps {
   showFormActions?: boolean;
   onSave?: (formData: InvoiceFormValues & { items: InvoiceItem[] }) => Promise<void>;
   hideHeader?: boolean;
+  bankAccounts?: BankAccount[];
 }
 
 const NewInvoice: React.ForwardRefExoticComponent<
@@ -66,7 +70,7 @@ const NewInvoice: React.ForwardRefExoticComponent<
     handleSubmit: (onValid: (data: any) => Promise<void>) => (e?: React.BaseSyntheticEvent) => Promise<void>;
   }>
 > = React.forwardRef(
-  ({ initialData, type = TransactionType.EXPENSE, showFormActions = true, onSave, hideHeader = false }, ref) => {
+  ({ initialData, type = TransactionType.EXPENSE, showFormActions = true, onSave, hideHeader = false, bankAccounts: propsBankAccounts }, ref) => {
     const { state } = useSidebar()
 
     // All hooks at the top, always called in the same order
@@ -111,6 +115,8 @@ const NewInvoice: React.ForwardRefExoticComponent<
     // --- linking contracts prior to save ---
     const [contractsToLink, setContractsToLink] = useState<string[]>([]);
     const [exchangeRate, setExchangeRate] = useState<number>(initialData?.exchangeRate || 1);
+      const [bankAccounts, setBankAccounts] = useState<BankAccount[]>(propsBankAccounts || []);
+  const [showVatAccountDialog, setShowVatAccountDialog] = useState(false);
 
     const handleAddContract = (id: string) => {
       setContractsToLink((prev) => [...prev, id]);
@@ -138,7 +144,7 @@ const NewInvoice: React.ForwardRefExoticComponent<
     const [customerName, setCustomerName] = useState<string>(
       initialData?.customerName || ""
     );
-
+    
     // Today and default due date (+7 days)
     const todayDate = new Date();
     const today = todayDate.toISOString().split("T")[0];
@@ -201,6 +207,23 @@ const NewInvoice: React.ForwardRefExoticComponent<
       }
     }, [form.watch('currency'), form.watch('issueDate')]);
 
+    // Pobieranie kont bankowych (tylko jeśli nie przekazano z props)
+    useEffect(() => {
+      if (propsBankAccounts) {
+        setBankAccounts(propsBankAccounts);
+        return;
+      }
+      
+      const businessProfileId = form.watch('businessProfileId');
+      if (businessProfileId) {
+        getBankAccountsForProfile(businessProfileId)
+          .then(setBankAccounts)
+          .catch(console.error);
+      } else {
+        setBankAccounts([]);
+      }
+    }, [form.watch('businessProfileId'), propsBankAccounts]);
+    
     console.log('NewInvoice - Initial Data VAT:', (initialData as any)?.vat);
     console.log('NewInvoice - Initial Data VAT Exemption Reason:', initialData?.vatExemptionReason);
     console.log('NewInvoice - Form Default FakturaBezVAT:', (initialData as any)?.vat === false);
@@ -433,21 +456,15 @@ const NewInvoice: React.ForwardRefExoticComponent<
           (invoiceTotals.totalGrossValue * exchangeRate) : 
           invoiceTotals.totalGrossValue;
 
+        // Użyj calculateInvoiceTotals do przeliczenia wszystkich wartości
+        const recalculatedItems = invoiceTotals.items;
+
         const invoicePayload = { // Prepare payload for saveInvoice (income)
           ...formData,
           user_id: user.id,
           transactionType: formData.transactionType, // Ensure transactionType is included
-          // Map items to ensure correct database format for product_id and calculate totals
-          items: items.map(item => {
-            const quantity = Number(item.quantity) || 0; // Ensure quantity is a number
-            const unitPrice = Number(item.unitPrice) || 0; // Ensure unitPrice is a number
-            const rawVatRate = Number(item.vatRate) || 0; // -1 indicates zwolniony
-            const effectiveVatRate = rawVatRate < 0 ? 0 : rawVatRate;
-
-            const totalNetValue = quantity * unitPrice;
-            const totalVatValue = (totalNetValue * effectiveVatRate) / 100;
-            const totalGrossValue = totalNetValue + totalVatValue;
-
+          // Map items to ensure correct database format using recalculated values
+          items: recalculatedItems.map(item => {
             return {
               ...item,
               // Copy the rest of item but clear any local-only productId reference
@@ -457,17 +474,17 @@ const NewInvoice: React.ForwardRefExoticComponent<
               },
               // Explicitly set product_id to null if productId is not a non-empty string
               product_id: item.productId && item.productId !== '' ? item.productId : null,
-              // Ensure values are numbers and use snake_case for database
-              quantity: quantity,
-              unit_price: unitPrice,
-              vat_rate: effectiveVatRate, // Save 0 instead of -1 for zwolniony in DB
-              total_net_value: Number(totalNetValue.toFixed(2)),
-              total_vat_value: Number(totalVatValue.toFixed(2)),
-              total_gross_value: Number(totalGrossValue.toFixed(2)),
-              vat_exempt: item.vatExempt || false,
+              // Use recalculated values from calculateInvoiceTotals
+              quantity: Number(item.quantity) || 0,
+              unit_price: Number(item.unitPrice) || 0,
+              vat_rate: item.vatRate === -1 ? 0 : Number(item.vatRate) || 0, // Save 0 instead of -1 for zwolniony in DB
+              total_net_value: Number(item.totalNetValue.toFixed(2)),
+              total_vat_value: Number(item.totalVatValue.toFixed(2)),
+              total_gross_value: Number(item.totalGrossValue.toFixed(2)),
+              vat_exempt: item.vatRate === -1,
             };
           }),
-          // Ensure total values are numbers
+          // Use recalculated totals
            totalNetValue: invoiceTotals.totalNetValue,
            totalGrossValue: invoiceTotals.totalGrossValue,
            totalVatValue: invoiceTotals.totalVatValue,
@@ -643,6 +660,28 @@ const NewInvoice: React.ForwardRefExoticComponent<
       }
     };
 
+    const handleAddVatAccount = () => {
+      setShowVatAccountDialog(true);
+    };
+
+    const handleVatAccountSaved = async (data: any) => {
+      if (!form.watch('businessProfileId')) return;
+      
+      try {
+        const newAccount = await addBankAccount({
+          ...data,
+          businessProfileId: form.watch('businessProfileId'),
+          connectedAt: new Date().toISOString(),
+        });
+        setBankAccounts(prev => [...prev, newAccount]);
+        setShowVatAccountDialog(false);
+        toast.success('Dodano konto VAT');
+      } catch (error) {
+        console.error('Error adding VAT account:', error);
+        toast.error('Błąd dodawania konta VAT');
+      }
+    };
+
     // --- Transaction type prompt modal ---
     const [showTransactionTypePrompt, setShowTransactionTypePrompt] = useState(() => {
       // Only skip prompt if on /income/new or /expense/new or initialData has transactionType
@@ -774,6 +813,9 @@ const NewInvoice: React.ForwardRefExoticComponent<
                   form.setValue('exchangeRate', val);
                   form.setValue('exchangeRateSource', 'manual');
                 }}
+                items={items}
+                bankAccounts={bankAccounts}
+                onAddVatAccount={handleAddVatAccount}
               />
 
               <InvoicePartiesForm 
@@ -849,6 +891,15 @@ const NewInvoice: React.ForwardRefExoticComponent<
             )}
           </form>
         </Form>
+
+        {/* Dialog do dodawania konta VAT */}
+        {showVatAccountDialog && (
+          <BankAccountEditDialog
+            onSave={handleVatAccountSaved}
+            trigger={null}
+            initial={{ type: 'vat', currency: form.watch('currency') || 'PLN' }}
+          />
+        )}
       </div>
     );
   }

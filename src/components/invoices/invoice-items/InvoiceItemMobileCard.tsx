@@ -2,6 +2,7 @@
 import React from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
 import { X, Edit } from "lucide-react";
 import { InvoiceItem, InvoiceType } from "@/types";
 import { formatCurrency } from "@/lib/invoice-utils";
@@ -52,10 +53,14 @@ export const InvoiceItemMobileCard: React.FC<InvoiceItemMobileCardProps> = ({
     onUpdateItem(item.id, { vatRate });
   };
 
+  const handleNameChange = (value: string) => {
+    onUpdateItem(item.id, { name: value });
+  };
+
   return (
     <div key={item.id} className="border rounded-md p-3">
       <div className="flex justify-between items-center mb-2">
-        <span className="font-medium">{index + 1}. {item.name}</span>
+        <span className="font-medium" style={{ whiteSpace: 'pre-wrap' }}>{index + 1}. {item.name}</span>
         <div className="flex items-center gap-1">
           {item.productId && (
             <ProductEditDialog
@@ -89,6 +94,15 @@ export const InvoiceItemMobileCard: React.FC<InvoiceItemMobileCardProps> = ({
       </div>
       
       <div className="grid grid-cols-2 gap-2 text-sm">
+        <div className="col-span-2">
+          <label className="text-xs text-muted-foreground">Nazwa:</label>
+          <Textarea
+            value={item.name}
+            onChange={(e) => handleNameChange(e.target.value)}
+            className="min-h-[60px] mt-1 resize-none"
+            placeholder="Nazwa produktu"
+          />
+        </div>
         <div>
           <label className="text-xs text-muted-foreground">Ilość:</label>
           <Input

@@ -1,4 +1,6 @@
 import { Invoice, InvoiceItem, InvoiceType, PaymentMethod, PaymentMethodDb, VatExemptionReason } from "@/types";
+import { TransactionType } from "@/types/common";
+import { BankAccount } from "@/types/bank";
 import * as z from "zod";
 
 // Format number to currency (dynamic)
@@ -84,17 +86,8 @@ export const calculateInvoiceTotals = (items: InvoiceItem[]) => {
     0
   );
   
-  const totalGrossValue = itemsWithValues.reduce(
-    (sum, item) => {
-      // For VAT-exempt items, gross value equals net value
-      // For other items, use the calculated gross value
-      const itemGrossValue = item.vatRate === -1 
-        ? item.totalNetValue 
-        : (item.totalGrossValue || 0);
-      return sum + (Number.isFinite(itemGrossValue) ? itemGrossValue : 0);
-    }, 
-    0
-  );
+  // Brutto = Netto + VAT (proste dodawanie)
+  const totalGrossValue = totalNetValue + totalVatValue;
 
   return {
     items: itemsWithValues,
@@ -243,4 +236,83 @@ export function getInvoiceValueInPLN(invoice: Invoice): number {
   const result = invoice.totalGrossValue * invoice.exchangeRate;
   console.log('Returning converted value:', result);
   return result;
+}
+
+export interface PaymentSplit {
+  mainAccount: {
+    amount: number;
+    accountNumber: string;
+    accountName?: string;
+  };
+  vatAccount?: {
+    amount: number;
+    accountNumber: string;
+    accountName?: string;
+  };
+  totalAmount: number;
+  hasVatAccount: boolean;
+}
+
+/**
+ * Oblicza podział płatności na konto główne i VAT
+ */
+export function calculatePaymentSplit(
+  invoice: Invoice,
+  bankAccounts: BankAccount[],
+  selectedBankAccountId?: string
+): PaymentSplit {
+  const totals = calculateInvoiceTotals(invoice.items || []);
+  const totalAmount = totals.totalGrossValue;
+  const vatAmount = totals.totalVatValue;
+  const netAmount = totals.totalNetValue;
+
+  // Znajdź wybrane konto bankowe (tylko główne konta)
+  const selectedAccount = selectedBankAccountId 
+    ? bankAccounts.find(acc => acc.id === selectedBankAccountId && acc.type !== 'vat')
+    : bankAccounts.find(acc => acc.type === 'main');
+
+  // Znajdź konto VAT
+  const vatAccount = bankAccounts.find(acc => acc.type === 'vat');
+
+  if (!selectedAccount) {
+    // Brak konta - wszystko na domyślne
+    return {
+      mainAccount: {
+        amount: totalAmount,
+        accountNumber: 'Brak konta',
+        accountName: 'Brak konta'
+      },
+      totalAmount,
+      hasVatAccount: false
+    };
+  }
+
+  // Automatyczny podział: jeśli VAT > 0 i ma konto VAT, dziel płatność
+  if (vatAccount && vatAmount > 0) {
+    return {
+      mainAccount: {
+        amount: netAmount,
+        accountNumber: selectedAccount.accountNumber,
+        accountName: selectedAccount.accountName || selectedAccount.bankName
+      },
+      vatAccount: {
+        amount: vatAmount,
+        accountNumber: vatAccount.accountNumber,
+        accountName: vatAccount.accountName || vatAccount.bankName
+      },
+      totalAmount,
+      hasVatAccount: true
+    };
+  }
+
+  // Wszystko na główne konto
+  return {
+    mainAccount: {
+      amount: totalAmount,
+      accountNumber: selectedAccount.accountNumber,
+      accountName: selectedAccount.accountName || selectedAccount.bankName
+    },
+    totalAmount,
+    hasVatAccount: false
+  };
 }

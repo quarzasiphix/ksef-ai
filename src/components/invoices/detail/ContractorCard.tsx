@@ -58,7 +58,7 @@ const ContractorCard: React.FC<ContractorCardProps> = ({ title, contractor }) =>
         <div>
           <p className="font-semibold text-sm flex items-center gap-2">
             <Building2 className="h-4 w-4 text-muted-foreground" />
-            {contractor.name || "Brak nazwy"}
+            <span style={{ whiteSpace: 'pre-wrap' }}>{contractor.name || "Brak nazwy"}</span>
           </p>
         </div>
         

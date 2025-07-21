@@ -80,7 +80,7 @@ export const CustomerSelector: React.FC<CustomerSelectorProps> = ({
           >
             {selectedCustomer ? (
               <div className="flex items-center gap-2">
-                <span className="truncate">{selectedCustomer.name}</span>
+                <span className="truncate" style={{ whiteSpace: 'pre-wrap' }}>{selectedCustomer.name}</span>
                 {selectedCustomer.linkedBusinessProfile && (
                   <Badge variant="outline" className="text-xs text-green-600 border-green-300">
                     Połączony
@@ -123,7 +123,7 @@ export const CustomerSelector: React.FC<CustomerSelectorProps> = ({
                     />
                     <div className="flex items-center justify-between w-full">
                       <div className="flex items-center gap-2">
-                        <span className="truncate">{option.name}</span>
+                        <span className="truncate" style={{ whiteSpace: 'pre-wrap' }}>{option.name}</span>
                         {option.type === 'business' && (
                           <Badge variant="secondary" className="text-xs">
                             Profil biznesowy

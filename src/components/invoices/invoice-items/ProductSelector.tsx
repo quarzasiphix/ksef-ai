@@ -56,7 +56,7 @@ export const ProductSelector: React.FC<ProductSelectorProps> = ({
             {products.length > 0 ? (
               products.map((product) => (
                 <SelectItem key={product.id} value={product.id}>
-                  {product.name} - {new Intl.NumberFormat('pl-PL', { style: 'currency', currency }).format(product.unitPrice)}
+                  <span style={{ whiteSpace: 'pre-wrap' }}>{product.name}</span> - {new Intl.NumberFormat('pl-PL', { style: 'currency', currency }).format(product.unitPrice)}
                 </SelectItem>
               ))
             ) : (

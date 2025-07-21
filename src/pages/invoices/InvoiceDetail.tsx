@@ -24,7 +24,7 @@ import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import ShareInvoiceDialog from "@/components/invoices/ShareInvoiceDialog";
-import { calculateItemValues, getInvoiceValueInPLN } from "@/lib/invoice-utils";
+import { calculateItemValues, getInvoiceValueInPLN, calculateInvoiceTotals } from "@/lib/invoice-utils";
 import ContractorCard from "@/components/invoices/detail/ContractorCard";
 import { BusinessProfile, Customer } from "@/types";
 import { generateInvoicePdf, getInvoiceFileName } from "@/lib/pdf-utils";
@@ -71,19 +71,14 @@ const InvoiceDetail: React.FC<InvoiceDetailProps> = ({ type }) => {
     }
   }, [invoice?.businessProfileId]);
 
-  // Preprocess items to ensure correct VAT values
-  const processedItems = invoice?.items?.map(calculateItemValues) || [];
-
-  // Recalculate totals on the fly based on processed items
-  const totals = processedItems.reduce(
-    (acc, item) => {
-      acc.net += item.totalNetValue || 0;
-      acc.vat += item.totalVatValue || 0;
-      acc.gross += item.totalGrossValue || 0;
-      return acc;
-    },
-    { net: 0, vat: 0, gross: 0 }
-  );
+  // Preprocess items to ensure correct VAT values using calculateInvoiceTotals
+  const { items: processedItems, totalNetValue, totalVatValue, totalGrossValue } = calculateInvoiceTotals(invoice?.items || []);
+  
+  const totals = {
+    net: totalNetValue,
+    vat: totalVatValue,
+    gross: totalGrossValue
+  };
 
   // 1. Pobierz currency z invoice
   const currency = invoice?.currency || 'PLN';
@@ -444,13 +439,13 @@ const InvoiceDetail: React.FC<InvoiceDetailProps> = ({ type }) => {
 
       {/* PDF Viewer Dialog */}
       {showPDF && (
-        <InvoicePDFViewer
+        <InvoicePDFViewer 
           invoice={invoice}
           businessProfile={sellerProfile as any}
           customer={buyerCustomer as any}
           bankAccounts={bankAccounts}
           isOpen={showPDF}
-          onClose={() => setShowPDF(false)}
+          onClose={() => setShowPDF(false)} 
         />
       )}
 

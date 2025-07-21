@@ -55,7 +55,7 @@ export const BusinessProfileSelector: React.FC<BusinessProfileSelectorProps> = (
       <SelectContent>
         {profiles.map((profile) => (
           <SelectItem key={profile.id} value={profile.id}>
-            {profile.name}
+            <span style={{ whiteSpace: 'pre-wrap' }}>{profile.name}</span>
           </SelectItem>
         ))}
       </SelectContent>

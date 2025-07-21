@@ -1,7 +1,7 @@
 import toWords from 'numbers-to-words-pl';
 import React from 'react';
 import { Invoice, InvoiceType, BusinessProfile, Customer, PaymentMethod, PaymentMethodDb } from '@/types';
-import { calculateItemValues, calculateInvoiceTotals, formatCurrency as formatCurrencyUtil, getPolishPaymentMethod, toPaymentMethodUi } from '@/lib/invoice-utils';
+import { calculateItemValues, calculateInvoiceTotals, formatCurrency as formatCurrencyUtil, getPolishPaymentMethod, toPaymentMethodUi, calculatePaymentSplit } from '@/lib/invoice-utils';
 import { BankAccount } from '@/types/bank';
 
 // Helper to check for transfer payment method robustly
@@ -53,11 +53,11 @@ const formatAmountInWords = (amount: number, currency: string = 'PLN') => {
         currencyWord = 'hrywien';
     } else if (currency === 'PLN') {
         // Oryginalna odmiana złoty
-        if (zlote === 1) {
+    if (zlote === 1) {
             currencyWord = 'złoty';
-        } else if (zlote % 10 >= 2 && zlote % 10 <= 4 && (zlote % 100 < 10 || zlote % 100 >= 20)) {
+    } else if (zlote % 10 >= 2 && zlote % 10 <= 4 && (zlote % 100 < 10 || zlote % 100 >= 20)) {
             currencyWord = 'złote';
-        } else {
+    } else {
             currencyWord = 'złotych';
         }
     }
@@ -392,7 +392,7 @@ export const InvoicePdfTemplate: React.FC<InvoicePdfTemplateProps> = ({ invoice,
                         {itemsWithValues.map((item, idx) => (
                             <tr key={idx}>
                                 <td style={{ padding: 6, border: '1px solid #e5e7eb' }}>{idx + 1}</td>
-                                <td style={{ padding: 6, border: '1px solid #e5e7eb' }}>{item.name}</td>
+                                <td style={{ padding: 6, border: '1px solid #e5e7eb', whiteSpace: 'pre-wrap' }}>{item.name}</td>
                                 <td style={{ padding: 6, border: '1px solid #e5e7eb', textAlign: 'right' }}>{item.quantity}</td>
                                 <td style={{ padding: '4px 6px', border: '1px solid #e5e7eb', textAlign: 'right' }}>{formatCurrencyUtil(item.unitPrice, currency)}</td>
                                 <td style={{ padding: '4px 6px', border: '1px solid #e5e7eb', textAlign: 'right' }}>{formatCurrencyUtil(item.totalNetValue || 0, currency)}</td>
@@ -413,10 +413,12 @@ export const InvoicePdfTemplate: React.FC<InvoicePdfTemplateProps> = ({ invoice,
                                     <span>Razem netto:</span>
                                     <span>{formatCurrencyUtil(totalNetValue || 0, currency)}</span>
                                 </div>
+                                {totalVatValue > 0 && (
                                 <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 13, marginBottom: 2 }}>
                                     <span>VAT:</span>
-                                    <span>{formatCurrencyUtil(totalVatValue || 0, currency)}</span>
+                                        <span>{formatCurrencyUtil(totalVatValue || 0, currency)}</span>
                                 </div>
+                                )}
                             </>
                         )}
                         <div style={{ display: 'flex', justifyContent: 'space-between', fontWeight: 700, fontSize: 14, marginTop: 6 }}>
@@ -437,7 +439,22 @@ export const InvoicePdfTemplate: React.FC<InvoicePdfTemplateProps> = ({ invoice,
 
                     {/* Payment Method and Bank Account */}
                     <div style={{ marginTop: '12px', fontSize: '15px', color: '#495057' }}>
+                        {(() => {
+                            const paymentSplit = calculatePaymentSplit(invoice, bankAccounts, invoice.bankAccountId);
+                            if (paymentSplit.hasVatAccount && totalVatValue > 0) {
+                                return (
+                                    <>
+                                        Sposób płatności: <span style={{ fontWeight: 600 }}>Podzielony przelew</span>
+                                    </>
+                                );
+                            } else {
+                                return (
+                                    <>
                         Sposób płatności: <span style={{ fontWeight: 600 }}>{getPolishPaymentMethod(invoice.paymentMethod) || 'Nie określono'}</span>
+                                    </>
+                                );
+                            }
+                        })()}
                     </div>
 
                     {/* Debugging Logs Start */}
@@ -448,14 +465,56 @@ export const InvoicePdfTemplate: React.FC<InvoicePdfTemplateProps> = ({ invoice,
                         console.log("PDF Gen - Business Profile Bank Account:", businessProfile?.bankAccount);
                         console.log("PDF Gen - Full Business Profile:", businessProfile);
                         console.log("PDF Gen - Full Invoice Object:", invoice);
+                        console.log("PDF Gen - Bank Accounts:", bankAccounts);
+                        console.log("PDF Gen - Invoice Bank Account ID:", invoice.bankAccountId);
+                        console.log("PDF Gen - Selected Bank Account:", selectedBankAccount);
                         return null; // Ensure the expression evaluates to a valid ReactNode
                     })()}
                     {/* Debugging Logs End */}
 
                     {isTransfer(toPaymentMethodUi(invoice.paymentMethod as PaymentMethodDb)) && (
-                        <div style={{ marginTop: '4px', fontSize: '15px', color: '#495057' }}>
-                            Numer konta: <span style={{ fontWeight: 600 }}>{selectedBankAccount?.accountNumber || businessProfile?.bankAccount || ''}</span>
-                        </div>
+                        <>
+                            {/* Split payment (nowe wyrównanie: tekst i kwota w jednym wierszu, numer konta pod spodem, wyrównany do lewej) */}
+                            {(() => {
+                                const paymentSplit = calculatePaymentSplit(invoice, bankAccounts, invoice.bankAccountId);
+                                if (paymentSplit.hasVatAccount && totalVatValue > 0) {
+                                    return (
+                                        <>
+                                            {/* NETTO */}
+                                            <div style={{ marginTop: '8px' }}>
+                                                <div style={{ fontSize: '15px', color: '#495057', fontWeight: 500 }}>
+                                                    Netto: {formatCurrencyUtil(paymentSplit.mainAccount.amount, currency)}
+                                                </div>
+                                                <div style={{ fontSize: '12px', color: '#666', fontFamily: 'monospace', marginTop: '2px', marginLeft: 0 }}>
+                                                    {selectedBankAccount?.accountNumber || businessProfile?.bankAccount || ''}
+                                                </div>
+                                            </div>
+                                            {/* VAT */}
+                                            <div style={{ marginTop: '8px' }}>
+                                                <div style={{ fontSize: '15px', color: '#495057', fontWeight: 500 }}>
+                                                    <span style={{ color: '#28a745', fontWeight: 600 }}>VAT:</span> {formatCurrencyUtil(paymentSplit.vatAccount?.amount || 0, currency)}
+                                                </div>
+                                                <div style={{ fontSize: '12px', color: '#666', fontFamily: 'monospace', marginTop: '2px', marginLeft: 0 }}>
+                                                    {paymentSplit.vatAccount?.accountNumber}
+                                                </div>
+                                            </div>
+                                        </>
+                                    );
+                                } else {
+                                    // Jeśli VAT = 0 lub brak konta VAT, pokaż pełną kwotę
+                                    return (
+                                        <div style={{ marginTop: '8px' }}>
+                                            <div style={{ fontSize: '15px', color: '#495057', fontWeight: 500 }}>
+                                                {formatCurrencyUtil(totalGrossValue, currency)}
+                                            </div>
+                                            <div style={{ fontSize: '13px', color: '#666', fontFamily: 'monospace', marginTop: '2px', marginLeft: 0 }}>
+                                                {selectedBankAccount?.accountNumber || businessProfile?.bankAccount || ''}
+                                            </div>
+                                        </div>
+                                    );
+                                }
+                            })()}
+                        </>
                     )}
                 </div>
 

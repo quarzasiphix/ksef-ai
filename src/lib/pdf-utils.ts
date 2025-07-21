@@ -7,6 +7,7 @@ import { Filesystem, Directory } from '@capacitor/filesystem';
 import html2canvas from 'html2canvas';
 import React from 'react';
 import { BusinessProfile, Customer } from '@/types';
+import { BankAccount } from '@/types/bank';
 import { InvoicePdfTemplate } from '@/components/invoices/pdf/InvoicePdfTemplate';
 
 interface PdfOptions {
@@ -177,6 +178,7 @@ interface GenerateInvoicePdfParams {
   businessProfile: BusinessProfile | null | undefined;
   customer: Customer | null | undefined;
   filename?: string;
+  bankAccounts?: BankAccount[];
 }
 
 export const generateInvoicePdf = async ({
@@ -184,6 +186,7 @@ export const generateInvoicePdf = async ({
   businessProfile,
   customer,
   filename,
+  bankAccounts,
 }: GenerateInvoicePdfParams): Promise<boolean> => {
   try {
     // 1. Render the template into an off-screen container
@@ -202,6 +205,7 @@ export const generateInvoicePdf = async ({
         invoice,
         businessProfile,
         customer,
+        bankAccounts: bankAccounts || [],
       })
     );
     container.innerHTML = markup;

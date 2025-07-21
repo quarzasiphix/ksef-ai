@@ -78,7 +78,7 @@ export const InvoiceItemRow: React.FC<InvoiceItemRowProps> = ({
   return (
     <tr key={item.id} className="border-b" onClick={onClick}>
       <td className="px-2 py-2 text-left">{index + 1}</td>
-      <td className="px-2 py-2 text-left">
+      <td className="px-2 py-2 text-left" style={{ whiteSpace: 'pre-wrap' }}>
         {item.name}
       </td>
       <td className="px-2 py-2 text-right">

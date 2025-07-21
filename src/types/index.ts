@@ -230,6 +230,8 @@ export interface Invoice {
   vatExemptionReason?: VatExemptionReason;
   fakturaBezVAT?: boolean;
   exchangeRate?: number;
+  exchangeRateDate?: string;
+  exchangeRateSource?: 'NBP' | 'manual';
 }
 
 // For Analytics Panel

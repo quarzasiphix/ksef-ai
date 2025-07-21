@@ -1,13 +1,14 @@
 import React, { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { InvoiceItem, InvoiceType, Product, VatExemptionReason } from "@/types";
 import { TransactionType } from "@/types/common";
 import { Trash2, Plus } from "lucide-react";
 import { ProductSelector } from "./invoice-items/ProductSelector";
 import { InvoiceItemMobileCard } from "./invoice-items/InvoiceItemMobileCard";
-import { formatCurrency } from "@/lib/invoice-utils";
+import { formatCurrency, calculateInvoiceTotals } from "@/lib/invoice-utils";
 
 interface EditableInvoiceItemsTableProps {
   items: InvoiceItem[];
@@ -150,10 +151,8 @@ export const EditableInvoiceItemsTable: React.FC<EditableInvoiceItemsTableProps>
     onAddItem(item);
   };
 
-  // Calculate totals
-  const totalNet = items.reduce((sum, item) => sum + (item.totalNetValue || 0), 0);
-  const totalVat = items.reduce((sum, item) => sum + (item.totalVatValue || 0), 0);
-  const totalGross = items.reduce((sum, item) => sum + (item.totalGrossValue || 0), 0);
+  // Calculate totals using calculateInvoiceTotals for consistency
+  const { totalNetValue: totalNet, totalVatValue: totalVat, totalGrossValue: totalGross } = calculateInvoiceTotals(items);
 
   return (
     <div className="space-y-6">
@@ -205,10 +204,11 @@ export const EditableInvoiceItemsTable: React.FC<EditableInvoiceItemsTableProps>
               {items.map((item) => (
                 <tr key={item.id} className="border-b border-gray-700 bg-[#181C27]">
                   <td className="p-2">
-                    <Input
+                    <Textarea
                       value={item.name}
                       onChange={(e) => onUpdateItem(item.id, { name: e.target.value })}
-                      className="min-w-[150px] bg-[#23283A] text-white border-gray-700"
+                      className="min-w-[150px] min-h-[60px] bg-[#23283A] text-white border-gray-700 resize-none"
+                      placeholder="Nazwa produktu"
                     />
                   </td>
                   <td className="p-2">
