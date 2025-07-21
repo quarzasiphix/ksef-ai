@@ -47,6 +47,8 @@ const formSchema = z.object({
   entityType: z.enum(["dzialalnosc", "sp_zoo", "sa"]).default("dzialalnosc"),
   taxType: z.enum(["skala", "liniowy", "ryczalt", "karta"]).default("skala"),
   pkdCodes: z.array(z.string()).optional(),
+  is_vat_exempt: z.boolean().optional().default(false),
+  vat_exemption_reason: z.string().optional().or(z.literal("")),
 });
 
 interface BusinessProfileFormProps {
@@ -138,6 +140,8 @@ const BusinessProfileForm = ({
       entityType: initialData?.entityType || "dzialalnosc",
       taxType: (initialData as any)?.taxType || "skala",
       pkdCodes: (initialData as any)?.pkdCodes || [],
+      is_vat_exempt: initialData?.is_vat_exempt || false,
+      vat_exemption_reason: initialData?.vat_exemption_reason || "",
     },
   });
 
@@ -174,6 +178,8 @@ const BusinessProfileForm = ({
         pkdCodes: values.pkdCodes || [],
         logo: initialData?.logo || "", // Preserve existing logo if any
         user_id: user.id, // Enforce RLS: always include user_id
+        is_vat_exempt: values.is_vat_exempt || false,
+        vat_exemption_reason: values.is_vat_exempt ? values.vat_exemption_reason || null : null,
       };
 
       // Global duplicate NIP check (other users)
@@ -587,6 +593,54 @@ const BusinessProfileForm = ({
               </FormItem>
             )}
           />
+        </div>
+        {/* VAT zwolnienie */}
+        <div className="mt-6">
+          <FormField
+            control={form.control}
+            name="is_vat_exempt"
+            render={({ field }) => (
+              <FormItem className="flex flex-row items-start space-x-3 space-y-0 rounded-md border p-4">
+                <FormControl>
+                  <Checkbox
+                    checked={field.value}
+                    onCheckedChange={field.onChange}
+                  />
+                </FormControl>
+                <div className="space-y-1 leading-none">
+                  <FormLabel>Firma jest zwolniona z VAT</FormLabel>
+                </div>
+              </FormItem>
+            )}
+          />
+          {form.watch("is_vat_exempt") && (
+            <FormField
+              control={form.control}
+              name="vat_exemption_reason"
+              render={({ field }) => (
+                <FormItem className="mt-2">
+                  <FormLabel>Powód zwolnienia z VAT</FormLabel>
+                  <Select onValueChange={field.onChange} value={field.value}>
+                    <FormControl>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Wybierz powód zwolnienia" />
+                      </SelectTrigger>
+                    </FormControl>
+                    <SelectContent>
+                      <SelectItem value="113_1">Zwolnienie podmiotowe (art. 113 ust. 1)</SelectItem>
+                      <SelectItem value="43_1">Zwolnienie przedmiotowe (art. 43 ust. 1)</SelectItem>
+                      <SelectItem value="41_4">Eksport towarów (art. 41 ust. 4)</SelectItem>
+                      <SelectItem value="42">Wewnątrzwspólnotowa dostawa towarów (art. 42)</SelectItem>
+                      <SelectItem value="28b">Usługi zagraniczne (art. 28b)</SelectItem>
+                      <SelectItem value="17">Odwrotne obciążenie (art. 17)</SelectItem>
+                      <SelectItem value="other">Inna podstawa prawna</SelectItem>
+                    </SelectContent>
+                  </Select>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+          )}
         </div>
         
         <div

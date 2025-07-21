@@ -99,7 +99,7 @@ const Register = () => {
           navigate("/dashboard");
         }
       } else {
-         navigate("/dashboard");
+        setError("Nie udało się zalogować. Spróbuj ponownie.");
       }
 
       sessionStorage.removeItem("pendingEmail");

@@ -18,7 +18,7 @@ import OnboardingProductForm, { OnboardingProductFormHandle } from './Onboarding
 import OnboardingProfileForm, { OnboardingProfileFormHandle } from './OnboardingProfileForm';
 import StepNavigation from './StepNavigation';
 import { BankAccountEditDialog } from '@/components/bank/BankAccountEditDialog';
-import { getBankAccountsForProfile } from '@/integrations/supabase/repositories/bankAccountRepository';
+import { getBankAccountsForProfile, addBankAccount } from '@/integrations/supabase/repositories/bankAccountRepository';
 
 const Welcome = () => {
   const { user } = useAuth();
@@ -39,6 +39,10 @@ const Welcome = () => {
   const [showAddBankDialog, setShowAddBankDialog] = useState(false);
   const [addingBankForProfileId, setAddingBankForProfileId] = useState<string | null>(null);
   const [bankAccounts, setBankAccounts] = useState<any[]>([]);
+  const [bankStepAccounts, setBankStepAccounts] = useState<any[]>([]);
+  const [bankStepLoading, setBankStepLoading] = useState(false);
+  const [bankStepError, setBankStepError] = useState<string | null>(null);
+  const [showAddBankDialogStep, setShowAddBankDialogStep] = useState(false);
 
   const profileFormRef = useRef<OnboardingProfileFormHandle>(null);
   const customerFormRef = useRef<OnboardingCustomerFormHandle>(null);
@@ -63,6 +67,20 @@ const Welcome = () => {
       });
     }
   }, [step, profiles]);
+
+  // Fetch bank accounts for onboarding step
+  useEffect(() => {
+    if (step === 3 && profiles.length > 0) {
+      setBankStepLoading(true);
+      getBankAccountsForProfile(profiles[0].id)
+        .then((accounts) => setBankStepAccounts(accounts))
+        .catch(() => setBankStepError('Błąd ładowania kont bankowych'))
+        .finally(() => setBankStepLoading(false));
+    }
+  }, [step, profiles]);
+
+  // Pobierz status VAT firmy
+  const isVatExempt = profiles[0]?.is_vat_exempt;
 
   const steps = [
     {
@@ -105,35 +123,52 @@ const Welcome = () => {
       ),
     },
     {
-      title: 'Dodaj dane swojej firmy',
+      title: 'Dodaj konta bankowe',
       icon: <Building2 className="h-10 w-10 text-blue-600 mb-4" />,
       content: (
         <>
           <p className="mb-6 text-center text-muted-foreground max-w-md">
-            Wprowadź NIP, aby automatycznie pobrać dane z GUS. Możesz też uzupełnić je ręcznie.
+            Dodaj konta bankowe swojej firmy. {isVatExempt === false ? 'Jeśli jesteś VAT-owcem, zalecamy dodanie konta VAT, aby korzystać z podzielonej płatności.' : ''}
           </p>
-          <BusinessProfileForm
-            onSuccess={async () => {
-              await queryClient.invalidateQueries({
-                queryKey: ['businessProfiles', user?.id],
-              });
-              setHasBusinessProfile(true);
-              setStep(3);
-            }}
-          />
-          {/* Dialog dodawania konta bankowego po utworzeniu profilu */}
-          {showAddBankDialog && addingBankForProfileId && (
-            <BankAccountEditDialog
-              trigger={null}
-              onSave={async (data) => {
-                // Dodaj konto do profilu
-                await getBankAccountsForProfile(addingBankForProfileId);
-                setShowAddBankDialog(false);
-                setStep(3); // przejdź dalej
-              }}
-            />
-          )}
+          <div className="flex flex-col gap-2 items-center">
+            {bankStepAccounts.map((acc: any) => (
+              <div key={acc.id} className="w-full max-w-md border rounded p-2 flex flex-col items-start">
+                <div className="font-semibold">{acc.accountName || acc.bankName}</div>
+                <div className="text-xs text-muted-foreground">{acc.accountNumber}</div>
+                <div className="text-xs text-muted-foreground">{acc.currency} {acc.type === 'vat' ? '(VAT)' : ''}</div>
+              </div>
+            ))}
+            <Button variant="outline" className="mt-2" onClick={() => setShowAddBankDialogStep(true)}>
+              Dodaj konto bankowe
+            </Button>
+            {showAddBankDialogStep && profiles[0] && (
+              <BankAccountEditDialog
+                trigger={null}
+                open={showAddBankDialogStep}
+                onOpenChange={setShowAddBankDialogStep}
+                onSave={async (data) => {
+                  await addBankAccount({ ...data, businessProfileId: profiles[0].id, connectedAt: new Date().toISOString() });
+                  const updated = await getBankAccountsForProfile(profiles[0].id);
+                  setBankStepAccounts(updated);
+                  setShowAddBankDialogStep(false);
+                }}
+              />
+            )}
+            {isVatExempt === false && !bankStepAccounts.some((a: any) => a.type === 'vat') && (
+              <div className="mt-4 p-3 bg-yellow-50 border border-yellow-200 rounded text-sm text-yellow-800">
+                <b>Rekomendacja:</b> Dodaj konto VAT, aby korzystać z podzielonej płatności (split payment).
+              </div>
+            )}
+          </div>
         </>
+      ),
+      navigation: (
+        <StepNavigation
+          canGoBack={true}
+          onBack={() => setStep(2)}
+          onNext={() => setStep(4)}
+          nextLabel="Dalej"
+        />
       ),
     },
     {
@@ -214,8 +249,8 @@ const Welcome = () => {
     },
   ];
 
+  // Zmień warunek automatycznego przejścia na krok bankowy
   useEffect(() => {
-    // Skip business profile step if already exists
     if (step === 2 && hasBusinessProfile) {
       setStep(3);
     }

@@ -11,13 +11,20 @@ export const BankAccountEditDialog = ({
   trigger,
   initial,
   loading = false,
+  open: controlledOpen,
+  onOpenChange: controlledOnOpenChange,
 }: {
   onSave: (data: any) => void;
   trigger?: React.ReactNode;
   initial?: any;
   loading?: boolean;
+  open?: boolean;
+  onOpenChange?: (open: boolean) => void;
 }) => {
   const [open, setOpen] = useState(false);
+  const isControlled = controlledOpen !== undefined && controlledOnOpenChange !== undefined;
+  const dialogOpen = isControlled ? controlledOpen : open;
+  const setDialogOpen = isControlled ? controlledOnOpenChange : setOpen;
   const [bankName, setBankName] = useState(initial?.bankName || "");
   const [accountNumber, setAccountNumber] = useState(initial?.accountNumber || "");
   const [accountName, setAccountName] = useState(initial?.accountName || "");
@@ -32,8 +39,8 @@ export const BankAccountEditDialog = ({
   };
 
   return (
-    <Dialog open={open} onOpenChange={setOpen}>
-      <DialogTrigger asChild>{trigger || <Button variant="outline">Dodaj konto bankowe</Button>}</DialogTrigger>
+    <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
+      {trigger && <DialogTrigger asChild>{trigger}</DialogTrigger>}
       <DialogContent className="sm:max-w-md">
         <DialogHeader>
           <DialogTitle>Dodaj konto bankowe</DialogTitle>

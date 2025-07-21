@@ -330,6 +330,7 @@ const EditInvoice = () => {
             ref={newInvoiceRef}
             hideHeader
             bankAccounts={bankAccounts}
+            showFormActions={false}
           />
 
           {/* Contracts linked to this invoice */}

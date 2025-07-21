@@ -146,19 +146,12 @@ export const CustomerSelector: React.FC<CustomerSelectorProps> = ({
       </Popover>
       
       {/* Display connection status below selector */}
-      {selectedCustomer && (
+      {selectedCustomer && selectedCustomer.linkedBusinessProfile && (
         <div className="text-sm text-muted-foreground">
-          {selectedCustomer.linkedBusinessProfile ? (
-            <div className="flex items-center gap-2 text-green-600">
-              <User className="h-4 w-4" />
-              <span>Klient jest połączony z aplikacją - można wysyłać faktury</span>
-            </div>
-          ) : (
-            <div className="flex items-center gap-2 text-orange-600">
-              <User className="h-4 w-4" />
-              <span>Klient nie jest połączony z aplikacją - tylko wystawianie faktur</span>
-            </div>
-          )}
+          <div className="flex items-center gap-2 text-green-600">
+            <User className="h-4 w-4" />
+            <span>Klient jest połączony z aplikacją - można wysyłać faktury</span>
+          </div>
         </div>
       )}
     </div>

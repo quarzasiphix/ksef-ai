@@ -25,6 +25,8 @@ export interface BusinessProfile {
    * Lista kodów PKD przypisanych do profilu firmy. Używane m.in. przy ryczałcie do wyliczania stawek podatkowych.
    */
   pkdCodes?: string[];
+  is_vat_exempt?: boolean;
+  vat_exemption_reason?: string | null;
 }
 
 export interface Customer {
