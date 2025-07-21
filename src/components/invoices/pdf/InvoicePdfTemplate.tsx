@@ -482,19 +482,19 @@ export const InvoicePdfTemplate: React.FC<InvoicePdfTemplateProps> = ({ invoice,
                                         <>
                                             {/* NETTO */}
                                             <div style={{ marginTop: '8px' }}>
-                                                <div style={{ fontSize: '15px', color: '#495057', fontWeight: 500 }}>
+                                                <div style={{ fontSize: '17px', color: '#495057', fontWeight: 600 }}>
                                                     Netto: {formatCurrencyUtil(paymentSplit.mainAccount.amount, currency)}
                                                 </div>
-                                                <div style={{ fontSize: '12px', color: '#666', fontFamily: 'monospace', marginTop: '2px', marginLeft: 0 }}>
+                                                <div style={{ fontSize: '18px', color: '#111', fontFamily: 'monospace', marginTop: '6px', marginLeft: 0, fontWeight: 700 }}>
                                                     {selectedBankAccount?.accountNumber || businessProfile?.bankAccount || ''}
                                                 </div>
                                             </div>
                                             {/* VAT */}
                                             <div style={{ marginTop: '8px' }}>
-                                                <div style={{ fontSize: '15px', color: '#495057', fontWeight: 500 }}>
-                                                    <span style={{ color: '#28a745', fontWeight: 600 }}>VAT:</span> {formatCurrencyUtil(paymentSplit.vatAccount?.amount || 0, currency)}
+                                                <div style={{ fontSize: '17px', color: '#495057', fontWeight: 600 }}>
+                                                    <span style={{ color: '#28a745', fontWeight: 700 }}>VAT:</span> {formatCurrencyUtil(paymentSplit.vatAccount?.amount || 0, currency)}
                                                 </div>
-                                                <div style={{ fontSize: '12px', color: '#666', fontFamily: 'monospace', marginTop: '2px', marginLeft: 0 }}>
+                                                <div style={{ fontSize: '18px', color: '#111', fontFamily: 'monospace', marginTop: '6px', marginLeft: 0, fontWeight: 700 }}>
                                                     {paymentSplit.vatAccount?.accountNumber}
                                                 </div>
                                             </div>
@@ -504,10 +504,10 @@ export const InvoicePdfTemplate: React.FC<InvoicePdfTemplateProps> = ({ invoice,
                                     // Jeśli VAT = 0 lub brak konta VAT, pokaż pełną kwotę
                                     return (
                                         <div style={{ marginTop: '8px' }}>
-                                            <div style={{ fontSize: '15px', color: '#495057', fontWeight: 500 }}>
+                                            <div style={{ fontSize: '17px', color: '#495057', fontWeight: 600 }}>
                                                 {formatCurrencyUtil(totalGrossValue, currency)}
                                             </div>
-                                            <div style={{ fontSize: '13px', color: '#666', fontFamily: 'monospace', marginTop: '2px', marginLeft: 0 }}>
+                                            <div style={{ fontSize: '18px', color: '#111', fontFamily: 'monospace', marginTop: '6px', marginLeft: 0, fontWeight: 700 }}>
                                                 {selectedBankAccount?.accountNumber || businessProfile?.bankAccount || ''}
                                             </div>
                                         </div>

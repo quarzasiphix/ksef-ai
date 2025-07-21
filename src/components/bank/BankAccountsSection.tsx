@@ -22,6 +22,7 @@ const BankAccountsSection: React.FC = () => {
   const [transactions, setTransactions] = useState([]); // TODO: fetch real transactions
   const [filterType, setFilterType] = useState<'all' | 'income' | 'expense'>('all');
   const [loadingAccounts, setLoadingAccounts] = useState(false);
+  const [editingAccount, setEditingAccount] = useState<BankAccount | null>(null);
 
   useEffect(() => {
     if (!selectedProfileId) return;
@@ -56,6 +57,17 @@ const BankAccountsSection: React.FC = () => {
       toast.success('Usunięto konto bankowe');
     } catch (e) {
       toast.error('Błąd usuwania konta');
+    }
+  };
+
+  const handleEditAccount = async (id: string, data: any) => {
+    try {
+      // Zaktualizuj konto w bazie (możesz mieć updateBankAccount, jeśli nie, użyj addBankAccount z istniejącym id)
+      const updated = await addBankAccount({ ...data, id });
+      setAccounts(prev => prev.map(acc => acc.id === id ? updated : acc));
+      toast.success('Zaktualizowano konto bankowe');
+    } catch (e) {
+      toast.error('Błąd edycji konta');
     }
   };
 
@@ -149,7 +161,8 @@ const BankAccountsSection: React.FC = () => {
             account={acc}
             selected={selectedAccount?.id === acc.id}
             onSelect={() => setSelectedAccount(acc)}
-              onDisconnect={() => handleDeleteAccount(acc.id)}
+            onDisconnect={() => handleDeleteAccount(acc.id)}
+            onEdit={() => setEditingAccount(acc)}
           />
           ))
         )}
@@ -180,6 +193,18 @@ const BankAccountsSection: React.FC = () => {
           onOpenChange={setShowImport}
           accountId={selectedAccount.id}
           onImport={handleImport}
+        />
+      )}
+      {/* Dialog edycji konta */}
+      {editingAccount && (
+        <BankAccountEditDialog
+          initial={editingAccount}
+          open={!!editingAccount}
+          onOpenChange={(open) => !open && setEditingAccount(null)}
+          onSave={async (data) => {
+            await handleEditAccount(editingAccount.id, data);
+            setEditingAccount(null);
+          }}
         />
       )}
     </div>
