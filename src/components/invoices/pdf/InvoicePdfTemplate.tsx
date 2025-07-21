@@ -53,25 +53,49 @@ const formatAmountInWords = (amount: number, currency: string = 'PLN') => {
         currencyWord = 'hrywien';
     } else if (currency === 'PLN') {
         // Oryginalna odmiana złoty
-    if (zlote === 1) {
+        if (zlote === 1) {
             currencyWord = 'złoty';
-    } else if (zlote % 10 >= 2 && zlote % 10 <= 4 && (zlote % 100 < 10 || zlote % 100 >= 20)) {
+        } else if (zlote % 10 >= 2 && zlote % 10 <= 4 && (zlote % 100 < 10 || zlote % 100 >= 20)) {
             currencyWord = 'złote';
-    } else {
+        } else {
             currencyWord = 'złotych';
         }
     }
 
     result += ' ' + currencyWord;
 
-    // Handle grosze
+    // Handle grosze/centy/pensy/itd.
     if (grosze > 0) {
+        let minorUnit = 'grosz';
+        let minorUnitFew = 'grosze';
+        let minorUnitMany = 'groszy';
+        if (currency === 'EUR' || currency === 'USD') {
+            minorUnit = 'cent';
+            minorUnitFew = 'centy';
+            minorUnitMany = 'centów';
+        } else if (currency === 'GBP') {
+            minorUnit = 'pens';
+            minorUnitFew = 'pensy';
+            minorUnitMany = 'pensów';
+        } else if (currency === 'CHF') {
+            minorUnit = 'rappen';
+            minorUnitFew = 'rappen';
+            minorUnitMany = 'rappenów';
+        } else if (currency === 'CZK') {
+            minorUnit = 'halerz';
+            minorUnitFew = 'halerze';
+            minorUnitMany = 'halerzy';
+        } else if (currency === 'UAH') {
+            minorUnit = 'kopijka';
+            minorUnitFew = 'kopiejki';
+            minorUnitMany = 'kopijek';
+        }
         if (grosze === 1) {
-            result += ` ${toWords(grosze)} grosz`;
+            result += ` ${toWords(grosze)} ${minorUnit}`;
         } else if (grosze % 10 >= 2 && grosze % 10 <= 4 && (grosze % 100 < 10 || grosze % 100 >= 20)) {
-            result += ` ${toWords(grosze)} grosze`;
+            result += ` ${toWords(grosze)} ${minorUnitFew}`;
         } else {
-            result += ` ${toWords(grosze)} groszy`;
+            result += ` ${toWords(grosze)} ${minorUnitMany}`;
         }
     }
 

@@ -72,7 +72,8 @@ export async function saveInvoice(invoice: Omit<Invoice, 'id' | 'ksef' | 'vat' |
     ksef?: KsefInfo,
     vat?: boolean,
     vatExemptionReason?: VatExemptionReason | null,
-    items: (Omit<InvoiceItem, 'totalNetValue' | 'totalVatValue' | 'totalGrossValue'> & { id?: string, totalNetValue?: number, totalVatValue?: number, totalGrossValue?: number, vatExempt?: boolean })[]
+    items: (Omit<InvoiceItem, 'totalNetValue' | 'totalVatValue' | 'totalGrossValue'> & { id?: string, totalNetValue?: number, totalVatValue?: number, totalGrossValue?: number, vatExempt?: boolean })[],
+    bankAccountId?: string | null
 }): Promise<Invoice> {
   console.log('saveInvoice called with invoice:', invoice);
   
@@ -314,7 +315,7 @@ export async function saveInvoice(invoice: Omit<Invoice, 'id' | 'ksef' | 'vat' |
       const totalGrossValue = totalNetValue + totalVatValue;
 
       return {
-        ...(item.id && { id: item.id }),
+        // NIE przekazuj id!
         invoice_id: invoiceId,
         user_id: invoice.user_id || null,
         product_id: item.productId || null,
