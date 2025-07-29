@@ -124,7 +124,6 @@ const EditInvoice = () => {
         const invoiceData = await getInvoice(id);
         setInvoice(invoiceData);
       } catch (err) {
-        console.error("Error fetching invoice:", err);
         setError("Nie udało się pobrać danych faktury");
       } finally {
         setLoading(false);

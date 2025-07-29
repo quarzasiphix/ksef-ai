@@ -40,7 +40,6 @@ export const InvoiceFormActions: React.FC<InvoiceFormActionsProps> = ({
         variant="outline"
         type="button"
         onClick={() => {
-          console.log('Cancel button clicked');
           navigate(getCancelUrl());
         }}
         disabled={isLoading}

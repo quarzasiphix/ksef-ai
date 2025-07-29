@@ -46,22 +46,10 @@ const InvoiceList = () => {
   const [selectedType, setSelectedType] = useState<string>("all");
   const isMobile = useIsMobile();
   
-  // Debug - sprawdź faktury z walutą ≠ PLN
   useEffect(() => {
     const nonPLNInvoices = invoices.filter(inv => inv.currency && inv.currency !== 'PLN');
     if (nonPLNInvoices.length > 0) {
-      console.log('Non-PLN invoices found:', nonPLNInvoices.map(inv => ({
-        number: inv.number,
-        currency: inv.currency,
-        exchangeRate: inv.exchangeRate,
-        totalGrossValue: inv.totalGrossValue
-      })));
     } else {
-      console.log('No non-PLN invoices found. All invoices:', invoices.map(inv => ({
-        number: inv.number,
-        currency: inv.currency,
-        exchangeRate: inv.exchangeRate
-      })));
     }
   }, [invoices]);
   

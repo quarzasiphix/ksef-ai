@@ -35,7 +35,6 @@ export const ProductSelector: React.FC<ProductSelectorProps> = ({
   };
 
   const handleProductSaved = async (product: Omit<Product, 'id'> & { id?: string }) => {
-    console.log('ProductSelector - Product saved:', product);
     onNewProductAdded(product);
     await refetchProducts();
     // Clear selection after adding

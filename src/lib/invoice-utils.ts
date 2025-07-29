@@ -248,20 +248,11 @@ export async function getNbpExchangeRate(currency: string, date: string): Promis
 }
 
 export function getInvoiceValueInPLN(invoice: Invoice): number {
-  console.log('getInvoiceValueInPLN called with:', {
-    currency: invoice.currency,
-    exchangeRate: invoice.exchangeRate,
-    totalGrossValue: invoice.totalGrossValue
-  });
-  
   if (invoice.currency === 'PLN' || !invoice.exchangeRate) {
-    console.log('Returning original value:', invoice.totalGrossValue);
     return invoice.totalGrossValue;
   }
   
-  const result = invoice.totalGrossValue * invoice.exchangeRate;
-  console.log('Returning converted value:', result);
-  return result;
+  return invoice.totalGrossValue * invoice.exchangeRate;
 }
 
 export interface PaymentSplit {

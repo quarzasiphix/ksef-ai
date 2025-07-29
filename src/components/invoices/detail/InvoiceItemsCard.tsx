@@ -50,13 +50,8 @@ export const InvoiceItemsCard: React.FC<InvoiceItemsCardProps> = ({
 }) => {
   // Process and validate invoice items
   const safeItems = React.useMemo<ProcessedInvoiceItem[]>(() => {
-    console.log('=== DEBUG: Raw items received in InvoiceItemsCard ===');
-    console.log('Items type:', typeof items);
-    console.log('Items value:', items);
-    
     // Ensure items is an array
     if (!Array.isArray(items)) {
-      console.warn('Items is not an array, converting to array');
       if (items && typeof items === 'object' && !Array.isArray(items)) {
         // If it's an object but not an array, try to convert it to an array
         return [items].filter(Boolean).map(processSingleItem);
@@ -170,12 +165,8 @@ export const InvoiceItemsCard: React.FC<InvoiceItemsCardProps> = ({
     }
   }, [items]);
   
-  // Debug logging
-  console.log('=== DEBUG: InvoiceItemsCard ===');
-  console.log('Raw items prop:', items);
-  console.log('Safe items after processing:', safeItems);
-  console.log('Type of items:', typeof items, 'Is array:', Array.isArray(items));
-  console.log('Items length:', Array.isArray(items) ? items.length : 'not an array');
+  // Debug logging removed for production
+  // console.log('Rendering InvoiceItemsCard - items:', items ? items.length : 'not an array');
   
   const isMobile = useIsMobile();
   const isReceipt = type === InvoiceType.RECEIPT;

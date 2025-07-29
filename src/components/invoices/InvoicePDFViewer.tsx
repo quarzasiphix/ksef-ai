@@ -27,7 +27,7 @@ const InvoicePDFViewer: React.FC<InvoicePDFViewerProps> = ({
 
   const handleDownload = () => {
     // Placeholder for PDF download functionality
-    console.log("Download PDF for invoice:", invoice.number);
+    // Debug logging removed for production
   };
 
   const handleDownloadHtml = () => {

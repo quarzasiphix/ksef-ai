@@ -337,10 +337,6 @@ const NewInvoice = React.forwardRef<{
     // Update items and form when initialData changes
     useEffect(() => {
       if (initialData) {
-        console.log('NewInvoice useEffect - initialData changed:', initialData);
-        console.log('NewInvoice useEffect - initialData.vat:', (initialData as any).vat);
-        console.log('NewInvoice useEffect - initialData.vatExemptionReason:', initialData.vatExemptionReason);
-        
         setItems(initialData.items || []); // Ensure items are updated when initialData changes
 
         // Explicitly reset form values based on initialData
@@ -368,10 +364,7 @@ const NewInvoice = React.forwardRef<{
 
     // Log items when they change
     useEffect(() => {
-      console.log('Items state updated:', items);
-      console.log('Form fakturaBezVAT value:', form.getValues().fakturaBezVAT);
-      console.log('Form vatExemptionReason value:', form.getValues().vatExemptionReason);
-      console.log('Form transactionType value:', form.getValues().transactionType); // Added log
+      // Debug logging removed for production
     }, [items, form.getValues().fakturaBezVAT, form.getValues().vatExemptionReason, form.getValues().transactionType]); // Depend on items and form values
 
     // Prefill customer/product on mount (only once)

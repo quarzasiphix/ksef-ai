@@ -51,10 +51,6 @@ export const EditableInvoiceItemsTable: React.FC<EditableInvoiceItemsTableProps>
   // Filter products based on document type
   const filteredProducts = products.filter(product => product.product_type === transactionType);
 
-  // Debug logs
-  console.log('EditableInvoiceItemsTable products:', products);
-  console.log('EditableInvoiceItemsTable filteredProducts:', filteredProducts);
-
   const handleAddManualItem = () => {
     if (!newItem.name || !newItem.quantity || !newItem.unitPrice) return;
 
