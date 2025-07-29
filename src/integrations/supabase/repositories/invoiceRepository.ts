@@ -1,5 +1,18 @@
 import { supabase } from "../client";
-import { InvoiceItem, InvoiceType, PaymentMethod, PaymentMethodDb, Invoice, KsefInfo, VatExemptionReason, Company, BusinessProfile, Customer, InvoiceStatus, TransactionType } from "@/types/index";
+import { 
+  InvoiceItem, 
+  InvoiceType, 
+  PaymentMethod, 
+  PaymentMethodDb, 
+  Invoice, 
+  KsefInfo, 
+  VatExemptionReason, 
+  Company, 
+  BusinessProfile, 
+  Customer, 
+  InvoiceStatus, 
+  TransactionType 
+} from "@/types/index";
 import { toPaymentMethodUi, toPaymentMethodDb } from "@/lib/invoice-utils";
 import { useAuth } from "@/hooks/useAuth";
 import { format } from 'date-fns';
@@ -214,10 +227,20 @@ export async function saveInvoice(invoice: Omit<Invoice, 'id' | 'ksef' | 'vat' |
   })();
 
   // Create the base payload with required fields
+  // Convert the invoice type to match the database's expected format (lowercase)
+  const invoiceType = (() => {
+    if (!invoice.type) return 'sales';
+    const type = invoice.type.toLowerCase();
+    if (['sales', 'receipt', 'proforma', 'correction'].includes(type)) {
+      return type;
+    }
+    return 'sales'; // Default fallback
+  })();
+  
   const basePayload: Omit<InvoicePayload, 'transaction_type'> = {
     user_id: invoice.user_id,
     number: invoice.number,
-    type: invoice.type,
+    type: invoiceType as any, // Type assertion needed due to type mismatch between frontend and database enums
     issue_date: invoice.issueDate,
     due_date: invoice.dueDate,
     sell_date: invoice.sellDate,

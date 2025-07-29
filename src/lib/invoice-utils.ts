@@ -3,6 +3,22 @@ import { TransactionType } from "@/types/common";
 import { BankAccount } from "@/types/bank";
 import * as z from "zod";
 
+// Get document title based on invoice type
+export const getDocumentTitle = (type?: InvoiceType): string => {
+  switch (type) {
+    case InvoiceType.SALES:
+      return 'Faktura';
+    case InvoiceType.PROFORMA:
+      return 'Faktura Pro Forma';
+    case InvoiceType.RECEIPT:
+      return 'Rachunek';
+    case InvoiceType.CORRECTION:
+      return 'Faktura korygująca';
+    default:
+      return 'Dokument';
+  }
+};
+
 // Format number to currency (dynamic)
 export const formatCurrency = (amount: number, currency: string = 'PLN'): string => {
   return new Intl.NumberFormat(currency === 'PLN' ? 'pl-PL' : 'en-US', {

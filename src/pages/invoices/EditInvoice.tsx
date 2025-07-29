@@ -37,10 +37,15 @@ const EditInvoice = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [bankAccounts, setBankAccounts] = useState<BankAccount[]>([]);
+  const [items, setItems] = useState<InvoiceItem[]>([]);
   const { state } = useSidebar();
   const { user } = useAuth();
-  // Usuń ref i handleFormSubmit
-  // const newInvoiceRef = useRef<{ handleSubmit: (onValid: (data: any) => Promise<void>) => (e?: React.BaseSyntheticEvent) => Promise<void>; } | null>(null);
+  const formRef = useRef<{ handleSubmit: (onValid: (data: any) => Promise<void>) => (e?: React.BaseSyntheticEvent) => Promise<void> }>(null);
+
+  // Handle items change
+  const handleItemsChange = (newItems: InvoiceItem[]) => {
+    setItems([...newItems]);
+  };
 
   // If id is 'new', render the NewInvoice form directly
   if (id === 'new') {
@@ -72,6 +77,14 @@ const EditInvoice = () => {
   }, [id]);
 
   // Pobieranie kont bankowych
+  // Update items state when invoice data is loaded
+  useEffect(() => {
+    if (invoice?.items) {
+      setItems([...invoice.items]);
+    }
+  }, [invoice]);
+
+  // Load bank accounts for the business profile
   useEffect(() => {
     if (invoice?.businessProfileId) {
       getBankAccountsForProfile(invoice.businessProfileId)
@@ -80,62 +93,103 @@ const EditInvoice = () => {
     }
   }, [invoice?.businessProfileId]);
 
-  const handleUpdate = async (formData: any) => {
-    console.log('EditInvoice handleUpdate - started');
-    if (!id) {
-      console.log('handleUpdate called but id is null');
+  const [isSaving, setIsSaving] = useState(false);
+
+  const handleUpdate = async (formData: any): Promise<void> => {
+    console.log('=== EditInvoice handleUpdate - started ===');
+    console.log('Invoice ID:', id);
+    console.log('Form data:', JSON.stringify(formData, null, 2));
+    console.log('Current items state:', JSON.stringify(items, null, 2));
+    
+    if (!id || id === 'new' || !invoice) {
+      const errorMsg = `Invalid parameters - id: ${id}, invoice: ${!!invoice}`;
+      console.error('handleUpdate aborted:', errorMsg);
+      toast.error('Nieprawidłowe parametry faktury');
       return;
     }
 
     if (!user) {
+      console.error('User not authenticated');
       toast.error("Nie jesteś zalogowany");
       return;
     }
-
-    console.log('handleUpdate called with ID:', id);
-    console.log('Original form data:', formData);
-    console.log('Original items:', formData.items);
-    console.log('Original invoice items:', invoice?.items);
-
-    // Ensure items are preserved from the original invoice if not present in form data
-    const updatedData = {
-      ...formData,
-      id: id,
-      user_id: user.id,
-      // NIE nadpisuj items!
-      // items: formData.items || invoice?.items || [],
-      // Explicitly include isPaid from the original invoice if not in form data
-      isPaid: formData.isPaid !== undefined ? formData.isPaid : invoice?.isPaid || false
-    };
-
-    console.log('Final data being sent to saveInvoice:', updatedData);
-    console.log('Items being sent:', updatedData.items);
-
-    // Show a toast with the invoice payload for debugging
-    toast.info('Invoice payload: ' + JSON.stringify({
-      ...updatedData,
-      items: updatedData.items
-    }, null, 2));
+    
+    console.log('User ID:', user.id);
+    
     try {
-      console.log('EditInvoice handleUpdate - calling saveInvoice');
-      await saveInvoice(updatedData);
-      console.log('EditInvoice handleUpdate - saveInvoice completed');
+      setIsSaving(true);
       
-      // Invalidate both the invoices list and the specific invoice query
-      await queryClient.invalidateQueries({ queryKey: ['invoices'] });
-      await queryClient.invalidateQueries({ queryKey: ['invoice', id] });
+      // Create the update payload using the correct field names from your Invoice type
+      const updateData = {
+        ...formData,
+        id,
+        user_id: user.id,
+        items: [...items], // Create a new array reference
+        // Map fields according to your Invoice type
+        businessProfileId: formData.businessProfileId || invoice.businessProfileId,
+        customerId: formData.customerId || invoice.customerId,
+        type: formData.type || invoice.type,
+        transactionType: formData.transactionType || invoice.transactionType,
+        number: formData.number || invoice.number,
+        issueDate: formData.issueDate || invoice.issueDate,
+        sellDate: formData.sellDate || invoice.sellDate || new Date().toISOString().split('T')[0],
+        dueDate: formData.dueDate || invoice.dueDate,
+        paymentMethod: formData.paymentMethod || invoice.paymentMethod || 'transfer',
+        status: formData.status || invoice.status || 'draft',
+        comments: formData.comments || invoice.comments || '',
+        totalNetValue: formData.totalNetValue || invoice.totalNetValue || 0,
+        totalVatValue: formData.totalVatValue || invoice.totalVatValue || 0,
+        totalGrossValue: formData.totalGrossValue || invoice.totalGrossValue || 0,
+        currency: formData.currency || invoice.currency || 'PLN',
+        exchangeRate: formData.exchangeRate || invoice.exchangeRate || 1,
+        vat: formData.vat !== undefined ? formData.vat : (invoice.vat ?? true),
+        vatExemptionReason: formData.vatExemptionReason || invoice.vatExemptionReason || null,
+      };
       
-      console.log("Document updated successfully");
-      toast.success("Dokument został zaktualizowany");
+      console.log('=== Attempting to save invoice ===');
+      console.log('Update data being sent:', JSON.stringify(updateData, null, 2));
       
-      // Navigate back to the invoice detail page
-      const redirectPath = invoice?.transactionType === 'income' 
-        ? `/income/${id}`
-        : `/expense/${id}`;
-      navigate(redirectPath);
+      try {
+        console.log('Calling saveInvoice...');
+        const savedInvoice = await saveInvoice(updateData);
+        console.log('=== Invoice saved successfully ===');
+        console.log('Saved invoice response:', savedInvoice);
+        
+        toast.success('Faktura została zapisana');
+        
+        console.log('Invalidating queries...');
+        await Promise.all([
+          queryClient.invalidateQueries({ queryKey: ['invoices'] }),
+          queryClient.invalidateQueries({ queryKey: ['invoice', id] })
+        ]);
+        console.log('Queries invalidated');
+        
+        const redirectPath = invoice.transactionType === 'income' 
+          ? `/income/${id}`
+          : `/expense/${id}`;
+          
+        console.log('Navigating to:', redirectPath);
+        navigate(redirectPath);
+      } catch (error) {
+        console.error('Error in saveInvoice call:', error);
+        throw error; // This will be caught by the outer catch
+      }
+      
     } catch (error) {
-      console.error("Error updating invoice:", error);
-      toast.error("Wystąpił błąd podczas aktualizacji dokumentu");
+      console.error('=== Error in handleUpdate ===');
+      console.error('Error details:', error);
+      
+      // Check for specific error types
+      if (error instanceof Error) {
+        console.error('Error message:', error.message);
+        console.error('Error stack:', error.stack);
+      }
+      
+      toast.error(`Wystąpił błąd podczas zapisywania faktury: ${error instanceof Error ? error.message : 'Nieznany błąd'}`);
+    } finally {
+      console.log('=== Cleanup ===');
+      setIsSaving(false);
+      console.log('isSaving set to false');
     }
   };
 
@@ -330,14 +384,16 @@ const EditInvoice = () => {
       <div className="flex flex-col flex-1 pb-12 md:pb-0"> {/* Adjust padding for non-mobile when actions are static */}
         {/* Scrollable content area */}
         <div className="flex-1 overflow-y-auto">
-          <NewInvoice
-            initialData={transformedData}
-            type={invoice.transactionType as any}
-            onSave={handleUpdate}
-            hideHeader
-            bankAccounts={bankAccounts}
-            showFormActions={false}
-          />
+          <div className="container mx-auto px-4 py-6">
+            <NewInvoice 
+              initialData={invoice} 
+              ref={formRef} 
+              onSave={handleUpdate}
+              bankAccounts={bankAccounts}
+              items={items}
+              onItemsChange={handleItemsChange}
+            />
+          </div>
 
           {/* Contracts linked to this invoice */}
           {id && (

@@ -401,17 +401,51 @@ const Accounting = () => {
     try {
       const year = currentYear;
       const monthNumber = monthIdx + 1;
-      // TODO: swap this placeholder with real PDF/XML generation logic
-      const blob = new Blob([
-        `Generated form: ${report.name} for ${year}-${String(monthNumber).padStart(2, "0")}`
-      ], { type: "application/pdf" });
+      const monthStr = `${year}-${String(monthNumber).padStart(2, "0")}`;
+      
+      // Generate XML content based on report type
+      let xmlContent = '';
+      if (report.name === 'JPK_V7M') {
+        // Generate JPK_V7M XML content
+        const periodDates = { 
+          startDate: `${monthStr}-01`,
+          endDate: `${monthStr}-${new Date(year, monthNumber, 0).getDate()}`,
+          periodName: monthStr 
+        };
+        const jpkData = generateJpckV7Data(
+          allInvoices.filter(inv => inv.issueDate.startsWith(monthStr)),
+          expenses.filter(exp => exp.date.startsWith(monthStr)),
+          profiles?.find(p => p.id === selectedProfileId),
+          periodDates
+        );
+        xmlContent = generateJpckV7Xml(jpkData);
+      } else {
+        // Default XML content for other report types
+        xmlContent = `<?xml version="1.0" encoding="UTF-8"?>
+<root>
+  <naglowek>
+    <nazwa>${report.name}</nazwa>
+    <data>${new Date().toISOString().split('T')[0]}</data>
+    <miesiac>${monthNumber}</miesiac>
+    <rok>${year}</rok>
+  </naglowek>
+  <dane>
+    <!-- Tutaj znajdują się dane formularza -->
+  </dane>
+</root>`;
+      }
+
+      // Create blob with XML content
+      const blob = new Blob([xmlContent], { type: 'application/xml' });
 
       // Trigger download for user
       const tempUrl = URL.createObjectURL(blob);
       const a = document.createElement("a");
       a.href = tempUrl;
-      a.download = `${report.name}_${year}-${String(monthNumber).padStart(2, "0")}.pdf`;
+      a.download = `${report.name}_${monthStr}.xml`;
+      document.body.appendChild(a);
       a.click();
+      document.body.removeChild(a);
       URL.revokeObjectURL(tempUrl);
 
       // 1. Upload to Storage
@@ -424,7 +458,6 @@ const Accounting = () => {
       });
 
       // 2. Insert row into filed_tax_forms
-      const monthStr = `${year}-${String(monthNumber).padStart(2, "0")}`;
       await saveFiledTaxForm({
         businessProfileId: selectedProfileId,
         userId: user.id,

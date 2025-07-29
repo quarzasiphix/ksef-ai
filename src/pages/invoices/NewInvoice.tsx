@@ -16,6 +16,7 @@ import {
   toPaymentMethodDb,
   getNbpExchangeRate,
   formatCurrency,
+  getDocumentTitle
 } from "@/lib/invoice-utils";
 import { saveInvoice, getInvoice } from "@/integrations/supabase/repositories/invoiceRepository";
 import { saveExpense } from "@/integrations/supabase/repositories/expenseRepository";
@@ -36,23 +37,38 @@ import { BankAccountEditDialog } from "@/components/bank/BankAccountEditDialog";
 
 // Schema
 const invoiceFormSchema = z.object({
-  number: z.string().min(1, "Numer faktury jest wymagany"),
-  issueDate: z.string().min(1, "Data wystawienia jest wymagana"),
-  dueDate: z.string().min(1, "Termin płatności jest wymagany"),
-  sellDate: z.string().optional(),
-  paymentMethod: z.string().min(1, "Metoda płatności jest wymagana"),
-  comments: z.string().optional().default(""),
-  customerId: z.string().optional(),
-  businessProfileId: z.string().min(1, "Profil biznesowy jest wymagany"),
+  // Required fields
+  number: z.string().min(1, 'Numer faktury jest wymagany'),
+  issueDate: z.string().min(1, 'Data wystawienia jest wymagana'),
+  dueDate: z.string().min(1, 'Termin płatności jest wymagany'),
+  sellDate: z.string().min(1, 'Data sprzedaży jest wymagana'),
+  paymentMethod: z.nativeEnum(PaymentMethod, {
+    errorMap: () => ({ message: 'Sposób płatności jest wymagany' })
+  }),
+  customerId: z.string().min(1, 'Kontrahent jest wymagany'),
+  businessProfileId: z.string().min(1, 'Profil biznesowy jest wymagany'),
   transactionType: z.nativeEnum(TransactionType),
-  fakturaBezVAT: z.boolean().optional().default(false),
-  vatExemptionReason: z.nativeEnum(VatExemptionReason).optional(),
+  
+  // Optional fields with defaults
+  comments: z.string().default(''),
+  status: z.string().default('draft'),
+  type: z.nativeEnum(InvoiceType).default(InvoiceType.SALES),
+  vat: z.boolean().default(true),
+  vatExemptionReason: z.nativeEnum(VatExemptionReason).nullable().default(null),
   currency: z.string().default('PLN'),
+  exchangeRate: z.number().min(0.0001, 'Kurs musi być większy od zera').default(1),
+  exchangeRateDate: z.string().default(() => new Date().toISOString().split('T')[0]),
+  exchangeRateSource: z.enum(['NBP', 'manual']).default('NBP'),
   bankAccountId: z.string().optional(),
-  exchangeRate: z.number().min(0.0001, 'Kurs musi być większy od zera').optional(),
-  exchangeRateDate: z.string().optional(),
-  exchangeRateSource: z.enum(['NBP', 'manual']).optional(),
+  
+  // Calculated fields (will be set programmatically)
+  totalNetValue: z.number().default(0),
+  totalVatValue: z.number().default(0),
+  totalGrossValue: z.number().default(0),
+  isPaid: z.boolean().default(false),
+  fakturaBezVAT: z.boolean().default(false)
 });
+
 type InvoiceFormValues = z.infer<typeof invoiceFormSchema>;
 
 interface NewInvoiceProps {
@@ -62,15 +78,22 @@ interface NewInvoiceProps {
   onSave?: (formData: InvoiceFormValues & { items: InvoiceItem[] }) => Promise<void>;
   hideHeader?: boolean;
   bankAccounts?: BankAccount[];
+  items?: InvoiceItem[];
+  onItemsChange?: (items: InvoiceItem[]) => void;
 }
 
-const NewInvoice: React.ForwardRefExoticComponent<
-  React.PropsWithoutRef<NewInvoiceProps> &
-  React.RefAttributes<{
-    handleSubmit: (onValid: (data: any) => Promise<void>) => (e?: React.BaseSyntheticEvent) => Promise<void>;
-  }>
-> = React.forwardRef(
-  ({ initialData, type = TransactionType.EXPENSE, showFormActions = true, onSave, hideHeader = false, bankAccounts: propsBankAccounts }, ref) => {
+const NewInvoice = React.forwardRef<{
+  handleSubmit: (onValid: (data: any) => Promise<void>) => (e?: React.BaseSyntheticEvent) => Promise<void>;
+}, NewInvoiceProps>(({ 
+  initialData, 
+  type = TransactionType.EXPENSE, 
+  showFormActions = true, 
+  onSave, 
+  hideHeader = false, 
+  bankAccounts: propsBankAccounts,
+  items: propItems,
+  onItemsChange
+}, ref) => {
     const { state } = useSidebar()
 
     // All hooks at the top, always called in the same order
@@ -108,18 +131,16 @@ const NewInvoice: React.ForwardRefExoticComponent<
     const [documentSettings, setDocumentSettings] = useState<any[]>([]);
     const [documentSettingsLoaded, setDocumentSettingsLoaded] = useState(false);
     const [isLoading, setIsLoading] = useState(false);
-    const [items, setItems] = useState<InvoiceItem[]>(() => {
-      // If initialData has items, use them
-      if (initialData?.items) return initialData.items;
-      // If productId in URL, prefill with that product (will be handled in useEffect)
-      return [];
-    });
+    // Use items from props if provided, otherwise use local state
+    const [localItems, setLocalItems] = useState<InvoiceItem[]>(initialData?.items || []);
+    const items = propItems !== undefined ? propItems : localItems;
+    const setItems = onItemsChange || setLocalItems;
 
     // --- linking contracts prior to save ---
     const [contractsToLink, setContractsToLink] = useState<string[]>([]);
     const [exchangeRate, setExchangeRate] = useState<number>(initialData?.exchangeRate || 1);
-      const [bankAccounts, setBankAccounts] = useState<BankAccount[]>(propsBankAccounts || []);
-  const [showVatAccountDialog, setShowVatAccountDialog] = useState(false);
+    const [bankAccounts, setBankAccounts] = useState<BankAccount[]>(propsBankAccounts || []);
+    const [showVatAccountDialog, setShowVatAccountDialog] = useState(false);
 
     const handleAddContract = (id: string) => {
       setContractsToLink((prev) => [...prev, id]);
@@ -155,12 +176,11 @@ const NewInvoice: React.ForwardRefExoticComponent<
       .toISOString()
       .split("T")[0];
 
-    const form = useForm<InvoiceFormValues & { transactionType: TransactionType }>({
+    const form = useForm<InvoiceFormValues>({
       resolver: zodResolver(invoiceFormSchema),
       mode: "onChange",
       defaultValues: {
-        number:
-          initialData?.number || generateInvoiceNumber(new Date(), 1),
+        number: initialData?.number || generateInvoiceNumber(new Date(), 1),
         issueDate: initialData?.issueDate || today,
         sellDate: initialData?.sellDate || today,
         dueDate: initialData?.dueDate || dueIn7,
@@ -168,16 +188,23 @@ const NewInvoice: React.ForwardRefExoticComponent<
           ? toPaymentMethodUi(initialData.paymentMethod as PaymentMethodDb)
           : PaymentMethod.TRANSFER,
         comments: initialData?.comments || "",
-        transactionType: transactionType,
+        transactionType: transactionType || TransactionType.INCOME,
         customerId: initialData?.customerId || "",
         businessProfileId: initialData?.businessProfileId || "",
+        vat: initialData?.vat ?? true,
+        vatExemptionReason: initialData?.vatExemptionReason || null,
         fakturaBezVAT: (initialData as any)?.vat === false,
-        vatExemptionReason: initialData?.vatExemptionReason,
         currency: initialData?.currency || 'PLN',
         bankAccountId: initialData?.bankAccountId || "",
         exchangeRate: initialData?.exchangeRate || 1,
-        exchangeRateDate: initialData?.exchangeRateDate || '',
-        exchangeRateSource: initialData?.exchangeRateSource || 'NBP',
+        exchangeRateDate: initialData?.exchangeRateDate || today,
+        exchangeRateSource: (initialData?.exchangeRateSource as 'NBP' | 'manual' | undefined) || 'NBP',
+        status: initialData?.status || 'draft',
+        type: initialData?.type || InvoiceType.SALES,
+        totalNetValue: initialData?.totalNetValue || 0,
+        totalVatValue: initialData?.totalVatValue || 0,
+        totalGrossValue: initialData?.totalGrossValue || 0,
+        isPaid: initialData?.isPaid || false
       },
     });
 
@@ -428,12 +455,11 @@ const NewInvoice: React.ForwardRefExoticComponent<
       handleSubmit: form.handleSubmit,
     }));
 
-    // Move onSubmit definition above handleFormSubmit
+    // Handle form submission
     const onSubmit = async (formData: InvoiceFormValues) => {
-      console.log('onSubmit called with formData:', formData);
-      console.log('Current items state:', items);
-      console.log('initialData exists:', !!initialData);
-      console.log('onSave prop provided:', !!onSave);
+      console.log('=== onSubmit started ===');
+      console.log('Form data:', JSON.stringify(formData, null, 2));
+      console.log('Items:', JSON.stringify(items, null, 2));
 
       if (!user) {
         const error = "Nie jesteś zalogowany";
@@ -449,12 +475,87 @@ const NewInvoice: React.ForwardRefExoticComponent<
         return;
       }
 
-      // Validate customer is selected
-      if (!formData.customerId) {
-        const error = "Wybierz kontrahenta";
+      // Validate required fields
+      if (!formData.customerId || !formData.businessProfileId) {
+        const error = 'Proszę wypełnić wszystkie wymagane pola';
         console.error(error);
-    toast.error('Proszę wypełnić wszystkie wymagane pola');
-}
+        toast.error(error);
+        return;
+      }
+
+      try {
+        setIsLoading(true);
+        
+        // Convert UI payment method to database format
+        const paymentMethodDb = toPaymentMethodDb(formData.paymentMethod);
+        
+        // Prepare the data to be saved with all required fields
+        const saveData = {
+          ...formData,
+          // Ensure all required Invoice fields are included with proper types
+          status: (formData.status || 'draft') as 'draft' | 'sent' | 'paid' | 'overdue',
+          type: (formData.type || 'vat') as InvoiceType,
+          number: formData.number || '',
+          issueDate: formData.issueDate || new Date().toISOString().split('T')[0],
+          sellDate: formData.sellDate || formData.issueDate || new Date().toISOString().split('T')[0],
+          dueDate: formData.dueDate || '',
+          paymentMethod: paymentMethodDb, // Use the converted payment method
+          transactionType: formData.transactionType as TransactionType,
+          currency: formData.currency || 'PLN',
+          exchangeRate: formData.exchangeRate || 1,
+          exchangeRateDate: formData.exchangeRateDate || new Date().toISOString().split('T')[0],
+          exchangeRateSource: (formData.exchangeRateSource || 'NBP') as 'NBP' | 'manual',
+          vat: formData.vat !== undefined ? formData.vat : true,
+          vatExemptionReason: formData.vatExemptionReason as VatExemptionReason | null,
+          
+          // Process items
+          items: items.map(item => ({
+            ...item,
+            // Ensure all required item fields are present
+            id: item.id || undefined, // Let the server generate new IDs if needed
+            productId: item.productId || null,
+            name: item.name || '',
+            description: item.description || '',
+            quantity: Number(item.quantity) || 0,
+            unit: item.unit || 'szt',
+            unitPrice: Number(item.unitPrice) || 0,
+            vatRate: item.vatExempt ? 0 : (Number(item.vatRate) || 0),
+            vatExempt: item.vatExempt || false,
+            totalNetValue: Number(item.totalNetValue) || (Number(item.quantity) * Number(item.unitPrice)) || 0,
+            totalVatValue: Number(item.totalVatValue) || 0,
+            totalGrossValue: Number(item.totalGrossValue) || 0,
+          })),
+          
+          // Calculate totals if not provided
+          totalNetValue: formData.totalNetValue || items.reduce((sum, item) => sum + (Number(item.totalNetValue) || 0), 0),
+          totalVatValue: formData.totalVatValue || items.reduce((sum, item) => sum + (Number(item.totalVatValue) || 0), 0),
+          totalGrossValue: formData.totalGrossValue || items.reduce((sum, item) => sum + (Number(item.totalGrossValue) || 0), 0),
+          
+          // Ensure user ID is set
+          user_id: user.id,
+        };
+
+        console.log('Saving invoice with data:', JSON.stringify(saveData, null, 2));
+        
+        // If onSave prop is provided, use it (for edit mode)
+        if (onSave) {
+          console.log('Using onSave callback');
+          await onSave(saveData);
+        } else {
+          // Otherwise, this is a new invoice
+          console.log('Creating new invoice');
+          await saveInvoice(saveData);
+          toast.success('Faktura została zapisana');
+          // Navigate to invoices list
+          navigate('/invoices');
+        }
+      } catch (error) {
+        console.error('Error saving invoice:', error);
+        toast.error(`Wystąpił błąd podczas zapisywania faktury: ${error instanceof Error ? error.message : 'Nieznany błąd'}`);
+        throw error; // Re-throw to be caught by handleFormSubmit
+      } finally {
+        setIsLoading(false);
+      }
 };
 
 const handleFormSubmit = form.handleSubmit(async (formData) => {
