@@ -50,12 +50,6 @@ export const InvoiceFormActions: React.FC<InvoiceFormActionsProps> = ({
       <Button
         type="submit"
         disabled={isLoading}
-        onClick={(e) => {
-          if (onSubmit) {
-            console.log('InvoiceFormActions - Save button clicked, calling onSubmit prop');
-            onSubmit(e);
-          }
-        }}
       >
         {isLoading ? "Zapisywanie..." : isEditing ? "Zapisz" : "Utwórz dokument"}
       </Button>

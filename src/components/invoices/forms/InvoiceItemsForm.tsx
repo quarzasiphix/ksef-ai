@@ -68,9 +68,17 @@ export const InvoiceItemsForm: React.FC<InvoiceItemsFormProps> = ({
   };
 
   const handleUpdateItem = (id: string, updates: Partial<InvoiceItem>) => {
-    onItemsChange(items.map(item =>
-      item.id === id ? calculateItemValues({ ...item, ...updates }) : item
-    ));
+    onItemsChange(
+      items.map((item) => {
+        if (item.id === id) {
+          const updatedItem = { ...item, ...updates };
+          const calculatedItem = calculateItemValues(updatedItem);
+          // Ensure the ID is preserved, as calculateItemValues might not return it
+          return { ...calculatedItem, id: item.id };
+        }
+        return item;
+      })
+    );
   };
 
   return (

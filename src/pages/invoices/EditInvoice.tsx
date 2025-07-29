@@ -39,7 +39,8 @@ const EditInvoice = () => {
   const [bankAccounts, setBankAccounts] = useState<BankAccount[]>([]);
   const { state } = useSidebar();
   const { user } = useAuth();
-  const newInvoiceRef = useRef<{ handleSubmit: (onValid: (data: any) => Promise<void>) => (e?: React.BaseSyntheticEvent) => Promise<void>; } | null>(null);
+  // Usuń ref i handleFormSubmit
+  // const newInvoiceRef = useRef<{ handleSubmit: (onValid: (data: any) => Promise<void>) => (e?: React.BaseSyntheticEvent) => Promise<void>; } | null>(null);
 
   // If id is 'new', render the NewInvoice form directly
   if (id === 'new') {
@@ -101,7 +102,8 @@ const EditInvoice = () => {
       ...formData,
       id: id,
       user_id: user.id,
-      items: formData.items || invoice?.items || [],
+      // NIE nadpisuj items!
+      // items: formData.items || invoice?.items || [],
       // Explicitly include isPaid from the original invoice if not in form data
       isPaid: formData.isPaid !== undefined ? formData.isPaid : invoice?.isPaid || false
     };
@@ -109,6 +111,11 @@ const EditInvoice = () => {
     console.log('Final data being sent to saveInvoice:', updatedData);
     console.log('Items being sent:', updatedData.items);
 
+    // Show a toast with the invoice payload for debugging
+    toast.info('Invoice payload: ' + JSON.stringify({
+      ...updatedData,
+      items: updatedData.items
+    }, null, 2));
     try {
       console.log('EditInvoice handleUpdate - calling saveInvoice');
       await saveInvoice(updatedData);
@@ -266,16 +273,16 @@ const EditInvoice = () => {
   console.log('Passing to NewInvoice:', transformedData);
   
   // Define handleFormSubmit here, outside the return statement
-  const handleFormSubmit = (e: React.FormEvent) => {
-    // Prevent the default form submission behavior
-    e.preventDefault();
-    console.log('EditInvoice handleFormSubmit - started');
-    if (newInvoiceRef.current?.handleSubmit) {
-      console.log('EditInvoice handleFormSubmit - calling NewInvoice handleSubmit');
-      // Call the handleSubmit method from the NewInvoice component
-      newInvoiceRef.current.handleSubmit(handleUpdate)(e);
-    }
-  };
+  // const handleFormSubmit = (e: React.FormEvent) => {
+  //   // Prevent the default form submission behavior
+  //   e.preventDefault();
+  //   console.log('EditInvoice handleFormSubmit - started');
+  //   if (newInvoiceRef.current?.handleSubmit) {
+  //     console.log('EditInvoice handleFormSubmit - calling NewInvoice handleSubmit');
+  //     // Call the handleSubmit method from the NewInvoice component
+  //     newInvoiceRef.current.handleSubmit(handleUpdate)(e);
+  //   }
+  // };
 
   return (
     <div className="space-y-6">
@@ -327,7 +334,6 @@ const EditInvoice = () => {
             initialData={transformedData}
             type={invoice.transactionType as any}
             onSave={handleUpdate}
-            ref={newInvoiceRef}
             hideHeader
             bankAccounts={bankAccounts}
             showFormActions={false}
@@ -353,7 +359,7 @@ const EditInvoice = () => {
           <InvoiceFormActions
             isLoading={loading} // Use loading state from EditInvoice
             isEditing={true} // Always editing in this component
-            onSubmit={handleFormSubmit} // Pass the handleFormSubmit defined in EditInvoice
+            // NIE przekazuj onSubmit, bo obsługuje to NewInvoice
             transactionType={invoice.transactionType as any}
           />
         </div>

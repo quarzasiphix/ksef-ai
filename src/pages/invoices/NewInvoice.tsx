@@ -80,6 +80,9 @@ const NewInvoice: React.ForwardRefExoticComponent<
     const location = useLocation();
     const queryClient = useQueryClient();
 
+
+
+
     // Helpers to determine if current path is for income or expense invoice creation/edit
     const isIncomeRoute = location.pathname === "/income/new" || location.pathname.startsWith("/income/edit/");
     const isExpenseRoute = location.pathname === "/expense/new" || location.pathname.startsWith("/expense/edit/");
@@ -425,6 +428,9 @@ const NewInvoice: React.ForwardRefExoticComponent<
       handleSubmit: form.handleSubmit,
     }));
 
+    // Bind form submit to handler
+    const handleFormSubmit = form.handleSubmit(onSubmit);
+
     // Submit handler
     const onSubmit = async (formData: InvoiceFormValues) => {
       console.log('onSubmit called with formData:', formData);
@@ -446,170 +452,64 @@ const NewInvoice: React.ForwardRefExoticComponent<
         return;
       }
 
-      try {
-        console.log('Starting form submission...');
-        setIsLoading(true);
-        
-        const invoiceTotals = calculateInvoiceTotals(items);
-        const currency = form.watch('currency') || 'PLN';
-        const totalGrossInPLN = currency !== 'PLN' && exchangeRate ? 
-          (invoiceTotals.totalGrossValue * exchangeRate) : 
-          invoiceTotals.totalGrossValue;
+      // Validate customer is selected
+      if (!formData.customerId) {
+        const error = "Wybierz kontrahenta";
+        console.error(error);
+    toast.error('Proszę wypełnić wszystkie wymagane pola');
+}
+};
+  
+// Handle customer change
+const handleCustomerChange = (id: string, name?: string) => {
+form.setValue('customerId', id, { shouldValidate: true });
+if (name) {
+  setCustomerName(name);
+}
+};
 
-        // Użyj calculateInvoiceTotals do przeliczenia wszystkich wartości
-        const recalculatedItems = invoiceTotals.items;
+const handleAddVatAccount = () => {
+setShowVatAccountDialog(true);
+};
 
-        const invoicePayload = { // Prepare payload for saveInvoice (income)
-          ...formData,
-          user_id: user.id,
-          transactionType: formData.transactionType, // Ensure transactionType is included
-          // Map items to ensure correct database format using recalculated values
-          items: recalculatedItems.map(item => {
-            return {
-              ...item,
-              // Copy the rest of item but clear any local-only productId reference
-              ...{
-                ...item,
-                productId: undefined, // avoid FK error if product not in DB
-              },
-              // Explicitly set product_id to null if productId is not a non-empty string
-              product_id: item.productId && item.productId !== '' ? item.productId : null,
-              // Use recalculated values from calculateInvoiceTotals
-              quantity: Number(item.quantity) || 0,
-              unit_price: Number(item.unitPrice) || 0,
-              vat_rate: item.vatRate === -1 ? 0 : Number(item.vatRate) || 0, // Save 0 instead of -1 for zwolniony in DB
-              total_net_value: Number(item.totalNetValue.toFixed(2)),
-              total_vat_value: Number(item.totalVatValue.toFixed(2)),
-              total_gross_value: Number(item.totalGrossValue.toFixed(2)),
-              vat_exempt: item.vatRate === -1,
-            };
-          }),
-          // Use recalculated totals
-           totalNetValue: invoiceTotals.totalNetValue,
-           totalGrossValue: invoiceTotals.totalGrossValue,
-           totalVatValue: invoiceTotals.totalVatValue,
-          isPaid: (initialData as any)?.isPaid || false, // Preserve or default isPaid
-           // Handle vat and vatExemptionReason based on fakturaBezVAT
-          vat: !formData.fakturaBezVAT, // If fakturaBezVAT is true, vat is false
-          vatExemptionReason: formData.fakturaBezVAT ? formData.vatExemptionReason : null, // Include reason only if fakturaBezVAT
-           paid: (initialData as any)?.paid || false, // Preserve or default paid
-           // Convert paymentMethod string to PaymentMethodDb enum
-           paymentMethod: toPaymentMethodDb(formData.paymentMethod as any),
-           // Add other required fields expected by saveInvoice based on its Omit type
-           number: formData.number,
-           type: documentType,
-           issueDate: formData.issueDate,
-           dueDate: formData.dueDate,
-           sellDate: formData.sellDate || formData.issueDate,
-           comments: formData.comments || null, // Ensure comments is null if empty string
-           businessProfileId: formData.businessProfileId,
-           customerId: formData.customerId || null, // Ensure customerId is null if empty string
-           bankAccountId: bankAccountId || null,
-           exchangeRate: exchangeRate,
-        };
+const handleVatAccountSaved = async (data: any) => {
+if (!form.watch('businessProfileId')) return;
+  
+try {
+  const newAccount = await addBankAccount({
+    ...data,
+    businessProfileId: form.watch('businessProfileId'),
+    connectedAt: new Date().toISOString(),
+  });
+  setBankAccounts(prev => [...prev, newAccount]);
+  setShowVatAccountDialog(false);
+  toast.success('Dodano konto VAT');
+} catch (error) {
+  console.error('Error adding VAT account:', error);
+  toast.error('Błąd dodawania konta VAT');
+}
+};
 
-        console.log('Invoice/Expense form payload prepared.');
-
-        // Use onSave prop if provided (for use in other components like EditInvoice)
-        if (onSave) {
-           console.log('Using provided onSave prop.');
-          // When using onSave, we pass the original form data and items, as the parent component handles the final save structure
-          await onSave({...formData, items: items});
-          setHasUnsavedChanges(false);
-        } else {
-          if (formData.transactionType === TransactionType.EXPENSE) {
-            console.log('Saving as expense...');
-            const expensePayload = {
-              userId: user.id,
-              businessProfileId: formData.businessProfileId,
-              issueDate: formData.issueDate,
-              date: formData.sellDate || formData.issueDate,
-              amount: invoiceTotals.totalGrossValue,
-              currency: 'PLN',
-              description: formData.comments || '',
-              transactionType: TransactionType.EXPENSE,
-              items,
-              customerId: formData.customerId || null,
-            } as any;
-
-            const savedExpense = await saveExpense(expensePayload);
-            console.log('Expense saved successfully:', savedExpense);
-
-            // Invalidate expense queries
-            queryClient.invalidateQueries({ queryKey: ['expenses'] });
-            setHasUnsavedChanges(false);
-            navigate(`/expense/${savedExpense.id}`);
-            toast.success('Wydatek zapisany pomyślnie');
-          } else {
-            console.log('Saving as income invoice...');
-            const savedInvoice = await saveInvoice(invoicePayload as any);
-            console.log('Invoice saved successfully:', savedInvoice);
-
-            queryClient.invalidateQueries({ queryKey: ['invoices'] });
-            queryClient.invalidateQueries({ queryKey: ['invoice', savedInvoice.id] });
-            setHasUnsavedChanges(false);
-            navigate(`/income/${savedInvoice.id}`);
-            toast.success(`Dokument ${savedInvoice.number} zapisany pomyślnie`);
-
-            // create links
-            if (contractsToLink.length) {
-              await Promise.all(contractsToLink.map((cid) => addContractLink(user.id, cid, savedInvoice.id)));
-            }
-          }
-        }
-        
-        setIsLoading(false);
-      } catch (error: any) {
-        console.error('Error saving invoice:', error);
-        toast.error('Wystąpił błąd podczas zapisywania faktury');
-        setIsLoading(false);
-      }
-    };
-
-    const getDocumentTitle = () => {
-      if (transactionType === TransactionType.EXPENSE) {
-        return "Wydatek faktura";
-      }
-      switch (documentType) {
-        case InvoiceType.SALES:
-          return "Faktura VAT";
-        case InvoiceType.RECEIPT:
-          return "Rachunek";
-        case InvoiceType.PROFORMA:
-          return "Faktura proforma";
-        case InvoiceType.CORRECTION:
-          return "Faktura korygująca";
-        default:
-          return "Dokument";
-      }
-    };
-
-    const documentTitle = getDocumentTitle();
-    const isEditing = Boolean(initialData);
-
-    // Handle form submission
-    const handleFormSubmit = async (e: React.FormEvent) => {
-      e.preventDefault();
-      console.log('Form submission started');
-      
-      // Log current form state
-      console.log('Current form state:', form.getValues());
-      console.log('Form errors:', form.formState.errors);
-      console.log('Current items:', items);
-      
-      // Manually trigger form validation
-      const isValid = await form.trigger();
+function getDocumentTitle() {
+  switch (documentType) {
+    case InvoiceType.SALES:
+      return "Faktura VAT";
+    case InvoiceType.RECEIPT:
+      return "Rachunek";
+    case InvoiceType.PROFORMA:
+      return "Faktura proforma";
+    case InvoiceType.CORRECTION:
+      return "Faktura korygująca";
       console.log('Form validation result:', isValid);
       
       if (!isValid) {
         console.error('Form validation failed');
         const errors = form.formState.errors;
         console.error('Form errors:', errors);
-        
-        // Show first error to user
-        const firstError = Object.values(errors)[0];
-        if (firstError?.message) {
-          toast.error(firstError.message as string);
+        // Show all errors in toast
+        const errorMessages = Object.values(errors).map(err => err?.message).filter(Boolean);
+        if (errorMessages.length > 0) {
+          errorMessages.forEach(msg => toast.error(String(msg)));
         } else {
           toast.error('Proszę wypełnić wszystkie wymagane pola');
         }
@@ -636,9 +536,15 @@ const NewInvoice: React.ForwardRefExoticComponent<
         
         // Call the original onSubmit with form values
         await onSubmit(formValues);
-      } catch (error) {
+      } catch (error: any) {
         console.error('Error during form submission:', error);
-        toast.error(`Błąd podczas zapisywania: ${error instanceof Error ? error.message : 'Nieznany błąd'}`);
+        if (error?.message) {
+          toast.error(`Błąd podczas zapisywania: ${error.message}`);
+        } else if (typeof error === 'string') {
+          toast.error(`Błąd podczas zapisywania: ${error}`);
+        } else {
+          toast.error('Błąd podczas zapisywania: Nieznany błąd');
+        }
       } finally {
         setIsLoading(false);
       }
@@ -729,12 +635,7 @@ const NewInvoice: React.ForwardRefExoticComponent<
     return (
       <div className="space-y-4 pb-24 md:pb-4">
         <Form {...form}>
-          <form 
-            onSubmit={(e) => {
-              console.log('Form submit event triggered');
-              handleFormSubmit(e);
-            }} 
-            className="space-y-4"
+          <form onSubmit={handleFormSubmit} className="space-y-4"
           >
             {/* Duplicate Banner */}
             {isDuplicate && (
@@ -873,7 +774,7 @@ const NewInvoice: React.ForwardRefExoticComponent<
               </div>
             </div>
 
-            {/* InvoiceFormActions component and its positioning div - Moved outside the scrollable div */}
+            {/* Przeniesiony InvoiceFormActions do wnętrza <form> */}
             {showFormActions && ( 
               <div className={cn(
                   "fixed bottom-0 left-0 right-0 w-full border-t bg-background z-[9999]", // Fixed at bottom on mobile with high z-index
@@ -884,7 +785,6 @@ const NewInvoice: React.ForwardRefExoticComponent<
                 <InvoiceFormActions
                   isLoading={isLoading}
                   isEditing={Boolean(initialData)} 
-                  onSubmit={handleFormSubmit}
                   transactionType={transactionType}
                 />
               </div>

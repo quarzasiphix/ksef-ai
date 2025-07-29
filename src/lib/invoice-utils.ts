@@ -58,16 +58,26 @@ export const calculateItemValues = (item: Partial<InvoiceItem> & { name?: string
   let totalGrossValue = totalNetValue + (isVatExempt ? 0 : totalVatValue);
   totalGrossValue = Math.max(0, Number.isFinite(totalGrossValue) ? totalGrossValue : 0);
 
-  return {
+  // Create a new object with all original properties and update only the calculated fields
+  const updatedItem: InvoiceItem = {
     ...item,
-    description, // Ensure description is always set
-    vatRate: isVatExempt ? -1 : vatRate, // Preserve -1 for VAT-exempt items
+    // Ensure we have required fields with defaults
+    id: item.id || '',
+    name: item.name || '',
+    description, // Use the processed description
     quantity,
     unitPrice,
+    vatRate: isVatExempt ? -1 : vatRate, // Preserve -1 for VAT-exempt items
+    unit: item.unit || 'szt.',
     totalNetValue,
     totalVatValue,
     totalGrossValue,
-  } as InvoiceItem;
+    // Preserve optional fields
+    productId: item.productId,
+    vatExempt: item.vatExempt
+  };
+  
+  return updatedItem;
 };
 
 // Calculate totals for all invoice items
