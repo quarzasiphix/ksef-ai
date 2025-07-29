@@ -1,11 +1,13 @@
 import React, { useRef, useState } from "react";
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { toast } from "sonner";
 import { parseBankCsv } from "@/utils/parseBankCsv";
 import { parseBankXml } from "@/utils/parseBankXml";
 import { BankTransaction } from "@/types/bank";
+import { uploadBankLog } from "@/integrations/supabase/repositories/bankLogRepository";
+import { useAuth } from "@/hooks/useAuth";
 
 interface Props {
   open: boolean;
@@ -18,11 +20,22 @@ const ImportBankStatementDialog: React.FC<Props> = ({ open, onOpenChange, accoun
   const [transactions, setTransactions] = useState<BankTransaction[]>([]);
   const [fileName, setFileName] = useState("");
   const fileRef = useRef<HTMLInputElement>(null);
+  const { user } = useAuth();
+  const [uploadedFileUrl, setUploadedFileUrl] = useState<string | null>(null);
 
-  const handleFile = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleFile = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
     setFileName(file.name);
+    // Upload to Supabase Storage
+    if (user?.id) {
+      try {
+        await uploadBankLog({ userId: user.id, file, filename: file.name });
+        toast.success("Plik został przesłany do chmury (Supabase)");
+      } catch (err: any) {
+        toast.error("Błąd przesyłania pliku do chmury: " + (err.message || err.toString()));
+      }
+    }
     const reader = new FileReader();
     reader.onload = (ev) => {
       try {
@@ -58,6 +71,9 @@ const ImportBankStatementDialog: React.FC<Props> = ({ open, onOpenChange, accoun
       <DialogContent className="max-w-lg">
         <DialogHeader>
           <DialogTitle>Importuj wyciąg bankowy (CSV lub XML)</DialogTitle>
+          <DialogDescription>
+            Wybierz plik wyciągu bankowego w formacie CSV lub XML. Plik zostanie przesłany do chmury i przeanalizowany.
+          </DialogDescription>
         </DialogHeader>
         <Input type="file" accept=".csv,.xml" ref={fileRef} onChange={handleFile} />
         {fileName && <div className="text-xs mt-2">{fileName}</div>}

@@ -30,7 +30,7 @@ export function parseBankCsv(csv: string, accountId: string): BankTransaction[] 
     const amount = parseFloat(amountRaw);
     const type: "income" | "expense" = amount >= 0 ? "income" : "expense";
     return {
-      id: `imported-${i}-${Date.now()}`,
+      id: crypto.randomUUID(), // Use proper UUID
       accountId,
       date: cols[dateIdx] || "",
       description: cols[descIdx] || "",

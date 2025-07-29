@@ -35,6 +35,8 @@ import {
 import AccountOnboardingWidget from '@/components/welcome/AccountOnboardingWidget';
 import TaxReportsCard, { TaxReport } from '@/components/accounting/TaxReportsCard';
 import { getInvoiceValueInPLN } from "@/lib/invoice-utils";
+import { listBankLogs, getBankLogSignedUrl, testStorageAccess } from "@/integrations/supabase/repositories/bankLogRepository";
+import { toast } from "sonner";
 
 const Dashboard = () => {
   const [monthlySummaries, setMonthlySummaries] = useState<any[]>([]);
@@ -218,8 +220,93 @@ const Dashboard = () => {
 
   const showOnboardingWidget = dataReady && invoices.length === 0;
   
+  const { user } = useAuth();
+  const [bankLogs, setBankLogs] = useState<{ name: string; url: string }[]>([]);
+
+  useEffect(() => {
+    async function fetchBankLogs() {
+      if (!user?.id) {
+        console.log('No user ID available');
+        return;
+      }
+      
+      console.log('User authenticated:', user);
+      console.log('User ID:', user.id);
+      
+      // Test storage access first
+      const canAccessStorage = await testStorageAccess();
+      console.log('Can access storage:', canAccessStorage);
+      
+      if (!canAccessStorage) {
+        console.error('Cannot access storage bucket');
+        toast.error('Błąd dostępu do magazynu plików');
+        return;
+      }
+      
+      try {
+        console.log('Fetching bank logs for user:', user.id);
+        const files = await listBankLogs(user.id);
+        console.log('Found files:', files);
+        
+        if (files.length === 0) {
+          console.log('No bank log files found for user');
+          return;
+        }
+        
+        const logsWithUrls = await Promise.all(
+          files.map(async (f) => {
+            try {
+              const storagePath = `${user.id}/${f.name}`;
+              console.log('Getting signed URL for:', storagePath);
+              const url = await getBankLogSignedUrl(storagePath);
+              console.log('Got URL for:', f.name, url);
+              return {
+                name: f.name,
+                url: url,
+              };
+            } catch (urlError) {
+              console.error('Error getting signed URL for', f.name, urlError);
+              return {
+                name: f.name,
+                url: '#',
+                error: true
+              };
+            }
+          })
+        );
+        console.log('Final logs with URLs:', logsWithUrls);
+        setBankLogs(logsWithUrls.filter(log => !log.error));
+      } catch (e) {
+        console.error('Error fetching bank logs:', e);
+        // Show error to user
+        toast.error('Błąd pobierania plików bankowych: ' + (e as any)?.message);
+      }
+    }
+    fetchBankLogs();
+  }, [user?.id]);
+
   return (
     <div className="space-y-8 max-w-full pb-20">
+      {/* Bank logs section */}
+      {bankLogs.length > 0 && (
+        <Card className="border-blue-200 bg-blue-50">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Banknote className="h-5 w-5 text-blue-600" />
+              Twoje zaimportowane pliki bankowe
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <ul className="space-y-1 text-sm">
+              {bankLogs.map((log) => (
+                <li key={log.name}>
+                  <a href={log.url} target="_blank" rel="noopener noreferrer" className="underline text-blue-700">{log.name}</a>
+                </li>
+              ))}
+            </ul>
+          </CardContent>
+        </Card>
+      )}
       {showOnboardingWidget && (
         <AccountOnboardingWidget mode="inline" />
       )}

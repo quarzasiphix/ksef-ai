@@ -1,5 +1,5 @@
-import React, { useState } from "react";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import React, { useState, useEffect } from "react";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogTrigger } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -25,6 +25,7 @@ export const BankAccountEditDialog = ({
   const isControlled = controlledOpen !== undefined && controlledOnOpenChange !== undefined;
   const dialogOpen = isControlled ? controlledOpen : open;
   const setDialogOpen = isControlled ? controlledOnOpenChange : setOpen;
+  
   const [bankName, setBankName] = useState(initial?.bankName || "");
   const [accountNumber, setAccountNumber] = useState(initial?.accountNumber || "");
   const [accountName, setAccountName] = useState(initial?.accountName || "");
@@ -32,10 +33,30 @@ export const BankAccountEditDialog = ({
   const [type, setType] = useState(initial?.type || "main");
   const [isDefault, setIsDefault] = useState(initial?.isDefault || false);
 
+  // Reset form when dialog opens/closes or initial data changes
+  useEffect(() => {
+    if (dialogOpen) {
+      setBankName(initial?.bankName || "");
+      setAccountNumber(initial?.accountNumber || "");
+      setAccountName(initial?.accountName || "");
+      setCurrency(initial?.currency || 'PLN');
+      setType(initial?.type || "main");
+      setIsDefault(initial?.isDefault || false);
+    }
+  }, [dialogOpen, initial]);
+
   const handleSave = () => {
     if (!bankName || !accountNumber) return;
     onSave({ bankName, accountNumber, accountName, currency, type, isDefault });
-    setOpen(false);
+    if (!isControlled) {
+      setOpen(false);
+    }
+  };
+
+  const handleClose = () => {
+    if (!isControlled) {
+      setOpen(false);
+    }
   };
 
   return (
@@ -44,24 +65,39 @@ export const BankAccountEditDialog = ({
       <DialogContent className="sm:max-w-md">
         <DialogHeader>
           <DialogTitle>Dodaj konto bankowe</DialogTitle>
+          <DialogDescription>
+            Wprowadź dane konta bankowego do zarządzania płatnościami.
+          </DialogDescription>
         </DialogHeader>
         <div className="space-y-3 py-2">
           <div>
-            <Label>Nazwa banku</Label>
-            <Input value={bankName} onChange={e => setBankName(e.target.value)} />
+            <Label htmlFor="bankName">Nazwa banku</Label>
+            <Input 
+              id="bankName"
+              value={bankName} 
+              onChange={e => setBankName(e.target.value)} 
+            />
           </div>
           <div>
-            <Label>Numer konta</Label>
-            <Input value={accountNumber} onChange={e => setAccountNumber(e.target.value)} />
+            <Label htmlFor="accountNumber">Numer konta</Label>
+            <Input 
+              id="accountNumber"
+              value={accountNumber} 
+              onChange={e => setAccountNumber(e.target.value)} 
+            />
           </div>
           <div>
-            <Label>Nazwa konta (opcjonalnie)</Label>
-            <Input value={accountName} onChange={e => setAccountName(e.target.value)} />
+            <Label htmlFor="accountName">Nazwa konta (opcjonalnie)</Label>
+            <Input 
+              id="accountName"
+              value={accountName} 
+              onChange={e => setAccountName(e.target.value)} 
+            />
           </div>
           <div>
-            <Label>Waluta</Label>
+            <Label htmlFor="currency">Waluta</Label>
             <Select value={currency} onValueChange={setCurrency}>
-              <SelectTrigger><SelectValue /></SelectTrigger>
+              <SelectTrigger id="currency"><SelectValue /></SelectTrigger>
               <SelectContent>
                 <SelectItem value="PLN">PLN</SelectItem>
                 <SelectItem value="EUR">EUR</SelectItem>
@@ -70,9 +106,9 @@ export const BankAccountEditDialog = ({
             </Select>
           </div>
           <div>
-            <Label>Typ konta</Label>
+            <Label htmlFor="type">Typ konta</Label>
             <Select value={type} onValueChange={setType}>
-              <SelectTrigger><SelectValue /></SelectTrigger>
+              <SelectTrigger id="type"><SelectValue /></SelectTrigger>
               <SelectContent>
                 <SelectItem value="main">Główne</SelectItem>
                 <SelectItem value="vat">VAT</SelectItem>
@@ -82,12 +118,18 @@ export const BankAccountEditDialog = ({
             </Select>
           </div>
           <div className="flex items-center gap-2">
-            <Checkbox checked={isDefault} onCheckedChange={v => setIsDefault(!!v)} />
-            <Label>Ustaw jako domyślne</Label>
+            <Checkbox 
+              id="isDefault"
+              checked={isDefault} 
+              onCheckedChange={v => setIsDefault(!!v)} 
+            />
+            <Label htmlFor="isDefault">Ustaw jako domyślne</Label>
           </div>
           <div className="flex justify-end gap-2 pt-2">
-            <Button variant="outline" onClick={() => setOpen(false)}>Anuluj</Button>
-            <Button onClick={handleSave} disabled={loading}>{loading ? "Zapisywanie..." : "Dodaj"}</Button>
+            <Button variant="outline" onClick={handleClose}>Anuluj</Button>
+            <Button onClick={handleSave} disabled={loading}>
+              {loading ? "Zapisywanie..." : "Dodaj"}
+            </Button>
           </div>
         </div>
       </DialogContent>

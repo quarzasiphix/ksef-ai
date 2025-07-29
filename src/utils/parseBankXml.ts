@@ -19,7 +19,7 @@ export function parseBankXml(xml: string, accountId: string): BankTransaction[] 
       const currency = amountNode?.getAttribute("curr") || "PLN";
       const type: "income" | "expense" = amount >= 0 ? "income" : "expense";
       return {
-        id: `imported-xml-op-${i}-${Date.now()}`,
+        id: crypto.randomUUID(), // Use proper UUID
         accountId,
         date,
         description,
@@ -48,7 +48,7 @@ export function parseBankXml(xml: string, accountId: string): BankTransaction[] 
     if (crdb.toUpperCase() === "CR" || crdb.toUpperCase() === "CREDIT") amount = Math.abs(amount);
     const type: "income" | "expense" = amount >= 0 ? "income" : "expense";
     return {
-      id: `imported-xml-${i}-${Date.now()}`,
+      id: crypto.randomUUID(), // Use proper UUID
       accountId,
       date,
       description: desc,

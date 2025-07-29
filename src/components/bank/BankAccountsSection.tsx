@@ -2,12 +2,13 @@ import React, { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { toast } from "sonner";
-import { BankAccount } from "@/types/bank";
+import { BankAccount, BankTransaction } from "@/types/bank";
 import BankAccountCard from "./BankAccountCard";
 import TransactionList from "./TransactionList";
 import ImportBankStatementDialog from "./ImportBankStatementDialog";
 import BankAnalyticsDashboard from "./BankAnalyticsDashboard";
 import { getBankAccountsForProfile, addBankAccount, deleteBankAccount } from '@/integrations/supabase/repositories/bankAccountRepository';
+import { saveBankTransactions, getBankTransactions, deleteBankTransactions } from '@/integrations/supabase/repositories/bankTransactionRepository';
 import { useBusinessProfile } from '@/context/BusinessProfileContext';
 import { BankAccountEditDialog } from './BankAccountEditDialog';
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from '@/components/ui/select';
@@ -19,9 +20,10 @@ const BankAccountsSection: React.FC = () => {
   const [accounts, setAccounts] = useState<BankAccount[]>([]);
   const [selectedAccount, setSelectedAccount] = useState<BankAccount | null>(null);
   const [showImport, setShowImport] = useState(false);
-  const [transactions, setTransactions] = useState([]); // TODO: fetch real transactions
+  const [transactions, setTransactions] = useState<BankTransaction[]>([]);
   const [filterType, setFilterType] = useState<'all' | 'income' | 'expense'>('all');
   const [loadingAccounts, setLoadingAccounts] = useState(false);
+  const [loadingTransactions, setLoadingTransactions] = useState(false);
   const [editingAccount, setEditingAccount] = useState<BankAccount | null>(null);
 
   useEffect(() => {
@@ -34,6 +36,25 @@ const BankAccountsSection: React.FC = () => {
       })
       .finally(() => setLoadingAccounts(false));
   }, [selectedProfileId]);
+
+  // Fetch transactions when selected account changes
+  useEffect(() => {
+    if (!selectedAccount) {
+      setTransactions([]);
+      return;
+    }
+    
+    setLoadingTransactions(true);
+    getBankTransactions(selectedAccount.id)
+      .then(txs => {
+        setTransactions(txs);
+      })
+      .catch(error => {
+        console.error('Error fetching transactions:', error);
+        toast.error('Błąd pobierania transakcji');
+      })
+      .finally(() => setLoadingTransactions(false));
+  }, [selectedAccount]);
 
   const handleAddAccount = async (data: any) => {
     if (!selectedProfileId) return;
@@ -52,8 +73,14 @@ const BankAccountsSection: React.FC = () => {
 
   const handleDeleteAccount = async (id: string) => {
     try {
+      // Delete transactions first
+      await deleteBankTransactions(id);
+      // Then delete the account
       await deleteBankAccount(id);
       setAccounts(prev => prev.filter(acc => acc.id !== id));
+      if (selectedAccount?.id === id) {
+        setSelectedAccount(null);
+      }
       toast.success('Usunięto konto bankowe');
     } catch (e) {
       toast.error('Błąd usuwania konta');
@@ -71,9 +98,26 @@ const BankAccountsSection: React.FC = () => {
     }
   };
 
-  const handleImport = (txs: any[]) => {
-    setTransactions((prev) => [...prev, ...txs]);
-    toast.success(`Dodano ${txs.length} transakcji`);
+  const handleImport = async (txs: BankTransaction[]) => {
+    if (!selectedAccount) return;
+    
+    try {
+      // Add accountId to each transaction
+      const transactionsWithAccountId = txs.map(tx => ({
+        ...tx,
+        accountId: selectedAccount.id
+      }));
+      
+      // Save to database
+      await saveBankTransactions(transactionsWithAccountId);
+      
+      // Update local state
+      setTransactions(prev => [...prev, ...transactionsWithAccountId]);
+      toast.success(`Dodano ${txs.length} transakcji`);
+    } catch (error) {
+      console.error('Error importing transactions:', error);
+      toast.error('Błąd importowania transakcji');
+    }
   };
 
   const selectedTransactions = selectedAccount ? transactions.filter((t) => t.accountId === selectedAccount.id) : [];
@@ -163,6 +207,7 @@ const BankAccountsSection: React.FC = () => {
             onSelect={() => setSelectedAccount(acc)}
             onDisconnect={() => handleDeleteAccount(acc.id)}
             onEdit={() => setEditingAccount(acc)}
+            onImport={() => setShowImport(true)}
           />
           ))
         )}
@@ -180,10 +225,19 @@ const BankAccountsSection: React.FC = () => {
       {selectedAccount && (
         <Card className="mt-6 overflow-x-auto">
           <CardHeader>
-            <CardTitle>Transakcje – {selectedAccount.accountName}</CardTitle>
+            <div className="flex items-center justify-between">
+              <CardTitle>Transakcje – {selectedAccount.bankName} ({selectedAccount.accountName})</CardTitle>
+              <Button onClick={() => setShowImport(true)} size="sm">
+                Importuj wyciąg
+              </Button>
+            </div>
           </CardHeader>
           <CardContent>
-            <TransactionList transactions={filteredTransactions} />
+            {loadingTransactions ? (
+              <div className="text-muted-foreground">Ładowanie transakcji...</div>
+            ) : (
+              <TransactionList transactions={filteredTransactions} />
+            )}
           </CardContent>
         </Card>
       )}
@@ -200,10 +254,18 @@ const BankAccountsSection: React.FC = () => {
         <BankAccountEditDialog
           initial={editingAccount}
           open={!!editingAccount}
-          onOpenChange={(open) => !open && setEditingAccount(null)}
+          onOpenChange={(open) => {
+            if (!open) {
+              setEditingAccount(null);
+            }
+          }}
           onSave={async (data) => {
-            await handleEditAccount(editingAccount.id, data);
-            setEditingAccount(null);
+            try {
+              await handleEditAccount(editingAccount.id, data);
+              setEditingAccount(null);
+            } catch (error) {
+              // Error is already handled in handleEditAccount
+            }
           }}
         />
       )}

@@ -12,8 +12,8 @@ import { toast } from "sonner";
 import {
   calculateInvoiceTotals,
   generateInvoiceNumber,
-  toPaymentMethodDb,
   toPaymentMethodUi,
+  toPaymentMethodDb,
   getNbpExchangeRate,
   formatCurrency,
 } from "@/lib/invoice-utils";
@@ -428,10 +428,7 @@ const NewInvoice: React.ForwardRefExoticComponent<
       handleSubmit: form.handleSubmit,
     }));
 
-    // Bind form submit to handler
-    const handleFormSubmit = form.handleSubmit(onSubmit);
-
-    // Submit handler
+    // Move onSubmit definition above handleFormSubmit
     const onSubmit = async (formData: InvoiceFormValues) => {
       console.log('onSubmit called with formData:', formData);
       console.log('Current items state:', items);
@@ -459,97 +456,37 @@ const NewInvoice: React.ForwardRefExoticComponent<
     toast.error('Proszę wypełnić wszystkie wymagane pola');
 }
 };
-  
-// Handle customer change
-const handleCustomerChange = (id: string, name?: string) => {
-form.setValue('customerId', id, { shouldValidate: true });
-if (name) {
-  setCustomerName(name);
-}
-};
 
-const handleAddVatAccount = () => {
-setShowVatAccountDialog(true);
-};
+const handleFormSubmit = form.handleSubmit(async (formData) => {
+  try {
+    setIsLoading(true);
+    const formValues = form.getValues();
+    // Ensure business profile is set
+    if (!formValues.businessProfileId) {
+      toast.error('Proszę wybrać profil biznesowy');
+      return;
+    }
+    // Ensure we have items
+    if (items.length === 0) {
+      toast.error('Dodaj co najmniej jedną pozycję do faktury');
+      return;
+    }
+    // Call the original onSubmit with form values
+    await onSubmit(formValues);
+  } catch (error: any) {
+    console.error('Error during form submission:', error);
+    if (error?.message) {
+      toast.error(`Błąd podczas zapisywania: ${error.message}`);
+    } else if (typeof error === 'string') {
+      toast.error(`Błąd podczas zapisywania: ${error}`);
+    } else {
+      toast.error('Błąd podczas zapisywania: Nieznany błąd');
+    }
+  } finally {
+    setIsLoading(false);
+  }
+});
 
-const handleVatAccountSaved = async (data: any) => {
-if (!form.watch('businessProfileId')) return;
-  
-try {
-  const newAccount = await addBankAccount({
-    ...data,
-    businessProfileId: form.watch('businessProfileId'),
-    connectedAt: new Date().toISOString(),
-  });
-  setBankAccounts(prev => [...prev, newAccount]);
-  setShowVatAccountDialog(false);
-  toast.success('Dodano konto VAT');
-} catch (error) {
-  console.error('Error adding VAT account:', error);
-  toast.error('Błąd dodawania konta VAT');
-}
-};
-
-function getDocumentTitle() {
-  switch (documentType) {
-    case InvoiceType.SALES:
-      return "Faktura VAT";
-    case InvoiceType.RECEIPT:
-      return "Rachunek";
-    case InvoiceType.PROFORMA:
-      return "Faktura proforma";
-    case InvoiceType.CORRECTION:
-      return "Faktura korygująca";
-      console.log('Form validation result:', isValid);
-      
-      if (!isValid) {
-        console.error('Form validation failed');
-        const errors = form.formState.errors;
-        console.error('Form errors:', errors);
-        // Show all errors in toast
-        const errorMessages = Object.values(errors).map(err => err?.message).filter(Boolean);
-        if (errorMessages.length > 0) {
-          errorMessages.forEach(msg => toast.error(String(msg)));
-        } else {
-          toast.error('Proszę wypełnić wszystkie wymagane pola');
-        }
-        return;
-      }
-      
-      try {
-        setIsLoading(true);
-        const formValues = form.getValues();
-        console.log('Form is valid, submitting with values:', formValues);
-        console.log('Items to be saved:', items);
-        
-        // Ensure business profile is set
-        if (!formValues.businessProfileId) {
-          toast.error('Proszę wybrać profil biznesowy');
-          return;
-        }
-        
-        // Ensure we have items
-        if (items.length === 0) {
-          toast.error('Dodaj co najmniej jedną pozycję do faktury');
-          return;
-        }
-        
-        // Call the original onSubmit with form values
-        await onSubmit(formValues);
-      } catch (error: any) {
-        console.error('Error during form submission:', error);
-        if (error?.message) {
-          toast.error(`Błąd podczas zapisywania: ${error.message}`);
-        } else if (typeof error === 'string') {
-          toast.error(`Błąd podczas zapisywania: ${error}`);
-        } else {
-          toast.error('Błąd podczas zapisywania: Nieznany błąd');
-        }
-      } finally {
-        setIsLoading(false);
-      }
-    };
-    
     // Handle business profile change
     const handleBusinessProfileChange = (id: string, name?: string) => {
       form.setValue('businessProfileId', id, { shouldValidate: true });
@@ -631,6 +568,9 @@ function getDocumentTitle() {
     if (!documentSettingsLoaded) {
       return <div className="text-center py-8">Ładowanie ustawień...</div>;
     }
+
+    const documentTitle = getDocumentTitle();
+    const isEditing = Boolean(initialData);
 
     return (
       <div className="space-y-4 pb-24 md:pb-4">
