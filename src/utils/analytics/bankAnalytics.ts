@@ -1,17 +1,41 @@
 import { BankTransaction } from "@/types/bank";
 
-// Classify transaction type based on description/type
+// Enhanced classification with better categorization
 export function classifyTransactionType(tx: BankTransaction): string {
   const desc = tx.description.toLowerCase();
-  if (desc.includes("blik")) return "BLIK";
-  if (desc.includes("karta") || desc.includes("card") || desc.includes("visa") || desc.includes("mastercard")) return "Card";
-  if (desc.includes("przelew") || desc.includes("transfer")) return "Transfer";
-  if (desc.includes("gotówka") || desc.includes("cash")) return "Cash";
-  if (desc.includes("opłata") || desc.includes("fee")) return "Fee";
-  if (desc.includes("prowizja")) return "Commission";
-  if (desc.includes("wynagrodzenie") || desc.includes("salary")) return "Salary";
-  if (desc.includes("zwrot") || desc.includes("refund")) return "Refund";
-  return "Other";
+  
+  // Income categories
+  if (tx.type === "income") {
+    if (desc.includes("wynagrodzenie") || desc.includes("salary") || desc.includes("pensja")) return "Wynagrodzenie";
+    if (desc.includes("faktura") || desc.includes("invoice") || desc.includes("sprzedaż")) return "Sprzedaż";
+    if (desc.includes("zwrot") || desc.includes("refund") || desc.includes("reimbursement")) return "Zwrot";
+    if (desc.includes("dywidenda") || desc.includes("dividend")) return "Dywidenda";
+    if (desc.includes("odsetki") || desc.includes("interest")) return "Odsetki";
+    if (desc.includes("dotacja") || desc.includes("grant")) return "Dotacja";
+    return "Inne przychody";
+  }
+  
+  // Expense categories
+  if (tx.type === "expense") {
+    if (desc.includes("blik")) return "Płatność BLIK";
+    if (desc.includes("karta") || desc.includes("card") || desc.includes("visa") || desc.includes("mastercard")) return "Płatność kartą";
+    if (desc.includes("przelew") || desc.includes("transfer")) return "Przelew";
+    if (desc.includes("gotówka") || desc.includes("cash")) return "Gotówka";
+    if (desc.includes("opłata") || desc.includes("fee") || desc.includes("prowizja")) return "Opłaty bankowe";
+    if (desc.includes("zakup") || desc.includes("purchase") || desc.includes("sklep")) return "Zakupy";
+    if (desc.includes("rachunek") || desc.includes("bill") || desc.includes("opłata")) return "Rachunki";
+    if (desc.includes("podatek") || desc.includes("tax") || desc.includes("zus")) return "Podatki i ZUS";
+    if (desc.includes("paliwo") || desc.includes("fuel") || desc.includes("benzyna")) return "Paliwo";
+    if (desc.includes("jedzenie") || desc.includes("food") || desc.includes("restauracja")) return "Jedzenie";
+    if (desc.includes("transport") || desc.includes("uber") || desc.includes("taksówka")) return "Transport";
+    if (desc.includes("ubrania") || desc.includes("clothes") || desc.includes("odzież")) return "Ubrania";
+    if (desc.includes("rozrywka") || desc.includes("entertainment") || desc.includes("kino")) return "Rozrywka";
+    if (desc.includes("zdrowie") || desc.includes("health") || desc.includes("lekarz")) return "Zdrowie";
+    if (desc.includes("edukacja") || desc.includes("education") || desc.includes("szkoła")) return "Edukacja";
+    return "Inne wydatki";
+  }
+  
+  return "Inne";
 }
 
 // Aggregate by counterparty (recipient/sender)
