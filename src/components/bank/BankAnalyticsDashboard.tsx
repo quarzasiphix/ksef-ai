@@ -16,10 +16,19 @@ import { Input } from "@/components/ui/input";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Table, TableHeader, TableRow, TableHead, TableBody, TableCell } from "@/components/ui/table";
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, Legend, LineChart, Line, CartesianGrid } from "recharts";
-import { ArrowDownCircle, ArrowUpCircle, ZoomIn, ZoomOut, Calendar } from "lucide-react";
+import { ArrowDownCircle, ArrowUpCircle, ZoomIn, ZoomOut, Calendar, ChevronDown, ChevronUp, Upload, Trash2, FileText, Download } from "lucide-react";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
+import { useState } from "react";
+import { useAuth } from "@/hooks/useAuth";
+import { uploadBankLog, listBankLogs, deleteBankLog, getBankLogSignedUrl } from "@/integrations/supabase/repositories/bankLogRepository";
+import { toast } from "sonner";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
+import { parseBankCsv } from "@/utils/parseBankCsv";
+import { parseBankXml } from "@/utils/parseBankXml";
+import { saveBankTransactions } from "@/integrations/supabase/repositories/bankTransactionRepository";
 
 const COLORS = ["#8884d8", "#82ca9d", "#ffc658", "#ff8042", "#0088FE", "#00C49F", "#FFBB28", "#FF8042"];
 
@@ -35,6 +44,18 @@ const BankAnalyticsDashboard: React.FC<Props> = ({ transactions, filterType, onF
   const [selectedMonth, setSelectedMonth] = React.useState<string | null>(null);
   const [zoomLevel, setZoomLevel] = React.useState(1);
   const [showMonthlyDetail, setShowMonthlyDetail] = React.useState(false);
+  const [chartZoomed, setChartZoomed] = React.useState(false);
+  const [openSections, setOpenSections] = useState<{
+    recipients: boolean;
+    senders: boolean;
+    recurring: boolean;
+    large: boolean;
+  }>({
+    recipients: false,
+    senders: false,
+    recurring: false,
+    large: false,
+  });
   
   let filtered = from && to ? filterByDate(transactions, from, to) : transactions;
   if (filterType === "income") filtered = filtered.filter(t => t.type === "income");
@@ -69,9 +90,111 @@ const BankAnalyticsDashboard: React.FC<Props> = ({ transactions, filterType, onF
     avgAmount: (type.total / type.count).toFixed(2)
   }));
 
+  // Get transaction types for selected month
+  const selectedMonthByType = selectedMonth 
+    ? aggregateByType(selectedMonthTransactions).map(type => ({
+        ...type,
+        percentage: ((type.total / (selectedMonthTransactions.filter(t => t.type === "income").reduce((sum, t) => sum + t.amount, 0) + 
+                                   Math.abs(selectedMonthTransactions.filter(t => t.type === "expense").reduce((sum, t) => sum + t.amount, 0)))) * 100).toFixed(1),
+        avgAmount: (type.total / type.count).toFixed(2)
+      }))
+    : enhancedByType;
+
+  // Limit pie chart to top 8 categories to prevent overcrowding
+  const pieChartData = selectedMonthByType
+    .sort((a, b) => Math.abs(b.total) - Math.abs(a.total))
+    .slice(0, 8);
+
+  // Group remaining categories as "Inne"
+  const remainingCategories = selectedMonthByType.slice(8);
+  if (remainingCategories.length > 0) {
+    const otherTotal = remainingCategories.reduce((sum, cat) => sum + cat.total, 0);
+    const otherCount = remainingCategories.reduce((sum, cat) => sum + cat.count, 0);
+    if (otherTotal !== 0) {
+      pieChartData.push({
+        type: "Inne",
+        total: otherTotal,
+        count: otherCount,
+        percentage: ((otherTotal / (selectedMonthTransactions.filter(t => t.type === "income").reduce((sum, t) => sum + t.amount, 0) + 
+                                   Math.abs(selectedMonthTransactions.filter(t => t.type === "expense").reduce((sum, t) => sum + t.amount, 0)))) * 100).toFixed(1),
+        avgAmount: (otherTotal / otherCount).toFixed(2)
+      });
+    }
+  }
+
+  // Get data for the chart - either all months or zoomed to selected month
+  const chartData = chartZoomed && selectedMonth ? 
+    // When zoomed, show daily breakdown for the selected month
+    (() => {
+      const monthTransactions = filtered.filter(tx => {
+        const txMonth = tx.date.substring(0, 7); // YYYY-MM format
+        return txMonth === selectedMonth;
+      });
+      
+      // Group by day
+      const dailyData = monthTransactions.reduce((acc, tx) => {
+        const day = tx.date.substring(8, 10); // DD format
+        if (!acc[day]) {
+          acc[day] = { day, income: 0, expense: 0 };
+        }
+        if (tx.type === 'income') {
+          acc[day].income += tx.amount;
+        } else {
+          acc[day].expense += tx.amount;
+        }
+        return acc;
+      }, {} as Record<string, { day: string; income: number; expense: number }>);
+      
+      return Object.values(dailyData).sort((a, b) => parseInt(a.day) - parseInt(b.day));
+    })() :
+    // Normal view - show monthly data
+    byMonth;
+
   const handleMonthClick = (month: string) => {
-    setSelectedMonth(selectedMonth === month ? null : month);
-    setShowMonthlyDetail(true);
+    if (selectedMonth === month) {
+      // If clicking the same month, toggle zoom
+      setChartZoomed(!chartZoomed);
+      if (chartZoomed) {
+        // If we're unzooming, also clear the selection
+        setSelectedMonth(null);
+        setShowMonthlyDetail(false);
+      }
+    } else {
+      // If clicking a different month, zoom to it
+      setSelectedMonth(month);
+      setChartZoomed(true);
+      setShowMonthlyDetail(true);
+    }
+  };
+
+  const resetZoom = () => {
+    setSelectedMonth(null);
+    setChartZoomed(false);
+    setShowMonthlyDetail(false);
+  };
+
+  // Helper functions to get detailed transactions
+  const getTransactionsForRecipient = (recipientName: string) => {
+    return filtered.filter(tx => 
+      tx.type === "income" && tx.description === recipientName
+    );
+  };
+
+  const getTransactionsForSender = (senderName: string) => {
+    return filtered.filter(tx => 
+      tx.type === "expense" && tx.description === senderName
+    );
+  };
+
+  const getTransactionsForRecurring = (counterpartyName: string) => {
+    return filtered.filter(tx => tx.description === counterpartyName);
+  };
+
+  const toggleSection = (section: keyof typeof openSections) => {
+    setOpenSections(prev => ({
+      ...prev,
+      [section]: !prev[section]
+    }));
   };
 
   const CustomTooltip = ({ active, payload, label }: any) => {
@@ -187,17 +310,39 @@ const BankAnalyticsDashboard: React.FC<Props> = ({ transactions, filterType, onF
       {/* Monthly Summary with Clickable Bars */}
       <Card>
         <CardHeader>
-          <CardTitle>Podsumowanie miesięczne</CardTitle>
-          {selectedMonth && (
+          <div className="flex items-center justify-between">
+            <CardTitle className="flex items-center gap-2">
+              {chartZoomed ? (
+                <>
+                  <span>Szczegóły dzienne</span>
+                  <Badge variant="secondary">
+                    {new Date(selectedMonth + '-01').toLocaleDateString('pl-PL', { year: 'numeric', month: 'long' })}
+                  </Badge>
+                </>
+              ) : (
+                <>
+                  <span>Podsumowanie miesięczne</span>
+                  {selectedMonth && (
+                    <Badge variant="secondary">
+                      Wybrano: {new Date(selectedMonth + '-01').toLocaleDateString('pl-PL', { year: 'numeric', month: 'long' })}
+                    </Badge>
+                  )}
+                </>
+              )}
+            </CardTitle>
             <div className="flex items-center gap-2">
-              <Badge variant="secondary">
-                Wybrano: {new Date(selectedMonth + '-01').toLocaleDateString('pl-PL', { year: 'numeric', month: 'long' })}
-              </Badge>
-              <Button variant="outline" size="sm" onClick={() => setSelectedMonth(null)}>
-                Wyczyść
-              </Button>
+              {chartZoomed && (
+                <Button variant="outline" size="sm" onClick={resetZoom}>
+                  Powrót do miesięcznego
+                </Button>
+              )}
+              {selectedMonth && !chartZoomed && (
+                <Button variant="outline" size="sm" onClick={resetZoom}>
+                  Wyczyść
+                </Button>
+              )}
             </div>
-          )}
+          </div>
         </CardHeader>
         <CardContent>
           <div className="flex flex-col md:flex-row gap-4 items-center justify-between mb-4">
@@ -215,18 +360,57 @@ const BankAnalyticsDashboard: React.FC<Props> = ({ transactions, filterType, onF
           <div style={{ height: 250 * zoomLevel }}>
             <ResponsiveContainer width="100%" height="100%">
               <BarChart 
-                data={byMonth} 
+                data={chartData} 
                 margin={{ left: 10, right: 10 }}
                 onClick={(data) => {
                   if (data && data.activePayload && data.activePayload[0]) {
+                    if (chartZoomed) {
+                      // If already zoomed, clicking a day doesn't do anything
+                      return;
+                    }
+                    // If not zoomed, clicking a month zooms to it
                     handleMonthClick(data.activePayload[0].payload.month);
                   }
                 }}
-                style={{ cursor: 'pointer' }}
+                style={{ cursor: chartZoomed ? 'default' : 'pointer' }}
               >
-                <XAxis dataKey="month" />
+                <XAxis 
+                  dataKey={chartZoomed ? "day" : "month"} 
+                  tickFormatter={chartZoomed ? 
+                    (value) => `${value}.` : 
+                    (value) => new Date(value + '-01').toLocaleDateString('pl-PL', { month: 'short' })
+                  }
+                />
                 <YAxis />
-                <Tooltip content={<CustomTooltip />} />
+                <Tooltip 
+                  content={({ active, payload, label }) => {
+                    if (active && payload && payload.length) {
+                      const data = payload[0].payload;
+                      return (
+                        <div className="bg-background border rounded-lg p-3 shadow-lg">
+                          <p className="font-medium">
+                            {chartZoomed ? 
+                              `${label}. ${new Date(selectedMonth + '-01').toLocaleDateString('pl-PL', { month: 'long', year: 'numeric' })}` :
+                              new Date(label + '-01').toLocaleDateString('pl-PL', { month: 'long', year: 'numeric' })
+                            }
+                          </p>
+                          <div className="space-y-1">
+                            <p className="text-green-600">
+                              Przychód: {data.income.toLocaleString("pl-PL", { style: "currency", currency: "PLN" })}
+                            </p>
+                            <p className="text-red-600">
+                              Wydatek: {data.expense.toLocaleString("pl-PL", { style: "currency", currency: "PLN" })}
+                            </p>
+                            <p className="font-medium">
+                              Saldo: {(data.income - data.expense).toLocaleString("pl-PL", { style: "currency", currency: "PLN" })}
+                            </p>
+                          </div>
+                        </div>
+                      );
+                    }
+                    return null;
+                  }}
+                />
                 <Bar dataKey="income" fill="#82ca9d" name="Przychód" />
                 <Bar dataKey="expense" fill="#ff8042" name="Wydatek" />
               </BarChart>
@@ -238,7 +422,14 @@ const BankAnalyticsDashboard: React.FC<Props> = ({ transactions, filterType, onF
       {/* Transaction Type Distribution */}
       <Card>
         <CardHeader>
-          <CardTitle>Podział wg typu transakcji</CardTitle>
+          <CardTitle>
+            Podział wg typu transakcji
+            {selectedMonth && (
+              <span className="text-sm font-normal text-muted-foreground ml-2">
+                - {new Date(selectedMonth + '-01').toLocaleDateString('pl-PL', { year: 'numeric', month: 'long' })}
+              </span>
+            )}
+          </CardTitle>
         </CardHeader>
         <CardContent>
           <div className="grid md:grid-cols-2 gap-6">
@@ -246,7 +437,7 @@ const BankAnalyticsDashboard: React.FC<Props> = ({ transactions, filterType, onF
               <ResponsiveContainer width="100%" height="100%">
                 <PieChart>
                   <Pie 
-                    data={enhancedByType} 
+                    data={pieChartData} 
                     dataKey="total" 
                     nameKey="type" 
                     cx="50%" 
@@ -254,7 +445,7 @@ const BankAnalyticsDashboard: React.FC<Props> = ({ transactions, filterType, onF
                     outerRadius={80} 
                     label={({ type, percentage }) => `${type} (${percentage}%)`}
                   >
-                    {enhancedByType.map((entry, idx) => (
+                    {pieChartData.map((entry, idx) => (
                       <Cell key={entry.type} fill={COLORS[idx % COLORS.length]} />
                     ))}
                   </Pie>
@@ -265,25 +456,27 @@ const BankAnalyticsDashboard: React.FC<Props> = ({ transactions, filterType, onF
             </div>
             <div className="space-y-2">
               <h4 className="font-semibold">Szczegóły typów transakcji:</h4>
-              {enhancedByType.map((type, idx) => (
-                <div key={type.type} className="flex items-center justify-between p-2 border rounded">
-                  <div className="flex items-center gap-2">
-                    <div 
-                      className="w-4 h-4 rounded" 
-                      style={{ backgroundColor: COLORS[idx % COLORS.length] }}
-                    />
-                    <span className="font-medium">{type.type}</span>
-                  </div>
-                  <div className="text-right">
-                    <div className="font-semibold">
-                      {type.total.toLocaleString("pl-PL", { style: "currency", currency: "PLN" })}
+              <div className="max-h-60 overflow-y-auto">
+                {selectedMonthByType.map((type, idx) => (
+                  <div key={type.type} className="flex items-center justify-between p-2 border rounded mb-1">
+                    <div className="flex items-center gap-2">
+                      <div 
+                        className="w-4 h-4 rounded" 
+                        style={{ backgroundColor: COLORS[idx % COLORS.length] }}
+                      />
+                      <span className="font-medium">{type.type}</span>
                     </div>
-                    <div className="text-xs text-muted-foreground">
-                      {type.count} transakcji • {type.percentage}%
+                    <div className="text-right">
+                      <div className="font-semibold">
+                        {type.total.toLocaleString("pl-PL", { style: "currency", currency: "PLN" })}
+                      </div>
+                      <div className="text-xs text-muted-foreground">
+                        {type.count} transakcji • {type.percentage}%
+                      </div>
                     </div>
                   </div>
-                </div>
-              ))}
+                ))}
+              </div>
             </div>
           </div>
         </CardContent>
@@ -355,89 +548,251 @@ const BankAnalyticsDashboard: React.FC<Props> = ({ transactions, filterType, onF
       {/* Top Recipients and Senders */}
       <div className="grid md:grid-cols-2 gap-4">
         <Card>
-          <CardHeader><CardTitle>Top odbiorcy (przychód)</CardTitle></CardHeader>
-          <CardContent>
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Odbiorca</TableHead>
-                  <TableHead className="text-right">Suma</TableHead>
-                  <TableHead className="text-right">Liczba</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {topRecipients.map(r => (
-                  <TableRow key={r.counterparty}>
-                    <TableCell className="flex items-center gap-2">
-                      <ArrowDownCircle className="text-green-500 w-4 h-4" />
-                      {r.counterparty}
-                    </TableCell>
-                    <TableCell className="text-right">{r.total.toLocaleString("pl-PL", { style: "currency", currency: "PLN" })}</TableCell>
-                    <TableCell className="text-right">{r.count}</TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          </CardContent>
+          <Collapsible open={openSections.recipients} onOpenChange={() => toggleSection('recipients')}>
+            <CollapsibleTrigger asChild>
+              <CardHeader className="cursor-pointer hover:bg-muted/50 transition-colors">
+                <CardTitle className="flex items-center justify-between">
+                  Top odbiorcy (przychód)
+                  {openSections.recipients ? (
+                    <ChevronUp className="h-4 w-4" />
+                  ) : (
+                    <ChevronDown className="h-4 w-4" />
+                  )}
+                </CardTitle>
+              </CardHeader>
+            </CollapsibleTrigger>
+            <CollapsibleContent>
+              <CardContent>
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Odbiorca</TableHead>
+                      <TableHead className="text-right">Suma</TableHead>
+                      <TableHead className="text-right">Liczba</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {topRecipients.map(r => (
+                      <TableRow key={r.counterparty}>
+                        <TableCell className="flex items-center gap-2">
+                          <ArrowDownCircle className="text-green-500 w-4 h-4" />
+                          {r.counterparty}
+                        </TableCell>
+                        <TableCell className="text-right">{r.total.toLocaleString("pl-PL", { style: "currency", currency: "PLN" })}</TableCell>
+                        <TableCell className="text-right">{r.count}</TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+                
+                {openSections.recipients && (
+                  <div className="mt-4 space-y-3">
+                    <h4 className="font-semibold text-sm">Szczegóły transakcji:</h4>
+                    {topRecipients.map(recipient => (
+                      <div key={recipient.counterparty} className="border rounded p-3">
+                        <div className="flex items-center justify-between mb-2">
+                          <span className="font-medium text-sm">{recipient.counterparty}</span>
+                          <Badge variant="outline" className="text-xs">
+                            {recipient.count} transakcji
+                          </Badge>
+                        </div>
+                        <div className="space-y-1 max-h-32 overflow-y-auto">
+                          {getTransactionsForRecipient(recipient.counterparty).map(tx => (
+                            <div key={tx.id} className="flex justify-between items-center text-xs p-1 bg-muted/30 rounded">
+                              <span>{tx.date}</span>
+                              <span className="font-medium text-green-600">
+                                {tx.amount.toLocaleString("pl-PL", { style: "currency", currency: "PLN" })}
+                              </span>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </CardContent>
+            </CollapsibleContent>
+          </Collapsible>
         </Card>
+        
         <Card>
-          <CardHeader><CardTitle>Top nadawcy (wydatek)</CardTitle></CardHeader>
-          <CardContent>
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Nadawca</TableHead>
-                  <TableHead className="text-right">Suma</TableHead>
-                  <TableHead className="text-right">Liczba</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {topSenders.map(r => (
-                  <TableRow key={r.counterparty}>
-                    <TableCell className="flex items-center gap-2">
-                      <ArrowUpCircle className="text-red-500 w-4 h-4" />
-                      {r.counterparty}
-                    </TableCell>
-                    <TableCell className="text-right">{r.total.toLocaleString("pl-PL", { style: "currency", currency: "PLN" })}</TableCell>
-                    <TableCell className="text-right">{r.count}</TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          </CardContent>
+          <Collapsible open={openSections.senders} onOpenChange={() => toggleSection('senders')}>
+            <CollapsibleTrigger asChild>
+              <CardHeader className="cursor-pointer hover:bg-muted/50 transition-colors">
+                <CardTitle className="flex items-center justify-between">
+                  Top nadawcy (wydatek)
+                  {openSections.senders ? (
+                    <ChevronUp className="h-4 w-4" />
+                  ) : (
+                    <ChevronDown className="h-4 w-4" />
+                  )}
+                </CardTitle>
+              </CardHeader>
+            </CollapsibleTrigger>
+            <CollapsibleContent>
+              <CardContent>
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Nadawca</TableHead>
+                      <TableHead className="text-right">Suma</TableHead>
+                      <TableHead className="text-right">Liczba</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {topSenders.map(r => (
+                      <TableRow key={r.counterparty}>
+                        <TableCell className="flex items-center gap-2">
+                          <ArrowUpCircle className="text-red-500 w-4 h-4" />
+                          {r.counterparty}
+                        </TableCell>
+                        <TableCell className="text-right">{r.total.toLocaleString("pl-PL", { style: "currency", currency: "PLN" })}</TableCell>
+                        <TableCell className="text-right">{r.count}</TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+                
+                {openSections.senders && (
+                  <div className="mt-4 space-y-3">
+                    <h4 className="font-semibold text-sm">Szczegóły transakcji:</h4>
+                    {topSenders.map(sender => (
+                      <div key={sender.counterparty} className="border rounded p-3">
+                        <div className="flex items-center justify-between mb-2">
+                          <span className="font-medium text-sm">{sender.counterparty}</span>
+                          <Badge variant="outline" className="text-xs">
+                            {sender.count} transakcji
+                          </Badge>
+                        </div>
+                        <div className="space-y-1 max-h-32 overflow-y-auto">
+                          {getTransactionsForSender(sender.counterparty).map(tx => (
+                            <div key={tx.id} className="flex justify-between items-center text-xs p-1 bg-muted/30 rounded">
+                              <span>{tx.date}</span>
+                              <span className="font-medium text-red-600">
+                                {tx.amount.toLocaleString("pl-PL", { style: "currency", currency: "PLN" })}
+                              </span>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </CardContent>
+            </CollapsibleContent>
+          </Collapsible>
         </Card>
       </div>
 
       {/* Recurring and Large Transactions */}
       <div className="grid md:grid-cols-2 gap-4">
         <Card>
-          <CardHeader><CardTitle>Powtarzające się płatności</CardTitle></CardHeader>
-          <CardContent>
-            <ul className="text-sm space-y-1">
-              {recurring.map(r => (
-                <li key={r.counterparty} className="flex justify-between items-center">
-                  <span className="font-medium">{r.counterparty}</span>
-                  <Badge variant="outline">{r.count}x</Badge>
-                </li>
-              ))}
-            </ul>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader><CardTitle>Największe transakcje</CardTitle></CardHeader>
-          <CardContent>
-            <ul className="text-sm space-y-1">
-              {largeTx.map(t => (
-                <li key={t.id} className="flex justify-between items-center">
-                  <div>
-                    <span className="font-medium">{t.date}</span>
-                    <div className="text-xs text-muted-foreground">{t.description}</div>
+          <Collapsible open={openSections.recurring} onOpenChange={() => toggleSection('recurring')}>
+            <CollapsibleTrigger asChild>
+              <CardHeader className="cursor-pointer hover:bg-muted/50 transition-colors">
+                <CardTitle className="flex items-center justify-between">
+                  Powtarzające się płatności
+                  {openSections.recurring ? (
+                    <ChevronUp className="h-4 w-4" />
+                  ) : (
+                    <ChevronDown className="h-4 w-4" />
+                  )}
+                </CardTitle>
+              </CardHeader>
+            </CollapsibleTrigger>
+            <CollapsibleContent>
+              <CardContent>
+                <div className="space-y-2">
+                  {recurring.map(r => (
+                    <div key={r.counterparty} className="flex justify-between items-center p-2 border rounded">
+                      <span className="font-medium text-sm">{r.counterparty}</span>
+                      <Badge variant="outline">{r.count}x</Badge>
+                    </div>
+                  ))}
+                </div>
+                
+                {openSections.recurring && (
+                  <div className="mt-4 space-y-3">
+                    <h4 className="font-semibold text-sm">Szczegóły powtarzających się płatności:</h4>
+                    {recurring.map(recurringItem => (
+                      <div key={recurringItem.counterparty} className="border rounded p-3">
+                        <div className="flex items-center justify-between mb-2">
+                          <span className="font-medium text-sm">{recurringItem.counterparty}</span>
+                          <Badge variant="outline" className="text-xs">
+                            {recurringItem.count} transakcji
+                          </Badge>
+                        </div>
+                        <div className="space-y-1 max-h-32 overflow-y-auto">
+                          {getTransactionsForRecurring(recurringItem.counterparty).map(tx => (
+                            <div key={tx.id} className="flex justify-between items-center text-xs p-1 bg-muted/30 rounded">
+                              <span>{tx.date}</span>
+                              <span className={`font-medium ${tx.type === 'income' ? 'text-green-600' : 'text-red-600'}`}>
+                                {tx.amount.toLocaleString("pl-PL", { style: "currency", currency: "PLN" })}
+                              </span>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    ))}
                   </div>
-                  <span className="font-bold">{t.amount.toLocaleString("pl-PL", { style: "currency", currency: "PLN" })}</span>
-                </li>
-              ))}
-            </ul>
-          </CardContent>
+                )}
+              </CardContent>
+            </CollapsibleContent>
+          </Collapsible>
+        </Card>
+        
+        <Card>
+          <Collapsible open={openSections.large} onOpenChange={() => toggleSection('large')}>
+            <CollapsibleTrigger asChild>
+              <CardHeader className="cursor-pointer hover:bg-muted/50 transition-colors">
+                <CardTitle className="flex items-center justify-between">
+                  Największe transakcje
+                  {openSections.large ? (
+                    <ChevronUp className="h-4 w-4" />
+                  ) : (
+                    <ChevronDown className="h-4 w-4" />
+                  )}
+                </CardTitle>
+              </CardHeader>
+            </CollapsibleTrigger>
+            <CollapsibleContent>
+              <CardContent>
+                <div className="space-y-2">
+                  {largeTx.map(t => (
+                    <div key={t.id} className="flex justify-between items-center p-2 border rounded">
+                      <div>
+                        <span className="font-medium text-sm">{t.date}</span>
+                        <div className="text-xs text-muted-foreground">{t.description}</div>
+                      </div>
+                      <span className="font-bold">{t.amount.toLocaleString("pl-PL", { style: "currency", currency: "PLN" })}</span>
+                    </div>
+                  ))}
+                </div>
+                
+                {openSections.large && (
+                  <div className="mt-4 space-y-3">
+                    <h4 className="font-semibold text-sm">Szczegóły największych transakcji:</h4>
+                    {largeTx.map(largeTxItem => (
+                      <div key={largeTxItem.id} className="border rounded p-3">
+                        <div className="flex items-center justify-between mb-2">
+                          <span className="font-medium text-sm">{largeTxItem.date}</span>
+                          <Badge variant={largeTxItem.type === 'income' ? 'default' : 'destructive'} className="text-xs">
+                            {largeTxItem.type === 'income' ? 'Przychód' : 'Wydatek'}
+                          </Badge>
+                        </div>
+                        <div className="text-sm text-muted-foreground mb-2">{largeTxItem.description}</div>
+                        <div className="text-lg font-bold text-center">
+                          <span className={largeTxItem.type === 'income' ? 'text-green-600' : 'text-red-600'}>
+                            {largeTxItem.amount.toLocaleString("pl-PL", { style: "currency", currency: "PLN" })}
+                          </span>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </CardContent>
+            </CollapsibleContent>
+          </Collapsible>
         </Card>
       </div>
     </div>
