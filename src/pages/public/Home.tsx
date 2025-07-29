@@ -1,4 +1,5 @@
 import { useNavigate } from "react-router-dom";
+import { Seo } from '@/components/seo/Seo';
 import { Button } from "@/components/ui/button";
 import { Link } from "react-router-dom";
 import {
@@ -22,6 +23,10 @@ export default function Home() {
   const navigate = useNavigate();
   return (
     <>
+      <Seo 
+        title="Nowoczesne Fakturowanie i Księgowość" 
+        description="Profesjonalne narzędzie dla przedsiębiorców i księgowych. Zarządzaj fakturami, wydatkami i księgowością w jednym, intuicyjnym interfejsie."
+      />
       {/* Hero Section */}
       <section className="relative overflow-hidden">
         <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_right,_var(--tw-gradient-stops))] from-blue-500/10 via-purple-500/5 to-transparent pointer-events-none" />

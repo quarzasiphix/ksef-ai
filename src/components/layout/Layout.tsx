@@ -7,6 +7,7 @@ import Header from "./Header";
 import MobileNavigation from "./MobileNavigation";
 import { useSidebar } from "@/components/ui/sidebar";
 import Footer from './Footer';
+import { Breadcrumbs } from "@/components/seo/Breadcrumbs";
 
 interface LayoutProps {
   children?: React.ReactNode;
@@ -31,6 +32,7 @@ const Layout = ({ children }: LayoutProps) => {
         <Header />
         <main className="flex-1 p-4 md:p-6 overflow-auto w-full max-w-full">
           <div className="max-w-7xl mx-auto w-full">
+            <Breadcrumbs />
             {children || <Outlet />}
           </div>
         </main>

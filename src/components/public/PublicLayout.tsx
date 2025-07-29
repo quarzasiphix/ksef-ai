@@ -1,6 +1,7 @@
 import { useNavigate, useLocation } from "react-router-dom";
 import { useAuth } from "@/hooks/useAuth";
 import PublicHeader from "./PublicHeader";
+import { Breadcrumbs } from "@/components/seo/Breadcrumbs";
 import { Button } from "@/components/ui/button";
 import { Link } from "react-router-dom";
 import { 
@@ -41,6 +42,7 @@ export default function PublicLayout({ children }: PublicLayoutProps) {
 
         {/* Main Content */}
         <main className="container mx-auto px-4 py-8">
+          <Breadcrumbs />
           {children}
         </main>
 
