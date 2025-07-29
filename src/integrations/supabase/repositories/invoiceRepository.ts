@@ -2,23 +2,23 @@ import { supabase } from "../client";
 import { 
   InvoiceItem, 
   InvoiceType, 
-  PaymentMethod, 
-  PaymentMethodDb, 
-  Invoice, 
-  KsefInfo, 
-  VatExemptionReason, 
-  Company, 
-  BusinessProfile, 
-  Customer, 
+  TransactionType, 
   InvoiceStatus, 
-  TransactionType 
-} from "@/types/index";
-import { toPaymentMethodUi, toPaymentMethodDb } from "@/lib/invoice-utils";
+  VatExemptionReason, 
+  KsefInfo, 
+  Invoice, 
+  Company, 
+  InvoiceItem as InvoiceItemType,
+  PaymentMethod
+} from "@/types";
+import { PaymentMethodDb } from "@/types/common";
+import { toPaymentMethodUi } from "@/lib/invoice-utils";
 import { useAuth } from "@/hooks/useAuth";
 import { format } from 'date-fns';
 import { getPeriodDates } from '@/lib/date-utils';
 import { shareInvoiceWithUser } from "./invoiceShareRepository";
 import { getCustomers } from "./customerRepository";
+
 
 interface DatabaseInvoiceResponse {
   id: string;
@@ -30,7 +30,7 @@ interface DatabaseInvoiceResponse {
   sell_date: string;
   business_profile_id: string;
   customer_id: string | null;
-  payment_method: string;
+  payment_method: PaymentMethodDb;
   is_paid: boolean;
   comments: string | null;
   total_net_value: number;
@@ -482,7 +482,7 @@ export async function getInvoice(id: string): Promise<Invoice> {
     businessProfileId: data.business_profile_id,
     customerId: data.customer_id || '',
     items,
-    paymentMethod: data.payment_method as PaymentMethodDb,
+    paymentMethod: toPaymentMethodUi(data.payment_method),
     isPaid: data.is_paid || false,
     paid: data.is_paid || false,
     status: data.status as InvoiceStatus,

@@ -176,10 +176,10 @@ const paymentMethodMappings = {
   
   // Database values to UI values
   uiValues: {
-    'transfer': 'transfer',
-    'cash': 'cash',
-    'card': 'card',
-    'online': 'online',
+    'transfer': 'przelew',
+    'cash': 'gotówka',
+    'card': 'karta',
+    'online': 'płatność online',
     'blik': 'blik'
   }
 };
