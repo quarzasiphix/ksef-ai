@@ -70,4 +70,20 @@ export async function getBankLogSignedUrl(storagePath: string, expiresInSeconds 
   
   console.log('Generated signed URL:', data.signedUrl);
   return data.signedUrl;
+}
+
+/**
+ * Deletes a bank log file from the storage bucket.
+ */
+export async function deleteBankLog(storagePath: string): Promise<void> {
+  console.log('deleteBankLog called with path:', storagePath);
+  
+  const { error } = await supabase.storage.from(BUCKET).remove([storagePath]);
+  
+  console.log('Delete result:', { error });
+  
+  if (error) {
+    console.error('Error deleting bank log:', error);
+    throw error;
+  }
 } 

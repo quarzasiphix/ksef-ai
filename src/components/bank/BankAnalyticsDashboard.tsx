@@ -50,12 +50,23 @@ const BankAnalyticsDashboard: React.FC<Props> = ({ transactions, filterType, onF
     senders: boolean;
     recurring: boolean;
     large: boolean;
+    files: boolean;
+    transactions: boolean;
   }>({
     recipients: false,
     senders: false,
     recurring: false,
     large: false,
+    files: false,
+    transactions: false,
   });
+
+  // File management state
+  const [uploadedFiles, setUploadedFiles] = useState<{ name: string; id: string; created_at: string; }[]>([]);
+  const [showUploadDialog, setShowUploadDialog] = useState(false);
+  const [uploading, setUploading] = useState(false);
+  const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  const { user } = useAuth();
   
   let filtered = from && to ? filterByDate(transactions, from, to) : transactions;
   if (filterType === "income") filtered = filtered.filter(t => t.type === "income");
@@ -72,16 +83,27 @@ const BankAnalyticsDashboard: React.FC<Props> = ({ transactions, filterType, onF
 
   // Calculate unique months in filtered transactions
   const uniqueMonths = Array.from(new Set(filtered.map(tx => tx.date.slice(0, 7))));
-  const monthsCount = uniqueMonths.length || 1;
-  const totalIncome = filtered.filter(tx => tx.type === "income").reduce((sum, tx) => sum + tx.amount, 0);
-  const totalExpense = filtered.filter(tx => tx.type === "expense").reduce((sum, tx) => sum + tx.amount, 0);
-  const avgMonthlyIncome = totalIncome / monthsCount;
-  const avgMonthlyExpense = totalExpense / monthsCount;
 
   // Get transactions for selected month
   const selectedMonthTransactions = selectedMonth 
     ? filtered.filter(tx => tx.date.startsWith(selectedMonth))
     : [];
+
+  // Calculate averages for selected month if available
+  const selectedMonthAvgIncome = selectedMonth && selectedMonthTransactions.length > 0 
+    ? selectedMonthTransactions.filter(t => t.type === "income").reduce((sum, t) => sum + t.amount, 0) / selectedMonthTransactions.filter(t => t.type === "income").length
+    : avgIncome;
+  
+  const selectedMonthAvgExpense = selectedMonth && selectedMonthTransactions.length > 0
+    ? Math.abs(selectedMonthTransactions.filter(t => t.type === "expense").reduce((sum, t) => sum + t.amount, 0) / selectedMonthTransactions.filter(t => t.type === "expense").length)
+    : avgExpense;
+
+  // Calculate monthly averages for overall data
+  const monthsCount = uniqueMonths.length || 1;
+  const totalIncome = filtered.filter(tx => tx.type === "income").reduce((sum, tx) => sum + tx.amount, 0);
+  const totalExpense = filtered.filter(tx => tx.type === "expense").reduce((sum, tx) => sum + tx.amount, 0);
+  const avgMonthlyIncome = totalIncome / monthsCount;
+  const avgMonthlyExpense = totalExpense / monthsCount;
 
   // Enhanced type aggregation with better categorization
   const enhancedByType = byType.map(type => ({
@@ -173,6 +195,113 @@ const BankAnalyticsDashboard: React.FC<Props> = ({ transactions, filterType, onF
     setShowMonthlyDetail(false);
   };
 
+  // File management functions
+  const loadUploadedFiles = async () => {
+    if (!user?.id) return;
+    try {
+      const files = await listBankLogs(user.id);
+      setUploadedFiles(files);
+    } catch (error) {
+      console.error('Error loading uploaded files:', error);
+      toast.error('Błąd ładowania plików');
+    }
+  };
+
+  const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      setSelectedFile(file);
+    }
+  };
+
+  const handleFileUpload = async () => {
+    if (!selectedFile || !user?.id) return;
+    
+    setUploading(true);
+    try {
+      // Upload file to storage
+      await uploadBankLog({ 
+        userId: user.id, 
+        file: selectedFile, 
+        filename: selectedFile.name 
+      });
+      
+      // Get accountId from existing transactions or use a default
+      const accountId = transactions.length > 0 ? transactions[0].accountId : 'default-account';
+      
+      // Parse and save transactions
+      let parsedTransactions: BankTransaction[] = [];
+      
+      if (selectedFile.name.toLowerCase().endsWith('.csv')) {
+        const text = await selectedFile.text();
+        parsedTransactions = parseBankCsv(text, accountId);
+      } else if (selectedFile.name.toLowerCase().endsWith('.xml')) {
+        const text = await selectedFile.text();
+        parsedTransactions = parseBankXml(text, accountId);
+      } else {
+        throw new Error('Nieobsługiwany format pliku. Użyj CSV lub XML.');
+      }
+
+      // Save transactions to database
+      if (parsedTransactions.length > 0) {
+        await saveBankTransactions(parsedTransactions);
+        toast.success(`Dodano ${parsedTransactions.length} transakcji z pliku ${selectedFile.name}`);
+      }
+
+      // Reload files and refresh data
+      await loadUploadedFiles();
+      setShowUploadDialog(false);
+      setSelectedFile(null);
+      
+      // Trigger a refresh of the analytics data
+      window.location.reload();
+      
+    } catch (error) {
+      console.error('Error uploading file:', error);
+      toast.error('Błąd przesyłania pliku: ' + (error as Error).message);
+    } finally {
+      setUploading(false);
+    }
+  };
+
+  const handleDeleteFile = async (fileName: string) => {
+    if (!user?.id) return;
+    
+    try {
+      const storagePath = `${user.id}/${fileName}`;
+      await deleteBankLog(storagePath);
+      toast.success('Plik został usunięty');
+      await loadUploadedFiles();
+    } catch (error) {
+      console.error('Error deleting file:', error);
+      toast.error('Błąd usuwania pliku');
+    }
+  };
+
+  const handleDownloadFile = async (fileName: string) => {
+    if (!user?.id) return;
+    
+    try {
+      const storagePath = `${user.id}/${fileName}`;
+      const signedUrl = await getBankLogSignedUrl(storagePath);
+      
+      const link = document.createElement('a');
+      link.href = signedUrl;
+      link.download = fileName;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+    } catch (error) {
+      console.error('Error downloading file:', error);
+      toast.error('Błąd pobierania pliku');
+    }
+  };
+
+  // Load uploaded files on component mount
+  React.useEffect(() => {
+    loadUploadedFiles();
+  }, [user?.id]);
+
   // Helper functions to get detailed transactions
   const getTransactionsForRecipient = (recipientName: string) => {
     return filtered.filter(tx => 
@@ -230,13 +359,23 @@ const BankAnalyticsDashboard: React.FC<Props> = ({ transactions, filterType, onF
 
   return (
     <div className="space-y-6">
-      {/* Filter Controls */}
+      {/* Filter Controls with Zoom */}
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <Calendar className="h-5 w-5" />
             Filtry analizy
+            {selectedMonth && (
+              <Badge variant="secondary">
+                Aktywny miesiąc: {new Date(selectedMonth + '-01').toLocaleDateString('pl-PL', { year: 'numeric', month: 'long' })}
+              </Badge>
+            )}
           </CardTitle>
+          {selectedMonth && (
+            <p className="text-sm text-muted-foreground">
+              Analizujesz dane z {selectedMonthTransactions.length} transakcji w wybranym miesiącu
+            </p>
+          )}
         </CardHeader>
         <CardContent>
           <div className="flex flex-col md:flex-row gap-4">
@@ -291,21 +430,7 @@ const BankAnalyticsDashboard: React.FC<Props> = ({ transactions, filterType, onF
         </CardContent>
       </Card>
 
-      {/* Summary Cards */}
-      <Card>
-        <CardContent className="flex flex-col md:flex-row gap-4 items-center justify-between py-6">
-          <div className="flex items-center gap-2">
-            <ArrowDownCircle className="text-green-500 w-6 h-6" />
-            <span className="text-lg font-medium">Średni przychód (na transakcję):</span>
-            <span className="text-lg font-bold">{avgIncome.toLocaleString("pl-PL", { style: "currency", currency: "PLN" })}</span>
-          </div>
-          <div className="flex items-center gap-2">
-            <ArrowUpCircle className="text-red-500 w-6 h-6" />
-            <span className="text-lg font-medium">Średni wydatek (na transakcję):</span>
-            <span className="text-lg font-bold">{avgExpense.toLocaleString("pl-PL", { style: "currency", currency: "PLN" })}</span>
-          </div>
-        </CardContent>
-      </Card>
+      
 
       {/* Monthly Summary with Clickable Bars */}
       <Card>
@@ -348,13 +473,27 @@ const BankAnalyticsDashboard: React.FC<Props> = ({ transactions, filterType, onF
           <div className="flex flex-col md:flex-row gap-4 items-center justify-between mb-4">
             <div className="flex items-center gap-2">
               <ArrowDownCircle className="text-green-500 w-5 h-5" />
-              <span className="text-sm">Średni miesięczny przychód:</span>
-              <span className="font-semibold">{avgMonthlyIncome.toLocaleString("pl-PL", { style: "currency", currency: "PLN" })}</span>
+              <span className="text-sm">
+                {selectedMonth ? 'Średni dzienny przychód:' : 'Średni miesięczny przychód:'}
+              </span>
+              <span className="font-semibold">
+                {selectedMonth ? 
+                  selectedMonthAvgIncome.toLocaleString("pl-PL", { style: "currency", currency: "PLN" }) :
+                  avgMonthlyIncome.toLocaleString("pl-PL", { style: "currency", currency: "PLN" })
+                }
+              </span>
             </div>
             <div className="flex items-center gap-2">
               <ArrowUpCircle className="text-red-500 w-5 h-5" />
-              <span className="text-sm">Średni miesięczny wydatek:</span>
-              <span className="font-semibold">{avgMonthlyExpense.toLocaleString("pl-PL", { style: "currency", currency: "PLN" })}</span>
+              <span className="text-sm">
+                {selectedMonth ? 'Średni dzienny wydatek:' : 'Średni miesięczny wydatek:'}
+              </span>
+              <span className="font-semibold">
+                {selectedMonth ? 
+                  selectedMonthAvgExpense.toLocaleString("pl-PL", { style: "currency", currency: "PLN" }) :
+                  avgMonthlyExpense.toLocaleString("pl-PL", { style: "currency", currency: "PLN" })
+                }
+              </span>
             </div>
           </div>
           <div style={{ height: 250 * zoomLevel }}>
@@ -485,63 +624,74 @@ const BankAnalyticsDashboard: React.FC<Props> = ({ transactions, filterType, onF
       {/* Selected Month Detail */}
       {showMonthlyDetail && selectedMonth && selectedMonthTransactions.length > 0 && (
         <Card>
-          <CardHeader>
-            <CardTitle>
-              Szczegóły {new Date(selectedMonth + '-01').toLocaleDateString('pl-PL', { year: 'numeric', month: 'long' })}
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-4">
-              <div className="grid md:grid-cols-3 gap-4">
-                <div className="text-center p-3 bg-green-50 rounded">
-                  <div className="text-2xl font-bold text-green-600">
-                    {selectedMonthTransactions.filter(t => t.type === 'income').reduce((sum, t) => sum + t.amount, 0).toLocaleString("pl-PL", { style: "currency", currency: "PLN" })}
+          <Collapsible open={openSections.transactions} onOpenChange={() => toggleSection('transactions')}>
+            <CollapsibleTrigger asChild>
+              <CardHeader className="cursor-pointer hover:bg-muted/50 transition-colors">
+                <CardTitle className="flex items-center justify-between">
+                  <span>Szczegóły {new Date(selectedMonth + '-01').toLocaleDateString('pl-PL', { year: 'numeric', month: 'long' })}</span>
+                  {openSections.transactions ? (
+                    <ChevronUp className="h-4 w-4" />
+                  ) : (
+                    <ChevronDown className="h-4 w-4" />
+                  )}
+                </CardTitle>
+              </CardHeader>
+            </CollapsibleTrigger>
+            <CollapsibleContent>
+              <CardContent>
+                <div className="space-y-4">
+                  <div className="grid md:grid-cols-3 gap-4">
+                    <div className="text-center p-3 bg-green-50 rounded">
+                      <div className="text-2xl font-bold text-green-600">
+                        {selectedMonthTransactions.filter(t => t.type === 'income').reduce((sum, t) => sum + t.amount, 0).toLocaleString("pl-PL", { style: "currency", currency: "PLN" })}
+                      </div>
+                      <div className="text-sm text-green-700">Przychody</div>
+                    </div>
+                    <div className="text-center p-3 bg-red-50 rounded">
+                      <div className="text-2xl font-bold text-red-600">
+                        {selectedMonthTransactions.filter(t => t.type === 'expense').reduce((sum, t) => sum + t.amount, 0).toLocaleString("pl-PL", { style: "currency", currency: "PLN" })}
+                      </div>
+                      <div className="text-sm text-red-700">Wydatki</div>
+                    </div>
+                    <div className="text-center p-3 bg-blue-50 rounded">
+                      <div className="text-2xl font-bold text-blue-600">
+                        {selectedMonthTransactions.length}
+                      </div>
+                      <div className="text-sm text-blue-700">Transakcji</div>
+                    </div>
                   </div>
-                  <div className="text-sm text-green-700">Przychody</div>
-                </div>
-                <div className="text-center p-3 bg-red-50 rounded">
-                  <div className="text-2xl font-bold text-red-600">
-                    {selectedMonthTransactions.filter(t => t.type === 'expense').reduce((sum, t) => sum + t.amount, 0).toLocaleString("pl-PL", { style: "currency", currency: "PLN" })}
+                  <div className="max-h-60 overflow-y-auto">
+                    <Table>
+                      <TableHeader>
+                        <TableRow>
+                          <TableHead>Data</TableHead>
+                          <TableHead>Opis</TableHead>
+                          <TableHead>Typ</TableHead>
+                          <TableHead className="text-right">Kwota</TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {selectedMonthTransactions.map((tx) => (
+                          <TableRow key={tx.id}>
+                            <TableCell>{tx.date}</TableCell>
+                            <TableCell>{tx.description}</TableCell>
+                            <TableCell>
+                              <Badge variant={tx.type === 'income' ? 'default' : 'destructive'}>
+                                {tx.type === 'income' ? 'Przychód' : 'Wydatek'}
+                              </Badge>
+                            </TableCell>
+                            <TableCell className={`text-right font-semibold ${tx.type === 'income' ? 'text-green-600' : 'text-red-600'}`}>
+                              {tx.amount.toLocaleString("pl-PL", { style: "currency", currency: "PLN" })}
+                            </TableCell>
+                          </TableRow>
+                        ))}
+                      </TableBody>
+                    </Table>
                   </div>
-                  <div className="text-sm text-red-700">Wydatki</div>
                 </div>
-                <div className="text-center p-3 bg-blue-50 rounded">
-                  <div className="text-2xl font-bold text-blue-600">
-                    {selectedMonthTransactions.length}
-                  </div>
-                  <div className="text-sm text-blue-700">Transakcji</div>
-                </div>
-              </div>
-              <div className="max-h-60 overflow-y-auto">
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>Data</TableHead>
-                      <TableHead>Opis</TableHead>
-                      <TableHead>Typ</TableHead>
-                      <TableHead className="text-right">Kwota</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {selectedMonthTransactions.map((tx) => (
-                      <TableRow key={tx.id}>
-                        <TableCell>{tx.date}</TableCell>
-                        <TableCell>{tx.description}</TableCell>
-                        <TableCell>
-                          <Badge variant={tx.type === 'income' ? 'default' : 'destructive'}>
-                            {tx.type === 'income' ? 'Przychód' : 'Wydatek'}
-                          </Badge>
-                        </TableCell>
-                        <TableCell className={`text-right font-semibold ${tx.type === 'income' ? 'text-green-600' : 'text-red-600'}`}>
-                          {tx.amount.toLocaleString("pl-PL", { style: "currency", currency: "PLN" })}
-                        </TableCell>
-                      </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
-              </div>
-            </div>
-          </CardContent>
+              </CardContent>
+            </CollapsibleContent>
+          </Collapsible>
         </Card>
       )}
 
@@ -795,6 +945,136 @@ const BankAnalyticsDashboard: React.FC<Props> = ({ transactions, filterType, onF
           </Collapsible>
         </Card>
       </div>
+
+      {/* File Management Section */}
+      <Card>
+        <Collapsible open={openSections.files} onOpenChange={() => toggleSection('files')}>
+          <CollapsibleTrigger asChild>
+            <CardHeader className="cursor-pointer hover:bg-muted/50 transition-colors">
+              <CardTitle className="flex items-center justify-between">
+                <span className="flex items-center gap-2">
+                  <FileText className="h-5 w-5" />
+                  Pliki wyciągów bankowych
+                </span>
+                {openSections.files ? (
+                  <ChevronUp className="h-4 w-4" />
+                ) : (
+                  <ChevronDown className="h-4 w-4" />
+                )}
+              </CardTitle>
+            </CardHeader>
+          </CollapsibleTrigger>
+          <CollapsibleContent>
+            <CardContent>
+              <div className="flex items-center justify-between mb-4">
+                <div>
+                  <h4 className="font-semibold">Przesłane pliki ({uploadedFiles.length})</h4>
+                  <p className="text-sm text-muted-foreground">
+                    Zarządzaj plikami wyciągów bankowych używanymi do analizy
+                  </p>
+                </div>
+                <Button onClick={() => setShowUploadDialog(true)}>
+                  <Upload className="h-4 w-4 mr-2" />
+                  Dodaj plik
+                </Button>
+              </div>
+
+              {uploadedFiles.length === 0 ? (
+                <div className="text-center py-8 text-muted-foreground">
+                  <FileText className="h-12 w-12 mx-auto mb-2 opacity-50" />
+                  <p>Brak przesłanych plików</p>
+                  <p className="text-sm">Dodaj plik CSV lub XML aby rozpocząć analizę</p>
+                </div>
+              ) : (
+                <div className="space-y-2">
+                  {uploadedFiles.map((file) => (
+                    <div key={file.id} className="flex items-center justify-between p-3 border rounded-lg">
+                      <div className="flex items-center gap-3">
+                        <FileText className="h-5 w-5 text-blue-500" />
+                        <div>
+                          <p className="font-medium">{file.name}</p>
+                          <p className="text-sm text-muted-foreground">
+                            Dodano: {new Date(file.created_at).toLocaleDateString('pl-PL')}
+                          </p>
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => handleDownloadFile(file.name)}
+                        >
+                          <Download className="h-4 w-4" />
+                        </Button>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => handleDeleteFile(file.name)}
+                          className="text-red-600 hover:text-red-700"
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </CardContent>
+          </CollapsibleContent>
+        </Collapsible>
+      </Card>
+
+      {/* Upload Dialog */}
+      <Dialog open={showUploadDialog} onOpenChange={setShowUploadDialog}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Dodaj plik wyciągu bankowego</DialogTitle>
+            <DialogDescription>
+              Wybierz plik CSV lub XML z wyciągiem bankowym. Plik zostanie przesłany i przeanalizowany.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div>
+              <label htmlFor="file-upload" className="block text-sm font-medium mb-2">
+                Wybierz plik
+              </label>
+              <input
+                id="file-upload"
+                type="file"
+                accept=".csv,.xml"
+                onChange={handleFileSelect}
+                className="w-full p-2 border border-input rounded-md"
+              />
+            </div>
+            {selectedFile && (
+              <div className="p-3 bg-muted rounded-md">
+                <p className="font-medium">Wybrany plik:</p>
+                <p className="text-sm text-muted-foreground">{selectedFile.name}</p>
+                <p className="text-sm text-muted-foreground">
+                  Rozmiar: {(selectedFile.size / 1024).toFixed(1)} KB
+                </p>
+              </div>
+            )}
+            <div className="flex justify-end gap-2">
+              <Button
+                variant="outline"
+                onClick={() => {
+                  setShowUploadDialog(false);
+                  setSelectedFile(null);
+                }}
+              >
+                Anuluj
+              </Button>
+              <Button
+                onClick={handleFileUpload}
+                disabled={!selectedFile || uploading}
+              >
+                {uploading ? 'Przesyłanie...' : 'Prześlij i analizuj'}
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };
