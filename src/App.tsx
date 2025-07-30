@@ -57,6 +57,7 @@ import { useAuth } from '@/hooks/useAuth';
 import { TransactionType } from '@/types/common';
 import SettingsMenu from './pages/settings/SettingsMenu';
 import ProfileSettings from './pages/settings/ProfileSettings';
+import PzCallbackHandler from './pages/ksef/PzCallbackHandler';
 
 const AppLoadingScreen = () => (
   <div className="flex items-center justify-center h-screen">
@@ -373,9 +374,8 @@ const App = () => {
                   </ProtectedRoute>
                 } />
 
-                {/* Profil Zaufany callback route */}
-                <Route path="/pz-callback" element={<PzCallbackHandler />} />
-
+                {/* Profil Zaufany callback route  <Route path="/pz-callback" element={<PzCallbackHandler />} /> */}
+                
                 {/* Catch all route */}
                 <Route path="*" element={<NotFound />} />
 
