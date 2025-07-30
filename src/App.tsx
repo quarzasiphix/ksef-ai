@@ -373,6 +373,9 @@ const App = () => {
                   </ProtectedRoute>
                 } />
 
+                {/* Profil Zaufany callback route */}
+                <Route path="/pz-callback" element={<PzCallbackHandler />} />
+
                 {/* Catch all route */}
                 <Route path="*" element={<NotFound />} />
 
