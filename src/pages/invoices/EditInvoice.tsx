@@ -52,6 +52,10 @@ const EditInvoice = () => {
     if (!invoiceData) return null;
     const isExpense = invoiceData.transactionType === 'expense';
 
+    // Handle the VAT toggle logic correctly
+    const vat = invoiceData.vat ?? (invoiceData.fakturaBezVAT !== undefined ? !invoiceData.fakturaBezVAT : true);
+    const fakturaBezVAT = invoiceData.fakturaBezVAT ?? (invoiceData.vat !== undefined ? !invoiceData.vat : false);
+
     const transformedItems = (invoiceData.items || []).map(item => ({
       ...item,
       quantity: Number(item.quantity) || 0,
@@ -62,14 +66,15 @@ const EditInvoice = () => {
       totalGrossValue: Number(item.totalGrossValue) || 0,
       unit: item.unit || 'szt.'
     }));
+    
     const paymentMethod: PaymentMethodDb = toPaymentMethodDb(invoiceData.paymentMethod);
     const transformed: Invoice = {
       ...invoiceData,
       items: transformedItems,
       buyer: isExpense ? invoiceData.seller : invoiceData.buyer,
       seller: isExpense ? invoiceData.buyer : invoiceData.seller,
-      vat: invoiceData.vat ?? true,
-      fakturaBezVAT: !(invoiceData.vat ?? true),
+      vat: vat,
+      fakturaBezVAT: fakturaBezVAT,
       vatExemptionReason: invoiceData.vatExemptionReason,
       paymentMethod: paymentMethod as PaymentMethodDb,
       number: invoiceData.number || '',
@@ -153,15 +158,46 @@ const EditInvoice = () => {
     }
     try {
       setIsSaving(true);
+      
+      // Ensure vat and fakturaBezVAT are properly synchronized
+      const vat = formData.vat ?? !formData.fakturaBezVAT;
+      const fakturaBezVAT = formData.fakturaBezVAT ?? !formData.vat;
+      
+      // Convert payment method to database format if it's in UI format
+      const paymentMethod = typeof formData.paymentMethod === 'string' && 
+        ['przelew', 'gotówka', 'karta', 'inny'].includes(formData.paymentMethod)
+          ? toPaymentMethodDb(formData.paymentMethod as PaymentMethod)
+          : formData.paymentMethod;
+      
       const updateData = {
         ...formData,
         id,
         user_id: user.id,
         items: [...items],
+        vat: vat,
+        fakturaBezVAT: fakturaBezVAT,
+        paymentMethod,
+        // Ensure we have the correct date format
+        issueDate: formData.issueDate ? new Date(formData.issueDate).toISOString() : new Date().toISOString(),
+        sellDate: formData.sellDate ? new Date(formData.sellDate).toISOString() : new Date().toISOString(),
+        dueDate: formData.dueDate ? new Date(formData.dueDate).toISOString() : new Date().toISOString(),
       };
+      
+      // Update items to ensure they have the correct VAT rates if this is a VAT-less invoice
+      if (fakturaBezVAT) {
+        updateData.items = updateData.items.map(item => ({
+          ...item,
+          vatRate: -1,
+          vatExempt: true
+        }));
+      }
+      
+      console.log('Saving invoice with data:', updateData);
+      
       await saveInvoice(updateData as any);
       await queryClient.invalidateQueries({ queryKey: ['invoices'] });
       await queryClient.invalidateQueries({ queryKey: ['invoice', id] });
+      
       toast.success("Faktura została zaktualizowana");
       navigate(invoice.transactionType === 'income' ? '/income' : '/expense');
     } catch (error: any) {

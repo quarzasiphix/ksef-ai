@@ -254,8 +254,8 @@ export async function saveInvoice(invoice: Omit<Invoice, 'id' | 'ksef' | 'vat' |
     total_vat_value: Number(invoice.totalVatValue) || 0,
     ksef_status: invoice.ksef?.status || null,
     ksef_reference_number: invoice.ksef?.referenceNumber || null,
-    vat: invoice.vat || true,
-    vat_exemption_reason: invoice.vatExemptionReason || null,
+    vat: invoice.fakturaBezVAT ? false : (invoice.vat !== undefined ? invoice.vat : true),
+    vat_exemption_reason: invoice.fakturaBezVAT ? (invoice.vatExemptionReason || VatExemptionReason.ART_113_UST_1) : invoice.vatExemptionReason,
     currency: invoice.currency || 'PLN',
     bank_account_id: invoice.bankAccountId || null,
     exchange_rate: invoice.exchangeRate || null,
@@ -277,31 +277,70 @@ export async function saveInvoice(invoice: Omit<Invoice, 'id' | 'ksef' | 'vat' |
 
   if (invoice.id) {
     console.log('Updating existing invoice:', invoice.id);
-    // Update existing invoice
-    const { data, error } = await supabase
+    
+    // First, verify the invoice exists
+    const { data: existingInvoice, error: fetchError } = await supabase
       .from("invoices")
-      .update(invoicePayload as any)
+      .select("id")
+      .eq("id", invoice.id)
+      .single();
+      
+    if (fetchError || !existingInvoice) {
+      console.error('Invoice not found or error fetching:', invoice.id, fetchError);
+      throw new Error('Invoice not found or could not be updated');
+    }
+    
+    // Update the invoice first
+    const { data: updatedInvoice, error: updateError } = await supabase
+      .from("invoices")
+      .update(invoicePayload)
       .eq("id", invoice.id)
       .select()
       .single();
-
-    if (error) {
-      console.error("Error updating invoice:", error);
-      throw error;
+      
+    if (updateError) {
+      console.error('Error updating invoice:', updateError);
+      throw updateError;
     }
-
-    invoiceId = data.id;
-
-    // Delete existing items to replace with new ones
+    
+    // Delete existing items
     const { error: deleteError } = await supabase
       .from("invoice_items")
       .delete()
-      .eq("invoice_id", invoiceId);
-
+      .eq("invoice_id", invoice.id);
+      
     if (deleteError) {
-      console.error("Error deleting invoice items:", deleteError);
-      console.warn("Failed to delete existing invoice items. Proceeding with insert.");
+      console.error('Error deleting old invoice items:', deleteError);
+      throw deleteError;
     }
+    
+    // Insert new items
+    if (invoice.items && invoice.items.length > 0) {
+      const { error: itemsError } = await supabase
+        .from("invoice_items")
+        .insert(
+          invoice.items.map(item => ({
+            invoice_id: invoice.id,
+            name: item.name,
+            quantity: item.quantity,
+            unit_price: item.unitPrice,
+            vat_rate: item.vatRate,
+            unit: item.unit || 'szt',
+            total_net_value: item.totalNetValue || 0,
+            total_gross_value: item.totalGrossValue || 0,
+            total_vat_value: item.totalVatValue || 0,
+            vat_exempt: item.vatExempt || false,
+            product_id: item.productId || null
+          }))
+        );
+        
+      if (itemsError) {
+        console.error('Error inserting new invoice items:', itemsError);
+        throw itemsError;
+      }
+    }
+    
+    invoiceId = invoice.id;
   } else {
     console.log('Creating new invoice');
     // Insert new invoice

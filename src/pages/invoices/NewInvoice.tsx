@@ -1,15 +1,35 @@
+// React & Dependencies
 import React, { useState, useEffect, useCallback, forwardRef, useImperativeHandle } from "react";
 import { useAuth } from "@/context/AuthContext";
 import { useSearchParams, useNavigate, useLocation } from "react-router-dom";
+import { useGlobalData } from "@/hooks/use-global-data";
 import { useQueryClient } from "@tanstack/react-query";
-import { Invoice, InvoiceType, InvoiceItem, VatType, VatExemptionReason, Company } from "@/types";
-import { TransactionType, PaymentMethodDb } from "@/types/common";
+
+// Types
+import { 
+  Invoice, 
+  InvoiceItem, 
+  VatType, 
+  VatExemptionReason, 
+  Company, 
+  PaymentMethod,
+  PaymentMethodDb,
+  InvoiceType 
+} from "@/types";
+import { TransactionType } from "@/types/common";
+import { BankAccount } from "@/types/bank";
+
+// Date & Formatting
+import { format } from "date-fns";
+import { pl } from "date-fns/locale";
+
+// Form Handling
+import { useForm, useFieldArray, Controller } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { useForm } from "react-hook-form";
 import * as z from "zod";
-import { Form } from "@/components/ui/form";
-import { toast } from "sonner";
-import {
+
+// Utils & Helpers
+import { 
   calculateInvoiceTotals,
   generateInvoiceNumber,
   toPaymentMethodUi,
@@ -18,21 +38,26 @@ import {
   formatCurrency,
   getDocumentTitle
 } from "@/lib/invoice-utils";
+import { cn } from "@/lib/utils";
+
+// Supabase Repositories
+import { getInvoiceNumberingSettings } from "@/integrations/supabase/repositories/invoiceNumberingSettingsRepository";
 import { saveInvoice, getInvoice } from "@/integrations/supabase/repositories/invoiceRepository";
 import { saveExpense } from "@/integrations/supabase/repositories/expenseRepository";
+import { addLink as addContractLink } from "@/integrations/supabase/repositories/contractInvoiceLinkRepository";
+import { getBankAccountsForProfile, addBankAccount } from "@/integrations/supabase/repositories/bankAccountRepository";
+
+// UI Components
+import { Form } from "@/components/ui/form";
+import { Button } from "@/components/ui/button";
+import { useSidebar } from "@/components/ui/sidebar";
+import { toast } from "sonner";
 import { InvoiceFormHeader } from "@/components/invoices/forms/InvoiceFormHeader";
 import { InvoiceBasicInfoForm } from "@/components/invoices/forms/InvoiceBasicInfoForm";
 import { InvoicePartiesForm } from "@/components/invoices/forms/InvoicePartiesForm";
 import { InvoiceItemsForm } from "@/components/invoices/forms/InvoiceItemsForm";
 import { InvoiceFormActions } from "@/components/invoices/forms/InvoiceFormActions";
-import { Button } from "@/components/ui/button";
-import { useSidebar } from "@/components/ui/sidebar";
-import { cn } from "@/lib/utils";
-import { PaymentMethod } from "@/types";
 import ContractsPicker from "@/components/contracts/ContractsPicker";
-import { addLink as addContractLink } from "@/integrations/supabase/repositories/contractInvoiceLinkRepository";
-import { getBankAccountsForProfile, addBankAccount } from "@/integrations/supabase/repositories/bankAccountRepository";
-import { BankAccount } from "@/types/bank";
 import { BankAccountEditDialog } from "@/components/bank/BankAccountEditDialog";
 
 // Schema
@@ -80,6 +105,7 @@ interface NewInvoiceProps {
   bankAccounts?: BankAccount[];
   items?: InvoiceItem[];
   onItemsChange?: (items: InvoiceItem[]) => void;
+  // Removed duplicate items property that was causing TypeScript error
 }
 
 const NewInvoice = React.forwardRef<{
@@ -103,8 +129,39 @@ const NewInvoice = React.forwardRef<{
     const location = useLocation();
     const queryClient = useQueryClient();
 
+    const form = useForm<z.infer<typeof invoiceFormSchema>>({
+      resolver: zodResolver(invoiceFormSchema),
+      defaultValues: {
+        number: '',
+        issueDate: new Date().toISOString().split('T')[0],
+        sellDate: new Date().toISOString().split('T')[0],
+        dueDate: new Date(new Date().setDate(new Date().getDate() + 14)).toISOString().split('T')[0],
+        paymentMethod: 'przelew' as unknown as PaymentMethod, // Type assertion to handle string to enum conversion
+        status: 'draft',
+        type: type === TransactionType.INCOME ? InvoiceType.SALES : InvoiceType.RECEIPT,
+        customerId: '',
+        businessProfileId: '',
+        items: initialData?.items || [],
+        comments: '',
+        vat: true,
+        vatExemptionReason: null,
+        currency: 'PLN',
+        exchangeRate: 1,
+        exchangeRateDate: new Date().toISOString().split('T')[0],
+        exchangeRateSource: 'NBP',
+        isPaid: false,
+        fakturaBezVAT: false,
+        ...(initialData ? {
+          ...initialData,
+          paymentMethod: toPaymentMethodUi(initialData.paymentMethod as PaymentMethodDb),
+          issueDate: initialData.issueDate ? new Date(initialData.issueDate).toISOString().split('T')[0] : '',
+          sellDate: initialData.sellDate ? new Date(initialData.sellDate).toISOString().split('T')[0] : '',
+          dueDate: initialData.dueDate ? new Date(initialData.dueDate).toISOString().split('T')[0] : '',
+        } : {}),
+      },
+    });
 
-
+    const businessProfileId = form.watch("businessProfileId");
 
     // Helpers to determine if current path is for income or expense invoice creation/edit
     const isIncomeRoute = location.pathname === "/income/new" || location.pathname.startsWith("/income/edit/");
@@ -117,6 +174,131 @@ const NewInvoice = React.forwardRef<{
     const duplicateId = searchParams.get("duplicateId") || "";
     const [prefilled, setPrefilled] = useState(false);
     const [isDuplicate, setIsDuplicate] = useState(false);
+
+    // --- INVOICE NUMBERING SYSTEM ---
+    const { invoices: { data: allInvoices = [] } = {} } = (typeof useGlobalData === 'function' ? useGlobalData() : { invoices: { data: [] } });
+    const [invoiceNumber, setInvoiceNumber] = useState(initialData?.number || '');
+    
+    // Current date for invoice numbering
+    const now = new Date();
+    
+    // Helper to reload invoice numbering settings and update invoice number
+    const reloadInvoiceNumberingSettings = useCallback(async (userId: string | undefined, profileId: string | undefined, allInvoicesList: any[], initialInvoiceData?: any) => {
+      if (!form) return;
+      
+      // If we have an existing invoice number, use it and don't generate a new one
+      if (initialInvoiceData?.number) {
+        setInvoiceNumber(initialInvoiceData.number);
+        form.setValue('number', initialInvoiceData.number);
+        return;
+      }
+      
+      // Default values
+      let prefix = 'FV';
+      let pattern: 'incremental' | 'yearly' | 'monthly' = 'monthly';
+      
+      try {
+        // First try to get from Supabase if we have a user and business profile
+        if (userId && profileId) {
+          try {
+            const settings = await getInvoiceNumberingSettings(userId, profileId);
+            if (settings) {
+              prefix = settings.prefix || 'FV';
+              pattern = (settings.pattern as 'incremental' | 'yearly' | 'monthly') || 'monthly';
+              // Cache in localStorage as fallback
+              localStorage.setItem('invoiceNumberingSettings', JSON.stringify({ prefix, pattern }));
+            }
+          } catch (error) {
+            console.error('Error loading invoice settings from Supabase:', error);
+            // Fall through to localStorage on error
+          }
+        }
+        
+        // If no settings from Supabase, try localStorage
+        if (prefix === 'FV' && pattern === 'monthly') {
+          const saved = localStorage.getItem('invoiceNumberingSettings');
+          if (saved) {
+            try {
+              const parsed = JSON.parse(saved);
+              if (parsed.prefix) prefix = parsed.prefix;
+              if (parsed.pattern) pattern = parsed.pattern as 'incremental' | 'yearly' | 'monthly';
+            } catch (e) {
+              console.error('Error parsing saved invoice settings:', e);
+            }
+          }
+        }
+      } catch (error) {
+        console.error('Error in invoice settings handling:', error);
+      }
+      
+      // Use current date for generating the invoice number
+      const now = new Date();
+      
+      // Filter invoices by business profile if we have a business profile ID
+      const filteredInvoices = businessProfileId 
+        ? allInvoices.filter(inv => inv.businessProfileId === businessProfileId)
+        : allInvoices;
+      
+      // Find the highest sequence number in existing invoices that match our pattern
+      let maxSeq = 0;
+      const currentYear = now.getFullYear();
+      const currentMonth = now.getMonth() + 1;
+      
+      filteredInvoices.forEach(inv => {
+        if (!inv.number) return;
+        
+        // Create a regex pattern based on the current settings to match existing invoice numbers
+        let patternRegex: RegExp;
+        
+        switch (pattern) {
+          case 'incremental':
+            patternRegex = new RegExp(`^${prefix}/(\\d+)$`);
+            break;
+          case 'yearly':
+            patternRegex = new RegExp(`^${prefix}/${currentYear}/(\\d+)$`);
+            break;
+          case 'monthly':
+          default:
+            patternRegex = new RegExp(`^${prefix}/${currentYear}/${currentMonth.toString().padStart(2, '0')}/(\\d+)$`);
+        }
+        
+        const match = inv.number.match(patternRegex);
+        if (match && match[1]) {
+          const seq = parseInt(match[1], 10);
+          if (seq > maxSeq) maxSeq = seq;
+        }
+      });
+      
+      // The next sequence number is the max found + 1, or 1 if no invoices exist
+      const nextSeq = maxSeq + 1;
+      
+      // Generate the new invoice number
+      const nextNumber = generateInvoiceNumber(
+        now, 
+        nextSeq, 
+        prefix, 
+        pattern
+      );
+      
+      // Update the state and form field
+      setInvoiceNumber(nextNumber);
+      form.setValue('number', nextNumber);
+    }, [form, now, allInvoices, businessProfileId, initialData?.number]);
+
+    // Initialize invoice numbering when component mounts or dependencies change
+    useEffect(() => {
+      if (user?.id && businessProfileId) {
+        reloadInvoiceNumberingSettings(user.id, businessProfileId, allInvoices, initialData);
+      }
+    }, [user?.id, businessProfileId, allInvoices, initialData, reloadInvoiceNumberingSettings]);
+
+    // Listen for settings update event and reload invoice number
+    useEffect(() => {
+      const handler = () => reloadInvoiceNumberingSettings();
+      window.addEventListener('invoiceNumberingSettingsUpdated', handler);
+      return () => window.removeEventListener('invoiceNumberingSettingsUpdated', handler);
+    }, [allInvoices, businessProfileId, initialData?.number]);
+
 
     // --- Transaction type state ---
     const [transactionType, setTransactionType] = useState<TransactionType | undefined>(() => {
@@ -175,38 +357,6 @@ const NewInvoice = React.forwardRef<{
     const dueIn7 = new Date(todayDate.getTime() + 7 * 24 * 60 * 60 * 1000)
       .toISOString()
       .split("T")[0];
-
-    const form = useForm<InvoiceFormValues>({
-      resolver: zodResolver(invoiceFormSchema),
-      mode: "onChange",
-      defaultValues: {
-        number: initialData?.number || generateInvoiceNumber(new Date(), 1),
-        issueDate: initialData?.issueDate || today,
-        sellDate: initialData?.sellDate || today,
-        dueDate: initialData?.dueDate || dueIn7,
-        paymentMethod: initialData?.paymentMethod
-          ? toPaymentMethodUi(initialData.paymentMethod as PaymentMethodDb)
-          : PaymentMethod.TRANSFER,
-        comments: initialData?.comments || "",
-        transactionType: transactionType || TransactionType.INCOME,
-        customerId: initialData?.customerId || "",
-        businessProfileId: initialData?.businessProfileId || "",
-        vat: initialData?.vat ?? true,
-        vatExemptionReason: initialData?.vatExemptionReason || null,
-        fakturaBezVAT: (initialData as any)?.vat === false,
-        currency: initialData?.currency || 'PLN',
-        bankAccountId: initialData?.bankAccountId || "",
-        exchangeRate: initialData?.exchangeRate || 1,
-        exchangeRateDate: initialData?.exchangeRateDate || today,
-        exchangeRateSource: (initialData?.exchangeRateSource as 'NBP' | 'manual' | undefined) || 'NBP',
-        status: initialData?.status || 'draft',
-        type: initialData?.type || InvoiceType.SALES,
-        totalNetValue: initialData?.totalNetValue || 0,
-        totalVatValue: initialData?.totalVatValue || 0,
-        totalGrossValue: initialData?.totalGrossValue || 0,
-        isPaid: initialData?.isPaid || false
-      },
-    });
 
     // Automatyczne pobieranie kursu NBP - po deklaracji form
     useEffect(() => {
@@ -289,8 +439,7 @@ const NewInvoice = React.forwardRef<{
     }, [hasUnsavedChanges]);
 
     // Get form values
-    const businessProfileId = form.watch('businessProfileId');
-    const customerId = form.watch('customerId');
+    const customerId = form.watch("customerId");
     const bankAccountId = form.watch('bankAccountId');
 
     // Watch for fakturaBezVAT changes
@@ -449,9 +598,9 @@ const NewInvoice = React.forwardRef<{
     }));
 
     // Handle form submission
-    const onSubmit = async (formData: InvoiceFormValues) => {
+    const onSubmit = async (formValues: InvoiceFormValues) => {
       console.log('=== onSubmit started ===');
-      console.log('Form data:', JSON.stringify(formData, null, 2));
+      console.log('Form data:', JSON.stringify(formValues, null, 2));
       console.log('Items:', JSON.stringify(items, null, 2));
 
       if (!user) {
@@ -459,6 +608,64 @@ const NewInvoice = React.forwardRef<{
         console.error(error);
         toast.error(error);
         return;
+      }
+
+      if (items.length === 0) {
+        toast.error('Dodaj co najmniej jedną pozycję do faktury');
+        return;
+      }
+      
+      try {
+        setIsLoading(true);
+        
+        // Convert form data to database format
+        const dbFormData = {
+          ...formValues,
+          paymentMethod: toPaymentMethodDb(formValues.paymentMethod as PaymentMethod),
+          type: formValues.type as InvoiceType,
+          items,
+          transactionType: type,
+          status: 'draft' as const,
+          userId: user.id,
+          businessProfileId: businessProfileId || '',
+          customerId: formValues.customerId || '',
+          vatExemptionReason: formValues.vatExemptionReason || null,
+          vat: formValues.vat,
+          fakturaBezVAT: formValues.fakturaBezVAT || false,
+          currency: formValues.currency || 'PLN',
+          exchangeRate: formValues.exchangeRate || 1,
+          exchangeRateDate: formValues.exchangeRateDate || new Date().toISOString().split('T')[0],
+          exchangeRateSource: formValues.exchangeRateSource || 'NBP',
+          comments: formValues.comments || '',
+          bankAccountId: formValues.bankAccountId || null,
+        };
+
+        // Rest of the form submission logic
+        console.log('Saving invoice with data:', dbFormData);
+        
+        // Call the onSave prop if provided
+        if (onSave) {
+          await onSave(dbFormData);
+        } else {
+          // Default save behavior if no onSave prop provided
+          if (initialData) {
+            // Update existing invoice
+            await invoiceRepository.update(initialData.id, dbFormData);
+            toast.success('Faktura została zaktualizowana');
+          } else {
+            // Create new invoice
+            await invoiceRepository.create(dbFormData);
+            toast.success('Faktura została utworzona');
+          }
+          
+          // Navigate back to invoices list
+          navigate('/invoices');
+        }
+      } catch (error) {
+        console.error('Error saving invoice:', error);
+        toast.error('Wystąpił błąd podczas zapisywania faktury');
+      } finally {
+        setIsLoading(false);
       }
 
       if (items.length === 0) {
@@ -480,14 +687,14 @@ const NewInvoice = React.forwardRef<{
         setIsLoading(true);
         
         // Convert UI payment method to database format
-        const paymentMethodDb = toPaymentMethodDb(formData.paymentMethod);
+        const paymentMethodDb = toPaymentMethodDb(formData.paymentMethod as PaymentMethod);
         
         // Prepare the data to be saved with all required fields
         const saveData = {
           ...formData,
           // Ensure all required Invoice fields are included with proper types
           status: (formData.status || 'draft') as 'draft' | 'sent' | 'paid' | 'overdue',
-          type: (formData.type || 'vat') as InvoiceType,
+          type: (formData.type as InvoiceType) || 'sales',
           number: formData.number || '',
           issueDate: formData.issueDate || new Date().toISOString().split('T')[0],
           sellDate: formData.sellDate || formData.issueDate || new Date().toISOString().split('T')[0],

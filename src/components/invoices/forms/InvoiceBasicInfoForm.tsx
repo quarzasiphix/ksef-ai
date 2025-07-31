@@ -128,6 +128,27 @@ export const InvoiceBasicInfoForm: React.FC<InvoiceBasicInfoFormProps> = ({
           )}
         />
         
+        {form.watch("paymentMethod") === PaymentMethod.TRANSFER && (
+          <FormField
+            control={form.control}
+            name="bankAccountId"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>Konto bankowe</FormLabel>
+                <BankAccountSelector
+                  businessProfileId={businessProfileId || ''}
+                  value={field.value}
+                  onChange={field.onChange}
+                  currency={currency}
+                  onAddVatAccount={onAddVatAccount}
+                  showVatRecommendation={true}
+                />
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+        )}
+        
         <FormField
           control={form.control}
           name="currency"
@@ -197,24 +218,6 @@ export const InvoiceBasicInfoForm: React.FC<InvoiceBasicInfoFormProps> = ({
     )}
   />
 )}
-        <FormField
-          control={form.control}
-          name="bankAccountId"
-          render={({ field }) => (
-            <FormItem>
-              <FormLabel>Konto bankowe</FormLabel>
-              <BankAccountSelector
-                businessProfileId={businessProfileId || ''}
-                value={field.value}
-                onChange={field.onChange}
-                currency={currency}
-                onAddVatAccount={onAddVatAccount}
-                showVatRecommendation={true}
-              />
-              <FormMessage />
-            </FormItem>
-          )}
-        />
 
         
         

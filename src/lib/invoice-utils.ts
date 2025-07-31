@@ -123,17 +123,26 @@ export const calculateInvoiceTotals = (items: InvoiceItem[]) => {
   };
 };
 
-// Generate invoice number based on date and sequence
+// Generate invoice number based on pattern, date, and sequence
 export const generateInvoiceNumber = (
   date: Date,
   sequence: number,
-  prefix: string = "FV"
+  prefix: string = "FV",
+  pattern: 'incremental' | 'yearly' | 'monthly' = 'monthly'
 ): string => {
   const year = date.getFullYear();
   const month = (date.getMonth() + 1).toString().padStart(2, "0");
   const seq = sequence.toString().padStart(3, "0");
   
-  return `${prefix}/${year}/${month}/${seq}`;
+  switch (pattern) {
+    case 'incremental':
+      return `${prefix}/${seq}`;
+    case 'yearly':
+      return `${prefix}/${year}/${seq}`;
+    case 'monthly':
+    default:
+      return `${prefix}/${year}/${month}/${seq}`;
+  }
 };
 
 // Convert ISO date string to Polish format (DD.MM.YYYY)
