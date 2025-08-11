@@ -56,9 +56,10 @@ export const MobileInvoiceItemsList: React.FC<MobileInvoiceItemsListProps> = ({
       {items.length > 0 && (
         <TotalsSummary
           totalNetValue={totalNetValue}
-          totalVatValue={totalVatValue}
+          totalVatValue={fakturaBezVAT ? 0 : totalVatValue}
           totalGrossValue={totalGrossValue}
           isReceipt={isReceipt}
+          fakturaBezVAT={fakturaBezVAT}
           currency={currency}
         />
       )}

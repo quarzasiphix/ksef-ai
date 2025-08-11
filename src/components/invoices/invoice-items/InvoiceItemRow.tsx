@@ -52,9 +52,17 @@ export const InvoiceItemRow: React.FC<InvoiceItemRowProps> = ({
   };
 
   const handleVatRateChange = (value: string) => {
+    // If fakturaBezVAT is true, force VAT rate to 0 and don't allow changes
+    if (fakturaBezVAT) {
+      const updated = calculateItemValues({ ...item, vatRate: 0 });
+      onUpdateItem(item.id, updated);
+      return;
+    }
+    
     // Handle VAT exemption
     const vatRate = value === 'zw' ? -1 : Number(value);
     if (value !== 'zw' && isNaN(Number(value))) return;
+    
     // Update the item with the new VAT rate
     const updated = calculateItemValues({ ...item, vatRate: Number(vatRate) });
     onUpdateItem(item.id, updated);
@@ -62,14 +70,24 @@ export const InvoiceItemRow: React.FC<InvoiceItemRowProps> = ({
 
   // Ensure VAT-exempt items are handled correctly on initial load
   React.useEffect(() => {
-    if (item.vatRate === -1) {
+    if (fakturaBezVAT) {
+      // For faktura bez VAT, set VAT rate to 0 for all items
+      if (item.vatRate !== 0) {
+        const updated = calculateItemValues({ ...item, vatRate: 0 });
+        onUpdateItem(item.id, updated);
+      }
+    } else if (item.vatRate === -1) {
+      // For normal invoices, handle VAT exemption
       const updated = calculateItemValues({ ...item, vatRate: -1 });
       onUpdateItem(item.id, updated);
     }
-  }, [item.id]);
+  }, [item.id, fakturaBezVAT]);
 
   const handleZwolnionyZVATChange = (checked: boolean | string) => {
     const isChecked = typeof checked === 'string' ? checked === 'true' : checked;
+    // If fakturaBezVAT is true, don't allow changing VAT exemption status
+    if (fakturaBezVAT) return;
+    
     const vatRate = isChecked ? -1 : 23; // Default to 23% if not exempt
     const updated = calculateItemValues({ ...item, vatRate: Number(vatRate) });
     onUpdateItem(item.id, updated);
@@ -103,12 +121,14 @@ export const InvoiceItemRow: React.FC<InvoiceItemRowProps> = ({
         />
       </td>
       <td className="px-2 py-2 text-right">{formatCurrency(item.totalNetValue || 0, currency)}</td>
-      {!isReceipt && (
+      {/* Hide VAT columns for receipts or when fakturaBezVAT is true */}
+      {!isReceipt && !fakturaBezVAT && (
         <>
           <td className="px-2 py-2 text-right">
             <Select 
               value={item.vatRate === -1 ? 'zw' : item.vatRate.toString()} 
               onValueChange={handleVatRateChange}
+              disabled={fakturaBezVAT}
             >
               <SelectTrigger className="h-7 w-20">
                 <SelectValue />

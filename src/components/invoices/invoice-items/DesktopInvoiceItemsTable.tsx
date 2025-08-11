@@ -39,7 +39,8 @@ export const DesktopInvoiceItemsTable: React.FC<DesktopInvoiceItemsTableProps> =
             <th className="px-2 py-2 text-right text-xs font-medium w-20">Jedn.</th>
             <th className="px-2 py-2 text-right text-xs font-medium w-28">Cena netto</th>
             <th className="px-2 py-2 text-right text-xs font-medium w-28">Wartość netto</th>
-            {!isReceipt && (
+            {/* Hide VAT columns for receipts or when fakturaBezVAT is true */}
+            {!isReceipt && !fakturaBezVAT && (
               <>
                 <th className="px-2 py-2 text-right text-xs font-medium w-20">VAT</th>
                 <th className="px-2 py-2 text-right text-xs font-medium w-28">Kwota VAT</th>
@@ -77,9 +78,10 @@ export const DesktopInvoiceItemsTable: React.FC<DesktopInvoiceItemsTableProps> =
         {items.length > 0 && (
           <InvoiceItemsTableFooter
             totalNetValue={totalNetValue}
-            totalVatValue={totalVatValue}
+            totalVatValue={fakturaBezVAT ? 0 : totalVatValue}
             totalGrossValue={totalGrossValue}
             isReceipt={isReceipt}
+            fakturaBezVAT={fakturaBezVAT}
           />
         )}
       </table>

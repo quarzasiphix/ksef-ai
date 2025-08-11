@@ -188,11 +188,14 @@ export const EditableInvoiceItemsTable: React.FC<EditableInvoiceItemsTableProps>
                 <th className="text-left p-2 font-medium">Nazwa</th>
                 <th className="text-left p-2 font-medium">Ilość</th>
                 <th className="text-left p-2 font-medium">Jedn.</th>
-                <th className="text-left p-2 font-medium">Cena netto</th>
-                <th className="text-left p-2 font-medium">VAT</th>
-                <th className="text-left p-2 font-medium">Wartość netto</th>
-                <th className="text-left p-2 font-medium">Wartość VAT</th>
-                <th className="text-left p-2 font-medium">Wartość brutto</th>
+                <th className="px-2 py-2 text-left text-xs font-medium">Wartość netto</th>
+              {documentType !== InvoiceType.RECEIPT && !fakturaBezVAT && (
+                <>
+                  <th className="px-2 py-2 text-left text-xs font-medium">VAT</th>
+                  <th className="px-2 py-2 text-left text-xs font-medium">Kwota VAT</th>
+                </>
+              )}
+              <th className="px-2 py-2 text-left text-xs font-medium">Wartość brutto</th>
                 <th className="text-left p-2 font-medium">Akcje</th>
               </tr>
             </thead>
@@ -224,36 +227,30 @@ export const EditableInvoiceItemsTable: React.FC<EditableInvoiceItemsTableProps>
                       className="w-16 bg-[#23283A] text-white border-gray-700"
                     />
                   </td>
-                  <td className="p-2">
-                    <Input
-                      type="number"
-                      value={item.unitPrice}
-                      onChange={(e) => onUpdateItem(item.id, { unitPrice: Number(e.target.value) })}
-                      className="w-24 bg-[#23283A] text-white border-gray-700"
-                      min="0"
-                      step="0.01"
-                    />
-                  </td>
-                  <td className="p-2">
-                    <Select
-                      value={item.vatRate?.toString()}
-                      onValueChange={(value) => onUpdateItem(item.id, { vatRate: Number(value) })}
-                    >
-                      <SelectTrigger className="w-20 bg-[#23283A] text-white border-gray-700">
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent className="bg-[#23283A] text-white">
-                        <SelectItem value="23">23%</SelectItem>
-                        <SelectItem value="8">8%</SelectItem>
-                        <SelectItem value="5">5%</SelectItem>
-                        <SelectItem value="0">0%</SelectItem>
-                        <SelectItem value="-1">zw</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </td>
                   <td className="p-2 text-right">{formatCurrency(item.totalNetValue || 0, currency)}</td>
-                  <td className="p-2 text-right">{formatCurrency(item.totalVatValue || 0, currency)}</td>
-                  <td className="p-2 text-right">{formatCurrency(item.totalGrossValue || 0, currency)}</td>
+                {documentType !== InvoiceType.RECEIPT && !fakturaBezVAT && (
+                  <>
+                    <td className="p-2">
+                      <Select
+                        value={item.vatRate?.toString()}
+                        onValueChange={(value) => onUpdateItem(item.id, { vatRate: Number(value) })}
+                      >
+                        <SelectTrigger className="w-20 bg-[#23283A] text-white border-gray-700">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent className="bg-[#23283A] text-white">
+                          <SelectItem value="23">23%</SelectItem>
+                          <SelectItem value="8">8%</SelectItem>
+                          <SelectItem value="5">5%</SelectItem>
+                          <SelectItem value="0">0%</SelectItem>
+                          <SelectItem value="-1">zw</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </td>
+                    <td className="p-2 text-right">{formatCurrency(item.totalVatValue || 0, currency)}</td>
+                  </>
+                )}
+                <td className="p-2 text-right">{formatCurrency(item.totalGrossValue || 0, currency)}</td>
                   <td className="p-2">
                     <Button
                       variant="ghost"
@@ -296,37 +293,67 @@ export const EditableInvoiceItemsTable: React.FC<EditableInvoiceItemsTableProps>
                     className="w-16 bg-[#23283A] text-white border-gray-700"
                   />
                 </td>
-                <td className="p-2">
+                <td className="px-2 py-2">
                   <Input
                     type="number"
-                    placeholder="0.00"
-                    value={newItem.unitPrice || ""}
-                    onChange={(e) => setNewItem({ ...newItem, unitPrice: Number(e.target.value) })}
-                    className="w-24 bg-[#23283A] text-white border-gray-700"
                     min="0"
                     step="0.01"
+                    value={newItem.unitPrice}
+                    onChange={(e) => setNewItem({...newItem, unitPrice: Number(e.target.value)})}
+                    className="h-7 w-24"
                   />
                 </td>
-                <td className="p-2">
-                  <Select
-                    value={newItem.vatRate?.toString()}
-                    onValueChange={(value) => setNewItem({ ...newItem, vatRate: Number(value) })}
-                  >
-                    <SelectTrigger className="w-20 bg-[#23283A] text-white border-gray-700">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent className="bg-[#23283A] text-white">
-                      <SelectItem value="23">23%</SelectItem>
-                      <SelectItem value="8">8%</SelectItem>
-                      <SelectItem value="5">5%</SelectItem>
-                      <SelectItem value="0">0%</SelectItem>
-                      <SelectItem value="-1">zw</SelectItem>
-                    </SelectContent>
-                  </Select>
+                <td className="px-2 py-2">
+                  <Input
+                    type="number"
+                    min="0"
+                    step="0.01"
+                    value={newItem.totalNetValue || ''}
+                    onChange={(e) => setNewItem({...newItem, totalNetValue: Number(e.target.value)})}
+                    className="h-7 w-24"
+                  />
                 </td>
-                <td className="p-2"></td>
-                <td className="p-2"></td>
-                <td className="p-2"></td>
+              {documentType !== InvoiceType.RECEIPT && !fakturaBezVAT && (
+                <>
+                  <td className="px-2 py-2">
+                    <Select
+                      value={newItem.vatRate?.toString() || '23'}
+                      onValueChange={(value) => setNewItem({...newItem, vatRate: Number(value)})}
+                    >
+                      <SelectTrigger className="h-7 w-20">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="23">23%</SelectItem>
+                        <SelectItem value="8">8%</SelectItem>
+                        <SelectItem value="5">5%</SelectItem>
+                        <SelectItem value="0">0%</SelectItem>
+                        <SelectItem value="-1">zw</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </td>
+                  <td className="px-2 py-2">
+                    <Input
+                      type="number"
+                      min="0"
+                      step="0.01"
+                      value={newItem.totalVatValue || ''}
+                      onChange={(e) => setNewItem({...newItem, totalVatValue: Number(e.target.value)})}
+                      className="h-7 w-24"
+                    />
+                  </td>
+                </>
+              )}
+                <td className="px-2 py-2">
+                  <Input
+                    type="number"
+                    min="0"
+                    step="0.01"
+                    value={newItem.totalGrossValue || ''}
+                    onChange={(e) => setNewItem({...newItem, totalGrossValue: Number(e.target.value)})}
+                    className="h-7 w-24"
+                  />
+                </td>
                 <td className="p-2">
                   <Button
                     variant="ghost"

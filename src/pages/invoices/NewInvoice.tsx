@@ -42,6 +42,7 @@ import { cn } from "@/lib/utils";
 
 // Supabase Repositories
 import { getInvoiceNumberingSettings } from "@/integrations/supabase/repositories/invoiceNumberingSettingsRepository";
+const invoiceRepository = { save: saveInvoice, get: getInvoice };
 import { saveInvoice, getInvoice } from "@/integrations/supabase/repositories/invoiceRepository";
 import { saveExpense } from "@/integrations/supabase/repositories/expenseRepository";
 import { addLink as addContractLink } from "@/integrations/supabase/repositories/contractInvoiceLinkRepository";
@@ -136,30 +137,47 @@ const NewInvoice = React.forwardRef<{
         issueDate: new Date().toISOString().split('T')[0],
         sellDate: new Date().toISOString().split('T')[0],
         dueDate: new Date(new Date().setDate(new Date().getDate() + 14)).toISOString().split('T')[0],
-        paymentMethod: 'przelew' as unknown as PaymentMethod, // Type assertion to handle string to enum conversion
+        paymentMethod: 'przelew' as unknown as PaymentMethod,
         status: 'draft',
         type: type === TransactionType.INCOME ? InvoiceType.SALES : InvoiceType.RECEIPT,
         customerId: '',
         businessProfileId: '',
         items: initialData?.items || [],
         comments: '',
-        vat: true,
-        vatExemptionReason: null,
+        vat: initialData ? !initialData.fakturaBezVAT : true, // Set based on fakturaBezVAT from initialData
+        vatExemptionReason: initialData?.vatExemptionReason || null,
         currency: 'PLN',
         exchangeRate: 1,
         exchangeRateDate: new Date().toISOString().split('T')[0],
         exchangeRateSource: 'NBP',
         isPaid: false,
-        fakturaBezVAT: false,
+        fakturaBezVAT: initialData?.fakturaBezVAT || false,
         ...(initialData ? {
           ...initialData,
           paymentMethod: toPaymentMethodUi(initialData.paymentMethod as PaymentMethodDb),
           issueDate: initialData.issueDate ? new Date(initialData.issueDate).toISOString().split('T')[0] : '',
           sellDate: initialData.sellDate ? new Date(initialData.sellDate).toISOString().split('T')[0] : '',
           dueDate: initialData.dueDate ? new Date(initialData.dueDate).toISOString().split('T')[0] : '',
+          vat: !initialData.fakturaBezVAT, // Ensure vat is set based on fakturaBezVAT
         } : {}),
       },
     });
+
+    // Watch for fakturaBezVAT changes and update vat field accordingly
+    const fakturaBezVAT = form.watch('fakturaBezVAT');
+    useEffect(() => {
+      // When fakturaBezVAT is true, vat should be false, and vice versa
+      form.setValue('vat', !fakturaBezVAT, { shouldValidate: true });
+      
+      // Set default VAT exemption reason if fakturaBezVAT is true
+      if (fakturaBezVAT) {
+        form.setValue('vatExemptionReason', VatExemptionReason.ART_113_UST_1, { shouldValidate: true });
+      } else {
+        form.setValue('vatExemptionReason', null, { shouldValidate: true });
+      }
+      
+      console.log('fakturaBezVAT changed:', fakturaBezVAT, 'VAT set to:', !fakturaBezVAT);
+    }, [fakturaBezVAT, form]);
 
     const businessProfileId = form.watch("businessProfileId");
 
@@ -442,9 +460,6 @@ const NewInvoice = React.forwardRef<{
     const customerId = form.watch("customerId");
     const bankAccountId = form.watch('bankAccountId');
 
-    // Watch for fakturaBezVAT changes
-    const fakturaBezVAT = form.watch('fakturaBezVAT');
-
     // Update all items to 'zw' when fakturaBezVAT is checked
     useEffect(() => {
       if (fakturaBezVAT) {
@@ -614,69 +629,9 @@ const NewInvoice = React.forwardRef<{
         toast.error('Dodaj co najmniej jedną pozycję do faktury');
         return;
       }
-      
-      try {
-        setIsLoading(true);
-        
-        // Convert form data to database format
-        const dbFormData = {
-          ...formValues,
-          paymentMethod: toPaymentMethodDb(formValues.paymentMethod as PaymentMethod),
-          type: formValues.type as InvoiceType,
-          items,
-          transactionType: type,
-          status: 'draft' as const,
-          userId: user.id,
-          businessProfileId: businessProfileId || '',
-          customerId: formValues.customerId || '',
-          vatExemptionReason: formValues.vatExemptionReason || null,
-          vat: formValues.vat,
-          fakturaBezVAT: formValues.fakturaBezVAT || false,
-          currency: formValues.currency || 'PLN',
-          exchangeRate: formValues.exchangeRate || 1,
-          exchangeRateDate: formValues.exchangeRateDate || new Date().toISOString().split('T')[0],
-          exchangeRateSource: formValues.exchangeRateSource || 'NBP',
-          comments: formValues.comments || '',
-          bankAccountId: formValues.bankAccountId || null,
-        };
-
-        // Rest of the form submission logic
-        console.log('Saving invoice with data:', dbFormData);
-        
-        // Call the onSave prop if provided
-        if (onSave) {
-          await onSave(dbFormData);
-        } else {
-          // Default save behavior if no onSave prop provided
-          if (initialData) {
-            // Update existing invoice
-            await invoiceRepository.update(initialData.id, dbFormData);
-            toast.success('Faktura została zaktualizowana');
-          } else {
-            // Create new invoice
-            await invoiceRepository.create(dbFormData);
-            toast.success('Faktura została utworzona');
-          }
-          
-          // Navigate back to invoices list
-          navigate('/invoices');
-        }
-      } catch (error) {
-        console.error('Error saving invoice:', error);
-        toast.error('Wystąpił błąd podczas zapisywania faktury');
-      } finally {
-        setIsLoading(false);
-      }
-
-      if (items.length === 0) {
-        const error = "Dodaj co najmniej jedną pozycję do faktury";
-        console.error(error);
-        toast.error(error);
-        return;
-      }
 
       // Validate required fields
-      if (!formData.customerId || !formData.businessProfileId) {
+      if (!formValues.customerId || !formValues.businessProfileId) {
         const error = 'Proszę wypełnić wszystkie wymagane pola';
         console.error(error);
         toast.error(error);
@@ -686,33 +641,57 @@ const NewInvoice = React.forwardRef<{
       try {
         setIsLoading(true);
         
-        // Convert UI payment method to database format
-        const paymentMethodDb = toPaymentMethodDb(formData.paymentMethod as PaymentMethod);
-        
-        // Prepare the data to be saved with all required fields
-        const saveData = {
-          ...formData,
-          // Ensure all required Invoice fields are included with proper types
-          status: (formData.status || 'draft') as 'draft' | 'sent' | 'paid' | 'overdue',
-          type: (formData.type as InvoiceType) || 'sales',
-          number: formData.number || '',
-          issueDate: formData.issueDate || new Date().toISOString().split('T')[0],
-          sellDate: formData.sellDate || formData.issueDate || new Date().toISOString().split('T')[0],
-          dueDate: formData.dueDate || '',
-          paymentMethod: paymentMethodDb, // Use the converted payment method
-          transactionType: formData.transactionType as TransactionType,
-          currency: formData.currency || 'PLN',
-          exchangeRate: formData.exchangeRate || 1,
-          exchangeRateDate: formData.exchangeRateDate || new Date().toISOString().split('T')[0],
-          exchangeRateSource: (formData.exchangeRateSource || 'NBP') as 'NBP' | 'manual',
-          vat: formData.vat !== undefined ? formData.vat : true,
-          vatExemptionReason: formData.vatExemptionReason as VatExemptionReason | null,
+        // Process items for VAT exemption if needed
+        const processedItems = items.map(item => ({
+          ...item,
+          vatRate: formValues.fakturaBezVAT ? -1 : item.vatRate,
+          totalVatValue: formValues.fakturaBezVAT ? 0 : item.totalVatValue,
+          totalGrossValue: formValues.fakturaBezVAT ? item.totalNetValue : item.totalGrossValue,
+          vatExempt: formValues.fakturaBezVAT
+        }));
+
+        // Calculate totals
+        const totals = calculateInvoiceTotals(processedItems);
+
+        // Prepare invoice data - using camelCase to match the expected type
+        const invoiceData = {
+          // Basic info
+          number: formValues.number,
+          issueDate: formValues.issueDate,
+          dueDate: formValues.dueDate,
+          sellDate: formValues.sellDate,
+          paymentMethod: toPaymentMethodDb(formValues.paymentMethod as PaymentMethod),
           
-          // Process items
-          items: items.map(item => ({
+          // Status and type
+          status: 'draft' as const,
+          type: formValues.type as InvoiceType,
+          transactionType: type,
+          
+          // VAT settings
+          vat: !formValues.fakturaBezVAT,
+          vatExemptionReason: formValues.fakturaBezVAT ? (formValues.vatExemptionReason || VatExemptionReason.ART_113_UST_1) : null,
+          
+          // Currency and exchange rates
+          currency: formValues.currency || 'PLN',
+          exchangeRate: formValues.exchangeRate || 1,
+          exchangeRateDate: formValues.exchangeRateDate || formValues.issueDate,
+          exchangeRateSource: formValues.exchangeRateSource || 'NBP',
+          
+          // Payment info
+          isPaid: false,
+          paymentStatus: 'unpaid',
+          
+          // References - include both camelCase and snake_case for compatibility
+          businessProfileId: formValues.businessProfileId,
+          customerId: formValues.customerId,
+          userId: user.id,
+          user_id: user.id,
+          
+          // Items and totals
+          items: processedItems.map(item => ({
             ...item,
             // Ensure all required item fields are present
-            id: item.id || undefined, // Let the server generate new IDs if needed
+            id: item.id || undefined,
             productId: item.productId || null,
             name: item.name || '',
             description: item.description || '',
@@ -727,32 +706,41 @@ const NewInvoice = React.forwardRef<{
           })),
           
           // Calculate totals if not provided
-          totalNetValue: formData.totalNetValue || items.reduce((sum, item) => sum + (Number(item.totalNetValue) || 0), 0),
-          totalVatValue: formData.totalVatValue || items.reduce((sum, item) => sum + (Number(item.totalVatValue) || 0), 0),
-          totalGrossValue: formData.totalGrossValue || items.reduce((sum, item) => sum + (Number(item.totalGrossValue) || 0), 0),
+          totalNetValue: totals.totalNetValue,
+          totalVatValue: totals.totalVatValue,
+          totalGrossValue: totals.totalGrossValue,
           
-          // Ensure user ID is set
-          user_id: user.id,
+          // Additional fields with defaults
+          comments: formValues.comments || '',
+          notes: formValues.comments || '',
+          isArchived: false,
+          isDeleted: false,
+          fakturaBezVat: !!formValues.fakturaBezVAT
         };
 
-        console.log('Saving invoice with data:', JSON.stringify(saveData, null, 2));
+        console.log('Saving invoice with data:', invoiceData);
         
-        // If onSave prop is provided, use it (for edit mode)
+        // Call the onSave prop if provided
         if (onSave) {
-          console.log('Using onSave callback');
-          await onSave(saveData);
+          await onSave(invoiceData as any);
         } else {
-          // Otherwise, this is a new invoice
-          console.log('Creating new invoice');
-          await saveInvoice(saveData);
-          toast.success('Faktura została zapisana');
-          // Navigate to invoices list
+          // Default save behavior if no onSave prop provided
+          if (initialData) {
+            // Update existing invoice
+            await saveInvoice({ ...invoiceData, id: initialData.id });
+            toast.success('Faktura została zaktualizowana');
+          } else {
+            // Create new invoice
+            await saveInvoice(invoiceData);
+            toast.success('Faktura została utworzona');
+          }
+          
+          // Navigate back to invoices list
           navigate('/invoices');
         }
       } catch (error) {
         console.error('Error saving invoice:', error);
         toast.error(`Wystąpił błąd podczas zapisywania faktury: ${error instanceof Error ? error.message : 'Nieznany błąd'}`);
-        throw error; // Re-throw to be caught by handleFormSubmit
       } finally {
         setIsLoading(false);
       }
