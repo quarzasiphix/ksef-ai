@@ -285,3 +285,18 @@ export interface ContractInvoiceLink {
   invoiceId: string;
   created_at?: string;
 }
+
+export interface Employee {
+  id: string;
+  user_id: string;
+  first_name: string;
+  last_name: string;
+  position: string;
+  department?: string;
+  salary: number;
+  start_date: string;
+  end_date?: string;
+  is_active: boolean;
+  created_at: string;
+  updated_at: string;
+}
