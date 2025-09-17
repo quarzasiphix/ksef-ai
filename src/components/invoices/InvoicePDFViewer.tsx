@@ -5,6 +5,7 @@ import { Download, X } from "lucide-react";
 import { Invoice, BusinessProfile, Customer } from "@/types";
 import { BankAccount } from '@/types/bank';
 import { InvoicePdfTemplate } from "@/components/invoices/pdf/InvoicePdfTemplate";
+import { generateInvoicePdf, getInvoiceFileName } from "@/lib/pdf-utils";
 
 interface InvoicePDFViewerProps {
   invoice: Invoice;
@@ -25,9 +26,22 @@ const InvoicePDFViewer: React.FC<InvoicePDFViewerProps> = ({
 }) => {
   const htmlRef = useRef<HTMLDivElement>(null);
 
-  const handleDownload = () => {
-    // Placeholder for PDF download functionality
-    // Debug logging removed for production
+  const handleDownload = async () => {
+    try {
+      const success = await generateInvoicePdf({
+        invoice,
+        businessProfile,
+        customer,
+        filename: getInvoiceFileName(invoice),
+        bankAccounts,
+      });
+      if (!success) {
+        // no-op; optionally show a toast in parent
+      }
+    } catch (e) {
+      // swallow errors here; parent can handle toasts if needed
+      console.error('PDF download error', e);
+    }
   };
 
   const handleDownloadHtml = () => {

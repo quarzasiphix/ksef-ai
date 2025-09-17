@@ -10,8 +10,9 @@ import {
 } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Invoice, InvoiceType } from "@/types";
-import { Plus, Search, Filter, Trash2, CheckSquare, Square, FileDown, Eye, CreditCard } from "lucide-react";
+import { Plus, Search, Filter, Trash2, CheckSquare, Square, FileDown, Eye, CreditCard, LayoutGrid, List } from "lucide-react";
 import InvoiceCard from "@/components/invoices/InvoiceCard";
+import InvoicePDFViewer from "@/components/invoices/InvoicePDFViewer";
 import { useGlobalData } from "@/hooks/use-global-data";
 import { useBusinessProfile } from "@/context/BusinessProfileContext";
 import {
@@ -44,6 +45,7 @@ const IncomeList = () => {
   const { selectedProfileId } = useBusinessProfile();
   const [searchTerm, setSearchTerm] = useState("");
   const [activeTab, setActiveTab] = useState<string>("all");
+  const [viewMode, setViewMode] = useState<'grid' | 'list'>("list");
   const [contextMenu, setContextMenu] = useState<{visible: boolean, x: number, y: number, invoiceId: string | null}>({visible: false, x: 0, y: 0, invoiceId: null});
   const [selectedInvoices, setSelectedInvoices] = useState<Set<string>>(new Set());
   const [isMultiSelectMode, setIsMultiSelectMode] = useState(false);
@@ -53,6 +55,22 @@ const IncomeList = () => {
   const touchStartPosition = useRef<{ x: number; y: number } | null>(null);
   const navigate = useNavigate();
   const queryClient = useQueryClient();
+  const [previewInvoice, setPreviewInvoice] = useState<Invoice | null>(null);
+  const [isPreviewOpen, setIsPreviewOpen] = useState(false);
+
+  // Persist view mode per business profile in localStorage
+  useEffect(() => {
+    const key = selectedProfileId ? `ui:income:viewMode:${selectedProfileId}` : 'ui:income:viewMode:default';
+    const saved = localStorage.getItem(key) as 'grid' | 'list' | null;
+    if (saved === 'grid' || saved === 'list') {
+      setViewMode(saved);
+    }
+  }, [selectedProfileId]);
+
+  useEffect(() => {
+    const key = selectedProfileId ? `ui:income:viewMode:${selectedProfileId}` : 'ui:income:viewMode:default';
+    localStorage.setItem(key, viewMode);
+  }, [viewMode, selectedProfileId]);
 
   // Load additional data needed for bulk operations
   const { data: customers = [] } = useQuery({
@@ -107,6 +125,43 @@ const IncomeList = () => {
     } catch (error) {
       console.error("Error deleting invoice:", error);
       toast.error("Wystąpił błąd podczas usuwania dokumentu");
+    }
+  };
+
+  const handleBulkDelete = async () => {
+    const invoicesToDelete = getSelectedInvoicesData();
+    if (invoicesToDelete.length === 0) {
+      toast.info("Nie wybrano żadnych dokumentów do usunięcia");
+      return;
+    }
+    try {
+      const promises = invoicesToDelete.map(inv => deleteInvoice(inv.id));
+      await Promise.all(promises);
+      await queryClient.invalidateQueries({ queryKey: ['invoices'] });
+      toast.success(`Usunięto ${invoicesToDelete.length} dokumentów`);
+      clearSelection();
+    } catch (error) {
+      console.error("Error bulk deleting:", error);
+      toast.error("Wystąpił błąd podczas usuwania dokumentów");
+    }
+  };
+
+  const openPreview = (invoice: Invoice) => {
+    setPreviewInvoice(invoice);
+    setIsPreviewOpen(true);
+  };
+
+  const handleMarkAsUnpaid = async (invoiceId: string, currentInvoice: Invoice) => {
+    try {
+      const updatedInvoice = { ...currentInvoice, isPaid: false };
+      await saveInvoice(updatedInvoice);
+      await queryClient.invalidateQueries({ queryKey: ['invoices'] });
+      await queryClient.invalidateQueries({ queryKey: ['invoice', invoiceId] });
+      toast.success("Dokument oznaczono jako niezapłacony");
+      setContextMenu({...contextMenu, visible: false});
+    } catch (error) {
+      console.error("Error marking invoice as unpaid:", error);
+      toast.error("Wystąpił błąd podczas oznaczania dokumentu jako niezapłacony");
     }
   };
 
@@ -401,28 +456,29 @@ const IncomeList = () => {
               </CardDescription>
             </div>
             <div className="flex gap-2 items-center">
-              <Button
-                variant={isMultiSelectMode ? "default" : "outline"}
-                size="sm"
-                onClick={() => {
-                  setIsMultiSelectMode(!isMultiSelectMode);
-                  if (!isMultiSelectMode) {
-                    clearSelection();
-                  }
-                }}
-              >
-                {isMultiSelectMode ? (
-                  <>
-                    <CheckSquare className="h-4 w-4 mr-2" />
-                    Anuluj wybór
-                  </>
-                ) : (
-                  <>
-                    <Square className="h-4 w-4 mr-2" />
-                    Wybierz
-                  </>
-                )}
-              </Button>
+              {/* View Toggle */}
+              <div className="flex rounded-md border overflow-hidden">
+                <button
+                  type="button"
+                  className={`px-2 py-1 text-sm flex items-center gap-1 ${viewMode === 'grid' ? 'bg-accent text-accent-foreground' : 'bg-background text-muted-foreground hover:bg-muted'}`}
+                  onClick={() => setViewMode('grid')}
+                  aria-label="Widok siatki"
+                  title="Widok siatki"
+                >
+                  <LayoutGrid className="h-4 w-4" />
+                  <span className="hidden sm:inline">Siatka</span>
+                </button>
+                <button
+                  type="button"
+                  className={`px-2 py-1 text-sm flex items-center gap-1 border-l ${viewMode === 'list' ? 'bg-accent text-accent-foreground' : 'bg-background text-muted-foreground hover:bg-muted'}`}
+                  onClick={() => setViewMode('list')}
+                  aria-label="Widok listy"
+                  title="Widok listy"
+                >
+                  <List className="h-4 w-4" />
+                  <span className="hidden sm:inline">Lista</span>
+                </button>
+              </div>
               <div className="relative w-full sm:w-72">
                 <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                 <Input
@@ -461,6 +517,48 @@ const IncomeList = () => {
         </div>
         
         <CardContent>
+          {selectedInvoices.size > 0 && (
+            <div className="mb-3">
+              <Card className="bg-background/95 border shadow-sm">
+                <CardContent className="p-3">
+                  <div className="flex flex-wrap items-center gap-2">
+                    <span className="text-sm font-medium mr-2">
+                      Wybrano {selectedInvoices.size} dokumentów
+                    </span>
+                    <Button
+                      variant="destructive"
+                      size="sm"
+                      onClick={handleBulkDelete}
+                    >
+                      <Trash2 className="h-4 w-4 mr-2" /> Usuń
+                    </Button>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={handleBulkDownloadPdf}
+                    >
+                      <FileDown className="h-4 w-4 mr-2" /> Pobierz PDF
+                    </Button>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={handleBulkMarkAsPaid}
+                      disabled={getSelectedInvoicesData().every(inv => inv.isPaid)}
+                    >
+                      <CreditCard className="h-4 w-4 mr-2" /> Oznacz jako zapłacone
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={clearSelection}
+                    >
+                      Odznacz wszystkie
+                    </Button>
+                  </div>
+                </CardContent>
+              </Card>
+            </div>
+          )}
           {isLoading ? (
             <div className="text-center py-8">
               Ładowanie...
@@ -470,37 +568,164 @@ const IncomeList = () => {
               {searchTerm.length > 0 || activeTab !== "all" ? "Brak wyników wyszukiwania" : "Brak dokumentów"}
             </div>
           ) : (
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
-              {filteredInvoices.map(invoice => (
-                <div 
-                  key={invoice.id} 
-                  className="relative"
-                  onContextMenu={isMultiSelectMode ? undefined : (e) => handleContextMenu(e, invoice.id)}
-                  onClick={isMultiSelectMode ? (e) => toggleInvoiceSelection(invoice.id, e) : () => navigate(`/income/${invoice.id}`)}
-                  onTouchStart={isMultiSelectMode ? undefined : (e) => handleTouchStart(e, invoice.id)}
-                  onTouchMove={isMultiSelectMode ? undefined : handleTouchMove}
-                  onTouchEnd={isMultiSelectMode ? undefined : handleTouchEnd}
-                >
-                  {isMultiSelectMode && (
-                    <div 
-                      className="absolute top-2 left-2 z-10 bg-white rounded-md p-1 shadow-md"
-                      onClick={(e) => toggleInvoiceSelection(invoice.id, e)}
-                    >
-                      <Checkbox
-                        checked={selectedInvoices.has(invoice.id)}
-                        onChange={() => {}} // Controlled by the onClick above
-                      />
+            viewMode === 'grid' ? (
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+                {filteredInvoices.map(invoice => (
+                  <div 
+                    key={invoice.id} 
+                    className="relative"
+                    onContextMenu={isMultiSelectMode ? undefined : (e) => handleContextMenu(e, invoice.id)}
+                    onClick={isMultiSelectMode ? (e) => toggleInvoiceSelection(invoice.id, e) : () => navigate(`/income/${invoice.id}`)}
+                    onTouchStart={isMultiSelectMode ? undefined : (e) => handleTouchStart(e, invoice.id)}
+                    onTouchMove={isMultiSelectMode ? undefined : handleTouchMove}
+                    onTouchEnd={isMultiSelectMode ? undefined : handleTouchEnd}
+                  >
+                    {isMultiSelectMode && (
+                      <div 
+                        className="absolute top-2 left-2 z-10 bg-white rounded-md p-1 shadow-md"
+                        onClick={(e) => toggleInvoiceSelection(invoice.id, e)}
+                      >
+                        <Checkbox
+                          checked={selectedInvoices.has(invoice.id)}
+                          onChange={() => {}} // Controlled by the onClick above
+                        />
+                      </div>
+                    )}
+                    <div className={`${isMultiSelectMode && selectedInvoices.has(invoice.id) ? 'ring-2 ring-primary' : ''} transition-all rounded-lg`}>
+                      <InvoiceCard invoice={invoice} />
                     </div>
-                  )}
-                  <div className={`${isMultiSelectMode && selectedInvoices.has(invoice.id) ? 'ring-2 ring-primary' : ''} transition-all rounded-lg`}>
-                    <InvoiceCard invoice={invoice} />
                   </div>
+                ))}
+              </div>
+            ) : (
+              <div className="rounded-md border">
+                <div className="divide-y">
+                  {filteredInvoices.map((invoice) => (
+                    <div
+                      key={invoice.id}
+                      className={`relative ${selectedInvoices.has(invoice.id) ? 'bg-accent/10' : ''}`}
+                      onContextMenu={(e) => handleContextMenu(e, invoice.id)}
+                      onClick={() => navigate(`/income/${invoice.id}`)}
+                      onTouchStart={(e) => handleTouchStart(e, invoice.id)}
+                      onTouchMove={handleTouchMove}
+                      onTouchEnd={handleTouchEnd}
+                    >
+                      <div className="flex items-center justify-between gap-4 px-4 py-3 hover:bg-muted">
+                        <div className="mr-2 w-8 flex items-center justify-center" onClick={(e) => e.stopPropagation()}>
+                          <div className="p-1 rounded-md hover:bg-muted/50 active:bg-muted/70">
+                            <Checkbox
+                              checked={selectedInvoices.has(invoice.id)}
+                              onCheckedChange={() => toggleInvoiceSelection(invoice.id)}
+                            />
+                          </div>
+                        </div>
+                        <div className="min-w-0">
+                          <div className="flex items-center gap-2">
+                            <span className="font-medium truncate">{invoice.number}</span>
+                            {invoice.isPaid && (
+                              <span className="text-xs bg-emerald-100 text-emerald-800 px-2 py-0.5 rounded">Zapłacone</span>
+                            )}
+                          </div>
+                          <div className="mt-1 text-sm text-muted-foreground truncate">
+                            {invoice.customerName}
+                          </div>
+                          {/* Extra customer info line */}
+                          <div className="mt-0.5 text-xs text-muted-foreground flex flex-wrap gap-x-4 gap-y-1">
+                            {(() => {
+                              const customer = (customers as any[])?.find((c) => c.id === invoice.customerId);
+                              if (!customer) return null;
+                              return (
+                                <>
+                                  {customer.taxId && (
+                                    <span className="truncate">NIP: {customer.taxId}</span>
+                                  )}
+                                  {(customer.address || customer.postalCode || customer.city) && (
+                                    <span className="truncate">
+                                      {customer.address}{customer.address && (customer.postalCode || customer.city) ? ", " : ""}
+                                      {customer.postalCode} {customer.city}
+                                    </span>
+                                  )}
+                                  {customer.phone && (
+                                    <span className="truncate">{customer.phone}</span>
+                                  )}
+                                  {customer.email && (
+                                    <span className="truncate">{customer.email}</span>
+                                  )}
+                                </>
+                              );
+                            })()}
+                          </div>
+                        </div>
+                        <div className="flex items-center gap-4 text-sm whitespace-nowrap">
+                          <span className="text-muted-foreground w-28">{new Date(invoice.issueDate).toLocaleDateString()}</span>
+                          <span className="font-medium w-28 text-right">{(invoice.totalGrossValue ?? 0).toLocaleString('pl-PL', { style: 'currency', currency: 'PLN' })}</span>
+                          {/* Action group */}
+                          <div className="flex items-center gap-2 ml-2">
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={(e) => { e.stopPropagation(); navigate(`/income/${invoice.id}`); }}
+                            >
+                              Podgląd
+                            </Button>
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={(e) => { e.stopPropagation(); openPreview(invoice); }}
+                            >
+                              PDF
+                            </Button>
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={(e) => { e.stopPropagation(); navigate(`/income/${invoice.id}/edit`); }}
+                            >
+                              Edytuj
+                            </Button>
+                          </div>
+                          {/* Payment toggle pinned at end with fixed width */}
+                          <div className="ml-2">
+                            {invoice.isPaid ? (
+                              <Button
+                                variant="secondary"
+                                size="sm"
+                                className="w-36 justify-center"
+                                onClick={async (e) => { e.stopPropagation(); await handleMarkAsUnpaid(invoice.id, invoice); }}
+                              >
+                                Niezapłacone
+                              </Button>
+                            ) : (
+                              <Button
+                                variant="default"
+                                size="sm"
+                                className="w-36 justify-center"
+                                onClick={async (e) => { e.stopPropagation(); await handleMarkAsPaid(invoice.id, invoice); }}
+                              >
+                                Oznacz jako zapłacony
+                              </Button>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
                 </div>
-              ))}
-            </div>
+              </div>
+            )
           )}
         </CardContent>
       </Card>
+      {/* Invoice Preview Modal */}
+      {previewInvoice && (
+        <InvoicePDFViewer
+          invoice={previewInvoice}
+          businessProfile={businessProfile as any}
+          customer={customers?.find((c: any) => c.id === previewInvoice.customerId) as any}
+          bankAccounts={bankAccounts}
+          isOpen={isPreviewOpen}
+          onClose={() => setIsPreviewOpen(false)}
+        />
+      )}
       
       {/* Context Menu - Rendered at the root level */}
       {contextMenu.visible && (
@@ -557,47 +782,7 @@ const IncomeList = () => {
         </div>
       )}
 
-      {/* Bulk Actions Floating Menu */}
-      {selectedInvoices.size > 0 && (
-        <div className="fixed bottom-20 md:bottom-6 left-1/2 transform -translate-x-1/2 z-50">
-          <Card className="bg-background border shadow-lg">
-            <CardContent className="p-4">
-              <div className="flex items-center gap-2">
-                <span className="text-sm font-medium mr-4">
-                  Wybrano {selectedInvoices.size} faktur
-                </span>
-                
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={handleBulkMarkAsPaid}
-                  disabled={getSelectedInvoicesData().every(inv => inv.isPaid)}
-                >
-                  <CreditCard className="h-4 w-4 mr-2" />
-                  Oznacz jako zapłacone
-                </Button>
-                
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={handleBulkDownloadPdf}
-                >
-                  <FileDown className="h-4 w-4 mr-2" />
-                  Pobierz PDF
-                </Button>
-                
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={clearSelection}
-                >
-                  Anuluj
-                </Button>
-              </div>
-            </CardContent>
-          </Card>
-        </div>
-      )}
+      {/* In-flow banner rendered above in CardContent */}
     </div>
   );
 };
