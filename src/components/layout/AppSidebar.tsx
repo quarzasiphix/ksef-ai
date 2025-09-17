@@ -16,6 +16,8 @@ import {
   BarChart,
   Banknote,
   Calculator,
+  FileText,
+  CreditCard
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import {
@@ -62,24 +64,28 @@ const AppSidebar = () => {
   // Dashboard item
   const dashboardItem: SidebarItem = { title: "Dashboard", path: "/", icon: BarChart };
 
-  // Tablet-only finance items
-  const bankItem: SidebarItem = { title: "Bankowość", path: "/bank", icon: Banknote, className: "md:flex lg:hidden" };
-  const accountingItem: SidebarItem = { title: "Księgowość", path: "/accounting", icon: Calculator, className: "md:flex lg:hidden" };
+  // Finanse group
+  const fakturyItem: SidebarItem = { title: "Faktury", path: "/income", icon: FileText };
+  const wydatkiItem: SidebarItem = { title: "Wydatki", path: "/expense", icon: CreditCard };
+  const bankItem: SidebarItem = { title: "Bankowość", path: "/bank", icon: Banknote };
+  const accountingItem: SidebarItem = { title: "Księgowość", path: "/accounting", icon: Calculator };
 
-  // Define base items (finance links removed)
+  // Zarządzanie group
   const clientsItem = { title: "Klienci", path: "/customers", icon: Users } as SidebarItem;
   const productsItem = { title: "Produkty", path: "/products", icon: Package } as SidebarItem;
   const contractsItem: SidebarItem = { title: "Umowy", path: "/contracts", icon: Signature };
-  const inventoryItem: SidebarItem = { title: "Magazyn", path: "/inventory", icon: Boxes, premium: true };
   const employeesItem = { title: "Pracownicy", path: "/employees", icon: UserCheck } as SidebarItem;
+  const inventoryItem: SidebarItem = { title: "Magazyn", path: "/inventory", icon: Boxes, premium: true };
+
+  // KSeF and settings (not in main sidebar groups)
   const ksefItem: SidebarItem = { title: "KSeF", path: "/ksef", icon: Building, premium: true };
   const settingsItem = { title: "Ustawienia", path: "/settings", icon: Settings } as SidebarItem;
 
-  // Customers & Offer section
-  const offerItems: SidebarItem[] = [clientsItem, productsItem, contractsItem, ...(isPremium ? [inventoryItem] : [])];
+  // Finanse sidebar group
+  const finanseItems: SidebarItem[] = [fakturyItem, wydatkiItem, bankItem, accountingItem];
 
-  // Administration section
-  const adminItems: SidebarItem[] = [employeesItem, ...(isPremium ? [ksefItem] : []), settingsItem];
+  // Zarządzanie sidebar group
+  const zarzadzanieItems: SidebarItem[] = [clientsItem, productsItem, contractsItem, employeesItem, ...(isPremium ? [inventoryItem] : [])];
 
   // Premium section for non-premium users (upsell)
   const premiumFeatures: SidebarItem[] = [inventoryItem, ksefItem];
@@ -209,36 +215,11 @@ const AppSidebar = () => {
                   </NavLink>
                 </SidebarMenuButton>
               </SidebarMenuItem>
-              {/* Tablet-only: Bankowość and Księgowość */}
-              <SidebarMenuItem key={bankItem.path} className="md:flex lg:hidden">
-                <SidebarMenuButton
-                  asChild
-                  isActive={isActive(bankItem.path)}
-                  tooltip={isCollapsed ? bankItem.title : undefined}
-                >
-                  <NavLink to={bankItem.path} className={getNavClassName(bankItem.path, bankItem.premium, bankItem.className)}>
-                    <bankItem.icon className="h-5 w-5 flex-shrink-0" />
-                    {!isCollapsed && <span>{bankItem.title}</span>}
-                  </NavLink>
-                </SidebarMenuButton>
-              </SidebarMenuItem>
-              <SidebarMenuItem key={accountingItem.path} className="md:flex lg:hidden">
-                <SidebarMenuButton
-                  asChild
-                  isActive={isActive(accountingItem.path)}
-                  tooltip={isCollapsed ? accountingItem.title : undefined}
-                >
-                  <NavLink to={accountingItem.path} className={getNavClassName(accountingItem.path, accountingItem.premium, accountingItem.className)}>
-                    <accountingItem.icon className="h-5 w-5 flex-shrink-0" />
-                    {!isCollapsed && <span>{accountingItem.title}</span>}
-                  </NavLink>
-                </SidebarMenuButton>
-              </SidebarMenuItem>
             </SidebarMenu>
           </SidebarGroupContent>
         </SidebarGroup>
 
-        {/* Quick Actions */}
+                {/* Quick Actions */}
         <SidebarGroup>
           {!isCollapsed && <SidebarGroupLabel>SZYBKIE AKCJE</SidebarGroupLabel>}
           <SidebarGroupContent>
@@ -267,12 +248,12 @@ const AppSidebar = () => {
           </SidebarGroupContent>
         </SidebarGroup>
 
-        {/* Kontrahenci & Oferta */}
+        {/* Finanse */}
         <SidebarGroup>
-          {!isCollapsed && <SidebarGroupLabel>KONTRAHENCI & OFERTA</SidebarGroupLabel>}
+          {!isCollapsed && <SidebarGroupLabel>FINANSE</SidebarGroupLabel>}
           <SidebarGroupContent>
             <SidebarMenu>
-              {offerItems.map((item) => (
+              {finanseItems.map((item) => (
                 <SidebarMenuItem key={item.path}>
                   <SidebarMenuButton
                     asChild
@@ -295,7 +276,7 @@ const AppSidebar = () => {
           {!isCollapsed && <SidebarGroupLabel>ZARZĄDZANIE</SidebarGroupLabel>}
           <SidebarGroupContent>
             <SidebarMenu>
-              {adminItems.map((item) => (
+              {zarzadzanieItems.map((item) => (
                 <SidebarMenuItem key={item.path}>
                   <SidebarMenuButton
                     asChild

@@ -237,16 +237,56 @@ const CustomerList = () => {
               {searchTerm.length > 0 ? "Brak wyników wyszukiwania" : "Brak klientów"}
             </div>
           ) : (
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
-              {filteredCustomers.map(customer => (
-                <div
-                  key={customer.id}
-                  className="relative"
-                  onContextMenu={e => handleContextMenu(e, customer)}
-                >
-                  <CustomerCard customer={customer} />
-                </div>
-              ))}
+            <div className="rounded-md border">
+              <div className="divide-y">
+                {filteredCustomers.map((customer) => (
+                  <div
+                    key={customer.id}
+                    className="relative"
+                    onContextMenu={(e) => handleContextMenu(e, customer)}
+                  >
+                    <Link
+                      to={`/customers/${customer.id}`}
+                      className="flex items-center justify-between gap-4 px-4 py-3 hover:bg-muted no-underline"
+                    >
+                      <div className="min-w-0">
+                        <div className="flex items-center gap-2">
+                          <span className="font-medium truncate">{customer.name}</span>
+                          {customer.taxId && (
+                            <Badge variant="outline" className="text-xs">NIP: {customer.taxId}</Badge>
+                          )}
+                          {customer.customerType && (
+                            <Badge
+                              variant="outline"
+                              className={`text-xs ${customer.customerType === 'odbiorca' ? 'border-green-600 text-green-700' : customer.customerType === 'sprzedawca' ? 'border-blue-600 text-blue-700' : 'border-yellow-600 text-yellow-700'}`}
+                            >
+                              {CLIENT_TYPE_LABELS[customer.customerType]}
+                            </Badge>
+                          )}
+                        </div>
+                        <div className="mt-1 flex items-center gap-4 text-sm text-muted-foreground truncate">
+                          <span className="flex items-center gap-1 truncate">
+                            <MapPin className="h-3.5 w-3.5" />
+                            <span className="truncate">{customer.address}, {customer.postalCode} {customer.city}</span>
+                          </span>
+                          {customer.email && (
+                            <span className="flex items-center gap-1 truncate">
+                              <Mail className="h-3.5 w-3.5" />
+                              <span className="truncate">{customer.email}</span>
+                            </span>
+                          )}
+                          {customer.phone && (
+                            <span className="flex items-center gap-1">
+                              <Phone className="h-3.5 w-3.5" />
+                              <span>{customer.phone}</span>
+                            </span>
+                          )}
+                        </div>
+                      </div>
+                    </Link>
+                  </div>
+                ))}
+              </div>
             </div>
           )}
         </CardContent>

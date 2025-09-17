@@ -66,17 +66,15 @@ const MobileNavigation = () => {
     { title: "KSeF", path: "/ksef", icon: Building, premium: true, group: "zarzadzanie" },
   ];
 
-  // Finanse group
+  // Finanse group (updated to match desktop)
   const finanseItems = [
     { title: "Faktury", path: "/income", icon: FileText },
     { title: "Wydatki", path: "/expense", icon: CreditCard },
     { title: "Bankowość", path: "/bank", icon: Banknote },
+    { title: "Księgowość", path: "/accounting", icon: Calculator, premium: true },
   ];
-  if (isPremium) {
-    finanseItems.push(premiumFeatures[0]); // Księgowość
-  }
 
-  // Zarządzanie group
+  // Zarządzanie group (updated to match desktop)
   const zarzadzanieItems = [
     { title: "Klienci", path: "/customers", icon: Users },
     { title: "Produkty", path: "/products", icon: Package },
@@ -84,8 +82,11 @@ const MobileNavigation = () => {
     { title: "Pracownicy", path: "/employees", icon: UserCheck },
     { title: "Magazyn", path: "/inventory", icon: Boxes, premium: true },
   ];
+
+  // If premium, add Księgowość to Finanse and KSeF to Zarządzanie
   if (isPremium) {
-    zarzadzanieItems.push(premiumFeatures[1]); // KSeF
+    // Księgowość is already included as premium in Finanse
+    zarzadzanieItems.push({ title: "KSeF", path: "/ksef", icon: Building, premium: true });
   }
 
   // Ustawienia group

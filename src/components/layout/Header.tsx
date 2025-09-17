@@ -1,6 +1,6 @@
 import React from "react";
 import { Button } from "@/components/ui/button";
-import { Plus, ArrowDownCircle, ArrowUpCircle, PiggyBank, UserPlus, PackagePlus, DollarSign, FileText, CreditCard, Banknote, Calculator } from "lucide-react";
+import { Plus, Minus, ArrowDownCircle, ArrowUpCircle, PiggyBank, UserPlus, PackagePlus, DollarSign, FileText, CreditCard, Banknote, Calculator, Users, Package } from "lucide-react";
 import { useNavigate, Link, useLocation } from "react-router-dom";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { ThemeToggle } from "@/components/theme/ThemeToggle";
@@ -25,13 +25,15 @@ const Header = () => {
     <header className="sticky top-0 z-40 border-b px-4 md:px-6 py-3 flex items-center justify-between bg-background">
       <div className="flex items-center gap-2 md:gap-4">
         {/* Desktop/Tablet: Finance buttons */}
-        <div className="hidden md:flex items-center gap-2">
+        <div className="hidden lg:flex items-center gap-2">
+          {/* Only show Faktury and Wydatek once, then separator, then Klienci and Produkty */}
           <Button
             asChild
             variant={isActive("/income") ? "default" : "outline"}
             className="font-bold px-5 py-2 text-base flex items-center gap-2"
           >
             <Link to="/income" aria-current={isActive("/income") ? "page" : undefined}>
+              <Plus className="w-4 h-4 mr-1 text-green-600" />
               <FileText className="w-5 h-5 mr-1" /> Faktury
             </Link>
           </Button>
@@ -41,30 +43,30 @@ const Header = () => {
             className="px-4 py-2 text-base flex items-center gap-2"
           >
             <Link to="/expense" aria-current={isActive("/expense") ? "page" : undefined}>
+              <Minus className="w-4 h-4 mr-1 text-red-600" />
               <CreditCard className="w-5 h-5 mr-1" /> Wydatki
             </Link>
           </Button>
-          {/* Show these only on large screens */}
-          <div className="hidden lg:flex items-center gap-2">
-            <Button
-              asChild
-              variant={isActive("/bank") ? "default" : "outline"}
-              className="px-4 py-2 text-base flex items-center gap-2"
-            >
-              <Link to="/bank" aria-current={isActive("/bank") ? "page" : undefined}>
-                <Banknote className="w-5 h-5 mr-1" /> Bankowość
-              </Link>
-            </Button>
-            <Button
-              asChild
-              variant={isActive("/accounting") ? "default" : "outline"}
-              className="px-4 py-2 text-base flex items-center gap-2"
-            >
-              <Link to="/accounting" aria-current={isActive("/accounting") ? "page" : undefined}>
-                <Calculator className="w-5 h-5 mr-1" /> Księgowość
-              </Link>
-            </Button>
-          </div>
+          {/* Separator between Wydatek and Klienci */}
+          <div className="h-6 w-px bg-muted mx-2" />
+          <Button
+            asChild
+            variant={isActive("/customers") ? "default" : "outline"}
+            className="px-4 py-2 text-base flex items-center gap-2"
+          >
+            <Link to="/customers" aria-current={isActive("/customers") ? "page" : undefined}>
+              <Users className="w-5 h-5 mr-1" /> Klienci
+            </Link>
+          </Button>
+          <Button
+            asChild
+            variant={isActive("/products") ? "default" : "outline"}
+            className="px-4 py-2 text-base flex items-center gap-2"
+          >
+            <Link to="/products" aria-current={isActive("/products") ? "page" : undefined}>
+              <Package className="w-5 h-5 mr-1" /> Produkty
+            </Link>
+          </Button>
         </div>
         <h1 className={`font-bold text-invoice ${isMobile ? "text-base" : "text-lg"}`}>KsiegaI</h1>
       </div>
