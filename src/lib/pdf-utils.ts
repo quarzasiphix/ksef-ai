@@ -1,14 +1,14 @@
-import generatePdf from 'react-to-pdf';
-import { Invoice } from '@/types';
-import { formatPolishDate, formatCurrency } from '@/lib/invoice-utils';
+import React from 'react';
+import type { ReactElement } from 'react';
+import { pdf } from '@react-pdf/renderer';
+import html2canvas from 'html2canvas';
 import { Capacitor } from '@capacitor/core';
 import { Share } from '@capacitor/share';
-import { Filesystem, Directory } from '@capacitor/filesystem';
-import html2canvas from 'html2canvas';
-import React from 'react';
-import { BusinessProfile, Customer } from '@/types';
+
+import { Invoice, BusinessProfile, Customer } from '@/types';
 import { BankAccount } from '@/types/bank';
 import { InvoicePdfTemplate } from '@/components/invoices/pdf/InvoicePdfTemplate';
+import { InvoicePdfDocument } from '@/components/invoices/pdf/InvoicePdfDocument';
 
 interface PdfOptions {
   filename?: string;
@@ -29,6 +29,49 @@ const defaultOptions = {
     scale: 2,
     useCORS: true,
     logging: false,
+  }
+};
+
+interface GenerateSelectablePdfParams {
+  invoice: Invoice;
+  businessProfile?: BusinessProfile | null;
+  customer?: Customer | null;
+  bankAccounts?: BankAccount[];
+  filename?: string;
+}
+
+export const generateSelectableInvoicePdf = async ({
+  invoice,
+  businessProfile,
+  customer,
+  bankAccounts = [],
+  filename,
+}: GenerateSelectablePdfParams): Promise<boolean> => {
+  try {
+    const documentElement = React.createElement(InvoicePdfDocument, {
+      invoice,
+      businessProfile: businessProfile ?? null,
+      customer: customer ?? null,
+      bankAccounts,
+    }) as unknown as ReactElement;
+
+    const blob = await pdf(documentElement as any).toBlob();
+
+    const finalName = filename || getInvoiceFileName(invoice);
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = finalName;
+    document.body.appendChild(link);
+    link.click();
+    setTimeout(() => {
+      document.body.removeChild(link);
+      URL.revokeObjectURL(url);
+    }, 200);
+    return true;
+  } catch (error) {
+    console.error('Error generating selectable invoice PDF:', error);
+    return false;
   }
 };
 
