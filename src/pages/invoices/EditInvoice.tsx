@@ -316,6 +316,7 @@ const EditInvoice = () => {
                 ref={formRef}
                 onSave={handleUpdate}
                 hideHeader={true}
+                showFormActions={false}
                 bankAccounts={bankAccounts}
                 items={items}
                 onItemsChange={handleItemsChange}
@@ -331,9 +332,8 @@ const EditInvoice = () => {
 
         <div className="hidden md:block sticky bottom-0 bg-white dark:bg-gray-800 border-t border-gray-200 dark:border-gray-700 p-4">
           <InvoiceFormActions
-            onSave={() => formRef.current?.handleSubmit(handleUpdate)()}
-            onCancel={() => navigate(invoice?.transactionType === 'income' ? '/income' : '/expense')}
-            isSaving={isSaving}
+            onSubmit={() => formRef.current?.handleSubmit(handleUpdate)()}
+            isLoading={isSaving}
             isEditing={true} // Always editing in this component
             // NIE przekazuj onSubmit, bo obsługuje to NewInvoice
             transactionType={invoice.transactionType as any}

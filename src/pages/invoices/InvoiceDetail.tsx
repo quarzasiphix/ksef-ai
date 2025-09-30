@@ -73,6 +73,7 @@ const InvoiceDetail: React.FC<InvoiceDetailProps> = ({ type }) => {
 
   // Preprocess items to ensure correct VAT values using calculateInvoiceTotals
   const { items: processedItems, totalNetValue, totalVatValue, totalGrossValue } = calculateInvoiceTotals(invoice?.items || []);
+  const fakturaBezVAT = invoice?.fakturaBezVAT || invoice?.vat === false;
   
   const totals = {
     net: totalNetValue,
@@ -184,7 +185,7 @@ const InvoiceDetail: React.FC<InvoiceDetailProps> = ({ type }) => {
   const getInvoiceTypeLabel = (invoiceType: string) => {
     switch (invoiceType) {
       case 'sales':
-        return 'Faktura VAT';
+        return fakturaBezVAT ? 'Faktura' : 'Faktura VAT';
       case 'receipt':
         return 'Rachunek';
       default:
@@ -370,10 +371,12 @@ const InvoiceDetail: React.FC<InvoiceDetailProps> = ({ type }) => {
               <span className="text-muted-foreground">Wartość netto:</span>
               <span>{formatCurrency(totals.net, currency)}</span>
             </div>
-            <div className="flex justify-between">
-              <span className="text-muted-foreground">Podatek VAT:</span>
-              <span>{formatCurrency(totals.vat, currency)}</span>
-            </div>
+            {!fakturaBezVAT && (
+              <div className="flex justify-between">
+                <span className="text-muted-foreground">Podatek VAT:</span>
+                <span>{formatCurrency(totals.vat, currency)}</span>
+              </div>
+            )}
             <div className="flex justify-between font-semibold text-lg border-t pt-3">
               <span>Wartość brutto:</span>
               <span className="text-green-600">{formatCurrency(totals.gross, currency)}</span>
@@ -407,6 +410,7 @@ const InvoiceDetail: React.FC<InvoiceDetailProps> = ({ type }) => {
         totalGrossValue={totals.gross}
         type={invoice.type as any}
         currency={currency}
+        fakturaBezVAT={fakturaBezVAT}
       />
 
       {/* Linked contracts */}

@@ -666,19 +666,20 @@ const IncomeList = () => {
                               size="sm"
                               onClick={(e) => { e.stopPropagation(); navigate(`/income/${invoice.id}`); }}
                             >
-                              Podgląd
+                              Otwórz
                             </Button>
                             <Button
                               variant="outline"
                               size="sm"
                               onClick={(e) => { e.stopPropagation(); openPreview(invoice); }}
                             >
-                              PDF
+                              <Eye className="h-4 w-4 mr-2" />
+                              Podgląd
                             </Button>
                             <Button
                               variant="outline"
                               size="sm"
-                              onClick={(e) => { e.stopPropagation(); navigate(`/income/${invoice.id}/edit`); }}
+                              onClick={(e) => { e.stopPropagation(); navigate(`/income/edit/${invoice.id}`); }}
                             >
                               Edytuj
                             </Button>
@@ -701,7 +702,7 @@ const IncomeList = () => {
                                 className="w-36 justify-center"
                                 onClick={async (e) => { e.stopPropagation(); await handleMarkAsPaid(invoice.id, invoice); }}
                               >
-                                Oznacz jako zapłacony
+                                zapłacone
                               </Button>
                             )}
                           </div>

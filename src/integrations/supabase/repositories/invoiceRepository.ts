@@ -307,37 +307,12 @@ export async function saveInvoice(invoice: Omit<Invoice, 'id' | 'ksef' | 'vat' |
     const { error: deleteError } = await supabase
       .from("invoice_items")
       .delete()
-      .eq("invoice_id", invoice.id);
+      .eq("invoice_id", invoice.id)
+      .eq("user_id", invoice.user_id);
       
     if (deleteError) {
       console.error('Error deleting old invoice items:', deleteError);
       throw deleteError;
-    }
-    
-    // Insert new items
-    if (invoice.items && invoice.items.length > 0) {
-      const { error: itemsError } = await supabase
-        .from("invoice_items")
-        .insert(
-          invoice.items.map(item => ({
-            invoice_id: invoice.id,
-            name: item.name,
-            quantity: item.quantity,
-            unit_price: item.unitPrice,
-            vat_rate: item.vatRate,
-            unit: item.unit || 'szt',
-            total_net_value: item.totalNetValue || 0,
-            total_gross_value: item.totalGrossValue || 0,
-            total_vat_value: item.totalVatValue || 0,
-            vat_exempt: item.vatExempt || false,
-            product_id: item.productId || null
-          }))
-        );
-        
-      if (itemsError) {
-        console.error('Error inserting new invoice items:', itemsError);
-        throw itemsError;
-      }
     }
     
     invoiceId = invoice.id;
@@ -361,6 +336,10 @@ export async function saveInvoice(invoice: Omit<Invoice, 'id' | 'ksef' | 'vat' |
 
   // Then, save all invoice items
   if (invoice.items && invoice.items.length > 0) {
+    if (!invoice.user_id) {
+      throw new Error('User ID is required to save invoice items');
+    }
+
     const itemsPayload = invoice.items.map(item => {
       // Use vatExempt flag instead of checking vatRate === -1
       const isVatExempt = item.vatExempt || false;
@@ -379,7 +358,7 @@ export async function saveInvoice(invoice: Omit<Invoice, 'id' | 'ksef' | 'vat' |
       return {
         // NIE przekazuj id!
         invoice_id: invoiceId,
-        user_id: invoice.user_id || null,
+        user_id: invoice.user_id,
         product_id: item.productId || null,
         name: item.name,
         quantity: quantity,
@@ -557,9 +536,9 @@ export async function getInvoice(id: string): Promise<Invoice> {
     bankAccountNumber: undefined,
     created_at: data.created_at,
     updated_at: data.updated_at,
-    vat: data.vat || true,
-    vatExemptionReason: data.vat_exemption_reason as VatExemptionReason | undefined || undefined,
-    fakturaBezVAT: undefined,
+    vat: typeof data.vat === 'boolean' ? data.vat : true,
+    vatExemptionReason: (data.vat_exemption_reason as VatExemptionReason | null) ?? undefined,
+    fakturaBezVAT: data.vat === false,
     currency: data.currency || 'PLN',
     exchangeRate: data.exchange_rate || null
   };
@@ -691,9 +670,9 @@ export async function getInvoices(userId: string, businessProfileId?: string, pe
       bankAccountNumber: undefined,
       created_at: dbInvoice.created_at,
       updated_at: dbInvoice.updated_at,
-      vat: dbInvoice.vat || true,
-      vatExemptionReason: dbInvoice.vat_exemption_reason as VatExemptionReason | undefined || undefined,
-      fakturaBezVAT: undefined,
+      vat: typeof dbInvoice.vat === 'boolean' ? dbInvoice.vat : true,
+      vatExemptionReason: (dbInvoice.vat_exemption_reason as VatExemptionReason | null) ?? undefined,
+      fakturaBezVAT: dbInvoice.vat === false,
       currency: dbInvoice.currency || 'PLN',
       exchangeRate: dbInvoice.exchange_rate || null
     };

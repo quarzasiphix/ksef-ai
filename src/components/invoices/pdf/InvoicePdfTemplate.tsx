@@ -124,10 +124,10 @@ interface InvoicePdfTemplateProps {
     bankAccounts?: BankAccount[];
 }
 
-const getInvoiceTypeTitle = (type: InvoiceType) => {
+const getInvoiceTypeTitle = (type: InvoiceType, fakturaBezVAT?: boolean) => {
     switch (type) {
         case InvoiceType.SALES:
-            return "Faktura VAT";
+            return fakturaBezVAT ? "Faktura" : "Faktura VAT";
         case InvoiceType.RECEIPT:
             return "Rachunek";
         case InvoiceType.PROFORMA:
@@ -256,6 +256,8 @@ const pdfStyles: Record<string, React.CSSProperties> = {
 
 export const InvoicePdfTemplate: React.FC<InvoicePdfTemplateProps> = ({ invoice, businessProfile, customer, bankAccounts = [] }) => {
     const isReceipt = invoice.type === InvoiceType.RECEIPT;
+    const fakturaBezVAT = invoice.fakturaBezVAT || invoice.vat === false;
+    const shouldHideVat = isReceipt || fakturaBezVAT;
 
     // Always recalculate items and totals. Ensure we handle invoices that have no items array (e.g. some expenses)
     const rawItems = invoice.items ?? [];
@@ -295,7 +297,7 @@ export const InvoicePdfTemplate: React.FC<InvoicePdfTemplateProps> = ({ invoice,
                     padding: '12px 0',
                 }}>
                     <div>
-                        <span style={{ fontWeight: 700, fontSize: 18 }}>{getInvoiceTypeTitle(invoice.type)}</span>
+                        <span style={{ fontWeight: 700, fontSize: 18 }}>{getInvoiceTypeTitle(invoice.type, fakturaBezVAT)}</span>
                         <span style={{ color: '#888', fontWeight: 400, fontSize: '15px', marginLeft: 8 }}>#{invoice.number}</span>
                     </div>
                     <div>
@@ -407,9 +409,8 @@ export const InvoicePdfTemplate: React.FC<InvoicePdfTemplateProps> = ({ invoice,
                             <th style={{ textAlign: 'right', padding: 6, border: '1px solid #e5e7eb' }}>Ilość</th>
                             <th style={{ textAlign: 'right', padding: 6, border: '1px solid #e5e7eb' }}>Cena netto</th>
                             <th style={{ textAlign: 'right', padding: 6, border: '1px solid #e5e7eb' }}>Wartość netto</th>
-                            {isReceipt ? null : <th style={{ textAlign: 'right', padding: 6, border: '1px solid #e5e7eb' }}>VAT %</th>}
-                            {isReceipt ? null : <th style={{ textAlign: 'right', padding: 6, border: '1px solid #e5e7eb' }}>Kwota VAT</th>}
-                            <th style={{ textAlign: 'right', padding: 6, border: '1px solid #e5e7eb' }}>Wartość brutto</th>
+                            {shouldHideVat ? null : <th style={{ textAlign: 'right', padding: 6, border: '1px solid #e5e7eb' }}>VAT %</th>}
+                            {shouldHideVat ? null : <th style={{ textAlign: 'right', padding: 6, border: '1px solid #e5e7eb' }}>Kwota VAT</th>}<th style={{ textAlign: 'right', padding: 6, border: '1px solid #e5e7eb' }}>Wartość brutto</th>
                         </tr>
                     </thead>
                     <tbody>
@@ -420,9 +421,8 @@ export const InvoicePdfTemplate: React.FC<InvoicePdfTemplateProps> = ({ invoice,
                                 <td style={{ padding: 6, border: '1px solid #e5e7eb', textAlign: 'right' }}>{item.quantity}</td>
                                 <td style={{ padding: '4px 6px', border: '1px solid #e5e7eb', textAlign: 'right' }}>{formatCurrencyUtil(item.unitPrice, currency)}</td>
                                 <td style={{ padding: '4px 6px', border: '1px solid #e5e7eb', textAlign: 'right' }}>{formatCurrencyUtil(item.totalNetValue || 0, currency)}</td>
-                                {isReceipt ? null : <td style={{ padding: 6, border: '1px solid #e5e7eb', textAlign: 'right' }}>{item.vatRate === -1 ? 'zw' : `${item.vatRate}%`}</td>}
-                                {isReceipt ? null : <td style={{ padding: '4px 6px', border: '1px solid #e5e7eb', textAlign: 'right' }}>{formatCurrencyUtil(item.totalVatValue || 0, currency)}</td>}
-                                <td style={{ padding: '4px 6px', border: '1px solid #e5e7eb', textAlign: 'right' }}>{formatCurrencyUtil(item.totalGrossValue || 0, currency)}</td>
+                                {shouldHideVat ? null : <td style={{ padding: 6, border: '1px solid #e5e7eb', textAlign: 'right' }}>{item.vatRate === -1 ? 'zw' : `${item.vatRate}%`}</td>}
+                                {shouldHideVat ? null : <td style={{ padding: '4px 6px', border: '1px solid #e5e7eb', textAlign: 'right' }}>{formatCurrencyUtil(item.totalVatValue || 0, currency)}</td>}<td style={{ padding: '4px 6px', border: '1px solid #e5e7eb', textAlign: 'right' }}>{formatCurrencyUtil(item.totalGrossValue || 0, currency)}</td>
                             </tr>
                         ))}
                     </tbody>
@@ -502,6 +502,7 @@ export const InvoicePdfTemplate: React.FC<InvoicePdfTemplateProps> = ({ invoice,
                             {(() => {
                                 const paymentSplit = calculatePaymentSplit(invoice, bankAccounts, invoice.bankAccountId);
                                 if (paymentSplit.hasVatAccount && totalVatValue > 0) {
+                                    const mainAccountNumber = selectedBankAccount?.accountNumber || businessProfile?.bankAccount || '';
                                     return (
                                         <>
                                             {/* NETTO */}
@@ -509,31 +510,40 @@ export const InvoicePdfTemplate: React.FC<InvoicePdfTemplateProps> = ({ invoice,
                                                 <div style={{ fontSize: '17px', color: '#495057', fontWeight: 600 }}>
                                                     Netto: {formatCurrencyUtil(paymentSplit.mainAccount.amount, currency)}
                                                 </div>
-                                                <div style={{ fontSize: '18px', color: '#111', fontFamily: 'monospace', marginTop: '6px', marginLeft: 0, fontWeight: 700 }}>
-                                                    {selectedBankAccount?.accountNumber || businessProfile?.bankAccount || ''}
-                                                </div>
+                                                {mainAccountNumber && (
+                                                    <div style={{ fontSize: '15px', color: '#495057', marginTop: '6px', marginLeft: 0 }}>
+                                                        Numer konta: <span style={{ fontWeight: 600, color: '#111' }}>{mainAccountNumber}</span>
+                                                    </div>
+                                                )}
                                             </div>
                                             {/* VAT */}
                                             <div style={{ marginTop: '8px' }}>
-                                                <div style={{ fontSize: '17px', color: '#495057', fontWeight: 600 }}>
-                                                    <span style={{ color: '#28a745', fontWeight: 700 }}>VAT:</span> {formatCurrencyUtil(paymentSplit.vatAccount?.amount || 0, currency)}
+                                                <div style={{ fontSize: '17px', color: '#495057', fontWeight: '600' }}>
+                                                    <span style={{ color: '#28a745', fontWeight: '700' }}>VAT:</span> {formatCurrencyUtil(paymentSplit.vatAccount?.amount || 0, currency)}
                                                 </div>
-                                                <div style={{ fontSize: '18px', color: '#111', fontFamily: 'monospace', marginTop: '6px', marginLeft: 0, fontWeight: 700 }}>
-                                                    {paymentSplit.vatAccount?.accountNumber}
-                                                </div>
+                                                {paymentSplit.vatAccount?.accountNumber && (
+                                                    <div style={{ fontSize: '15px', color: '#495057', marginTop: '6px', marginLeft: 0 }}>
+                                                        Numer konta VAT: <span style={{ fontWeight: 600, color: '#111' }}>{paymentSplit.vatAccount.accountNumber}</span>
+                                                    </div>
+                                                )}
                                             </div>
                                         </>
                                     );
                                 } else {
-                                    // Jeśli VAT = 0 lub brak konta VAT, pokaż pełną kwotę
+                                    // Jeśli VAT = 0 lub brak konta VAT, pokaż odpowiedni opis konta
+                                    const accountNumber = selectedBankAccount?.accountNumber || businessProfile?.bankAccount || '';
                                     return (
                                         <div style={{ marginTop: '8px' }}>
-                                            <div style={{ fontSize: '17px', color: '#495057', fontWeight: 600 }}>
-                                                {formatCurrencyUtil(totalGrossValue, currency)}
-                                            </div>
-                                            <div style={{ fontSize: '18px', color: '#111', fontFamily: 'monospace', marginTop: '6px', marginLeft: 0, fontWeight: 700 }}>
-                                                {selectedBankAccount?.accountNumber || businessProfile?.bankAccount || ''}
-                                            </div>
+                                            {!fakturaBezVAT && (
+                                                <div style={{ fontSize: '17px', color: '#495057', fontWeight: 600 }}>
+                                                    {formatCurrencyUtil(totalGrossValue, currency)}
+                                                </div>
+                                            )}
+                                            {accountNumber && (
+                                                <div style={{ fontSize: '15px', color: '#495057', marginTop: fakturaBezVAT ? 0 : '6px', marginLeft: 0 }}>
+                                                    Numer konta: <span style={{ fontWeight: 600, color: '#111' }}>{accountNumber}</span>
+                                                </div>
+                                            )}
                                         </div>
                                     );
                                 }

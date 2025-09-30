@@ -6,7 +6,7 @@ import { TransactionType } from "@/types/common";
 interface InvoiceFormActionsProps {
   isLoading: boolean;
   isEditing: boolean;
-  onSubmit?: (e: React.FormEvent) => void;
+  onSubmit?: () => void;
   transactionType?: TransactionType;
 }
 
@@ -18,7 +18,7 @@ export const InvoiceFormActions: React.FC<InvoiceFormActionsProps> = ({
 }) => {
   const navigate = useNavigate();
   const location = useLocation();
-  
+
   // Determine the correct cancel URL based on the current route or transaction type
   const getCancelUrl = () => {
     // If we're in a specific route, use that to determine where to go back to
@@ -47,8 +47,13 @@ export const InvoiceFormActions: React.FC<InvoiceFormActionsProps> = ({
         Anuluj
       </Button>
       <Button
-        type="submit"
+        type="button"
         disabled={isLoading}
+        onClick={() => {
+          if (onSubmit) {
+            onSubmit();
+          }
+        }}
       >
         {isLoading ? "Zapisywanie..." : isEditing ? "Zapisz" : "Utwórz dokument"}
       </Button>
