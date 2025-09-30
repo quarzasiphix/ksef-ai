@@ -188,6 +188,7 @@ export const EditableInvoiceItemsTable: React.FC<EditableInvoiceItemsTableProps>
                 <th className="text-left p-2 font-medium">Nazwa</th>
                 <th className="text-left p-2 font-medium">Ilość</th>
                 <th className="text-left p-2 font-medium">Jedn.</th>
+                <th className="px-2 py-2 text-left text-xs font-medium">Cena netto</th>
                 <th className="px-2 py-2 text-left text-xs font-medium">Wartość netto</th>
               {documentType !== InvoiceType.RECEIPT && !fakturaBezVAT && (
                 <>
@@ -225,6 +226,16 @@ export const EditableInvoiceItemsTable: React.FC<EditableInvoiceItemsTableProps>
                       value={item.unit}
                       onChange={(e) => onUpdateItem(item.id, { unit: e.target.value })}
                       className="w-16 bg-[#23283A] text-white border-gray-700"
+                    />
+                  </td>
+                  <td className="p-2">
+                    <Input
+                      type="number"
+                      value={item.unitPrice}
+                      onChange={(e) => onUpdateItem(item.id, { unitPrice: Number(e.target.value) })}
+                      className="w-24 bg-[#23283A] text-white border-gray-700"
+                      min="0"
+                      step="0.01"
                     />
                   </td>
                   <td className="p-2 text-right">{formatCurrency(item.totalNetValue || 0, currency)}</td>
