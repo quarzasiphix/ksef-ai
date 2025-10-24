@@ -82,6 +82,7 @@ const BusinessProfileForm = ({
   });
 
   const onSubmit = async (values: z.infer<typeof formSchema>) => {
+    console.log('onSubmit called with values:', values);
     try {
       // Ensure all required fields are present
       if (!user?.id) {
@@ -200,10 +201,15 @@ const BusinessProfileForm = ({
   };
 
   
+  const onError = (errors: any) => {
+    console.error('Form validation errors:', errors);
+    toast.error('Formularz zawiera błędy. Sprawdź wszystkie pola.');
+  };
+
   return (
     <Form {...form}>
       <form
-        onSubmit={form.handleSubmit(onSubmit)}
+        onSubmit={form.handleSubmit(onSubmit, onError)}
         className="space-y-6 pb-10 max-w-full mx-auto"
       >
         <div className="space-y-4">
