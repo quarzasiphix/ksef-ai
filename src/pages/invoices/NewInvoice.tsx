@@ -572,9 +572,10 @@ const NewInvoice = React.forwardRef<{
             if (dup) {
               console.log("Prefilling duplicate invoice", dup);
               // Reset form with duplicated values but new number
+              const duplicateNumber = `${dup.number}-DUP`;
               form.reset({
                 ...form.getValues(),
-                number: `${dup.number}-DUP`,
+                number: duplicateNumber,
                 issueDate: today,
                 sellDate: today,
                 dueDate: today,
@@ -590,6 +591,8 @@ const NewInvoice = React.forwardRef<{
                 exchangeRateDate: dup.exchangeRateDate || '',
                 exchangeRateSource: dup.exchangeRateSource || 'NBP',
               });
+              setInvoiceNumber(duplicateNumber);
+              setHasManualNumber(true);
               import("@/lib/invoice-utils").then(({ calculateItemValues }) => {
                 setItems((dup.items || []).map(calculateItemValues));
               });
@@ -640,7 +643,12 @@ const NewInvoice = React.forwardRef<{
 
       try {
         setIsLoading(true);
-        
+
+        const effectiveTransactionType: TransactionType =
+          (formValues.transactionType as TransactionType | undefined) ??
+          transactionType ??
+          type;
+
         // Process items for VAT exemption if needed
         const processedItems = items.map(item => ({
           ...item,
@@ -665,7 +673,7 @@ const NewInvoice = React.forwardRef<{
           // Status and type
           status: 'draft' as const,
           type: formValues.type as InvoiceType,
-          transactionType: type,
+          transactionType: effectiveTransactionType,
           
           // VAT settings
           vat: !formValues.fakturaBezVAT,
@@ -719,7 +727,9 @@ const NewInvoice = React.forwardRef<{
         };
 
         console.log('Saving invoice with data:', invoiceData);
-        
+
+        let savedInvoice: Invoice | undefined;
+
         // Call the onSave prop if provided
         if (onSave) {
           await onSave(invoiceData as any);
@@ -727,16 +737,30 @@ const NewInvoice = React.forwardRef<{
           // Default save behavior if no onSave prop provided
           if (initialData) {
             // Update existing invoice
-            await saveInvoice({ ...invoiceData, id: initialData.id });
+            savedInvoice = await saveInvoice({ ...invoiceData, id: initialData.id });
             toast.success('Faktura została zaktualizowana');
           } else {
             // Create new invoice
-            await saveInvoice(invoiceData);
+            savedInvoice = await saveInvoice(invoiceData);
             toast.success('Faktura została utworzona');
           }
-          
-          // Navigate back to invoices list
-          navigate('/invoices');
+
+          if (!initialData) {
+            const redirectInvoice = savedInvoice;
+            const redirectType = redirectInvoice?.transactionType || effectiveTransactionType;
+            const basePath = redirectType === TransactionType.EXPENSE ? '/expense' : '/income';
+
+            if (redirectInvoice?.id) {
+              navigate(`${basePath}/${redirectInvoice.id}`);
+            } else {
+              navigate(basePath);
+            }
+          } else if (savedInvoice?.transactionType) {
+            const basePath = savedInvoice.transactionType === TransactionType.EXPENSE ? '/expense' : '/income';
+            navigate(basePath);
+          } else {
+            navigate('/income');
+          }
         }
       } catch (error) {
         console.error('Error saving invoice:', error);
@@ -744,7 +768,7 @@ const NewInvoice = React.forwardRef<{
       } finally {
         setIsLoading(false);
       }
-};
+    };
 
 const handleFormSubmit = form.handleSubmit(async (formData) => {
   try {
@@ -1015,6 +1039,7 @@ const handleFormSubmit = form.handleSubmit(async (formData) => {
                   isLoading={isLoading}
                   isEditing={Boolean(initialData)} 
                   transactionType={transactionType}
+                  onSubmit={() => { void handleFormSubmit(); }}
                 />
               </div>
             )}

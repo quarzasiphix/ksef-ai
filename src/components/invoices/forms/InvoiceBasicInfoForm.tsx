@@ -23,6 +23,7 @@ interface InvoiceBasicInfoFormProps {
   items?: InvoiceItem[];
   bankAccounts?: BankAccount[];
   onAddVatAccount?: () => void;
+  onNumberChange?: (value: string) => void;
 }
 
 export const InvoiceBasicInfoForm: React.FC<InvoiceBasicInfoFormProps> = ({
@@ -35,7 +36,8 @@ export const InvoiceBasicInfoForm: React.FC<InvoiceBasicInfoFormProps> = ({
   onExchangeRateChange,
   items = [],
   bankAccounts = [],
-  onAddVatAccount
+  onAddVatAccount,
+  onNumberChange
 }) => {
     const currency = form.watch('currency') || 'PLN';
   
@@ -52,7 +54,14 @@ export const InvoiceBasicInfoForm: React.FC<InvoiceBasicInfoFormProps> = ({
             <FormItem>
               <FormLabel>Numer dokumentu</FormLabel>
               <FormControl>
-                <Input placeholder="np. FV/2023/05/001" {...field} />
+                <Input
+                  placeholder="np. FV/2023/05/001"
+                  {...field}
+                  onChange={(event) => {
+                    field.onChange(event);
+                    onNumberChange?.(event.target.value);
+                  }}
+                />
               </FormControl>
               <FormMessage />
             </FormItem>

@@ -39,7 +39,9 @@ export async function getBusinessProfiles(userId: string): Promise<BusinessProfi
       logo: item.logo || undefined,
       isDefault: item.is_default || false,
       entityType: (item as any).entity_type || 'dzialalnosc',
-      user_id: item.user_id
+      user_id: item.user_id,
+      is_vat_exempt: item.is_vat_exempt ?? false,
+      vat_exemption_reason: item.vat_exemption_reason,
     };
   });
 }
@@ -62,6 +64,8 @@ interface BusinessProfileRow {
   user_id: string | null;
   created_at: string;
   updated_at: string;
+  is_vat_exempt?: boolean | null;
+  vat_exemption_reason?: string | null;
 }
 
 export async function getDefaultBusinessProfile(): Promise<BusinessProfile | null> {
@@ -98,7 +102,9 @@ export async function getDefaultBusinessProfile(): Promise<BusinessProfile | nul
     logo: data.logo || undefined,
     isDefault: data.is_default || false,
     entityType: (data as any).entity_type || 'dzialalnosc',
-    user_id: data.user_id
+    user_id: data.user_id,
+    is_vat_exempt: data.is_vat_exempt ?? false,
+    vat_exemption_reason: data.vat_exemption_reason,
   };
 }
 
@@ -141,7 +147,9 @@ export async function getBusinessProfileById(id: string, userId: string): Promis
     logo: data.logo || undefined,
     isDefault: data.is_default || false,
     entityType: (data as any).entity_type || 'dzialalnosc',
-    user_id: data.user_id
+    user_id: data.user_id,
+    is_vat_exempt: data.is_vat_exempt ?? false,
+    vat_exemption_reason: data.vat_exemption_reason,
   };
 }
 
@@ -212,7 +220,9 @@ export async function saveBusinessProfile(profile: BusinessProfile): Promise<Bus
       logo: profile.logo || null,
       is_default: profile.isDefault || false,
       entity_type: profile.entityType || 'dzialalnosc',
-      user_id: profile.user_id
+      user_id: profile.user_id,
+      is_vat_exempt: profile.is_vat_exempt ?? false,
+      vat_exemption_reason: profile.is_vat_exempt ? profile.vat_exemption_reason || null : null,
     };
 
     let result;
@@ -260,7 +270,9 @@ export async function saveBusinessProfile(profile: BusinessProfile): Promise<Bus
       logo: result.logo || undefined,
       isDefault: result.is_default || false,
       entityType: (result as any).entity_type || 'dzialalnosc',
-      user_id: result.user_id
+      user_id: result.user_id,
+      is_vat_exempt: result.is_vat_exempt ?? false,
+      vat_exemption_reason: result.vat_exemption_reason,
     };
   } catch (error) {
     console.error('Error in saveBusinessProfile:', error);
