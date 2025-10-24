@@ -34,6 +34,7 @@ import { toast } from "sonner";
 import { deleteInvoice, saveInvoice } from "@/integrations/supabase/repositories/invoiceRepository";
 import { useQueryClient } from "@tanstack/react-query";
 import { generateInvoicePdf, getInvoiceFileName } from "@/lib/pdf-utils";
+import { formatCurrency } from "@/lib/invoice-utils";
 import { useQuery } from "@tanstack/react-query";
 import { getBankAccountsForProfile } from "@/integrations/supabase/repositories/bankAccountRepository";
 import { getBusinessProfileById } from "@/integrations/supabase/repositories/businessProfileRepository";
@@ -397,6 +398,189 @@ const IncomeList = () => {
       default: return "Dokumenty";
     }
   };
+
+  const formatInvoiceAmount = (invoice: Invoice) => {
+    const currency = invoice.currency || 'PLN';
+    const isVatDisabled = invoice.vat === false || (invoice as any).fakturaBezVat === true;
+    const baseAmount = (isVatDisabled ? invoice.totalNetValue : invoice.totalGrossValue) ?? invoice.totalNetValue ?? 0;
+    return formatCurrency(baseAmount, currency).replace(/^\u00A0/, '');
+  };
+
+  const renderGridView = () => (
+    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+      {filteredInvoices.map((invoice) => (
+        <div
+          key={invoice.id}
+          className="relative"
+          onContextMenu={isMultiSelectMode ? undefined : (e) => handleContextMenu(e, invoice.id)}
+          onClick={isMultiSelectMode ? (e) => toggleInvoiceSelection(invoice.id, e) : () => navigate(`/income/${invoice.id}`)}
+          onTouchStart={isMultiSelectMode ? undefined : (e) => handleTouchStart(e, invoice.id)}
+          onTouchMove={isMultiSelectMode ? undefined : handleTouchMove}
+          onTouchEnd={isMultiSelectMode ? undefined : handleTouchEnd}
+        >
+          {isMultiSelectMode && (
+            <div
+              className="absolute top-2 left-2 z-10 bg-white rounded-md p-1 shadow-md"
+              onClick={(e) => toggleInvoiceSelection(invoice.id, e)}
+            >
+              <Checkbox
+                checked={selectedInvoices.has(invoice.id)}
+                onCheckedChange={() => toggleInvoiceSelection(invoice.id)}
+              />
+            </div>
+          )}
+          <div className={`${isMultiSelectMode && selectedInvoices.has(invoice.id) ? 'ring-2 ring-primary' : ''} transition-all rounded-lg`}>
+            <InvoiceCard invoice={invoice} />
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+
+  const renderListView = () => (
+    <div className="rounded-md border">
+      <div className="divide-y">
+        {filteredInvoices.map((invoice) => {
+          const customer = (customers as any[])?.find((c) => c.id === invoice.customerId);
+          const isVatDisabled = invoice.vat === false || (invoice as any).fakturaBezVat === true;
+
+          return (
+            <div
+              key={invoice.id}
+              className={`relative transition-colors ${selectedInvoices.has(invoice.id) ? 'bg-accent/10' : ''}`}
+              onContextMenu={(e) => handleContextMenu(e, invoice.id)}
+              onClick={() => navigate(`/income/${invoice.id}`)}
+              onTouchStart={(e) => handleTouchStart(e, invoice.id)}
+              onTouchMove={handleTouchMove}
+              onTouchEnd={handleTouchEnd}
+            >
+              <div className="flex flex-col gap-4 px-4 py-4 hover:bg-muted md:flex-row md:items-center md:justify-between md:gap-6">
+                <div className="flex items-start gap-3 md:min-w-0 md:flex-1">
+                  <button
+                    type="button"
+                    className="p-1 rounded-md hover:bg-muted/60 active:bg-muted/80 shrink-0"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      toggleInvoiceSelection(invoice.id, e);
+                    }}
+                    aria-label={selectedInvoices.has(invoice.id) ? 'Odznacz dokument' : 'Zaznacz dokument'}
+                  >
+                    <Checkbox
+                      checked={selectedInvoices.has(invoice.id)}
+                      onCheckedChange={() => toggleInvoiceSelection(invoice.id)}
+                    />
+                  </button>
+                  <div className="min-w-0 flex-1 space-y-3">
+                    <div className="flex flex-wrap items-center gap-2 text-sm font-medium leading-5">
+                      <span className="truncate max-w-[240px] sm:max-w-xs md:max-w-none">{invoice.number}</span>
+                      {invoice.isPaid && (
+                        <span className="inline-flex items-center rounded-full bg-emerald-100 px-2 py-0.5 text-xs font-semibold text-emerald-800">
+                          Zapłacone
+                        </span>
+                      )}
+                      {isVatDisabled && (
+                        <span className="inline-flex items-center rounded-full bg-amber-100 px-2 py-0.5 text-xs font-semibold text-amber-800">
+                          Bez VAT
+                        </span>
+                      )}
+                    </div>
+                    <div className="space-y-2 text-sm text-muted-foreground">
+                      <div className="truncate">{invoice.customerName || '---'}</div>
+                      {customer && (
+                        <div className="text-xs text-muted-foreground grid gap-x-3 gap-y-1 sm:grid-cols-2 md:grid-cols-1 lg:grid-cols-2">
+                          {customer.taxId && <span className="truncate">NIP: {customer.taxId}</span>}
+                          {(customer.address || customer.postalCode || customer.city) && (
+                            <span className="truncate">
+                              {customer.address}
+                              {customer.address && (customer.postalCode || customer.city) ? ', ' : ''}
+                              {customer.postalCode} {customer.city}
+                            </span>
+                          )}
+                          {customer.phone && <span className="truncate">{customer.phone}</span>}
+                          {customer.email && <span className="truncate">{customer.email}</span>}
+                        </div>
+                      )}
+                    </div>
+                    <div className="flex flex-wrap items-center gap-2 text-sm text-muted-foreground">
+                      <span className="whitespace-nowrap">{new Date(invoice.issueDate).toLocaleDateString()}</span>
+                      <span className="font-semibold text-base text-foreground whitespace-nowrap">{formatInvoiceAmount(invoice)}</span>
+                    </div>
+                  </div>
+                </div>
+                <div className="flex flex-col gap-3 text-sm md:flex-none md:w-64 md:items-end">
+                  <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:justify-end md:w-full">
+                    <div className="flex flex-wrap items-center gap-2 w-full sm:w-auto sm:justify-end">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="w-full sm:w-auto"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          navigate(`/income/${invoice.id}`);
+                        }}
+                      >
+                        Otwórz
+                      </Button>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="w-full sm:w-auto"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          openPreview(invoice);
+                        }}
+                      >
+                        <Eye className="h-4 w-4 mr-2" />
+                        Podgląd
+                      </Button>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="w-full sm:w-auto"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          navigate(`/income/edit/${invoice.id}`);
+                        }}
+                      >
+                        Edytuj
+                      </Button>
+                    </div>
+                    <div className="w-full sm:w-full md:w-40">
+                      {invoice.isPaid ? (
+                        <Button
+                          variant="secondary"
+                          size="sm"
+                          className="w-full justify-center"
+                          onClick={async (e) => {
+                            e.stopPropagation();
+                            await handleMarkAsUnpaid(invoice.id, invoice);
+                          }}
+                        >
+                          Niezapłacone
+                        </Button>
+                      ) : (
+                        <Button
+                          variant="default"
+                          size="sm"
+                          className="w-full justify-center"
+                          onClick={async (e) => {
+                            e.stopPropagation();
+                            await handleMarkAsPaid(invoice.id, invoice);
+                          }}
+                        >
+                          zapłacone
+                        </Button>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
   
   return (
     <div className="space-y-6 pb-20 md:pb-6 relative">
@@ -568,151 +752,7 @@ const IncomeList = () => {
               {searchTerm.length > 0 || activeTab !== "all" ? "Brak wyników wyszukiwania" : "Brak dokumentów"}
             </div>
           ) : (
-            viewMode === 'grid' ? (
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
-                {filteredInvoices.map(invoice => (
-                  <div 
-                    key={invoice.id} 
-                    className="relative"
-                    onContextMenu={isMultiSelectMode ? undefined : (e) => handleContextMenu(e, invoice.id)}
-                    onClick={isMultiSelectMode ? (e) => toggleInvoiceSelection(invoice.id, e) : () => navigate(`/income/${invoice.id}`)}
-                    onTouchStart={isMultiSelectMode ? undefined : (e) => handleTouchStart(e, invoice.id)}
-                    onTouchMove={isMultiSelectMode ? undefined : handleTouchMove}
-                    onTouchEnd={isMultiSelectMode ? undefined : handleTouchEnd}
-                  >
-                    {isMultiSelectMode && (
-                      <div 
-                        className="absolute top-2 left-2 z-10 bg-white rounded-md p-1 shadow-md"
-                        onClick={(e) => toggleInvoiceSelection(invoice.id, e)}
-                      >
-                        <Checkbox
-                          checked={selectedInvoices.has(invoice.id)}
-                          onChange={() => {}} // Controlled by the onClick above
-                        />
-                      </div>
-                    )}
-                    <div className={`${isMultiSelectMode && selectedInvoices.has(invoice.id) ? 'ring-2 ring-primary' : ''} transition-all rounded-lg`}>
-                      <InvoiceCard invoice={invoice} />
-                    </div>
-                  </div>
-                ))}
-              </div>
-            ) : (
-              <div className="rounded-md border">
-                <div className="divide-y">
-                  {filteredInvoices.map((invoice) => (
-                    <div
-                      key={invoice.id}
-                      className={`relative ${selectedInvoices.has(invoice.id) ? 'bg-accent/10' : ''}`}
-                      onContextMenu={(e) => handleContextMenu(e, invoice.id)}
-                      onClick={() => navigate(`/income/${invoice.id}`)}
-                      onTouchStart={(e) => handleTouchStart(e, invoice.id)}
-                      onTouchMove={handleTouchMove}
-                      onTouchEnd={handleTouchEnd}
-                    >
-                      <div className="flex items-center justify-between gap-4 px-4 py-3 hover:bg-muted">
-                        <div className="mr-2 w-8 flex items-center justify-center" onClick={(e) => e.stopPropagation()}>
-                          <div className="p-1 rounded-md hover:bg-muted/50 active:bg-muted/70">
-                            <Checkbox
-                              checked={selectedInvoices.has(invoice.id)}
-                              onCheckedChange={() => toggleInvoiceSelection(invoice.id)}
-                            />
-                          </div>
-                        </div>
-                        <div className="min-w-0">
-                          <div className="flex items-center gap-2">
-                            <span className="font-medium truncate">{invoice.number}</span>
-                            {invoice.isPaid && (
-                              <span className="text-xs bg-emerald-100 text-emerald-800 px-2 py-0.5 rounded">Zapłacone</span>
-                            )}
-                          </div>
-                          <div className="mt-1 text-sm text-muted-foreground truncate">
-                            {invoice.customerName}
-                          </div>
-                          {/* Extra customer info line */}
-                          <div className="mt-0.5 text-xs text-muted-foreground flex flex-wrap gap-x-4 gap-y-1">
-                            {(() => {
-                              const customer = (customers as any[])?.find((c) => c.id === invoice.customerId);
-                              if (!customer) return null;
-                              return (
-                                <>
-                                  {customer.taxId && (
-                                    <span className="truncate">NIP: {customer.taxId}</span>
-                                  )}
-                                  {(customer.address || customer.postalCode || customer.city) && (
-                                    <span className="truncate">
-                                      {customer.address}{customer.address && (customer.postalCode || customer.city) ? ", " : ""}
-                                      {customer.postalCode} {customer.city}
-                                    </span>
-                                  )}
-                                  {customer.phone && (
-                                    <span className="truncate">{customer.phone}</span>
-                                  )}
-                                  {customer.email && (
-                                    <span className="truncate">{customer.email}</span>
-                                  )}
-                                </>
-                              );
-                            })()}
-                          </div>
-                        </div>
-                        <div className="flex items-center gap-4 text-sm whitespace-nowrap">
-                          <span className="text-muted-foreground w-28">{new Date(invoice.issueDate).toLocaleDateString()}</span>
-                          <span className="font-medium w-28 text-right">{(invoice.totalGrossValue ?? 0).toLocaleString('pl-PL', { style: 'currency', currency: 'PLN' })}</span>
-                          {/* Action group */}
-                          <div className="flex items-center gap-2 ml-2">
-                            <Button
-                              variant="outline"
-                              size="sm"
-                              onClick={(e) => { e.stopPropagation(); navigate(`/income/${invoice.id}`); }}
-                            >
-                              Otwórz
-                            </Button>
-                            <Button
-                              variant="outline"
-                              size="sm"
-                              onClick={(e) => { e.stopPropagation(); openPreview(invoice); }}
-                            >
-                              <Eye className="h-4 w-4 mr-2" />
-                              Podgląd
-                            </Button>
-                            <Button
-                              variant="outline"
-                              size="sm"
-                              onClick={(e) => { e.stopPropagation(); navigate(`/income/edit/${invoice.id}`); }}
-                            >
-                              Edytuj
-                            </Button>
-                          </div>
-                          {/* Payment toggle pinned at end with fixed width */}
-                          <div className="ml-2">
-                            {invoice.isPaid ? (
-                              <Button
-                                variant="secondary"
-                                size="sm"
-                                className="w-36 justify-center"
-                                onClick={async (e) => { e.stopPropagation(); await handleMarkAsUnpaid(invoice.id, invoice); }}
-                              >
-                                Niezapłacone
-                              </Button>
-                            ) : (
-                              <Button
-                                variant="default"
-                                size="sm"
-                                className="w-36 justify-center"
-                                onClick={async (e) => { e.stopPropagation(); await handleMarkAsPaid(invoice.id, invoice); }}
-                              >
-                                zapłacone
-                              </Button>
-                            )}
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )
+            viewMode === 'grid' ? renderGridView() : renderListView()
           )}
         </CardContent>
       </Card>

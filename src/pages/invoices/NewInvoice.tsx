@@ -196,6 +196,7 @@ const NewInvoice = React.forwardRef<{
     // --- INVOICE NUMBERING SYSTEM ---
     const { invoices: { data: allInvoices = [] } = {} } = (typeof useGlobalData === 'function' ? useGlobalData() : { invoices: { data: [] } });
     const [invoiceNumber, setInvoiceNumber] = useState(initialData?.number || '');
+    const [hasManualNumber, setHasManualNumber] = useState(Boolean(initialData?.number));
     
     // Current date for invoice numbering
     const now = new Date();
@@ -203,7 +204,14 @@ const NewInvoice = React.forwardRef<{
     // Helper to reload invoice numbering settings and update invoice number
     const reloadInvoiceNumberingSettings = useCallback(async (userId: string | undefined, profileId: string | undefined, allInvoicesList: any[], initialInvoiceData?: any) => {
       if (!form) return;
-      
+
+      if (hasManualNumber) {
+        if (invoiceNumber) {
+          form.setValue('number', invoiceNumber);
+        }
+        return;
+      }
+
       // If we have an existing invoice number, use it and don't generate a new one
       if (initialInvoiceData?.number) {
         setInvoiceNumber(initialInvoiceData.number);
@@ -301,7 +309,7 @@ const NewInvoice = React.forwardRef<{
       // Update the state and form field
       setInvoiceNumber(nextNumber);
       form.setValue('number', nextNumber);
-    }, [form, now, allInvoices, businessProfileId, initialData?.number]);
+    }, [form, now, allInvoices, businessProfileId, initialData?.number, hasManualNumber, invoiceNumber]);
 
     // Initialize invoice numbering when component mounts or dependencies change
     useEffect(() => {
@@ -970,6 +978,10 @@ const handleFormSubmit = form.handleSubmit(async (formData) => {
                 items={items}
                 bankAccounts={bankAccounts}
                 onAddVatAccount={handleAddVatAccount}
+                onNumberChange={(value) => {
+                  setInvoiceNumber(value);
+                  setHasManualNumber(value.trim().length > 0);
+                }}
               />
 
               <InvoicePartiesForm 
