@@ -1,6 +1,7 @@
 // React & Dependencies
 import React, { useState, useEffect, useCallback, forwardRef, useImperativeHandle } from "react";
 import { useAuth } from "@/context/AuthContext";
+import { useBusinessProfile } from "@/context/BusinessProfileContext";
 import { useSearchParams, useNavigate, useLocation } from "react-router-dom";
 import { useGlobalData } from "@/hooks/use-global-data";
 import { useQueryClient } from "@tanstack/react-query";
@@ -125,6 +126,7 @@ const NewInvoice = React.forwardRef<{
 
     // All hooks at the top, always called in the same order
     const { user } = useAuth();
+    const { profiles } = useBusinessProfile();
     const [searchParams] = useSearchParams();
     const navigate = useNavigate();
     const location = useLocation();
@@ -180,10 +182,23 @@ const NewInvoice = React.forwardRef<{
     }, [fakturaBezVAT, form]);
 
     const businessProfileId = form.watch("businessProfileId");
-
+    
     // Helpers to determine if current path is for income or expense invoice creation/edit
     const isIncomeRoute = location.pathname === "/income/new" || location.pathname.startsWith("/income/edit/");
     const isExpenseRoute = location.pathname === "/expense/new" || location.pathname.startsWith("/expense/edit/");
+    
+    // Get selected profile to check VAT exemption status
+    const selectedProfile = profiles.find(p => p.id === businessProfileId);
+    const isProfileVatExempt = selectedProfile?.is_vat_exempt || false;
+
+    // Auto-lock VAT settings when profile is VAT exempt (income invoices only)
+    useEffect(() => {
+      if (isIncomeRoute && isProfileVatExempt && businessProfileId) {
+        form.setValue('fakturaBezVAT', true, { shouldValidate: true });
+        form.setValue('vat', false, { shouldValidate: true });
+        form.setValue('vatExemptionReason', selectedProfile?.vat_exemption_reason as VatExemptionReason || VatExemptionReason.ART_113_UST_1, { shouldValidate: true });
+      }
+    }, [businessProfileId, isProfileVatExempt, isIncomeRoute, form, selectedProfile]);
     const hideTransactionButtons = isIncomeRoute || isExpenseRoute || location.pathname === "/invoices/new";
 
     // --- NEW: Prefill customer/product logic ---

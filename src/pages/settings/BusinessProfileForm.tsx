@@ -29,10 +29,6 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import PkdSelector from "@/components/inputs/PkdSelector";
-import { getBankAccountsForProfile, addBankAccount, deleteBankAccount } from '@/integrations/supabase/repositories/bankAccountRepository';
-import BankAccountCard from '@/components/bank/BankAccountCard';
-import { BankAccount } from '@/types/bank';
-import { BankAccountEditDialog } from '@/components/bank/BankAccountEditDialog';
 
 const formSchema = z.object({
   name: z.string().min(1, "Nazwa jest wymagana"),
@@ -64,66 +60,6 @@ const BusinessProfileForm = ({
   const navigate = useNavigate();
   const isEditing = !!initialData?.id;
   const isMobile = useIsMobile();
-
-  // Stan i obsługa kont bankowych
-  const [bankAccounts, setBankAccounts] = React.useState<BankAccount[]>([]);
-  const [loadingAccounts, setLoadingAccounts] = React.useState(false);
-  const [showAdd, setShowAdd] = React.useState(false);
-  const [newAccount, setNewAccount] = React.useState({
-    bankName: '',
-    accountNumber: '',
-    accountName: '',
-    currency: 'PLN',
-    type: 'main',
-    balance: 0,
-  });
-
-  React.useEffect(() => {
-    if (initialData?.id) {
-      setLoadingAccounts(true);
-      getBankAccountsForProfile(initialData.id)
-        .then(setBankAccounts)
-        .finally(() => setLoadingAccounts(false));
-    }
-  }, [initialData?.id]);
-
-  const handleAddAccount = async (data: BankAccount) => {
-    if (!initialData?.id) return;
-    try {
-      const acc = await addBankAccount({
-        ...data,
-        businessProfileId: initialData.id,
-        connectedAt: new Date().toISOString(),
-      });
-      setBankAccounts((prev) => [...prev, acc]);
-      toast.success('Dodano konto bankowe');
-    } catch (e) {
-      toast.error('Błąd dodawania konta');
-    }
-  };
-
-  const handleDeleteAccount = async (id: string) => {
-    try {
-      await deleteBankAccount(id);
-      setBankAccounts((prev) => prev.filter(acc => acc.id !== id));
-      toast.success('Usunięto konto bankowe');
-    } catch (e) {
-      toast.error('Błąd usuwania konta');
-    }
-  };
-
-  const handleSetDefaultAccount = async (id: string) => {
-    try {
-      await supabase.rpc("set_default_bank_account", {
-        business_profile_id: initialData?.id,
-        bank_account_id: id,
-      });
-      setBankAccounts((prev) => prev.map(acc => ({ ...acc, isDefault: acc.id === id })));
-      toast.success('Ustawiono domyślne konto bankowe');
-    } catch (e) {
-      toast.error('Błąd ustawiania domyślnego konta');
-    }
-  };
 
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
@@ -180,7 +116,16 @@ const BusinessProfileForm = ({
         user_id: user.id, // Enforce RLS: always include user_id
         is_vat_exempt: values.is_vat_exempt || false,
         vat_exemption_reason: values.is_vat_exempt ? values.vat_exemption_reason || null : null,
+        vat_threshold_pln: initialData?.vat_threshold_pln ?? 200000,
+        vat_threshold_year: initialData?.vat_threshold_year ?? new Date().getFullYear(),
       };
+
+      console.log('Saving business profile with VAT exemption:', {
+        is_vat_exempt: profile.is_vat_exempt,
+        vat_exemption_reason: profile.vat_exemption_reason,
+        vat_threshold_pln: profile.vat_threshold_pln,
+        vat_threshold_year: profile.vat_threshold_year
+      });
 
       // Global duplicate NIP check (other users)
       const taxDup = await checkTaxIdExists(values.taxId, user.id);
@@ -189,7 +134,8 @@ const BusinessProfileForm = ({
         return;
       }
 
-      await saveBusinessProfile(profile);
+      const savedProfile = await saveBusinessProfile(profile);
+      console.log('Profile saved successfully:', savedProfile);
       toast.success(
         isEditing ? "Profil zaktualizowany" : "Profil utworzony"
       );
@@ -201,6 +147,7 @@ const BusinessProfileForm = ({
       }
     } catch (error) {
       console.error("Error saving business profile:", error);
+      console.error("Error details:", JSON.stringify(error, null, 2));
 
       // Duplicate NIP handling – only relevant when creating a new profile
       const errMsg = (error as any)?.message ? (error as any).message : String(error);
@@ -454,34 +401,6 @@ const BusinessProfileForm = ({
             )}
           />
 
-          <section className="mt-8">
-            <h3 className="font-semibold mb-2">Konta bankowe</h3>
-            <div className="flex flex-col gap-2">
-              {bankAccounts.map((acc) => (
-                <BankAccountCard
-                  key={acc.id}
-                  account={acc}
-                  selected={false}
-                  onSelect={() => handleSetDefaultAccount(acc.id)}
-                  onDisconnect={() => handleDeleteAccount(acc.id)}
-                />
-              ))}
-              <BankAccountEditDialog
-                trigger={<Button variant="outline">Dodaj konto</Button>}
-                onSave={async (data) => {
-                  await handleAddAccount(data);
-                  setShowAdd(false);
-                }}
-              />
-            </div>
-            {/* Backwards compatibility: stare pole bankAccount */}
-            {initialData?.bankAccount && (
-              <div className="mt-4 p-3 bg-muted rounded text-xs text-muted-foreground">
-                <div className="font-semibold mb-1">Konto archiwalne (tylko do podglądu):</div>
-                <div>{initialData.bankAccount}</div>
-              </div>
-            )}
-          </section>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <FormField
@@ -620,7 +539,11 @@ const BusinessProfileForm = ({
               render={({ field }) => (
                 <FormItem className="mt-2">
                   <FormLabel>Powód zwolnienia z VAT</FormLabel>
-                  <Select onValueChange={field.onChange} value={field.value}>
+                  <Select 
+                    onValueChange={field.onChange} 
+                    value={field.value || undefined}
+                    defaultValue={field.value || undefined}
+                  >
                     <FormControl>
                       <SelectTrigger>
                         <SelectValue placeholder="Wybierz powód zwolnienia" />

@@ -65,14 +65,14 @@ const AppSidebar = () => {
   const dashboardItem: SidebarItem = { title: "Dashboard", path: "/", icon: BarChart };
 
   // Finanse group
-  const fakturyItem: SidebarItem = { title: "Faktury", path: "/income", icon: FileText };
-  const wydatkiItem: SidebarItem = { title: "Wydatki", path: "/expense", icon: CreditCard };
+  const fakturyItem: SidebarItem = { title: "Faktury", path: "/income", icon: FileText, className: "lg:hidden" };
+  const wydatkiItem: SidebarItem = { title: "Wydatki", path: "/expense", icon: CreditCard, className: "lg:hidden" };
   const bankItem: SidebarItem = { title: "Bankowość", path: "/bank", icon: Banknote };
   const accountingItem: SidebarItem = { title: "Księgowość", path: "/accounting", icon: Calculator };
 
   // Zarządzanie group
-  const clientsItem = { title: "Klienci", path: "/customers", icon: Users } as SidebarItem;
-  const productsItem = { title: "Produkty", path: "/products", icon: Package } as SidebarItem;
+  const clientsItem = { title: "Klienci", path: "/customers", icon: Users, className: "lg:hidden" } as SidebarItem;
+  const productsItem = { title: "Produkty", path: "/products", icon: Package, className: "lg:hidden" } as SidebarItem;
   const contractsItem: SidebarItem = { title: "Umowy", path: "/contracts", icon: Signature };
   const employeesItem = { title: "Pracownicy", path: "/employees", icon: UserCheck } as SidebarItem;
   const inventoryItem: SidebarItem = { title: "Magazyn", path: "/inventory", icon: Boxes, premium: true };
@@ -85,7 +85,7 @@ const AppSidebar = () => {
   const finanseItems: SidebarItem[] = [fakturyItem, wydatkiItem, bankItem, accountingItem];
 
   // Zarządzanie sidebar group
-  const zarzadzanieItems: SidebarItem[] = [clientsItem, productsItem, contractsItem, employeesItem, ...(isPremium ? [inventoryItem] : [])];
+  const zarzadzanieItems: SidebarItem[] = [clientsItem, productsItem, contractsItem, employeesItem, ...(isPremium ? [inventoryItem] : []), settingsItem];
 
   // Premium section for non-premium users (upsell)
   const premiumFeatures: SidebarItem[] = [inventoryItem, ksefItem];
@@ -254,7 +254,7 @@ const AppSidebar = () => {
           <SidebarGroupContent>
             <SidebarMenu>
               {finanseItems.map((item) => (
-                <SidebarMenuItem key={item.path}>
+                <SidebarMenuItem key={item.path} className={item.className}>
                   <SidebarMenuButton
                     asChild
                     isActive={isActive(item.path)}
@@ -277,7 +277,7 @@ const AppSidebar = () => {
           <SidebarGroupContent>
             <SidebarMenu>
               {zarzadzanieItems.map((item) => (
-                <SidebarMenuItem key={item.path}>
+                <SidebarMenuItem key={item.path} className={item.className}>
                   <SidebarMenuButton
                     asChild
                     isActive={isActive(item.path)}

@@ -42,6 +42,8 @@ export async function getBusinessProfiles(userId: string): Promise<BusinessProfi
       user_id: item.user_id,
       is_vat_exempt: item.is_vat_exempt ?? false,
       vat_exemption_reason: item.vat_exemption_reason,
+      vat_threshold_pln: (item as any).vat_threshold_pln ?? 200000,
+      vat_threshold_year: (item as any).vat_threshold_year ?? new Date().getFullYear(),
     };
   });
 }
@@ -66,6 +68,8 @@ interface BusinessProfileRow {
   updated_at: string;
   is_vat_exempt?: boolean | null;
   vat_exemption_reason?: string | null;
+  vat_threshold_pln?: number | null;
+  vat_threshold_year?: number | null;
 }
 
 export async function getDefaultBusinessProfile(): Promise<BusinessProfile | null> {
@@ -105,6 +109,8 @@ export async function getDefaultBusinessProfile(): Promise<BusinessProfile | nul
     user_id: data.user_id,
     is_vat_exempt: data.is_vat_exempt ?? false,
     vat_exemption_reason: data.vat_exemption_reason,
+    vat_threshold_pln: data.vat_threshold_pln ?? 200000,
+    vat_threshold_year: data.vat_threshold_year ?? new Date().getFullYear(),
   };
 }
 
@@ -150,6 +156,8 @@ export async function getBusinessProfileById(id: string, userId: string): Promis
     user_id: data.user_id,
     is_vat_exempt: data.is_vat_exempt ?? false,
     vat_exemption_reason: data.vat_exemption_reason,
+    vat_threshold_pln: data.vat_threshold_pln ?? 200000,
+    vat_threshold_year: data.vat_threshold_year ?? new Date().getFullYear(),
   };
 }
 
@@ -223,7 +231,11 @@ export async function saveBusinessProfile(profile: BusinessProfile): Promise<Bus
       user_id: profile.user_id,
       is_vat_exempt: profile.is_vat_exempt ?? false,
       vat_exemption_reason: profile.is_vat_exempt ? profile.vat_exemption_reason || null : null,
+      vat_threshold_pln: profile.vat_threshold_pln ?? 200000,
+      vat_threshold_year: profile.vat_threshold_year ?? new Date().getFullYear(),
     };
+
+    console.log('Supabase payload being sent:', payload);
 
     let result;
     
@@ -236,7 +248,10 @@ export async function saveBusinessProfile(profile: BusinessProfile): Promise<Bus
         .select()
         .single();
 
-      if (error) throw error;
+      if (error) {
+        console.error('Supabase update error:', error);
+        throw error;
+      }
       result = data;
     } else {
       // Create new profile
@@ -273,6 +288,8 @@ export async function saveBusinessProfile(profile: BusinessProfile): Promise<Bus
       user_id: result.user_id,
       is_vat_exempt: result.is_vat_exempt ?? false,
       vat_exemption_reason: result.vat_exemption_reason,
+      vat_threshold_pln: (result as any).vat_threshold_pln ?? 200000,
+      vat_threshold_year: (result as any).vat_threshold_year ?? new Date().getFullYear(),
     };
   } catch (error) {
     console.error('Error in saveBusinessProfile:', error);

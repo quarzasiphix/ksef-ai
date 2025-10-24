@@ -27,6 +27,8 @@ export interface BusinessProfile {
   pkdCodes?: string[];
   is_vat_exempt?: boolean;
   vat_exemption_reason?: string | null;
+  vat_threshold_pln?: number;
+  vat_threshold_year?: number;
 }
 
 export interface Customer {
