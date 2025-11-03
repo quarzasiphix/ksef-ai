@@ -26,8 +26,8 @@ const SharedLinksPage: React.FC = () => {
   const { invoices: { data: invoices } } = useGlobalData();
 
   const { data: shares = [], isLoading } = useQuery({
-    queryKey: ["shares", user?.id],
-    queryFn: () => listShares(user!.id),
+    queryKey: ["shares"],
+    queryFn: listShares,
     enabled: !!user?.id,
   });
 

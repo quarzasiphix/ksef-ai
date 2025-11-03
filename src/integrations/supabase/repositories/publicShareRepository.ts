@@ -109,18 +109,16 @@ export async function getExistingContractShare(contractId: string): Promise<Publ
   return data as PublicShare | null;
 }
 
-// List shares. If userId provided, returns only links created by that user.
-export async function listShares(userId?: string): Promise<PublicShare[]> {
-  let query = (supabase as any)
+// List all shared links
+// Note: This returns all shared links since the shared table doesn't track ownership
+// Security is handled by RLS policies on the actual documents
+// and the fact that share links use random slugs
+export async function listShares(): Promise<PublicShare[]> {
+  const { data, error } = await (supabase as any)
     .from("shared")
     .select("*")
-    .order("id", { ascending: false });
+    .order("created_at", { ascending: false });
 
-  if (userId) {
-    query = query.eq("user_id", userId);
-  }
-
-  const { data, error } = await query;
   if (error) throw error;
   return data as PublicShare[];
 }
