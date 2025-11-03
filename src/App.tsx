@@ -158,7 +158,7 @@ const PremiumRoute = () => {
 
 const App = () => {
   return (
-    <ThemeProvider defaultTheme="system">
+    <ThemeProvider defaultTheme="dark">
       <QueryClientProvider client={queryClient}>
         <TooltipProvider>
           <Toaster />
@@ -173,7 +173,7 @@ const App = () => {
                 } />
                 <Route path="/dashboard" element={
                   <ProtectedRoute>
-                    <AppLayout />
+                    <Dashboard />
                   </ProtectedRoute>
                 } />
                 <Route path="/auth/login" element={
