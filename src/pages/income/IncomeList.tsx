@@ -10,9 +10,10 @@ import {
 } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Invoice, InvoiceType } from "@/types";
-import { Plus, Search, Filter, Trash2, CheckSquare, Square, FileDown, Eye, CreditCard, LayoutGrid, List } from "lucide-react";
+import { Plus, Search, Filter, Trash2, CheckSquare, Square, FileDown, Eye, CreditCard, LayoutGrid, List, Share2, Pen } from "lucide-react";
 import InvoiceCard from "@/components/invoices/InvoiceCard";
 import InvoicePDFViewer from "@/components/invoices/InvoicePDFViewer";
+import ShareInvoiceDialog from "@/components/invoices/ShareInvoiceDialog";
 import { useGlobalData } from "@/hooks/use-global-data";
 import { useBusinessProfile } from "@/context/BusinessProfileContext";
 import {
@@ -58,6 +59,20 @@ const IncomeList = () => {
   const queryClient = useQueryClient();
   const [previewInvoice, setPreviewInvoice] = useState<Invoice | null>(null);
   const [isPreviewOpen, setIsPreviewOpen] = useState(false);
+  const [shareInvoiceId, setShareInvoiceId] = useState<string | null>(null);
+
+  // Handle share invoice event
+  useEffect(() => {
+    const handleShareInvoice = (e: Event) => {
+      const customEvent = e as CustomEvent<{ invoiceId: string }>;
+      setShareInvoiceId(customEvent.detail.invoiceId);
+    };
+
+    document.addEventListener('share-invoice', handleShareInvoice as EventListener);
+    return () => {
+      document.removeEventListener('share-invoice', handleShareInvoice as EventListener);
+    };
+  }, []);
 
   // Persist view mode per business profile in localStorage
   useEffect(() => {
@@ -542,7 +557,20 @@ const IncomeList = () => {
                           navigate(`/income/edit/${invoice.id}`);
                         }}
                       >
+                        <Pen className="h-4 w-4 mr-2" />
                         Edytuj
+                      </Button>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="w-full sm:w-auto"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setShareInvoiceId(invoice.id);
+                        }}
+                      >
+                        <Share2 className="h-4 w-4 mr-2" />
+                        Udostępnij
                       </Button>
                     </div>
                     <div className="w-full sm:w-full md:w-40">
@@ -757,14 +785,23 @@ const IncomeList = () => {
         </CardContent>
       </Card>
       {/* Invoice Preview Modal */}
-      {previewInvoice && (
-        <InvoicePDFViewer
-          invoice={previewInvoice}
-          businessProfile={businessProfile as any}
-          customer={customers?.find((c: any) => c.id === previewInvoice.customerId) as any}
-          bankAccounts={bankAccounts}
+      {isPreviewOpen && previewInvoice && (
+        <InvoicePDFViewer 
+          invoice={previewInvoice} 
           isOpen={isPreviewOpen}
           onClose={() => setIsPreviewOpen(false)}
+          businessProfile={businessProfile}
+          customer={customers.find(c => c.id === previewInvoice.customerId)}
+          bankAccounts={bankAccounts}
+        />
+      )}
+      
+      {shareInvoiceId && (
+        <ShareInvoiceDialog 
+          isOpen={!!shareInvoiceId}
+          onClose={() => setShareInvoiceId(null)}
+          invoiceId={shareInvoiceId || ''}
+          invoiceNumber={shareInvoiceId ? filteredInvoices.find(inv => inv.id === shareInvoiceId)?.number || '' : ''}
         />
       )}
       

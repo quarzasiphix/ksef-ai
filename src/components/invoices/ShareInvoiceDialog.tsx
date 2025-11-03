@@ -51,7 +51,8 @@ const ShareInvoiceDialog: React.FC<ShareInvoiceDialogProps> = ({
   const { data: activeShares = [], isLoading: sharesLoading } = useQuery({
     queryKey: ["invoiceShares", invoiceId, user?.id],
     queryFn: async () => {
-      const all = await listShares(user!.id);
+      if (!user?.id) return [];
+      const all = await listShares(user.id);
       return all.filter((s) => s.invoice_id === invoiceId);
     },
     enabled: isOpen && currentTab === 'link' && !!user?.id,
@@ -59,10 +60,19 @@ const ShareInvoiceDialog: React.FC<ShareInvoiceDialogProps> = ({
 
   // Delete share mutation
   const delMutation = useMutation({
-    mutationFn: (id: string) => deleteShare(id),
+    mutationFn: async (shareId: string) => {
+      // First try to delete by ID, then by slug if that fails
+      try {
+        await deleteShare(shareId);
+      } catch (err) {
+        console.error('Error deleting share:', err);
+        throw err;
+      }
+    },
     onSuccess: () => {
       toast.success("Link usunięty");
       queryClient.invalidateQueries({ queryKey: ["invoiceShares", invoiceId] });
+      setGeneratedLink(null);
     },
     onError: () => toast.error("Nie udało się usunąć linku"),
   });
@@ -76,12 +86,17 @@ const ShareInvoiceDialog: React.FC<ShareInvoiceDialogProps> = ({
   };
 
   const fetchExisting = async () => {
-    try {
-      const share = await getExistingInvoiceShare(invoiceId);
-      if (share) {
-        setGeneratedLink(`${window.location.origin}/share/${share.slug}`);
-      }
-    } catch (err) { console.error(err); }
+    if (!user?.id) return;
+    
+    // Check if share already exists
+    const existing = await getExistingInvoiceShare(invoiceId);
+    if (existing) {
+      setGeneratedLink(`${window.location.origin}/share/${existing.slug}`);
+      return;
+    }
+    
+    // If no existing share, reset the generated link
+    setGeneratedLink(null);
   };
 
   useEffect(() => {

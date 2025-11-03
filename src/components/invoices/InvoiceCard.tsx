@@ -3,7 +3,7 @@ import { Link } from "react-router-dom";
 import { formatCurrency } from "@/lib/invoice-utils";
 import { Invoice, InvoiceType } from "@/types";
 import { Badge } from "@/components/ui/badge";
-import { Calendar, FileText, User, CreditCard } from "lucide-react";
+import { Calendar, FileText, User, CreditCard, Share2 } from "lucide-react";
 
 type InvoiceCardProps = {
   invoice: Invoice;
@@ -65,12 +65,33 @@ const InvoiceCard: React.FC<InvoiceCardProps> = ({ invoice, currency = invoice.c
     return `${basePath}/${invoice.id}`;
   };
 
+  // Handle share button click
+  const handleShareClick = (e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    // This will be handled by the parent component
+    const event = new CustomEvent('share-invoice', { 
+      detail: { invoiceId: invoice.id },
+      bubbles: true 
+    });
+    document.dispatchEvent(event);
+  };
+
   return (
     <Link to={getInvoiceRoute()} className="block no-underline">
       <div className={`${getCardColorClass()} text-white rounded-lg p-3 shadow-md hover:shadow-lg transition-all h-full`}>
         <div className="flex justify-between items-center mb-2">
           <h3 className="font-bold text-sm">{invoice.number}</h3>
-          {getStatusBadge()}
+          <div className="flex items-center gap-1">
+            <button 
+              onClick={handleShareClick}
+              className="p-1 rounded-full hover:bg-white/10 transition-colors"
+              title="Udostępnij"
+            >
+              <Share2 className="h-3.5 w-3.5 text-gray-300" />
+            </button>
+            {getStatusBadge()}
+          </div>
         </div>
         
         <div className="space-y-1.5">

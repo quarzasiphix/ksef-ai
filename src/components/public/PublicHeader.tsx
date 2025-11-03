@@ -3,13 +3,15 @@ import { Link, useNavigate } from "react-router-dom";
 import { useAuth } from "@/hooks/useAuth";
 import { useBusinessProfile } from "@/context/BusinessProfileContext";
 import { BusinessProfileSwitcher } from "@/components/layout/BusinessProfileSwitcher";
-import { User, Crown, LogOut } from "lucide-react";
+import { User, Crown, LogOut, Sun, Moon } from "lucide-react";
+import { useTheme } from "@/components/theme/ThemeProvider";
 import React from "react";
 
 export default function PublicHeader() {
   const { user, logout, isPremium } = useAuth();
   const { profiles, selectedProfileId } = useBusinessProfile();
   const navigate = useNavigate();
+  const { theme, setTheme } = useTheme();
 
   return (
     <header className="sticky top-0 z-50 border-b border-neutral-800 bg-neutral-900/80 backdrop-blur-lg supports-[backdrop-filter]:bg-neutral-900/60">
@@ -37,6 +39,19 @@ export default function PublicHeader() {
               Kontakt
             </a>
           </nav>
+
+          {/* Theme Toggle */}
+          <button
+            onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')}
+            className="p-2 rounded-full hover:bg-neutral-800 transition-colors"
+            aria-label="Toggle theme"
+          >
+            {theme === 'dark' ? (
+              <Sun className="h-5 w-5 text-yellow-400" />
+            ) : (
+              <Moon className="h-5 w-5 text-blue-500" />
+            )}
+          </button>
 
           {/* Auth/Profile Section */}
           <div className="flex items-center space-x-4">
