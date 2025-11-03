@@ -171,6 +171,11 @@ const App = () => {
                     <Home />
                   </PublicRoute>
                 } />
+                <Route path="/dashboard" element={
+                  <ProtectedRoute>
+                    <AppLayout />
+                  </ProtectedRoute>
+                } />
                 <Route path="/auth/login" element={
                   <PublicRoute>
                     <Login />
@@ -188,7 +193,13 @@ const App = () => {
                 {/* Protected routes */}
                 <Route path="/dashboard" element={
                   <ProtectedRoute>
-                    <Dashboard />
+                    <SidebarProvider>
+                      <BusinessProfileProvider>
+                        <Layout>
+                          <Dashboard />
+                        </Layout>
+                      </BusinessProfileProvider>
+                    </SidebarProvider>
                   </ProtectedRoute>
                 } />
                 <Route path="/bank" element={

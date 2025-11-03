@@ -67,11 +67,11 @@ html.sidebar-transition body {
     --radius: 0.5rem;
 
     --sidebar-background: 0 0% 98%;
-    --sidebar-foreground: 240 5.3% 26.1%;
+    --sidebar-foreground: 0 0% 100%;
     --sidebar-primary: 221.2 83.2% 53.3%;
-    --sidebar-primary-foreground: 0 0% 98%;
+    --sidebar-primary-foreground: 0 0% 100%;
     --sidebar-accent: 240 4.8% 95.9%;
-    --sidebar-accent-foreground: 240 5.9% 10%;
+    --sidebar-accent-foreground: 0 0% 100%;
     --sidebar-border: 220 13% 91%;
     --sidebar-ring: 221.2 83.2% 53.3%;
   }
@@ -162,6 +162,22 @@ html.sidebar-transition body {
       display: block;
     }
   }
+}
+
+/* Sidebar button text colors */
+.sidebar-menu-button,
+.sidebar-menu-button .text-muted-foreground,
+.sidebar-menu-button a,
+.sidebar-menu-button a *,
+.sidebar-menu-button a span,
+.sidebar-menu-button a div,
+.sidebar-menu-button[data-state="active"],
+.sidebar-menu-button[data-state="active"] a,
+.sidebar-menu-button[data-state="active"] a *,
+.sidebar-menu-button[data-state="active"] a span,
+.sidebar-menu-button[data-state="active"] a div {
+  color: white !important;
+  fill: white !important;
 }
 
 /* Hide scrollbar for webkit browsers */
