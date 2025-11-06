@@ -35,19 +35,21 @@ export default function PublicLayout({ children }: PublicLayoutProps) {
 
   return (
     <BusinessProfileProvider>
-      <div className="min-h-screen bg-gradient-to-b from-neutral-950 via-purple-950/20 to-neutral-950">
-        <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_right,_var(--tw-gradient-stops))] from-blue-500/10 via-purple-500/5 to-transparent pointer-events-none" />
-        <div className="absolute inset-0 bg-[radial-gradient(circle_at_bottom_left,_var(--tw-gradient-stops))] from-purple-500/10 via-blue-500/5 to-transparent pointer-events-none" />
+      <div className="min-h-screen bg-gradient-to-b from-background to-background/80 dark:bg-gradient-to-b dark:from-neutral-950 dark:via-purple-950/20 dark:to-neutral-950">
+        <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_right,_var(--tw-gradient-stops))] from-blue-100 via-purple-50 to-transparent dark:from-blue-500/10 dark:via-purple-500/5 dark:to-transparent pointer-events-none" />
+        <div className="absolute inset-0 bg-[radial-gradient(circle_at_bottom_left,_var(--tw-gradient-stops))] from-purple-100 via-blue-50 to-transparent dark:from-purple-500/10 dark:via-blue-500/5 dark:to-transparent pointer-events-none" />
         <PublicHeader />
 
         {/* Main Content */}
         <main className="container mx-auto px-4 py-8">
           <Breadcrumbs />
-          {children}
+          <div className="bg-white/80 dark:bg-gray-900/50 backdrop-blur-sm rounded-xl p-6 border border-border/50 shadow-sm">
+            {children}
+          </div>
         </main>
 
         {/* Footer */}
-        <footer className="border-t border-neutral-800">
+        <footer className="border-t border-gray-200 dark:border-neutral-800 bg-white/80 dark:bg-gray-900/50 backdrop-blur-sm">
           <div className="container mx-auto px-4 py-12">
             <div className="grid grid-cols-1 md:grid-cols-4 gap-8">
               {/* Company Info */}

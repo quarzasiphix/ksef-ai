@@ -80,6 +80,83 @@ interface DatabaseInvoiceResponse {
   exchange_rate?: number | null;
 }
 
+const mapDatabaseInvoiceToInvoice = (dbInvoice: DatabaseInvoiceResponse): Invoice => {
+  const businessProfile = dbInvoice.business_profiles;
+  const customer = dbInvoice.customers;
+
+  const items: InvoiceItem[] = (dbInvoice.invoice_items as any[] || []).map((item: any) => ({
+    id: item.id,
+    productId: item.product_id || undefined,
+    name: item.name || 'Unknown Item',
+    description: item.description || '',
+    quantity: Number(item.quantity) || 0,
+    unitPrice: Number(item.unit_price) || 0,
+    vatRate: item.vat_exempt ? -1 : (Number(item.vat_rate) || 0),
+    vatExempt: item.vat_exempt || false,
+    unit: item.unit || 'szt',
+    totalNetValue: Number(item.total_net_value) || 0,
+    totalGrossValue: Number(item.total_gross_value) || 0,
+    totalVatValue: Number(item.total_vat_value) || 0
+  }));
+
+  const invoice: Invoice = {
+    id: dbInvoice.id,
+    number: dbInvoice.number,
+    type: dbInvoice.type as InvoiceType,
+    transactionType: dbInvoice.transaction_type as TransactionType,
+    issueDate: dbInvoice.issue_date,
+    dueDate: dbInvoice.due_date,
+    sellDate: dbInvoice.sell_date,
+    date: dbInvoice.issue_date,
+    businessProfileId: dbInvoice.business_profile_id,
+    customerId: dbInvoice.customer_id || '',
+    items,
+    paymentMethod: dbInvoice.payment_method as PaymentMethodDb,
+    isPaid: dbInvoice.is_paid || false,
+    paid: dbInvoice.is_paid || false,
+    status: dbInvoice.status as InvoiceStatus,
+    comments: dbInvoice.comments || "",
+    totalNetValue: Number(dbInvoice.total_net_value) || 0,
+    totalGrossValue: Number(dbInvoice.total_gross_value) || 0,
+    totalVatValue: Number(dbInvoice.total_vat_value) || 0,
+    totalAmount: Number(dbInvoice.total_gross_value) || 0,
+    ksef: {
+      status: (dbInvoice.ksef_status as KsefInfo['status']) || 'none',
+      referenceNumber: dbInvoice.ksef_reference_number || null
+    } as KsefInfo,
+    user_id: dbInvoice.user_id,
+    seller: businessProfile ? {
+      id: businessProfile.id,
+      name: businessProfile.name,
+      taxId: businessProfile.tax_id || '',
+      address: businessProfile.address || '',
+      city: businessProfile.city || '',
+      postalCode: businessProfile.postal_code || ''
+    } as Company : { name: '', taxId: '', address: '', city: '', postalCode: '' },
+    buyer: customer ? {
+      id: customer.id,
+      name: customer.name,
+      taxId: customer.tax_id || '',
+      address: customer.address || '',
+      city: customer.city || '',
+      postalCode: customer.postal_code || ''
+    } as Company : { name: '', taxId: '', address: '', city: '', postalCode: '' },
+    businessName: businessProfile?.name || '',
+    customerName: customer?.name || '',
+    bankAccountId: dbInvoice.bank_account_id || null,
+    bankAccountNumber: undefined,
+    created_at: dbInvoice.created_at,
+    updated_at: dbInvoice.updated_at,
+    vat: typeof dbInvoice.vat === 'boolean' ? dbInvoice.vat : true,
+    vatExemptionReason: (dbInvoice.vat_exemption_reason as VatExemptionReason | null) ?? undefined,
+    fakturaBezVAT: dbInvoice.vat === false,
+    currency: dbInvoice.currency || 'PLN',
+    exchangeRate: dbInvoice.exchange_rate || null
+  };
+
+  return invoice;
+};
+
 export async function saveInvoice(invoice: Omit<Invoice, 'id' | 'ksef' | 'vat' | 'vatExemptionReason' | 'date' | 'paid' | 'totalAmount' | 'seller' | 'buyer' | 'businessName' | 'customerName' | 'bankAccountId' | 'bankAccountNumber' | 'created_at' | 'updated_at'> & {
     id?: string,
     ksef?: KsefInfo,
@@ -613,83 +690,50 @@ export async function getInvoices(userId: string, businessProfileId?: string, pe
   const typedData: DatabaseInvoiceResponse[] = data as any; // Use 'any' as a temporary workaround if direct casting fails
 
   // Map the data to the Invoice interface
-  return typedData.map((dbInvoice) => {
-    const businessProfile = dbInvoice.business_profiles;
-    const customer = dbInvoice.customers;
+  return typedData.map(mapDatabaseInvoiceToInvoice);
+}
 
-    // Ensure invoice_items is treated as an array of the correct type
-    const items: InvoiceItem[] = (dbInvoice.invoice_items as any[] || []).map((item: any) => ({
-      id: item.id,
-      productId: item.product_id || undefined,
-      name: item.name || 'Unknown Item',
-      description: item.description || '',
-      quantity: Number(item.quantity) || 0,
-      unitPrice: Number(item.unit_price) || 0,
-      vatRate: item.vat_exempt ? -1 : (Number(item.vat_rate) || 0), // Convert 0 + vat_exempt to -1 for UI
-      vatExempt: item.vat_exempt || false,
-      unit: item.unit || 'szt',
-      totalNetValue: Number(item.total_net_value) || 0,
-      totalGrossValue: Number(item.total_gross_value) || 0,
-      totalVatValue: Number(item.total_vat_value) || 0
-    }));
+export async function getInvoiceById(id: string): Promise<Invoice | null> {
+  if (!id) {
+    console.error("No invoice ID provided to getInvoiceById");
+    return null;
+  }
 
-    const invoice: Invoice = {
-      id: dbInvoice.id,
-      number: dbInvoice.number,
-      type: dbInvoice.type as InvoiceType,
-      transactionType: dbInvoice.transaction_type as TransactionType,
-      issueDate: dbInvoice.issue_date,
-      dueDate: dbInvoice.due_date,
-      sellDate: dbInvoice.sell_date,
-      date: dbInvoice.issue_date,
-      businessProfileId: dbInvoice.business_profile_id,
-      customerId: dbInvoice.customer_id || '',
-      items,
-      paymentMethod: dbInvoice.payment_method as PaymentMethodDb,
-      isPaid: dbInvoice.is_paid || false,
-      paid: dbInvoice.is_paid || false,
-      status: dbInvoice.status as InvoiceStatus,
-      comments: dbInvoice.comments || "",
-      totalNetValue: Number(dbInvoice.total_net_value) || 0,
-      totalGrossValue: Number(dbInvoice.total_gross_value) || 0,
-      totalVatValue: Number(dbInvoice.total_vat_value) || 0,
-      totalAmount: Number(dbInvoice.total_gross_value) || 0,
-      ksef: {
-        status: (dbInvoice.ksef_status as KsefInfo['status']) || 'none',
-        referenceNumber: dbInvoice.ksef_reference_number || null
-      } as KsefInfo,
-      user_id: dbInvoice.user_id,
-      seller: businessProfile ? {
-        id: businessProfile.id,
-        name: businessProfile.name,
-        taxId: businessProfile.tax_id || '',
-        address: businessProfile.address || '',
-        city: businessProfile.city || '',
-        postalCode: businessProfile.postal_code || ''
-      } as Company : { name: '', taxId: '', address: '', city: '', postalCode: '' },
-      buyer: customer ? {
-        id: customer.id,
-        name: customer.name,
-        taxId: customer.tax_id || '',
-        address: customer.address || '',
-        city: customer.city || '',
-        postalCode: customer.postal_code || ''
-      } as Company : { name: '', taxId: '', address: '', city: '', postalCode: '' },
-      businessName: businessProfile?.name || '',
-      customerName: customer?.name || '',
-      bankAccountId: dbInvoice.bank_account_id || null,
-      bankAccountNumber: undefined,
-      created_at: dbInvoice.created_at,
-      updated_at: dbInvoice.updated_at,
-      vat: typeof dbInvoice.vat === 'boolean' ? dbInvoice.vat : true,
-      vatExemptionReason: (dbInvoice.vat_exemption_reason as VatExemptionReason | null) ?? undefined,
-      fakturaBezVAT: dbInvoice.vat === false,
-      currency: dbInvoice.currency || 'PLN',
-      exchangeRate: dbInvoice.exchange_rate || null
-    };
+  const { data, error } = await supabase
+    .from("invoices")
+    .select(
+      `
+      *,
+      business_profiles ( id, name, user_id, tax_id, address, city, postal_code ),
+      customers ( id, name, user_id, tax_id, address, city, postal_code ),
+      invoice_items (
+        id,
+        product_id,
+        name,
+        quantity,
+        unit_price,
+        vat_rate,
+        unit,
+        total_net_value,
+        total_gross_value,
+        total_vat_value,
+        vat_exempt
+      )
+    `
+    )
+    .eq("id", id)
+    .maybeSingle();
 
-    return invoice;
-  });
+  if (error) {
+    console.error("Error fetching invoice by id:", error);
+    throw error;
+  }
+
+  if (!data) {
+    return null;
+  }
+
+  return mapDatabaseInvoiceToInvoice(data as DatabaseInvoiceResponse);
 }
 
 export async function deleteInvoice(id: string): Promise<void> {

@@ -1,6 +1,7 @@
 // React & Dependencies
 import React, { useState, useEffect, useCallback, forwardRef, useImperativeHandle } from "react";
 import { useAuth } from "@/context/AuthContext";
+import { useBusinessProfile } from "@/context/BusinessProfileContext";
 import { useSearchParams, useNavigate, useLocation } from "react-router-dom";
 import { useGlobalData } from "@/hooks/use-global-data";
 import { useQueryClient } from "@tanstack/react-query";
@@ -125,6 +126,7 @@ const NewInvoice = React.forwardRef<{
 
     // All hooks at the top, always called in the same order
     const { user } = useAuth();
+    const { profiles } = useBusinessProfile();
     const [searchParams] = useSearchParams();
     const navigate = useNavigate();
     const location = useLocation();
@@ -180,10 +182,23 @@ const NewInvoice = React.forwardRef<{
     }, [fakturaBezVAT, form]);
 
     const businessProfileId = form.watch("businessProfileId");
-
+    
     // Helpers to determine if current path is for income or expense invoice creation/edit
     const isIncomeRoute = location.pathname === "/income/new" || location.pathname.startsWith("/income/edit/");
     const isExpenseRoute = location.pathname === "/expense/new" || location.pathname.startsWith("/expense/edit/");
+    
+    // Get selected profile to check VAT exemption status
+    const selectedProfile = profiles.find(p => p.id === businessProfileId);
+    const isProfileVatExempt = selectedProfile?.is_vat_exempt || false;
+
+    // Auto-lock VAT settings when profile is VAT exempt (income invoices only)
+    useEffect(() => {
+      if (isIncomeRoute && isProfileVatExempt && businessProfileId) {
+        form.setValue('fakturaBezVAT', true, { shouldValidate: true });
+        form.setValue('vat', false, { shouldValidate: true });
+        form.setValue('vatExemptionReason', selectedProfile?.vat_exemption_reason as VatExemptionReason || VatExemptionReason.ART_113_UST_1, { shouldValidate: true });
+      }
+    }, [businessProfileId, isProfileVatExempt, isIncomeRoute, form, selectedProfile]);
     const hideTransactionButtons = isIncomeRoute || isExpenseRoute || location.pathname === "/invoices/new";
 
     // --- NEW: Prefill customer/product logic ---
@@ -196,6 +211,7 @@ const NewInvoice = React.forwardRef<{
     // --- INVOICE NUMBERING SYSTEM ---
     const { invoices: { data: allInvoices = [] } = {} } = (typeof useGlobalData === 'function' ? useGlobalData() : { invoices: { data: [] } });
     const [invoiceNumber, setInvoiceNumber] = useState(initialData?.number || '');
+    const [hasManualNumber, setHasManualNumber] = useState(Boolean(initialData?.number));
     
     // Current date for invoice numbering
     const now = new Date();
@@ -203,7 +219,14 @@ const NewInvoice = React.forwardRef<{
     // Helper to reload invoice numbering settings and update invoice number
     const reloadInvoiceNumberingSettings = useCallback(async (userId: string | undefined, profileId: string | undefined, allInvoicesList: any[], initialInvoiceData?: any) => {
       if (!form) return;
-      
+
+      if (hasManualNumber) {
+        if (invoiceNumber) {
+          form.setValue('number', invoiceNumber);
+        }
+        return;
+      }
+
       // If we have an existing invoice number, use it and don't generate a new one
       if (initialInvoiceData?.number) {
         setInvoiceNumber(initialInvoiceData.number);
@@ -301,7 +324,7 @@ const NewInvoice = React.forwardRef<{
       // Update the state and form field
       setInvoiceNumber(nextNumber);
       form.setValue('number', nextNumber);
-    }, [form, now, allInvoices, businessProfileId, initialData?.number]);
+    }, [form, now, allInvoices, businessProfileId, initialData?.number, hasManualNumber, invoiceNumber]);
 
     // Initialize invoice numbering when component mounts or dependencies change
     useEffect(() => {
@@ -970,6 +993,10 @@ const handleFormSubmit = form.handleSubmit(async (formData) => {
                 items={items}
                 bankAccounts={bankAccounts}
                 onAddVatAccount={handleAddVatAccount}
+                onNumberChange={(value) => {
+                  setInvoiceNumber(value);
+                  setHasManualNumber(value.trim().length > 0);
+                }}
               />
 
               <InvoicePartiesForm 

@@ -48,8 +48,8 @@ const AppSidebar = () => {
 
   // Quick actions
   const quickActions = [
-    { title: "Nowa Faktura", path: "/income/new", icon: Plus, color: "text-blue-600" },
-    { title: "Nowy Wydatek", path: "/expense/new", icon: Plus, color: "text-green-600" },
+    { title: "Nowa Faktura", path: "/income/new", icon: Plus, color: "text-green-600 dark:text-green-400" },
+    { title: "Nowy Wydatek", path: "/expense/new", icon: Plus, color: "text-red-600 dark:text-red-400" },
   ];
 
   // Sidebar item type with optional premium flag
@@ -62,17 +62,17 @@ const AppSidebar = () => {
   }
 
   // Dashboard item
-  const dashboardItem: SidebarItem = { title: "Dashboard", path: "/", icon: BarChart };
+  const dashboardItem: SidebarItem = { title: "Dashboard", path: "/dashboard", icon: BarChart };
 
   // Finanse group
-  const fakturyItem: SidebarItem = { title: "Faktury", path: "/income", icon: FileText };
-  const wydatkiItem: SidebarItem = { title: "Wydatki", path: "/expense", icon: CreditCard };
+  const fakturyItem: SidebarItem = { title: "Faktury", path: "/income", icon: FileText, className: "lg:hidden" };
+  const wydatkiItem: SidebarItem = { title: "Wydatki", path: "/expense", icon: CreditCard, className: "lg:hidden" };
   const bankItem: SidebarItem = { title: "Bankowość", path: "/bank", icon: Banknote };
   const accountingItem: SidebarItem = { title: "Księgowość", path: "/accounting", icon: Calculator };
 
   // Zarządzanie group
-  const clientsItem = { title: "Klienci", path: "/customers", icon: Users } as SidebarItem;
-  const productsItem = { title: "Produkty", path: "/products", icon: Package } as SidebarItem;
+  const clientsItem = { title: "Klienci", path: "/customers", icon: Users, className: "lg:hidden" } as SidebarItem;
+  const productsItem = { title: "Produkty", path: "/products", icon: Package, className: "lg:hidden" } as SidebarItem;
   const contractsItem: SidebarItem = { title: "Umowy", path: "/contracts", icon: Signature };
   const employeesItem = { title: "Pracownicy", path: "/employees", icon: UserCheck } as SidebarItem;
   const inventoryItem: SidebarItem = { title: "Magazyn", path: "/inventory", icon: Boxes, premium: true };
@@ -85,18 +85,22 @@ const AppSidebar = () => {
   const finanseItems: SidebarItem[] = [fakturyItem, wydatkiItem, bankItem, accountingItem];
 
   // Zarządzanie sidebar group
-  const zarzadzanieItems: SidebarItem[] = [clientsItem, productsItem, contractsItem, employeesItem, ...(isPremium ? [inventoryItem] : [])];
+  const zarzadzanieItems: SidebarItem[] = [clientsItem, productsItem, contractsItem, employeesItem, ...(isPremium ? [inventoryItem] : []), settingsItem];
 
   // Premium section for non-premium users (upsell)
   const premiumFeatures: SidebarItem[] = [inventoryItem, ksefItem];
 
   const isActive = (path: string) => {
+    // Special handling for dashboard to prevent matching other routes that start with /
+    if (path === "/dashboard") {
+      return location.pathname === "/dashboard" || location.pathname === "/";
+    }
     if (path === "/") return location.pathname === "/";
     return location.pathname.startsWith(path);
   };
 
   const getNavClassName = (path: string, premiumItem?: boolean, extraClass?: string) => {
-    const base = "flex items-center px-3 py-2 rounded-lg transition-all duration-200 w-full";
+    const base = "flex items-center px-3 py-2 rounded-lg transition-all duration-200 w-full text-white";
     const align = isCollapsed ? "justify-center" : "gap-3 justify-start";
     const extra = extraClass || "";
 
@@ -107,7 +111,16 @@ const AppSidebar = () => {
         extra,
         isActive(path)
           ? "bg-amber-600 text-white shadow-sm"
-          : "bg-gradient-to-r from-amber-500 to-orange-600 text-white hover:from-amber-600 hover:to-orange-700"
+          : "hover:bg-amber-500/80 text-white"
+      );
+    }
+
+    if (premiumItem) {
+      return cn(
+        base,
+        align,
+        extra,
+        "text-white/50 hover:text-white/70 cursor-not-allowed opacity-50"
       );
     }
 
@@ -116,8 +129,8 @@ const AppSidebar = () => {
       align,
       extra,
       isActive(path)
-        ? "bg-primary text-primary-foreground font-medium shadow-sm"
-        : "hover:bg-muted text-foreground/80 hover:text-foreground dark:text-foreground/90 dark:hover:text-foreground"
+        ? "bg-primary text-white shadow-sm"
+        : "text-white/90 hover:bg-primary/80 hover:text-white"
     );
   };
 
@@ -231,12 +244,12 @@ const AppSidebar = () => {
                     tooltip={isCollapsed ? action.title : undefined}
                   >
                     <a href={action.path} className={cn(
-                        "flex items-center rounded-lg bg-muted hover:bg-muted/80 transition-colors w-full dark:bg-muted/50 dark:hover:bg-muted/70",
+                        "flex items-center rounded-lg bg-muted/50 hover:bg-muted/80 transition-colors w-full text-white/90 hover:text-white",
                         isCollapsed ? "justify-center h-10 px-0" : "gap-3 px-3 py-2"
                     )}>
-                      <action.icon className={`h-5 w-5 flex-shrink-0 ${action.color} dark:opacity-90`} />
+                      <action.icon className={`h-5 w-5 flex-shrink-0 ${action.color} opacity-90`} />
                       {!isCollapsed && (
-                        <span className="font-medium text-foreground/90 dark:text-foreground">
+                        <span className="font-medium">
                           {action.title}
                         </span>
                       )}
@@ -254,7 +267,7 @@ const AppSidebar = () => {
           <SidebarGroupContent>
             <SidebarMenu>
               {finanseItems.map((item) => (
-                <SidebarMenuItem key={item.path}>
+                <SidebarMenuItem key={item.path} className={item.className}>
                   <SidebarMenuButton
                     asChild
                     isActive={isActive(item.path)}
@@ -277,7 +290,7 @@ const AppSidebar = () => {
           <SidebarGroupContent>
             <SidebarMenu>
               {zarzadzanieItems.map((item) => (
-                <SidebarMenuItem key={item.path}>
+                <SidebarMenuItem key={item.path} className={item.className}>
                   <SidebarMenuButton
                     asChild
                     isActive={isActive(item.path)}

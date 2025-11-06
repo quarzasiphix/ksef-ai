@@ -158,7 +158,7 @@ const PremiumRoute = () => {
 
 const App = () => {
   return (
-    <ThemeProvider defaultTheme="system">
+    <ThemeProvider defaultTheme="dark">
       <QueryClientProvider client={queryClient}>
         <TooltipProvider>
           <Toaster />
@@ -170,6 +170,11 @@ const App = () => {
                   <PublicRoute>
                     <Home />
                   </PublicRoute>
+                } />
+                <Route path="/dashboard" element={
+                  <ProtectedRoute>
+                    <Dashboard />
+                  </ProtectedRoute>
                 } />
                 <Route path="/auth/login" element={
                   <PublicRoute>
@@ -188,7 +193,13 @@ const App = () => {
                 {/* Protected routes */}
                 <Route path="/dashboard" element={
                   <ProtectedRoute>
-                    <Dashboard />
+                    <SidebarProvider>
+                      <BusinessProfileProvider>
+                        <Layout>
+                          <Dashboard />
+                        </Layout>
+                      </BusinessProfileProvider>
+                    </SidebarProvider>
                   </ProtectedRoute>
                 } />
                 <Route path="/bank" element={

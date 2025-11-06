@@ -4,6 +4,7 @@ export type ShareType = "invoice" | "contract" | "combo";
 
 export interface PublicShare {
   id: string; // uuid primary key (also acts as slug)
+  user_id: string; // ID of the user who created the share
   slug: string; // short slug (optional, can be same as id)
   share_type: ShareType;
   invoice_id?: string | null;
@@ -31,12 +32,14 @@ export async function createPublicShareLink({
   type,
   bankAccount,
   viewOnce = false,
+  userId,
 }: {
   invoiceId?: string;
   contractId?: string;
   type: ShareType;
   bankAccount?: string | null;
   viewOnce?: boolean;
+  userId: string;
 }): Promise<PublicShare> {
   // Decide slug – could also rely on uuid but shorter looks cleaner.
   const slug = generateSlug();
@@ -45,6 +48,7 @@ export async function createPublicShareLink({
     .from("shared")
     .insert({
       slug,
+      user_id: userId, // Add the user_id when creating a share
       share_type: type,
       invoice_id: invoiceId || null,
       contract_id: contractId || null,
@@ -109,27 +113,28 @@ export async function getExistingContractShare(contractId: string): Promise<Publ
   return data as PublicShare | null;
 }
 
-// List shares. If userId provided, returns only links created by that user.
-export async function listShares(userId?: string): Promise<PublicShare[]> {
-  let query = (supabase as any)
+/**
+ * List all shared links for the current user
+ * RLS policies ensure users can only see their own shares
+ */
+export async function listShares(userId: string): Promise<PublicShare[]> {
+  const { data, error } = await (supabase as any)
     .from("shared")
     .select("*")
-    .order("id", { ascending: false });
+    .eq("user_id", userId) // Filter by the current user's ID
+    .order("created_at", { ascending: false });
 
-  if (userId) {
-    query = query.eq("user_id", userId);
-  }
-
-  const { data, error } = await query;
   if (error) throw error;
   return data as PublicShare[];
 }
 
-// Delete share by id (or slug)
+/**
+ * Delete a share by ID or slug
+ * RLS policies ensure users can only delete their own shares
+ */
 export async function deleteShare(id: string): Promise<void> {
   const { error } = await (supabase as any)
     .from("shared")
     .delete()
-    .eq("id", id);
-  if (error) throw error;
+    .or(`id.eq.${id},slug.eq.${id}`); // Allow deletion by either ID or slug
 } 

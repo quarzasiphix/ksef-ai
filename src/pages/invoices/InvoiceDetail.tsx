@@ -26,10 +26,11 @@ import { useAuth } from "@/hooks/useAuth";
 import ShareInvoiceDialog from "@/components/invoices/ShareInvoiceDialog";
 import { calculateItemValues, getInvoiceValueInPLN, calculateInvoiceTotals } from "@/lib/invoice-utils";
 import ContractorCard from "@/components/invoices/detail/ContractorCard";
-import { BusinessProfile, Customer } from "@/types";
+import { BusinessProfile, Customer, Invoice } from "@/types";
 import { generateInvoicePdf, getInvoiceFileName } from "@/lib/pdf-utils";
+import { getInvoiceById } from "@/integrations/supabase/repositories/invoiceRepository";
 import InvoiceItemsCard from "@/components/invoices/detail/InvoiceItemsCard";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { getLinksForInvoice } from "@/integrations/supabase/repositories/contractInvoiceLinkRepository";
 import { getContract } from "@/integrations/supabase/repositories/contractRepository";
 import { getBankAccountsForProfile } from '@/integrations/supabase/repositories/bankAccountRepository';
@@ -50,8 +51,24 @@ const InvoiceDetail: React.FC<InvoiceDetailProps> = ({ type }) => {
   const [isUpdatingPaid, setIsUpdatingPaid] = useState(false);
   const [selectedBankAccount, setSelectedBankAccount] = useState<any>(null);
   const [bankAccounts, setBankAccounts] = useState<BankAccount[]>([]);
+  const queryClient = useQueryClient();
 
-  const invoice = invoices.find(inv => inv.id === id);
+  const baseInvoice = invoices.find(inv => inv.id === id) || null;
+
+  const {
+    data: invoice,
+    isLoading: isLoadingInvoice,
+    isFetching: isFetchingInvoice,
+  } = useQuery<Invoice | null>({
+    queryKey: ["invoice", id],
+    queryFn: async () => {
+      if (!id) return null;
+      return await getInvoiceById(id);
+    },
+    enabled: !!id,
+    initialData: baseInvoice,
+    staleTime: 1000 * 30,
+  });
 
   useEffect(() => {
     if (invoice?.bankAccountId && invoice.businessProfileId) {
@@ -112,6 +129,10 @@ const InvoiceDetail: React.FC<InvoiceDetailProps> = ({ type }) => {
     enabled: contractLinks.length>0,
   });
 
+  if (isLoading || isLoadingInvoice || isFetchingInvoice) {
+    return <div className="text-center py-8">Ładowanie...</div>;
+  }
+
   if (!invoice) {
     return <div className="text-center py-8">Faktura nie została znaleziona</div>;
   }
@@ -170,6 +191,9 @@ const InvoiceDetail: React.FC<InvoiceDetailProps> = ({ type }) => {
 
       if (error) throw error;
 
+      await refreshAllData();
+      queryClient.removeQueries({ queryKey: ["invoice", invoice.id] });
+      await queryClient.invalidateQueries({ queryKey: ["invoices"] });
       toast.success("Faktura została usunięta");
       navigate(type === "income" ? "/income" : "/expense");
     } catch (error) {

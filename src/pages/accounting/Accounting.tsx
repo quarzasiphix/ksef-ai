@@ -19,6 +19,7 @@ import { toast } from 'sonner';
 import TaxTimeline from "@/components/accounting/TaxTimeline";
 import TaxReportsCard, { TaxReport } from "@/components/accounting/TaxReportsCard";
 import ZusPaymentDialog from "@/components/accounting/ZusPaymentDialog";
+import { VatThresholdTracker } from "@/components/accounting/VatThresholdTracker";
 import { getZusPayments, addZusPayment, updateZusPayment } from "@/integrations/supabase/repositories/zusRepository";
 import type { ZusPayment, ZusType } from "@/types/zus";
 import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuItem } from "@/components/ui/dropdown-menu";
@@ -555,6 +556,18 @@ const Accounting = () => {
   const zusForMonth = ZUS_TYPES.map(zusType => getZusForMonthType(zusMonthKey, zusType)).filter(Boolean) as ZusPayment[];
   const zusUnpaidTypes = ZUS_TYPES.filter(zusType => !getZusForMonthType(zusMonthKey, zusType));
 
+  // Calculate VAT threshold consumption for current year
+  const vatThresholdYear = selectedProfile?.vat_threshold_year || currentYear;
+  const yearlyIncomeInvoices = allInvoices.filter((inv) => {
+    const d = new Date(inv.issueDate);
+    return (
+      d.getFullYear() === vatThresholdYear &&
+      inv.businessProfileId === selectedProfileId &&
+      inv.transactionType === 'income'
+    );
+  });
+  const vatConsumedAmount = yearlyIncomeInvoices.reduce((sum, invoice) => sum + getInvoiceValueInPLN(invoice), 0);
+
   return (
     <div className="space-y-6 pb-20 px-4 md:px-6">
       {/* Header */}
@@ -581,6 +594,15 @@ const Accounting = () => {
         monthExpenses={totalExpenses}
         filedForms={filedForms}
       />
+
+      {/* VAT Threshold Tracker - only show if profile is VAT exempt */}
+      {selectedProfile?.is_vat_exempt && (
+        <VatThresholdTracker
+          profile={selectedProfile}
+          consumedAmount={vatConsumedAmount}
+          invoiceCount={yearlyIncomeInvoices.length}
+        />
+      )}
 
       {/* Financial Overview Cards */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">

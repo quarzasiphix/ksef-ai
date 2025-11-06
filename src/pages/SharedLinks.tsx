@@ -25,9 +25,14 @@ const SharedLinksPage: React.FC = () => {
   const queryClient = useQueryClient();
   const { invoices: { data: invoices } } = useGlobalData();
 
+  const copyToClipboard = (text: string) => {
+    navigator.clipboard.writeText(text);
+    toast.success("Skopiowano do schowka");
+  };
+
   const { data: shares = [], isLoading } = useQuery({
     queryKey: ["shares", user?.id],
-    queryFn: () => listShares(user!.id),
+    queryFn: () => user?.id ? listShares(user.id) : Promise.resolve([]),
     enabled: !!user?.id,
   });
 
@@ -57,16 +62,18 @@ const SharedLinksPage: React.FC = () => {
   };
 
   if (!user) {
-    return <div className="text-center py-8">Musisz być zalogowany.</div>;
+    return (
+      <div className="p-4">
+        <h1 className="text-2xl font-bold mb-4">Udostępnione linki</h1>
+        <p>Zaloguj się, aby zobaczyć swoje udostępnione linki.</p>
+      </div>
+    );
   }
 
   return (
-    <div className="space-y-6 px-2">
-      <div>
-        <h1 className="text-3xl font-bold">Udostępnione linki</h1>
-        <p className="text-muted-foreground">Zarządzaj aktywnymi linkami publicznymi</p>
-      </div>
-
+    <div className="p-4">
+      <h1 className="text-2xl font-bold mb-4">Udostępnione linki</h1>
+      <p className="text-muted-foreground">Zarządzaj aktywnymi linkami publicznymi</p>
       <Card>
         <CardHeader>
           <CardTitle>Aktywne linki ({shares.length})</CardTitle>
@@ -107,10 +114,7 @@ const SharedLinksPage: React.FC = () => {
                     <Button
                       variant="ghost"
                       size="icon"
-                      onClick={() => {
-                        navigator.clipboard.writeText(`${window.location.origin}/share/${s.slug}`);
-                        toast.success("Skopiowano link");
-                      }}
+                      onClick={() => copyToClipboard(`${window.location.origin}/share/${s.slug}`)}
                     >
                       <Copy className="h-4 w-4" />
                     </Button>
