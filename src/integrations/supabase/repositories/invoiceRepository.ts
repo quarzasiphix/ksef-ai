@@ -280,6 +280,8 @@ export async function saveInvoice(invoice: Omit<Invoice, 'id' | 'ksef' | 'vat' |
     exchange_rate?: number | null;
   };
 
+  const fakturaBezVAT = invoice.fakturaBezVAT ?? (invoice as any).fakturaBezVat ?? false;
+
   // Ensure payment method is in the correct format for the database
   const paymentMethod: PaymentMethodDb = (() => {
     if (!invoice.paymentMethod) return PaymentMethodDb.TRANSFER;
@@ -314,6 +316,16 @@ export async function saveInvoice(invoice: Omit<Invoice, 'id' | 'ksef' | 'vat' |
     return 'sales'; // Default fallback
   })();
   
+  const totalNetValue = Math.max(0, Number(invoice.totalNetValue) || 0);
+  const isVatDisabled = fakturaBezVAT || invoice.vat === false;
+  const rawTotalVatValue = Number(invoice.totalVatValue);
+  const totalVatValue = isVatDisabled
+    ? 0
+    : Math.max(0, Number.isFinite(rawTotalVatValue) ? rawTotalVatValue : 0);
+  const totalGrossValue = isVatDisabled
+    ? totalNetValue
+    : totalNetValue + totalVatValue;
+
   const basePayload: Omit<InvoicePayload, 'transaction_type'> = {
     user_id: invoice.user_id,
     number: invoice.number,
@@ -326,13 +338,15 @@ export async function saveInvoice(invoice: Omit<Invoice, 'id' | 'ksef' | 'vat' |
     payment_method: paymentMethod,
     is_paid: invoice.isPaid,
     comments: invoice.comments || null,
-    total_net_value: Number(invoice.totalNetValue) || 0,
-    total_gross_value: Number(invoice.totalGrossValue) || 0,
-    total_vat_value: Number(invoice.totalVatValue) || 0,
+    total_net_value: totalNetValue,
+    total_gross_value: totalGrossValue,
+    total_vat_value: totalVatValue,
     ksef_status: invoice.ksef?.status || null,
     ksef_reference_number: invoice.ksef?.referenceNumber || null,
-    vat: invoice.fakturaBezVAT ? false : (invoice.vat !== undefined ? invoice.vat : true),
-    vat_exemption_reason: invoice.fakturaBezVAT ? (invoice.vatExemptionReason || VatExemptionReason.ART_113_UST_1) : invoice.vatExemptionReason,
+    vat: fakturaBezVAT ? false : (invoice.vat !== undefined ? invoice.vat : true),
+    vat_exemption_reason: fakturaBezVAT
+      ? (invoice.vatExemptionReason || VatExemptionReason.ART_113_UST_1)
+      : invoice.vatExemptionReason,
     currency: invoice.currency || 'PLN',
     bank_account_id: invoice.bankAccountId || null,
     exchange_rate: invoice.exchangeRate || null,
@@ -418,17 +432,14 @@ export async function saveInvoice(invoice: Omit<Invoice, 'id' | 'ksef' | 'vat' |
     }
 
     const itemsPayload = invoice.items.map(item => {
-      // Use vatExempt flag instead of checking vatRate === -1
-      const isVatExempt = item.vatExempt || false;
+      const parsedVatRate = typeof item.vatRate === 'number' ? item.vatRate : Number(item.vatRate);
+      const normalizedVatRate = Number.isFinite(parsedVatRate) ? parsedVatRate : 0;
+      const isVatExempt = Boolean(item.vatExempt) || normalizedVatRate < 0;
+      const vatRate = isVatExempt ? 0 : Math.max(0, normalizedVatRate);
 
-      // Ensure vatRate is a number (should be 0 if vatExempt is true, or the actual rate)
-      const vatRate = isVatExempt ? 0 : (typeof item.vatRate === 'number' ? item.vatRate : Number(item.vatRate) || 0);
-
-      // Recalculate values defensively, using vatExempt
       const quantity = Number(item.quantity) || 0;
       const unitPrice = Number(item.unitPrice) || 0;
       const totalNetValue = quantity * unitPrice;
-      // VAT is 0 if exempt, otherwise calculate based on vatRate
       const totalVatValue = isVatExempt ? 0 : totalNetValue * (vatRate / 100);
       const totalGrossValue = totalNetValue + totalVatValue;
 
