@@ -762,10 +762,22 @@ const NewInvoice = React.forwardRef<{
             // Update existing invoice
             savedInvoice = await saveInvoice({ ...invoiceData, id: initialData.id });
             toast.success('Faktura została zaktualizowana');
+            
+            // Invalidate queries to refresh the data
+            await queryClient.invalidateQueries({ queryKey: ["invoices"] });
+            await queryClient.invalidateQueries({ queryKey: ["invoice", initialData.id] });
           } else {
             // Create new invoice
             savedInvoice = await saveInvoice(invoiceData);
             toast.success('Faktura została utworzona');
+            
+            // Invalidate queries to refresh the data
+            await queryClient.invalidateQueries({ queryKey: ["invoices"] });
+            
+            // If we have the saved invoice, also set it in the cache for immediate access
+            if (savedInvoice?.id) {
+              queryClient.setQueryData(["invoice", savedInvoice.id], savedInvoice);
+            }
           }
 
           if (!initialData) {
