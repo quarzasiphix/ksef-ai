@@ -126,7 +126,7 @@ const NewInvoice = React.forwardRef<{
 
     // All hooks at the top, always called in the same order
     const { user } = useAuth();
-    const { profiles } = useBusinessProfile();
+    const { profiles, selectedProfileId } = useBusinessProfile();
     const [searchParams] = useSearchParams();
     const navigate = useNavigate();
     const location = useLocation();
@@ -143,7 +143,7 @@ const NewInvoice = React.forwardRef<{
         status: 'draft',
         type: type === TransactionType.INCOME ? InvoiceType.SALES : InvoiceType.RECEIPT,
         customerId: '',
-        businessProfileId: '',
+        businessProfileId: initialData?.businessProfileId || selectedProfileId || '',
         items: initialData?.items || [],
         comments: '',
         vat: initialData ? !initialData.fakturaBezVAT : true, // Set based on fakturaBezVAT from initialData
@@ -182,6 +182,13 @@ const NewInvoice = React.forwardRef<{
     }, [fakturaBezVAT, form]);
 
     const businessProfileId = form.watch("businessProfileId");
+    
+    // Set the selected profile from context when creating a new invoice (not editing)
+    useEffect(() => {
+      if (!initialData && selectedProfileId && !businessProfileId) {
+        form.setValue('businessProfileId', selectedProfileId, { shouldValidate: false });
+      }
+    }, [selectedProfileId, initialData, businessProfileId, form]);
     
     // Helpers to determine if current path is for income or expense invoice creation/edit
     const isIncomeRoute = location.pathname === "/income/new" || location.pathname.startsWith("/income/edit/");
