@@ -2,10 +2,10 @@
 import { supabase } from "../client";
 import type { Product } from "@/types/index";
 
-export async function getProducts(userId: string, productType?: 'income' | 'expense'): Promise<Product[]> {
+export async function getProducts(userId: string, productType?: 'income' | 'expense', businessProfileId?: string): Promise<Product[]> {
   let query = supabase
     .from("products")
-    .select("id, name, unit_price, vat_rate, unit, user_id, product_type, track_stock, stock")
+    .select("id, name, unit_price, vat_rate, unit, user_id, product_type, track_stock, stock, business_profile_id, is_shared")
     .eq("user_id", userId)
     .order("name");
 
@@ -20,7 +20,8 @@ export async function getProducts(userId: string, productType?: 'income' | 'expe
     return [];
   }
 
-  return (data || []).map(item => ({
+  // Filter by business profile if specified
+  let products = (data || []).map(item => ({
     id: item.id,
     name: item.name,
     unitPrice: Number(item.unit_price),
@@ -30,8 +31,21 @@ export async function getProducts(userId: string, productType?: 'income' | 'expe
     product_type: item.product_type as 'income' | 'expense',
     track_stock: item.track_stock,
     stock: Number(item.stock),
-    description: '', // Add description to satisfy the type, can be improved later
+    business_profile_id: item.business_profile_id,
+    is_shared: item.is_shared,
+    description: '',
   }));
+
+  // If businessProfileId is specified, filter to show only products for that profile or shared products
+  if (businessProfileId) {
+    products = products.filter(p => 
+      p.is_shared || 
+      !p.business_profile_id || 
+      p.business_profile_id === businessProfileId
+    );
+  }
+
+  return products;
 }
 
 export async function saveProduct(product: Product): Promise<Product> {
@@ -44,6 +58,8 @@ export async function saveProduct(product: Product): Promise<Product> {
     product_type: product.product_type,
     track_stock: product.track_stock,
     stock: product.stock,
+    business_profile_id: product.business_profile_id || null,
+    is_shared: product.is_shared || false,
   };
 
   if (product.id) {
@@ -70,6 +86,8 @@ export async function saveProduct(product: Product): Promise<Product> {
       product_type: data.product_type as 'income' | 'expense',
       track_stock: data.track_stock,
       stock: Number(data.stock),
+      business_profile_id: data.business_profile_id,
+      is_shared: data.is_shared,
     };
   } else {
     // Insert new product
@@ -94,6 +112,8 @@ export async function saveProduct(product: Product): Promise<Product> {
       product_type: data.product_type as 'income' | 'expense',
       track_stock: data.track_stock,
       stock: Number(data.stock),
+      business_profile_id: data.business_profile_id,
+      is_shared: data.is_shared,
     };
   }
 }

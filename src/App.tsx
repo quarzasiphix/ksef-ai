@@ -42,6 +42,8 @@ import LabourHoursPage from '@/pages/employees/LabourHoursPage';
 import NotFound from '@/pages/NotFound';
 import InventoryPage from '@/pages/inventory/InventoryPage';
 import Accounting from '@/pages/accounting/Accounting';
+import BalanceSheet from '@/pages/accounting/BalanceSheet';
+import Shareholders from '@/pages/accounting/Shareholders';
 import Welcome from '@/components/welcome/Welcome';
 import Premium from '@/pages/Premium';
 import ShareDocuments from '@/pages/public/ShareDocuments';
@@ -349,6 +351,20 @@ const App = () => {
                   <ProtectedRoute>
                     <RequirePremium>
                       <Accounting />
+                    </RequirePremium>
+                  </ProtectedRoute>
+                } />
+                <Route path="/accounting/balance-sheet" element={
+                  <ProtectedRoute>
+                    <RequirePremium>
+                      <BalanceSheet />
+                    </RequirePremium>
+                  </ProtectedRoute>
+                } />
+                <Route path="/accounting/shareholders" element={
+                  <ProtectedRoute>
+                    <RequirePremium>
+                      <Shareholders />
                     </RequirePremium>
                   </ProtectedRoute>
                 } />

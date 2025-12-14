@@ -29,6 +29,38 @@ export interface BusinessProfile {
   vat_exemption_reason?: string | null;
   vat_threshold_pln?: number;
   vat_threshold_year?: number;
+  // Spółka z o.o. specific fields
+  share_capital?: number;
+  krs_number?: string;
+  court_registry?: string;
+  establishment_date?: string;
+  headquarters_address?: string;
+  headquarters_postal_code?: string;
+  headquarters_city?: string;
+  correspondence_address?: string;
+  pkd_main?: string;
+  nip_8_filed?: boolean;
+  nip_8_filed_date?: string;
+}
+
+export interface BoardMember {
+  id: string;
+  business_profile_id: string;
+  first_name: string;
+  last_name: string;
+  position: 'prezes' | 'wiceprezes' | 'czlonek_zarzadu' | 'prokurent';
+  pesel?: string;
+  tax_id?: string;
+  address?: string;
+  email?: string;
+  phone?: string;
+  appointed_date?: string;
+  term_end_date?: string;
+  is_active: boolean;
+  can_represent_alone: boolean;
+  notes?: string;
+  created_at?: string;
+  updated_at?: string;
 }
 
 export interface Customer {
@@ -42,6 +74,8 @@ export interface Customer {
   email?: string;
   phone?: string;
   user_id: string; // Added for RLS
+  business_profile_id?: string; // Links to specific business profile
+  is_shared?: boolean; // If true, available for all user's business profiles
   customerType: 'odbiorca' | 'sprzedawca' | 'both';
   linkedBusinessProfile?: {
     id: string;
@@ -50,11 +84,15 @@ export interface Customer {
     phone?: string;
     user_id: string;
   } | null;
+  business_profile_name?: string; // From view
+  business_profile_entity_type?: string; // From view
 }
 
 export interface Product {
   id: string;
   user_id: string; // Added for RLS
+  business_profile_id?: string; // Links to specific business profile
+  is_shared?: boolean; // If true, available for all user's business profiles
   name: string;
   unitPrice: number; // Netto price
   vatRate: number; // VAT percentage, e.g., 23 or -1 for VAT-exempt
@@ -63,6 +101,8 @@ export interface Product {
   product_type: 'income' | 'expense';
   track_stock: boolean;
   stock: number;
+  business_profile_name?: string; // From view
+  business_profile_entity_type?: string; // From view
 }
 
 export enum TransactionType {
@@ -291,6 +331,7 @@ export interface ContractInvoiceLink {
 export interface Employee {
   id: string;
   user_id: string;
+  business_profile_id?: string;
   first_name: string;
   last_name: string;
   position: string;
@@ -299,6 +340,9 @@ export interface Employee {
   start_date: string;
   end_date?: string;
   is_active: boolean;
+  employment_type?: 'umowa_o_prace' | 'umowa_zlecenie' | 'umowa_o_dzielo' | 'b2b' | 'other';
+  requires_pit?: boolean;
+  requires_zus?: boolean;
   created_at: string;
   updated_at: string;
 }

@@ -1,7 +1,8 @@
 import React, { useEffect, useState } from 'react';
 import { useAuth } from "@/context/AuthContext";
+import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
-import { Star, TrendingUp, TrendingDown, Calendar, Download, AlertTriangle, CheckCircle, Clock, Building, Plus, ChevronDown } from "lucide-react";
+import { Star, TrendingUp, TrendingDown, Calendar, Download, AlertTriangle, CheckCircle, Clock, Building, Plus, ChevronDown, Users, FileText, Building2, DollarSign } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { useBusinessProfile } from "@/context/BusinessProfileContext";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -20,8 +21,11 @@ import TaxTimeline from "@/components/accounting/TaxTimeline";
 import TaxReportsCard, { TaxReport } from "@/components/accounting/TaxReportsCard";
 import ZusPaymentDialog from "@/components/accounting/ZusPaymentDialog";
 import { VatThresholdTracker } from "@/components/accounting/VatThresholdTracker";
+import CapitalContributionDialog from "@/components/accounting/CapitalContributionDialog";
 import { getZusPayments, addZusPayment, updateZusPayment } from "@/integrations/supabase/repositories/zusRepository";
+import { getEquityTransactions } from "@/integrations/supabase/repositories/accountingRepository";
 import type { ZusPayment, ZusType } from "@/types/zus";
+import type { EquityTransaction } from "@/types/accounting";
 import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuItem } from "@/components/ui/dropdown-menu";
 import { uploadTaxForm, saveFiledTaxForm } from "@/integrations/supabase/repositories/taxFormRepository";
 import { listFiledTaxForms, FiledTaxForm, updateFiledTaxFormStatus } from "@/integrations/supabase/repositories/filedTaxFormsRepository";
@@ -46,6 +50,7 @@ const monthNamesFull = [
 const Accounting = () => {
   const { isPremium, openPremiumDialog, user } = useAuth();
   const { profiles, selectedProfileId, selectProfile, isLoadingProfiles } = useBusinessProfile();
+  const navigate = useNavigate();
 
   const [selectedPeriod, setSelectedPeriod] = useState<string>('this_month');
   const [reportingPeriods, setReportingPeriods] = useState<{
@@ -73,6 +78,10 @@ const Accounting = () => {
 
   // Filed forms state
   const [filedForms, setFiledForms] = useState<FiledTaxForm[]>([]);
+
+  // Capital transactions state
+  const [capitalDialogOpen, setCapitalDialogOpen] = useState(false);
+  const [equityTransactions, setEquityTransactions] = useState<EquityTransaction[]>([]);
 
   // Load filed forms when profile changes
   useEffect(() => {
@@ -359,6 +368,15 @@ const Accounting = () => {
     getZusPayments(user.id, undefined, selectedProfileId).then(setZusPayments);
   }, [user, selectedProfileId]);
 
+  // Fetch equity transactions for Spółka z o.o.
+  useEffect(() => {
+    if (!selectedProfileId) return;
+    const isSpZoo = selectedProfile?.entityType === 'sp_zoo' || selectedProfile?.entityType === 'sa';
+    if (isSpZoo) {
+      getEquityTransactions(selectedProfileId).then(setEquityTransactions).catch(console.error);
+    }
+  }, [selectedProfileId, selectedProfile]);
+
   // Helper: get ZUS payment for month/type
   const getZusForMonthType = (month: string, zusType: ZusType) =>
     zusPayments.find(zp => zp.month === month && zp.zusType === zusType && (!selectedProfileId || zp.businessProfileId === selectedProfileId));
@@ -568,16 +586,103 @@ const Accounting = () => {
   });
   const vatConsumedAmount = yearlyIncomeInvoices.reduce((sum, invoice) => sum + getInvoiceValueInPLN(invoice), 0);
 
+  const isSpZoo = selectedProfile?.entityType === 'sp_zoo' || selectedProfile?.entityType === 'sa';
+
   return (
     <div className="space-y-6 pb-20 px-4 md:px-6">
       {/* Header */}
-
       <div className="space-y-2">
         <h1 className="text-2xl md:text-3xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-amber-400 via-amber-500 to-amber-700">
           Panel Księgowości
         </h1>
-        <p className="text-muted-foreground">Zarządzaj finansami i rozliczeniami swojej firmy</p>
+        <p className="text-muted-foreground">
+          {isSpZoo ? 'Pełna księgowość dla Spółki' : 'Zarządzaj finansami i rozliczeniami swojej firmy'}
+        </p>
       </div>
+
+      {/* Spółka z o.o. Navigation */}
+      {isSpZoo && (
+        <Card>
+          <CardContent className="pt-6">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <Button
+                variant="outline"
+                className="h-auto py-4 flex flex-col items-center gap-2"
+                onClick={() => navigate('/accounting/balance-sheet')}
+              >
+                <Building2 className="h-8 w-8 text-blue-600" />
+                <div className="text-center">
+                  <div className="font-semibold">Bilans</div>
+                  <div className="text-xs text-muted-foreground">Aktywa i pasywa</div>
+                </div>
+              </Button>
+              <Button
+                variant="outline"
+                className="h-auto py-4 flex flex-col items-center gap-2"
+                onClick={() => navigate('/accounting/shareholders')}
+              >
+                <Users className="h-8 w-8 text-purple-600" />
+                <div className="text-center">
+                  <div className="font-semibold">Wspólnicy</div>
+                  <div className="text-xs text-muted-foreground">Struktura kapitałowa</div>
+                </div>
+              </Button>
+              <Button
+                variant="outline"
+                className="h-auto py-4 flex flex-col items-center gap-2"
+                onClick={() => setCapitalDialogOpen(true)}
+              >
+                <DollarSign className="h-8 w-8 text-green-600" />
+                <div className="text-center">
+                  <div className="font-semibold">Kapitał</div>
+                  <div className="text-xs text-muted-foreground">Transakcje kapitałowe</div>
+                </div>
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Recent Capital Transactions for Spółka z o.o. */}
+      {isSpZoo && equityTransactions.length > 0 && (
+        <Card>
+          <CardHeader>
+            <CardTitle>Ostatnie transakcje kapitałowe</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-2">
+              {equityTransactions.slice(0, 5).map((transaction) => (
+                <div
+                  key={transaction.id}
+                  className="flex items-center justify-between p-3 border rounded-lg"
+                >
+                  <div>
+                    <p className="font-medium">
+                      {transaction.transaction_type === 'capital_contribution' && 'Wniesienie kapitału'}
+                      {transaction.transaction_type === 'capital_withdrawal' && 'Wypłata kapitału'}
+                      {transaction.transaction_type === 'retained_earnings' && 'Zyski zatrzymane'}
+                      {transaction.transaction_type === 'dividend' && 'Dywidenda'}
+                      {transaction.transaction_type === 'other' && 'Inne'}
+                    </p>
+                    <p className="text-sm text-muted-foreground">
+                      {transaction.shareholder_name && `${transaction.shareholder_name} • `}
+                      {format(new Date(transaction.transaction_date), 'dd MMM yyyy', { locale: pl })}
+                    </p>
+                  </div>
+                  <div className={cn(
+                    "font-semibold",
+                    transaction.transaction_type === 'capital_contribution' ? 'text-green-600' : 'text-red-600'
+                  )}>
+                    {transaction.transaction_type === 'capital_contribution' ? '+' : '-'}
+                    {new Intl.NumberFormat('pl-PL', { style: 'currency', currency: 'PLN' }).format(transaction.amount)}
+                  </div>
+                </div>
+              ))}
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
       <TaxTimeline selectedMonth={selectedMonthIdx} onMonthSelect={setSelectedMonthIdx} />
 
       <TaxReportsCard
@@ -647,14 +752,18 @@ const Accounting = () => {
 
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Szacowany podatek</CardTitle>
+            <CardTitle className="text-sm font-medium">
+              {isSpZoo ? 'Podatek CIT' : 'Szacowany podatek'}
+            </CardTitle>
             <Calendar className="h-4 w-4 text-amber-600" />
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold text-amber-600">
-              {loadingData ? '...' : `${estimatedTax.toLocaleString('pl-PL')} PLN`}
+              {loadingData ? '...' : isSpZoo ? `${(netProfit * 0.19).toLocaleString('pl-PL')} PLN` : `${estimatedTax.toLocaleString('pl-PL')} PLN`}
             </div>
-            <p className="text-xs text-muted-foreground">{selectedProfile?.tax_type || 'Nie wybrano'}</p>
+            <p className="text-xs text-muted-foreground">
+              {isSpZoo ? 'CIT 19%' : (selectedProfile?.tax_type || 'Nie wybrano')}
+            </p>
           </CardContent>
         </Card>
       </div>
@@ -927,8 +1036,22 @@ const Accounting = () => {
       <ZusPaymentDialog
         open={zusDialogOpen}
         onClose={() => setZusDialogOpen(false)}
-        onSave={handleSaveZus}
         initialValue={zusDialogInitial}
+        onSave={(data) => {
+          void handleSaveZus(data);
+        }}
+      />
+
+      <CapitalContributionDialog
+        open={Boolean(selectedProfileId) && capitalDialogOpen}
+        onOpenChange={setCapitalDialogOpen}
+        businessProfileId={selectedProfileId || ""}
+        onSuccess={() => {
+          const bpId = selectedProfileId;
+          if (bpId) {
+            getEquityTransactions(bpId).then(setEquityTransactions).catch(console.error);
+          }
+        }}
       />
     </div>
   );

@@ -1,5 +1,5 @@
-import React, { useState } from "react";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
+import React, { useId, useState } from "react";
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from "@/components/ui/select";
@@ -31,6 +31,7 @@ interface ZusPaymentDialogProps {
 }
 
 const ZusPaymentDialog: React.FC<ZusPaymentDialogProps> = ({ open, onClose, onSave, initialValue }) => {
+  const descriptionId = useId();
   const [zusType, setZusType] = useState<ZusType>(initialValue?.zusType || "społeczne");
   const [amount, setAmount] = useState(initialValue?.amount?.toString() || "");
   const [isPaid, setIsPaid] = useState(initialValue?.isPaid || false);
@@ -52,10 +53,18 @@ const ZusPaymentDialog: React.FC<ZusPaymentDialogProps> = ({ open, onClose, onSa
   };
 
   return (
-    <Dialog open={open} onOpenChange={onClose}>
-      <DialogContent>
+    <Dialog
+      open={open}
+      onOpenChange={(nextOpen) => {
+        if (!nextOpen) onClose();
+      }}
+    >
+      <DialogContent aria-describedby={descriptionId}>
         <DialogHeader>
           <DialogTitle>{initialValue ? "Edytuj płatność ZUS" : "Dodaj płatność ZUS"}</DialogTitle>
+          <DialogDescription id={descriptionId}>
+            Zapisz płatność ZUS dla wybranego miesiąca i typu.
+          </DialogDescription>
         </DialogHeader>
         <div className="space-y-4 py-2">
           <div>
