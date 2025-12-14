@@ -92,6 +92,22 @@ const Accounting = () => {
   }, [selectedProfileId]);
 
   const getMonthlyReports = (monthIdx: number): TaxReport[] => {
+    const isSpZooEntity = selectedProfile?.entityType === 'sp_zoo' || selectedProfile?.entityType === 'sa';
+    
+    // For Spółka z o.o. without employees - only CIT (annual, due April 30th)
+    // CIT-8 is filed once a year by end of March (3 months after fiscal year end)
+    if (isSpZooEntity) {
+      // Only show CIT reminder in March (due by end of March for previous year)
+      if (monthIdx === 2) { // March
+        return [
+          { id: `cit-8-${monthIdx}`, name: "CIT-8 (roczny)", dueDay: 31 },
+        ];
+      }
+      // No monthly obligations for sp_zoo without employees
+      return [];
+    }
+    
+    // For JDG (sole proprietorship) - standard monthly obligations
     const reports: TaxReport[] = [
       { id: `jpk-${monthIdx}`, name: "JPK_V7M", dueDay: 25 },
       { id: `zus-${monthIdx}`, name: "Deklaracja ZUS (DRA)", dueDay: 20 },
@@ -630,12 +646,12 @@ const Accounting = () => {
               <Button
                 variant="outline"
                 className="h-auto py-4 flex flex-col items-center gap-2"
-                onClick={() => setCapitalDialogOpen(true)}
+                onClick={() => navigate('/accounting/company-registry')}
               >
-                <DollarSign className="h-8 w-8 text-green-600" />
+                <FileText className="h-8 w-8 text-amber-600" />
                 <div className="text-center">
-                  <div className="font-semibold">Kapitał</div>
-                  <div className="text-xs text-muted-foreground">Transakcje kapitałowe</div>
+                  <div className="font-semibold">Rejestr Spółki</div>
+                  <div className="text-xs text-muted-foreground">NIP-8, KRS, VAT-R</div>
                 </div>
               </Button>
             </div>
@@ -688,8 +704,8 @@ const Accounting = () => {
       <TaxReportsCard
         monthIndex={selectedMonthIdx}
         reports={getMonthlyReports(selectedMonthIdx)}
-        zusPayments={zusPayments}
-        zusTypes={ZUS_TYPES}
+        zusPayments={isSpZoo ? [] : zusPayments}
+        zusTypes={isSpZoo ? [] : ZUS_TYPES}
         zusMonthKey={zusMonthKey}
         onAddEditZus={handleAddEditZus}
         onGenerateTaxForm={handleGenerateTaxForm}

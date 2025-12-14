@@ -38,7 +38,16 @@ export interface BusinessProfile {
   headquarters_postal_code?: string;
   headquarters_city?: string;
   correspondence_address?: string;
+  correspondence_postal_code?: string;
+  correspondence_city?: string;
+  business_activity_address?: string;
+  business_activity_postal_code?: string;
+  business_activity_city?: string;
   pkd_main?: string;
+  vat_status?: 'none' | 'vat' | 'vat_ue';
+  accounting_method?: 'ksiegi_rachunkowe' | 'uproszczona';
+  cit_rate?: 9 | 19;
+  fiscal_year_end_month?: number;
   nip_8_filed?: boolean;
   nip_8_filed_date?: string;
 }

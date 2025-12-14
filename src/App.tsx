@@ -53,6 +53,9 @@ import ContractDetails from '@/pages/contracts/ContractDetails';
 import BankAccounts from "@/pages/bank/BankAccounts";
 import Index from "./pages/Index";
 import SharedLinksPage from "./pages/SharedLinks";
+import CompanyRegistry from '@/pages/spolka/CompanyRegistry';
+import CapitalEvents from '@/pages/spolka/CapitalEvents';
+import Resolutions from '@/pages/spolka/Resolutions';
 
 import { queryClient } from '@/lib/queryClient';
 import { useAuth } from '@/hooks/useAuth';
@@ -365,6 +368,27 @@ const App = () => {
                   <ProtectedRoute>
                     <RequirePremium>
                       <Shareholders />
+                    </RequirePremium>
+                  </ProtectedRoute>
+                } />
+                <Route path="/accounting/company-registry" element={
+                  <ProtectedRoute>
+                    <RequirePremium>
+                      <CompanyRegistry />
+                    </RequirePremium>
+                  </ProtectedRoute>
+                } />
+                <Route path="/accounting/capital-events" element={
+                  <ProtectedRoute>
+                    <RequirePremium>
+                      <CapitalEvents />
+                    </RequirePremium>
+                  </ProtectedRoute>
+                } />
+                <Route path="/accounting/resolutions" element={
+                  <ProtectedRoute>
+                    <RequirePremium>
+                      <Resolutions />
                     </RequirePremium>
                   </ProtectedRoute>
                 } />
