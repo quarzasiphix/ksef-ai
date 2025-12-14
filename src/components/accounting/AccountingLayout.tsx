@@ -16,10 +16,12 @@ export const AccountingLayout: React.FC<AccountingLayoutProps> = ({
   children,
   showSidebar = true 
 }) => {
+  const COLLAPSED_KEY = 'accounting_sidebar_collapsed';
+
   const [mobileOpen, setMobileOpen] = useState(false);
   const [desktopCollapsed, setDesktopCollapsed] = useState<boolean>(() => {
     try {
-      const v = window.localStorage.getItem('accounting_sidebar_collapsed');
+      const v = window.localStorage.getItem(COLLAPSED_KEY);
       return v === '1';
     } catch {
       return false;
@@ -82,11 +84,25 @@ export const AccountingLayout: React.FC<AccountingLayoutProps> = ({
 
   useEffect(() => {
     try {
-      window.localStorage.setItem('accounting_sidebar_collapsed', desktopCollapsed ? '1' : '0');
+      window.localStorage.setItem(COLLAPSED_KEY, desktopCollapsed ? '1' : '0');
     } catch {
       // ignore
     }
   }, [desktopCollapsed]);
+
+  useEffect(() => {
+    // Defensive sync on mount (some browsers/extensions can block localStorage reads during init)
+    try {
+      const v = window.localStorage.getItem(COLLAPSED_KEY);
+      const shouldBeCollapsed = v === '1';
+      if (shouldBeCollapsed !== desktopCollapsed) {
+        setDesktopCollapsed(shouldBeCollapsed);
+      }
+    } catch {
+      // ignore
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   useEffect(() => {
     // Persist pin state across route navigation to avoid peek flicker
@@ -103,6 +119,13 @@ export const AccountingLayout: React.FC<AccountingLayoutProps> = ({
   const handleToggleDesktopCollapsed = () => {
     setDesktopCollapsed((v) => {
       const next = !v;
+
+      // Write immediately so it persists even if the app reloads quickly.
+      try {
+        window.localStorage.setItem(COLLAPSED_KEY, next ? '1' : '0');
+      } catch {
+        // ignore
+      }
 
       // If collapsing while mouse is over the sidebar, it would instantly "peek" open again.
       // Force-close peek and ignore hover briefly so the user sees it collapse immediately.
