@@ -47,24 +47,18 @@ const CompanyRegistry = () => {
 
   return (
     <div className="space-y-6 pb-20 px-4 md:px-6">
-      {/* Header */}
-      <div className="flex items-center justify-between">
-        <div>
-          <div className="flex items-center gap-2 mb-2">
-            <Button variant="ghost" size="sm" onClick={() => navigate('/accounting')}>
-              <ArrowLeft className="h-4 w-4 mr-2" />
-              Powrót
-            </Button>
+        {/* Header */}
+        <div className="flex items-center justify-between">
+          <div>
+            <h1 className="text-2xl font-bold tracking-tight flex items-center gap-2">
+              <Building2 className="h-6 w-6" />
+              Rejestr Spółki
+            </h1>
+            <p className="text-muted-foreground text-sm">
+              Oficjalne dane rejestrowe i formularze zgłoszeniowe
+            </p>
           </div>
-          <h1 className="text-3xl font-bold tracking-tight flex items-center gap-2">
-            <Building2 className="h-8 w-8" />
-            Rejestr Spółki
-          </h1>
-          <p className="text-muted-foreground">
-            Oficjalne dane rejestrowe i formularze zgłoszeniowe
-          </p>
         </div>
-      </div>
 
       {/* Compliance Status Overview */}
       <Card>

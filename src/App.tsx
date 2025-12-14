@@ -56,6 +56,9 @@ import SharedLinksPage from "./pages/SharedLinks";
 import CompanyRegistry from '@/pages/spolka/CompanyRegistry';
 import CapitalEvents from '@/pages/spolka/CapitalEvents';
 import Resolutions from '@/pages/spolka/Resolutions';
+import CITDashboard from '@/pages/spolka/CITDashboard';
+import Documents from '@/pages/spolka/Documents';
+import AccountingShell from '@/pages/accounting/AccountingShell';
 
 import { queryClient } from '@/lib/queryClient';
 import { useAuth } from '@/hooks/useAuth';
@@ -349,49 +352,23 @@ const App = () => {
                   </ProtectedRoute>
                 } />
 
-                {/* Accounting (Premium) */}
+                {/* Accounting (Premium) - persistent shell to avoid sidebar remount flicker */}
                 <Route path="/accounting" element={
                   <ProtectedRoute>
                     <RequirePremium>
-                      <Accounting />
+                      <AccountingShell />
                     </RequirePremium>
                   </ProtectedRoute>
-                } />
-                <Route path="/accounting/balance-sheet" element={
-                  <ProtectedRoute>
-                    <RequirePremium>
-                      <BalanceSheet />
-                    </RequirePremium>
-                  </ProtectedRoute>
-                } />
-                <Route path="/accounting/shareholders" element={
-                  <ProtectedRoute>
-                    <RequirePremium>
-                      <Shareholders />
-                    </RequirePremium>
-                  </ProtectedRoute>
-                } />
-                <Route path="/accounting/company-registry" element={
-                  <ProtectedRoute>
-                    <RequirePremium>
-                      <CompanyRegistry />
-                    </RequirePremium>
-                  </ProtectedRoute>
-                } />
-                <Route path="/accounting/capital-events" element={
-                  <ProtectedRoute>
-                    <RequirePremium>
-                      <CapitalEvents />
-                    </RequirePremium>
-                  </ProtectedRoute>
-                } />
-                <Route path="/accounting/resolutions" element={
-                  <ProtectedRoute>
-                    <RequirePremium>
-                      <Resolutions />
-                    </RequirePremium>
-                  </ProtectedRoute>
-                } />
+                }>
+                  <Route index element={<Accounting />} />
+                  <Route path="balance-sheet" element={<BalanceSheet />} />
+                  <Route path="shareholders" element={<Shareholders />} />
+                  <Route path="company-registry" element={<CompanyRegistry />} />
+                  <Route path="capital-events" element={<CapitalEvents />} />
+                  <Route path="resolutions" element={<Resolutions />} />
+                  <Route path="cit" element={<CITDashboard />} />
+                  <Route path="documents" element={<Documents />} />
+                </Route>
 
                 {/* Onboarding / Welcome setup (full-page, no layout) */}
                 <Route path="/welcome" element={

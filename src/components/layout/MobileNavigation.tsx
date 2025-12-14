@@ -26,7 +26,7 @@ import {
 } from 'lucide-react';
 import { useTheme } from '@/components/theme/ThemeProvider';
 import { cn } from '@/lib/utils';
-import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet';
+import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle, SheetTrigger } from '@/components/ui/sheet';
 import { Button } from '@/components/ui/button';
 import { useAuth } from '@/hooks/useAuth';
 import { BusinessProfileSwitcher } from './BusinessProfileSwitcher';
@@ -130,6 +130,10 @@ const MobileNavigation = () => {
           <span className="text-xs mt-1">Menu</span>
         </SheetTrigger>
         <SheetContent side="right" className="w-[280px] p-0 flex flex-col">
+          <SheetHeader className="sr-only">
+            <SheetTitle>Menu aplikacji</SheetTitle>
+            <SheetDescription>Nawigacja oraz szybkie akcje</SheetDescription>
+          </SheetHeader>
           {/* Scrollable content area */}
           <div className="flex-1 overflow-y-auto scrollbar-hide pt-6">
             <div className="flex flex-col space-y-6 px-6">

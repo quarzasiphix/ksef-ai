@@ -3,7 +3,7 @@ import { useBusinessProfile } from '@/context/BusinessProfileContext';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
 import { Users, Plus, Edit, Building2 } from 'lucide-react';
 import { getShareholders, createShareholder, updateShareholder } from '@/integrations/supabase/repositories/accountingRepository';
 import type { Shareholder } from '@/types/accounting';
@@ -137,21 +137,21 @@ const Shareholders = () => {
 
   return (
     <div className="space-y-6 pb-20 px-4 md:px-6">
-      {/* Header */}
-      <div className="flex items-center justify-between">
-        <div className="space-y-2">
-          <h1 className="text-2xl md:text-3xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-purple-400 via-purple-500 to-purple-700">
-            Wspólnicy
-          </h1>
-          <p className="text-muted-foreground">
-            Zarządzaj wspólnikami i strukturą kapitałową
-          </p>
+        {/* Header */}
+        <div className="flex items-center justify-between">
+          <div className="space-y-2">
+            <h1 className="text-2xl font-bold tracking-tight">
+              Wspólnicy
+            </h1>
+            <p className="text-muted-foreground text-sm">
+              Zarządzaj wspólnikami i strukturą kapitałową
+            </p>
+          </div>
+          <Button onClick={() => handleOpenDialog()}>
+            <Plus className="mr-2 h-4 w-4" />
+            Dodaj wspólnika
+          </Button>
         </div>
-        <Button onClick={() => handleOpenDialog()}>
-          <Plus className="mr-2 h-4 w-4" />
-          Dodaj wspólnika
-        </Button>
-      </div>
 
       {/* Summary Cards */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
@@ -252,6 +252,9 @@ const Shareholders = () => {
             <DialogTitle>
               {editingShareholder ? 'Edytuj wspólnika' : 'Dodaj wspólnika'}
             </DialogTitle>
+            <DialogDescription>
+              Uzupełnij dane wspólnika oraz jego udział i wkład kapitałowy.
+            </DialogDescription>
           </DialogHeader>
           <div className="space-y-4">
             <div>

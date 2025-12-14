@@ -77,20 +77,14 @@ const CapitalEvents = () => {
 
   return (
     <div className="space-y-6 pb-20 px-4 md:px-6">
-      {/* Header */}
-      <div className="flex items-center justify-between">
-        <div>
-          <div className="flex items-center gap-2 mb-2">
-            <Button variant="ghost" size="sm" onClick={() => navigate('/accounting')}>
-              <ArrowLeft className="h-4 w-4 mr-2" />
-              Powrót
-            </Button>
+        {/* Header */}
+        <div className="flex items-center justify-between">
+          <div>
+            <h1 className="text-2xl font-bold tracking-tight">Zdarzenia kapitałowe</h1>
+            <p className="text-muted-foreground text-sm">
+              Historia transakcji kapitałowych i dywidend
+            </p>
           </div>
-          <h1 className="text-3xl font-bold tracking-tight">Zdarzenia kapitałowe</h1>
-          <p className="text-muted-foreground">
-            Historia transakcji kapitałowych i dywidend
-          </p>
-        </div>
         <Button onClick={() => setDialogOpen(true)}>
           <Plus className="h-4 w-4 mr-2" />
           Dodaj zdarzenie

@@ -50,6 +50,8 @@ export interface BusinessProfile {
   fiscal_year_end_month?: number;
   nip_8_filed?: boolean;
   nip_8_filed_date?: string;
+  cit_advance_type?: 'monthly' | 'quarterly';
+  is_small_taxpayer?: boolean;
 }
 
 export interface BoardMember {

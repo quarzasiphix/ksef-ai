@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { useAuth } from "@/context/AuthContext";
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
-import { Star, TrendingUp, TrendingDown, Calendar, Download, AlertTriangle, CheckCircle, Clock, Building, Plus, ChevronDown, Users, FileText, Building2, DollarSign } from "lucide-react";
+import { Star, TrendingUp, TrendingDown, Calendar, Download, AlertTriangle, CheckCircle, Clock, Building, Plus, ChevronDown, Users, FileText, Building2, DollarSign, Calculator } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { useBusinessProfile } from "@/context/BusinessProfileContext";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -606,58 +606,37 @@ const Accounting = () => {
 
   return (
     <div className="space-y-6 pb-20 px-4 md:px-6">
-      {/* Header */}
-      <div className="space-y-2">
-        <h1 className="text-2xl md:text-3xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-amber-400 via-amber-500 to-amber-700">
-          Panel Księgowości
-        </h1>
-        <p className="text-muted-foreground">
-          {isSpZoo ? 'Pełna księgowość dla Spółki' : 'Zarządzaj finansami i rozliczeniami swojej firmy'}
-        </p>
-      </div>
-
-      {/* Spółka z o.o. Navigation */}
-      {isSpZoo && (
-        <Card>
-          <CardContent className="pt-6">
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-              <Button
-                variant="outline"
-                className="h-auto py-4 flex flex-col items-center gap-2"
-                onClick={() => navigate('/accounting/balance-sheet')}
-              >
-                <Building2 className="h-8 w-8 text-blue-600" />
-                <div className="text-center">
-                  <div className="font-semibold">Bilans</div>
-                  <div className="text-xs text-muted-foreground">Aktywa i pasywa</div>
-                </div>
-              </Button>
-              <Button
-                variant="outline"
-                className="h-auto py-4 flex flex-col items-center gap-2"
-                onClick={() => navigate('/accounting/shareholders')}
-              >
-                <Users className="h-8 w-8 text-purple-600" />
-                <div className="text-center">
-                  <div className="font-semibold">Wspólnicy</div>
-                  <div className="text-xs text-muted-foreground">Struktura kapitałowa</div>
-                </div>
-              </Button>
-              <Button
-                variant="outline"
-                className="h-auto py-4 flex flex-col items-center gap-2"
-                onClick={() => navigate('/accounting/company-registry')}
-              >
-                <FileText className="h-8 w-8 text-amber-600" />
-                <div className="text-center">
-                  <div className="font-semibold">Rejestr Spółki</div>
-                  <div className="text-xs text-muted-foreground">NIP-8, KRS, VAT-R</div>
-                </div>
-              </Button>
-            </div>
-          </CardContent>
-        </Card>
-      )}
+        {/* Header */}
+        <div className="space-y-2 lg:hidden">
+          <h1 className="text-2xl md:text-3xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-amber-400 via-amber-500 to-amber-700">
+            Panel Księgowości
+          </h1>
+          <p className="text-muted-foreground">
+            {isSpZoo ? 'Pełna księgowość dla Spółki' : 'Zarządzaj finansami i rozliczeniami swojej firmy'}
+          </p>
+        </div>
+        {/* Desktop header - shown when sidebar is visible */}
+        {isSpZoo && (
+          <div className="hidden lg:block space-y-2">
+            <h1 className="text-2xl md:text-3xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-amber-400 via-amber-500 to-amber-700">
+              Panel Główny
+            </h1>
+            <p className="text-muted-foreground">
+              Przegląd finansów i rozliczeń spółki
+            </p>
+          </div>
+        )}
+        {/* JDG header - always shown for non-spzoo */}
+        {!isSpZoo && (
+          <div className="hidden lg:block space-y-2">
+            <h1 className="text-2xl md:text-3xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-amber-400 via-amber-500 to-amber-700">
+              Panel Księgowości
+            </h1>
+            <p className="text-muted-foreground">
+              Zarządzaj finansami i rozliczeniami swojej firmy
+            </p>
+          </div>
+        )}
 
       {/* Recent Capital Transactions for Spółka z o.o. */}
       {isSpZoo && equityTransactions.length > 0 && (

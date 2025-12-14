@@ -99,15 +99,15 @@ const BalanceSheet = () => {
 
   return (
     <div className="space-y-6 pb-20 px-4 md:px-6">
-      {/* Header */}
-      <div className="space-y-2">
-        <h1 className="text-2xl md:text-3xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-blue-400 via-blue-500 to-blue-700">
-          Bilans
-        </h1>
-        <p className="text-muted-foreground">
-          Zestawienie aktywów, pasywów i kapitału własnego
-        </p>
-      </div>
+        {/* Header */}
+        <div className="space-y-2">
+          <h1 className="text-2xl font-bold tracking-tight">
+            Bilans
+          </h1>
+          <p className="text-muted-foreground text-sm">
+            Zestawienie aktywów, pasywów i kapitału własnego
+          </p>
+        </div>
 
       {/* Controls */}
       <Card>
