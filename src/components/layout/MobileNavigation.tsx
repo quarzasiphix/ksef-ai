@@ -36,6 +36,11 @@ const MobileNavigation = () => {
   const { theme, setTheme } = useTheme();
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
   const { isPremium, openPremiumDialog } = useAuth();
+  const { profiles, selectedProfileId } = useBusinessProfile();
+
+  const selectedProfile = profiles?.find((p) => p.id === selectedProfileId);
+  const isSpZoo = selectedProfile?.entityType === 'sp_zoo' || selectedProfile?.entityType === 'sa';
+  const bankPath = isSpZoo ? '/accounting/bank' : '/bank';
 
   // Main bottom navigation items - most used features
   const mainNavItems = [
@@ -70,7 +75,7 @@ const MobileNavigation = () => {
   const finanseItems = [
     { title: "Faktury", path: "/income", icon: FileText },
     { title: "Wydatki", path: "/expense", icon: CreditCard },
-    { title: "Bankowość", path: "/bank", icon: Banknote },
+    { title: "Bankowość", path: bankPath, icon: Banknote },
     { title: "Księgowość", path: "/accounting", icon: Calculator, premium: true },
   ];
 

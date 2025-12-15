@@ -59,6 +59,7 @@ import Resolutions from '@/pages/spolka/Resolutions';
 import CITDashboard from '@/pages/spolka/CITDashboard';
 import Documents from '@/pages/spolka/Documents';
 import AccountingShell from '@/pages/accounting/AccountingShell';
+import Kasa from '@/pages/accounting/Kasa';
 
 import { queryClient } from '@/lib/queryClient';
 import { useAuth } from '@/hooks/useAuth';
@@ -361,6 +362,7 @@ const App = () => {
                   </ProtectedRoute>
                 }>
                   <Route index element={<Accounting />} />
+                  <Route path="bank" element={<BankAccounts />} />
                   <Route path="balance-sheet" element={<BalanceSheet />} />
                   <Route path="shareholders" element={<Shareholders />} />
                   <Route path="company-registry" element={<CompanyRegistry />} />
@@ -368,6 +370,7 @@ const App = () => {
                   <Route path="resolutions" element={<Resolutions />} />
                   <Route path="cit" element={<CITDashboard />} />
                   <Route path="documents" element={<Documents />} />
+                  <Route path="kasa" element={<Kasa />} />
                 </Route>
 
                 {/* Onboarding / Welcome setup (full-page, no layout) */}

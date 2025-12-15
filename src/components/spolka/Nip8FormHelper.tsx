@@ -90,7 +90,7 @@ export const Nip8FormHelper: React.FC<Nip8FormHelperProps> = ({ profile, onUpdat
     accountingMethod: (profile.accounting_method as 'ksiegi_rachunkowe' | 'uproszczona') || 'ksiegi_rachunkowe',
     fiscalYearEnd: profile.fiscal_year_end_month ? `${profile.fiscal_year_end_month}` : '12',
     
-    citRate: (profile.cit_rate as 9 | 19) || 19,
+    citRate: ((profile.cit_rate as 9 | 19) ?? 9),
     smallTaxpayer: false,
     
     email: profile.email || '',
@@ -111,7 +111,7 @@ export const Nip8FormHelper: React.FC<Nip8FormHelperProps> = ({ profile, onUpdat
         .from('business_profiles')
         .update({
           name: formData.companyName,
-          taxId: formData.nip,
+          tax_id: formData.nip,
           regon: formData.regon,
           krs_number: formData.krs,
           

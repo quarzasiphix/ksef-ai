@@ -38,13 +38,19 @@ import { useAuth } from "@/hooks/useAuth";
 import { Button } from "@/components/ui/button";
 import { BusinessProfileSwitcher } from "./BusinessProfileSwitcher";
 import { ThemeToggle } from "@/components/theme/ThemeToggle";
+import { useBusinessProfile } from "@/context/BusinessProfileContext";
 
 const AppSidebar = () => {
   const { state } = useSidebar();
   const location = useLocation();
   const { isPremium, openPremiumDialog, user, logout } = useAuth();
+  const { profiles, selectedProfileId } = useBusinessProfile();
   const isCollapsed = state === "collapsed";
   const navigate = useNavigate();
+
+  const selectedProfile = profiles?.find((p) => p.id === selectedProfileId);
+  const isSpZoo = selectedProfile?.entityType === 'sp_zoo' || selectedProfile?.entityType === 'sa';
+  const bankPath = isSpZoo ? '/accounting/bank' : '/bank';
 
   // Quick actions
   const quickActions = [
@@ -67,7 +73,7 @@ const AppSidebar = () => {
   // Finanse group
   const fakturyItem: SidebarItem = { title: "Faktury", path: "/income", icon: FileText, className: "lg:hidden" };
   const wydatkiItem: SidebarItem = { title: "Wydatki", path: "/expense", icon: CreditCard, className: "lg:hidden" };
-  const bankItem: SidebarItem = { title: "Bankowość", path: "/bank", icon: Banknote };
+  const bankItem: SidebarItem = { title: "Bankowość", path: bankPath, icon: Banknote };
   const accountingItem: SidebarItem = { title: "Księgowość", path: "/accounting", icon: Calculator };
 
   // Zarządzanie group

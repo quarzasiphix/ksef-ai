@@ -1,5 +1,5 @@
 import React from "react";
-import { Outlet } from "react-router-dom";
+import { Outlet, useLocation } from "react-router-dom";
 import { cn } from "@/lib/utils";
 import AppSidebar from "./AppSidebar";
 import Header from "./Header";
@@ -18,6 +18,8 @@ const Layout = ({ children }: LayoutProps) => {
 
   const LayoutContent = ({ innerChildren }: { innerChildren?: React.ReactNode }) => {
     const { actions } = usePageHeaderActions();
+    const location = useLocation();
+    const isAccountingRoute = location.pathname.startsWith('/accounting');
 
     return (
       <div className="flex min-h-screen w-full bg-background">
@@ -30,8 +32,20 @@ const Layout = ({ children }: LayoutProps) => {
           state === "expanded" ? "md:ml-64" : "md:ml-32"
         )}>
           <Header />
-          <main className="flex-1 p-4 md:p-6 overflow-auto w-full max-w-full">
-            <div className="max-w-7xl mx-auto w-full">
+          <main
+            className={cn(
+              "flex-1 overflow-auto w-full max-w-full",
+              isAccountingRoute
+                ? "pt-4 pb-4 pr-2 pl-2 md:pt-6 md:pb-6 md:pr-3 md:pl-3"
+                : "p-4 md:p-6"
+            )}
+          >
+            <div
+              className={cn(
+                "w-full",
+                isAccountingRoute ? "max-w-none mr-auto" : "max-w-7xl mx-auto"
+              )}
+            >
               <div className="flex items-center justify-between gap-3 mb-6">
                 <Breadcrumbs />
                 {actions ? <div className="shrink-0">{actions}</div> : null}

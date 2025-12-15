@@ -12,6 +12,8 @@ import {
   FolderOpen,
   LayoutDashboard,
   TrendingUp,
+  Landmark,
+  Wallet,
   PanelLeftClose,
   PanelLeftOpen,
 } from 'lucide-react';
@@ -80,6 +82,20 @@ const spolkaNavItems: NavItem[] = [
     icon: <FolderOpen className="h-5 w-5" />,
     description: 'Umowy, licencje',
     color: 'text-slate-600',
+  },
+  {
+    label: 'Bankowość',
+    href: '/accounting/bank',
+    icon: <Landmark className="h-5 w-5" />,
+    description: 'Konta bankowe',
+    color: 'text-emerald-600',
+  },
+  {
+    label: 'Kasa',
+    href: '/accounting/kasa',
+    icon: <Wallet className="h-5 w-5" />,
+    description: 'Gotówka KP/KW',
+    color: 'text-orange-600',
   },
 ];
 

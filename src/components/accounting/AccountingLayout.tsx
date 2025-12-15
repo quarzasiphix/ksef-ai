@@ -201,7 +201,7 @@ export const AccountingLayout: React.FC<AccountingLayoutProps> = ({
         <>
           {/* Desktop Sidebar - hidden on mobile */}
           {!desktopCollapsed ? (
-            <aside className="hidden lg:flex lg:flex-col lg:w-64 lg:border-r lg:bg-background transition-[width] duration-200 ease-in-out">
+            <aside className="hidden lg:flex lg:flex-col lg:w-64 lg:ml-2 lg:border-r lg:bg-background transition-[width] duration-200 ease-in-out">
               <AccountingSidebar
                 collapsed={false}
                 onToggleCollapsed={handleToggleDesktopCollapsed}
@@ -211,7 +211,7 @@ export const AccountingLayout: React.FC<AccountingLayoutProps> = ({
             // Collapsed sidebar expands inline on hover (pushes content like normal open)
             <aside
               className={cn(
-                'hidden lg:flex lg:flex-col lg:border-r lg:bg-background overflow-hidden transition-[width] duration-200 ease-in-out',
+                'hidden lg:flex lg:flex-col lg:ml-2 lg:border-r lg:bg-background overflow-hidden transition-[width] duration-200 ease-in-out',
                 desktopPeek ? 'lg:w-64' : 'lg:w-16'
               )}
               onMouseEnter={() => {

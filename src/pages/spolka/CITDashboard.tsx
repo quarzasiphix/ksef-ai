@@ -46,7 +46,7 @@ const CITDashboard = () => {
     reference: '',
   });
 
-  const citRate = selectedProfile?.cit_rate || 19;
+  const citRate = selectedProfile?.cit_rate ?? 9;
   const periodType = (selectedProfile as any)?.cit_advance_type || 'quarterly';
 
   const loadData = useCallback(async () => {
