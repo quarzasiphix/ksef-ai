@@ -1,5 +1,5 @@
 import React, { useEffect, useState, useMemo } from "react";
-import { useParams, Link } from "react-router-dom";
+import { useParams, Link, useSearchParams } from "react-router-dom";
 import {
   Card,
   CardHeader,
@@ -9,7 +9,7 @@ import {
 } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Download, Moon, Sun } from "lucide-react";
+import { Download, Moon, Sun, CreditCard, CheckCircle2, XCircle } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { getPublicShare, markShareViewed } from "@/integrations/supabase/repositories/publicShareRepository";
 import {
@@ -30,6 +30,7 @@ import { TransactionType } from "@/types/common";
 import SignaturePadModal from "@/components/contracts/SignaturePadModal";
 import { useAuth } from "@/hooks/useAuth";
 import { toast } from "sonner";
+import { Alert, AlertDescription } from "@/components/ui/alert";
 
 // Define the signDocument function
 const signDocument = async (contractId: string, signature: string): Promise<string> => {
@@ -57,6 +58,7 @@ const translateInvoiceType = (type?: string) => {
 
 const ShareDocuments: React.FC = () => {
   const { slug } = useParams<{ slug: string }>();
+  const [searchParams] = useSearchParams();
   const [state, setState] = useState({
     invoice: null as any | null,
     contract: null as any | null,
@@ -66,9 +68,14 @@ const ShareDocuments: React.FC = () => {
     signOpen: false,
     signedUrl: null as string | null,
     darkMode: false,
+    paymentLoading: false,
   });
   
   const { user } = useAuth();
+  
+  // Check for payment status in URL
+  const paymentStatus = searchParams.get('payment');
+  const sessionId = searchParams.get('session_id');
   
   // Helper function to update state
   const updateState = (updates: Partial<typeof state>) => {
@@ -280,6 +287,37 @@ const ShareDocuments: React.FC = () => {
     }
   };
 
+  // Handle online payment
+  const handlePayOnline = async () => {
+    if (!slug) return;
+    
+    updateState({ paymentLoading: true });
+    
+    try {
+      const { data, error } = await supabase.functions.invoke('stripe-create-payment-checkout', {
+        body: { shareSlug: slug },
+      });
+
+      if (error) {
+        console.error('Payment checkout error:', error);
+        toast.error(error.message || 'Nie udało się utworzyć sesji płatności');
+        return;
+      }
+
+      if (data?.url) {
+        // Redirect to Stripe Checkout
+        window.location.href = data.url;
+      } else {
+        toast.error('Nie otrzymano adresu płatności');
+      }
+    } catch (error: any) {
+      console.error('Error creating payment:', error);
+      toast.error('Wystąpił błąd podczas tworzenia płatności');
+    } finally {
+      updateState({ paymentLoading: false });
+    }
+  };
+
   if (!state.loading && state.shareMeta && state.shareMeta.view_once && !state.allowed) {
     const alreadyViewedAny = !!state.shareMeta.viewed_at;
     const alreadyViewedThisDevice = localStorage.getItem(`share_${slug}_viewed`) === "1";
@@ -393,13 +431,41 @@ return (
           
           {/* Status Badges */}
           <div className="flex flex-wrap gap-2 mt-4">
-            <Badge variant={state.invoice?.is_paid ? "default" : "secondary"}>
-              {state.invoice?.is_paid ? "Opłacone" : "Nieopłacone"}
+            <Badge variant={state.invoice?.is_paid || state.invoice?.payment_status === 'paid' ? "default" : "secondary"}>
+              {state.invoice?.is_paid || state.invoice?.payment_status === 'paid' ? "Opłacone" : "Nieopłacone"}
             </Badge>
             <Badge variant="outline">{isIncome ? "Przychód" : "Wydatek"}</Badge>
+            {state.invoice?.payment_status === 'pending' && (
+              <Badge variant="outline" className="bg-yellow-50 text-yellow-700 border-yellow-300">
+                Oczekuje na płatność
+              </Badge>
+            )}
           </div>
         </div>
     </div>
+
+    {/* Payment Status Alerts */}
+    {paymentStatus === 'success' && (
+      <div className="p-6">
+        <Alert className="bg-green-50 border-green-200">
+          <CheckCircle2 className="h-4 w-4 text-green-600" />
+          <AlertDescription className="text-green-800">
+            <strong>Płatność zakończona sukcesem!</strong> Faktura została opłacona. Dziękujemy za płatność.
+          </AlertDescription>
+        </Alert>
+      </div>
+    )}
+    
+    {paymentStatus === 'cancelled' && (
+      <div className="p-6">
+        <Alert className="bg-yellow-50 border-yellow-200">
+          <XCircle className="h-4 w-4 text-yellow-600" />
+          <AlertDescription className="text-yellow-800">
+            Płatność została anulowana. Możesz spróbować ponownie w dowolnym momencie.
+          </AlertDescription>
+        </Alert>
+      </div>
+    )}
 
     {/* Main Content */}
     <div className="p-6">
@@ -445,6 +511,76 @@ return (
           type={state.invoice.type as InvoiceType}
         />
       </div>
+
+      {/* Online Payment Section */}
+      {state.invoice?.payments_enabled && !state.invoice?.is_paid && state.invoice?.payment_status !== 'paid' && (
+        <div className="md:col-span-2">
+          <Card className={`${state.darkMode ? 'bg-gradient-to-br from-blue-900/20 to-purple-900/20 border-blue-700' : 'bg-gradient-to-br from-blue-50 to-purple-50 border-blue-200'}`}>
+            <CardHeader>
+              <CardTitle className={`flex items-center gap-2 ${state.darkMode ? 'text-white' : 'text-gray-900'}`}>
+                <CreditCard className="h-5 w-5 text-blue-600" />
+                Płatność Online
+              </CardTitle>
+              <CardDescription className={state.darkMode ? 'text-gray-300' : ''}>
+                Opłać fakturę szybko i bezpiecznie przez Stripe
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className={`text-sm space-y-2 ${state.darkMode ? 'text-gray-300' : 'text-gray-600'}`}>
+                <p className="flex items-center gap-2">
+                  <CheckCircle2 className="h-4 w-4 text-green-600" />
+                  <span><strong>Bezpieczeństwo:</strong> Płatność obsługiwana przez Stripe - zaufany partner płatności</span>
+                </p>
+                <p className="flex items-center gap-2">
+                  <CheckCircle2 className="h-4 w-4 text-green-600" />
+                  <span><strong>Wygoda:</strong> Płać kartą, BLIK lub Przelewy24</span>
+                </p>
+                <p className="flex items-center gap-2">
+                  <CheckCircle2 className="h-4 w-4 text-green-600" />
+                  <span><strong>Szybkość:</strong> Natychmiastowe potwierdzenie płatności</span>
+                </p>
+                <p className="flex items-center gap-2">
+                  <CheckCircle2 className="h-4 w-4 text-green-600" />
+                  <span><strong>Księgowość:</strong> Automatyczne oznaczenie faktury jako opłaconej</span>
+                </p>
+              </div>
+              
+              <div className={`p-4 rounded-lg ${state.darkMode ? 'bg-gray-800/50' : 'bg-white'} border ${state.darkMode ? 'border-gray-700' : 'border-gray-200'}`}>
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className={`text-sm ${state.darkMode ? 'text-gray-400' : 'text-gray-600'}`}>Kwota do zapłaty:</p>
+                    <p className={`text-2xl font-bold ${state.darkMode ? 'text-white' : 'text-gray-900'}`}>
+                      {formatCurrency(totals.gross, state.invoice.currency || 'PLN')}
+                    </p>
+                  </div>
+                  <Button
+                    onClick={handlePayOnline}
+                    disabled={state.paymentLoading}
+                    size="lg"
+                    className="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white font-semibold shadow-lg"
+                  >
+                    {state.paymentLoading ? (
+                      <>
+                        <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
+                        Przekierowanie...
+                      </>
+                    ) : (
+                      <>
+                        <CreditCard className="h-4 w-4 mr-2" />
+                        Zapłać Online
+                      </>
+                    )}
+                  </Button>
+                </div>
+              </div>
+              
+              <p className={`text-xs ${state.darkMode ? 'text-gray-400' : 'text-gray-500'} text-center`}>
+                Klikając "Zapłać Online" zostaniesz przekierowany do bezpiecznej strony płatności Stripe
+              </p>
+            </CardContent>
+          </Card>
+        </div>
+      )}
     </div>
 
     </div>

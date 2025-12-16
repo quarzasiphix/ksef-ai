@@ -1,4 +1,11 @@
 import { supabase } from '../client';
+import {
+  createDocumentPayment,
+  getAccountBalance,
+  getAccountBalances,
+  getPaymentAccounts,
+  createTransfer,
+} from './treasuryRepository';
 import type {
   CashAccount,
   CashTransaction,
@@ -13,68 +20,121 @@ import type {
   ReconciliationResult,
   CashTransactionType,
 } from '@/types/kasa';
+import type { PaymentAccount } from '@/types/treasury';
 
 // ============================================================================
 // CASH ACCOUNTS
 // ============================================================================
 
-export async function getCashAccounts(businessProfileId: string): Promise<CashAccount[]> {
-  const { data, error } = await supabase
-    .from('cash_accounts')
-    .select('*')
-    .eq('business_profile_id', businessProfileId)
-    .order('created_at', { ascending: true });
+function mapPaymentAccountToCashAccount(pa: PaymentAccount, computedBalance: number): CashAccount {
+  return {
+    id: pa.id,
+    business_profile_id: pa.business_profile_id,
+    name: pa.name,
+    currency: pa.currency,
+    opening_balance: pa.opening_balance,
+    current_balance: computedBalance,
+    responsible_person: pa.responsible_person ?? null,
+    status: pa.is_active ? 'active' : 'closed',
+    created_at: pa.created_at,
+    updated_at: pa.updated_at,
+  };
+}
 
-  if (error) throw error;
-  return data || [];
+export async function getCashAccounts(businessProfileId: string): Promise<CashAccount[]> {
+  const [accounts, balances] = await Promise.all([
+    getPaymentAccounts(businessProfileId, 'CASH'),
+    getAccountBalances(businessProfileId, 'CASH'),
+  ]);
+
+  return accounts
+    .sort((a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime())
+    .map((pa) => {
+      const bal = balances.find((b) => b.payment_account_id === pa.id);
+      return mapPaymentAccountToCashAccount(pa, bal?.current_balance ?? pa.opening_balance);
+    });
 }
 
 export async function getCashAccount(id: string): Promise<CashAccount | null> {
-  const { data, error } = await supabase
-    .from('cash_accounts')
+  const { data: pa, error } = await supabase
+    .from('payment_accounts')
     .select('*')
     .eq('id', id)
+    .eq('account_type', 'CASH')
     .single();
 
   if (error) {
     if (error.code === 'PGRST116') return null;
     throw error;
   }
-  return data;
+
+  const bal = await getAccountBalance(id);
+  return mapPaymentAccountToCashAccount(pa as any, bal.current_balance);
 }
 
 export async function createCashAccount(input: CreateCashAccountInput): Promise<CashAccount> {
-  const { data, error } = await supabase
-    .from('cash_accounts')
+  const user = (await supabase.auth.getUser()).data.user;
+  if (!user) throw new Error('Not authenticated');
+
+  const openingBalance = input.opening_balance || 0;
+
+  const { data: pa, error } = await supabase
+    .from('payment_accounts')
     .insert({
       business_profile_id: input.business_profile_id,
+      account_type: 'CASH',
       name: input.name,
       currency: input.currency || 'PLN',
-      opening_balance: input.opening_balance || 0,
-      current_balance: input.opening_balance || 0,
+      opening_balance: openingBalance,
       responsible_person: input.responsible_person || null,
-      status: 'active',
+      is_active: true,
     })
     .select()
     .single();
 
   if (error) throw error;
-  return data;
+
+  // Create OPENING_BALANCE movement if non-zero (balances remain derived)
+  if (openingBalance !== 0) {
+    await supabase
+      .from('account_movements')
+      .insert({
+        business_profile_id: input.business_profile_id,
+        payment_account_id: pa.id,
+        direction: openingBalance > 0 ? 'IN' : 'OUT',
+        amount: Math.abs(openingBalance),
+        currency: input.currency || 'PLN',
+        source_type: 'OPENING_BALANCE',
+        source_id: pa.id,
+        description: 'Saldo początkowe (kasa)',
+        created_by: user.id,
+      });
+  }
+
+  const bal = await getAccountBalance(pa.id);
+  return mapPaymentAccountToCashAccount(pa as any, bal.current_balance);
 }
 
 export async function updateCashAccount(
   id: string,
   updates: Partial<Pick<CashAccount, 'name' | 'responsible_person' | 'status'>>
 ): Promise<CashAccount> {
-  const { data, error } = await supabase
-    .from('cash_accounts')
-    .update({ ...updates, updated_at: new Date().toISOString() })
+  const { data: pa, error } = await supabase
+    .from('payment_accounts')
+    .update({
+      name: updates.name,
+      responsible_person: updates.responsible_person,
+      is_active: updates.status ? updates.status === 'active' : undefined,
+      updated_at: new Date().toISOString(),
+    })
     .eq('id', id)
+    .eq('account_type', 'CASH')
     .select()
     .single();
 
   if (error) throw error;
-  return data;
+  const bal = await getAccountBalance(id);
+  return mapPaymentAccountToCashAccount(pa as any, bal.current_balance);
 }
 
 export async function closeCashAccount(id: string): Promise<CashAccount> {
@@ -95,12 +155,12 @@ async function generateDocumentNumber(
   const endOfYear = `${year}-12-31`;
 
   const { count, error } = await supabase
-    .from('cash_transactions')
+    .from('kasa_documents')
     .select('*', { count: 'exact', head: true })
     .eq('business_profile_id', businessProfileId)
     .eq('type', type)
-    .gte('date', startOfYear)
-    .lte('date', endOfYear);
+    .gte('payment_date', startOfYear)
+    .lte('payment_date', endOfYear);
 
   if (error) throw error;
 
@@ -119,23 +179,23 @@ export async function getCashTransactions(
   }
 ): Promise<CashTransaction[]> {
   let query = supabase
-    .from('cash_transactions')
+    .from('kasa_documents')
     .select(`
       *,
-      cash_accounts!inner(name)
+      payment_accounts!inner(name)
     `)
     .eq('business_profile_id', businessProfileId)
-    .order('date', { ascending: false })
+    .order('payment_date', { ascending: false })
     .order('created_at', { ascending: false });
 
   if (options?.cashAccountId) {
     query = query.eq('cash_account_id', options.cashAccountId);
   }
   if (options?.startDate) {
-    query = query.gte('date', options.startDate);
+    query = query.gte('payment_date', options.startDate);
   }
   if (options?.endDate) {
-    query = query.lte('date', options.endDate);
+    query = query.lte('payment_date', options.endDate);
   }
   if (options?.type) {
     query = query.eq('type', options.type);
@@ -149,18 +209,38 @@ export async function getCashTransactions(
   if (error) throw error;
 
   return (data || []).map((row: any) => ({
-    ...row,
-    cash_account_name: row.cash_accounts?.name,
-    cash_accounts: undefined,
+    id: row.id,
+    business_profile_id: row.business_profile_id,
+    cash_account_id: row.cash_account_id,
+    document_number: row.document_number,
+    type: row.type,
+    amount: row.amount,
+    date: row.payment_date,
+    description: row.description,
+    counterparty_name: row.counterparty_name,
+    counterparty_tax_id: row.counterparty_tax_id,
+    category: row.category,
+    linked_document_type: row.linked_document_type,
+    linked_document_id: row.linked_document_id,
+    attachment_url: row.attachment_url,
+    is_tax_deductible: row.is_tax_deductible,
+    is_approved: row.is_approved,
+    approved_by: row.approved_by,
+    approved_at: row.approved_at,
+    created_by: row.created_by,
+    created_at: row.created_at,
+    updated_at: row.updated_at,
+    cash_account_name: row.payment_accounts?.name,
+    payment_accounts: undefined,
   }));
 }
 
 export async function getCashTransaction(id: string): Promise<CashTransaction | null> {
   const { data, error } = await supabase
-    .from('cash_transactions')
+    .from('kasa_documents')
     .select(`
       *,
-      cash_accounts!inner(name)
+      payment_accounts!inner(name)
     `)
     .eq('id', id)
     .single();
@@ -171,10 +251,30 @@ export async function getCashTransaction(id: string): Promise<CashTransaction | 
   }
 
   return {
-    ...data,
-    cash_account_name: (data as any).cash_accounts?.name,
-    cash_accounts: undefined,
-  } as CashTransaction;
+    id: data.id,
+    business_profile_id: data.business_profile_id,
+    cash_account_id: (data as any).cash_account_id,
+    document_number: (data as any).document_number,
+    type: (data as any).type,
+    amount: (data as any).amount,
+    date: (data as any).payment_date,
+    description: (data as any).description,
+    counterparty_name: (data as any).counterparty_name,
+    counterparty_tax_id: (data as any).counterparty_tax_id,
+    category: (data as any).category,
+    linked_document_type: (data as any).linked_document_type,
+    linked_document_id: (data as any).linked_document_id,
+    attachment_url: (data as any).attachment_url,
+    is_tax_deductible: (data as any).is_tax_deductible,
+    is_approved: (data as any).is_approved,
+    approved_by: (data as any).approved_by,
+    approved_at: (data as any).approved_at,
+    created_by: (data as any).created_by,
+    created_at: (data as any).created_at,
+    updated_at: (data as any).updated_at,
+    cash_account_name: (data as any).payment_accounts?.name,
+    payment_accounts: undefined,
+  } as any;
 }
 
 export async function createCashTransaction(
@@ -190,16 +290,29 @@ export async function createCashTransaction(
     year
   );
 
-  // Start a transaction-like operation
-  const { data: transaction, error: txError } = await supabase
-    .from('cash_transactions')
+  // 1) Create movement via document_payment (KP => IN, KW => OUT)
+  await createDocumentPayment({
+    business_profile_id: input.business_profile_id,
+    document_type: input.type,
+    document_id: crypto.randomUUID(),
+    payment_account_id: input.cash_account_id,
+    amount: input.amount,
+    currency: 'PLN',
+    payment_date: input.date,
+    notes: input.description,
+  });
+
+  // 2) Create kasa document metadata
+  const { data: doc, error: docError } = await supabase
+    .from('kasa_documents')
     .insert({
       business_profile_id: input.business_profile_id,
       cash_account_id: input.cash_account_id,
       document_number: documentNumber,
       type: input.type,
       amount: input.amount,
-      date: input.date,
+      currency: 'PLN',
+      payment_date: input.date,
       description: input.description,
       counterparty_name: input.counterparty_name || null,
       counterparty_tax_id: input.counterparty_tax_id || null,
@@ -214,32 +327,31 @@ export async function createCashTransaction(
     .select()
     .single();
 
-  if (txError) throw txError;
+  if (docError) throw docError;
 
-  // Update cash account balance
-  const balanceChange = input.type === 'KP' ? input.amount : -input.amount;
-  const { error: balanceError } = await supabase.rpc('update_cash_balance', {
-    p_cash_account_id: input.cash_account_id,
-    p_amount: balanceChange,
-  });
-
-  // If RPC doesn't exist, do manual update
-  if (balanceError && balanceError.message.includes('does not exist')) {
-    const account = await getCashAccount(input.cash_account_id);
-    if (account) {
-      await supabase
-        .from('cash_accounts')
-        .update({
-          current_balance: account.current_balance + balanceChange,
-          updated_at: new Date().toISOString(),
-        })
-        .eq('id', input.cash_account_id);
-    }
-  } else if (balanceError) {
-    throw balanceError;
-  }
-
-  return transaction;
+  return {
+    id: doc.id,
+    business_profile_id: doc.business_profile_id,
+    cash_account_id: doc.cash_account_id,
+    document_number: doc.document_number,
+    type: doc.type,
+    amount: doc.amount,
+    date: doc.payment_date,
+    description: doc.description,
+    counterparty_name: doc.counterparty_name,
+    counterparty_tax_id: doc.counterparty_tax_id,
+    category: doc.category,
+    linked_document_type: doc.linked_document_type,
+    linked_document_id: doc.linked_document_id,
+    attachment_url: doc.attachment_url,
+    is_tax_deductible: doc.is_tax_deductible,
+    is_approved: doc.is_approved,
+    approved_by: doc.approved_by,
+    approved_at: doc.approved_at,
+    created_by: doc.created_by,
+    created_at: doc.created_at,
+    updated_at: doc.updated_at,
+  } as any;
 }
 
 export async function approveCashTransaction(id: string): Promise<CashTransaction> {
@@ -247,7 +359,7 @@ export async function approveCashTransaction(id: string): Promise<CashTransactio
   if (!user) throw new Error('Not authenticated');
 
   const { data, error } = await supabase
-    .from('cash_transactions')
+    .from('kasa_documents')
     .update({
       is_approved: true,
       approved_by: user.id,
@@ -263,26 +375,19 @@ export async function approveCashTransaction(id: string): Promise<CashTransactio
 }
 
 export async function deleteCashTransaction(id: string): Promise<void> {
-  // Get transaction first to reverse balance
-  const transaction = await getCashTransaction(id);
-  if (!transaction) throw new Error('Transaction not found');
-
-  // Reverse balance change
-  const balanceChange = transaction.type === 'KP' ? -transaction.amount : transaction.amount;
-  const account = await getCashAccount(transaction.cash_account_id);
-  if (account) {
-    await supabase
-      .from('cash_accounts')
-      .update({
-        current_balance: account.current_balance + balanceChange,
-        updated_at: new Date().toISOString(),
-      })
-      .eq('id', transaction.cash_account_id);
-  }
+  // History-safe: do not delete. Mark as cancelled.
+  const user = (await supabase.auth.getUser()).data.user;
+  if (!user) throw new Error('Not authenticated');
 
   const { error } = await supabase
-    .from('cash_transactions')
-    .delete()
+    .from('kasa_documents')
+    .update({
+      is_cancelled: true,
+      cancelled_by: user.id,
+      cancelled_at: new Date().toISOString(),
+      cancellation_reason: 'Cancelled from UI',
+      updated_at: new Date().toISOString(),
+    })
     .eq('id', id);
 
   if (error) throw error;
@@ -300,82 +405,72 @@ export async function getCashTransfers(
     endDate?: string;
   }
 ): Promise<CashTransfer[]> {
-  let query = supabase
-    .from('cash_transfers')
+  // Transfers are handled by treasury engine; keeping legacy signature.
+  const { data, error } = await supabase
+    .from('account_transfers')
     .select('*')
     .eq('business_profile_id', businessProfileId)
-    .order('date', { ascending: false });
-
-  if (options?.cashAccountId) {
-    query = query.eq('cash_account_id', options.cashAccountId);
-  }
-  if (options?.startDate) {
-    query = query.gte('date', options.startDate);
-  }
-  if (options?.endDate) {
-    query = query.lte('date', options.endDate);
-  }
-
-  const { data, error } = await query;
+    .order('transfer_date', { ascending: false });
 
   if (error) throw error;
-  return data || [];
+
+  const filtered = (data || []).filter((t: any) => {
+    if (!options?.cashAccountId) return true;
+    return t.from_account_id === options.cashAccountId || t.to_account_id === options.cashAccountId;
+  });
+
+  return filtered.map((t: any) => ({
+    id: t.id,
+    business_profile_id: t.business_profile_id,
+    cash_account_id: t.to_account_id,
+    bank_account_id: t.from_account_id,
+    transfer_type: t.to_account_id === options?.cashAccountId ? 'bank_to_cash' : 'cash_to_bank',
+    amount: t.amount,
+    date: t.transfer_date,
+    description: t.description,
+    reference_number: t.reference_number,
+    created_by: t.created_by,
+    created_at: t.created_at,
+  }));
 }
 
 export async function createCashTransfer(input: CreateCashTransferInput): Promise<CashTransfer> {
-  const user = (await supabase.auth.getUser()).data.user;
-  if (!user) throw new Error('Not authenticated');
+  // Create treasury transfer (two movements). Use provided bank_account_id if available.
+  const fromAccountId = input.transfer_type === 'bank_to_cash'
+    ? (input.bank_account_id || '')
+    : input.cash_account_id;
+  const toAccountId = input.transfer_type === 'bank_to_cash'
+    ? input.cash_account_id
+    : (input.bank_account_id || '');
 
-  const { data: transfer, error: transferError } = await supabase
-    .from('cash_transfers')
-    .insert({
-      business_profile_id: input.business_profile_id,
-      cash_account_id: input.cash_account_id,
-      bank_account_id: input.bank_account_id || null,
-      transfer_type: input.transfer_type,
-      amount: input.amount,
-      date: input.date,
-      description: input.description || null,
-      reference_number: input.reference_number || null,
-      created_by: user.id,
-    })
-    .select()
-    .single();
-
-  if (transferError) throw transferError;
-
-  // Update cash account balance
-  const balanceChange = input.transfer_type === 'bank_to_cash' ? input.amount : -input.amount;
-  const account = await getCashAccount(input.cash_account_id);
-  if (account) {
-    await supabase
-      .from('cash_accounts')
-      .update({
-        current_balance: account.current_balance + balanceChange,
-        updated_at: new Date().toISOString(),
-      })
-      .eq('id', input.cash_account_id);
+  if (!fromAccountId || !toAccountId) {
+    throw new Error('Missing bank account for transfer');
   }
 
-  // Also create a corresponding cash transaction for audit trail
-  const txType: CashTransactionType = input.transfer_type === 'bank_to_cash' ? 'KP' : 'KW';
-  const category = input.transfer_type === 'bank_to_cash' ? 'withdrawal' : 'deposit';
-  const description = input.transfer_type === 'bank_to_cash'
-    ? 'Pobranie gotówki z banku'
-    : 'Wpłata gotówki do banku';
-
-  await createCashTransaction({
+  const transfer = await createTransfer({
     business_profile_id: input.business_profile_id,
-    cash_account_id: input.cash_account_id,
-    type: txType,
+    from_account_id: fromAccountId,
+    to_account_id: toAccountId,
     amount: input.amount,
-    date: input.date,
-    description: input.description || description,
-    category: category as any,
-    is_tax_deductible: false,
+    currency: 'PLN',
+    transfer_date: input.date,
+    description: input.description || null,
+    reference_number: input.reference_number || null,
   });
 
-  return transfer;
+  return {
+    id: transfer.id,
+    business_profile_id: transfer.business_profile_id,
+    cash_account_id: input.cash_account_id,
+    bank_account_id: input.bank_account_id || null,
+    transfer_type: input.transfer_type,
+    amount: transfer.amount,
+    date: transfer.transfer_date,
+    description: transfer.description,
+    reference_number: transfer.reference_number,
+    created_by: transfer.created_by,
+    created_at: transfer.created_at,
+  } as any;
 }
 
 // ============================================================================
@@ -390,7 +485,7 @@ export async function getCashReconciliations(
     .from('cash_reconciliations')
     .select(`
       *,
-      cash_accounts!inner(name)
+      payment_accounts!inner(name)
     `)
     .eq('business_profile_id', businessProfileId)
     .order('reconciliation_date', { ascending: false });
@@ -405,8 +500,8 @@ export async function getCashReconciliations(
 
   return (data || []).map((row: any) => ({
     ...row,
-    cash_account_name: row.cash_accounts?.name,
-    cash_accounts: undefined,
+    cash_account_name: row.payment_accounts?.name,
+    payment_accounts: undefined,
   }));
 }
 
@@ -418,23 +513,24 @@ export async function getLastReconciliation(
     .from('cash_reconciliations')
     .select(`
       *,
-      cash_accounts!inner(name)
+      payment_accounts!inner(name)
     `)
     .eq('business_profile_id', businessProfileId)
     .eq('cash_account_id', cashAccountId)
     .order('reconciliation_date', { ascending: false })
     .limit(1)
-    .single();
+    .maybeSingle();
 
   if (error) {
-    if (error.code === 'PGRST116') return null;
     throw error;
   }
 
+  if (!data) return null;
+
   return {
     ...data,
-    cash_account_name: (data as any).cash_accounts?.name,
-    cash_accounts: undefined,
+    cash_account_name: (data as any).payment_accounts?.name,
+    payment_accounts: undefined,
   } as CashReconciliation;
 }
 
@@ -445,10 +541,8 @@ export async function createCashReconciliation(
   if (!user) throw new Error('Not authenticated');
 
   // Get current system balance
-  const account = await getCashAccount(input.cash_account_id);
-  if (!account) throw new Error('Cash account not found');
-
-  const systemBalance = account.current_balance;
+  const bal = await getAccountBalance(input.cash_account_id);
+  const systemBalance = bal.current_balance;
   const countedBalance = input.counted_balance;
   const difference = countedBalance - systemBalance;
 
@@ -474,15 +568,30 @@ export async function createCashReconciliation(
 
   if (error) throw error;
 
-  // If there's a discrepancy, update the cash account balance to match counted
+  // If there's a discrepancy, create an ADJUSTMENT movement so balance becomes counted.
   if (result !== 'match') {
-    await supabase
-      .from('cash_accounts')
-      .update({
-        current_balance: countedBalance,
-        updated_at: new Date().toISOString(),
+    const direction = difference > 0 ? 'IN' : 'OUT';
+    const { data: adj, error: adjError } = await supabase
+      .from('account_movements')
+      .insert({
+        business_profile_id: input.business_profile_id,
+        payment_account_id: input.cash_account_id,
+        direction,
+        amount: Math.abs(difference),
+        currency: 'PLN',
+        source_type: 'ADJUSTMENT',
+        source_id: data.id,
+        description: `KOREKTA UZGODNIENIA KASY: ${input.explanation || 'Brak wyjaśnienia'}`,
+        created_by: user.id,
       })
-      .eq('id', input.cash_account_id);
+      .select()
+      .single();
+    if (adjError) throw adjError;
+
+    await supabase
+      .from('cash_reconciliations')
+      .update({ adjustment_movement_id: adj.id })
+      .eq('id', data.id);
   }
 
   return data;
@@ -497,10 +606,9 @@ export async function getCashSettings(businessProfileId: string): Promise<CashSe
     .from('cash_settings')
     .select('*')
     .eq('business_profile_id', businessProfileId)
-    .single();
+    .maybeSingle();
 
   if (error) {
-    if (error.code === 'PGRST116') return null;
     throw error;
   }
   return data;
@@ -538,25 +646,12 @@ export async function getCashRegisterSummary(
   startDate?: string,
   endDate?: string
 ): Promise<CashRegisterSummary> {
-  const account = await getCashAccount(cashAccountId);
-  if (!account) throw new Error('Cash account not found');
+  const balance = await getAccountBalance(cashAccountId);
 
-  let query = supabase
-    .from('cash_transactions')
-    .select('*')
-    .eq('business_profile_id', businessProfileId)
-    .eq('cash_account_id', cashAccountId);
-
-  if (startDate) query = query.gte('date', startDate);
-  if (endDate) query = query.lte('date', endDate);
-
-  const { data: transactions, error } = await query;
-  if (error) throw error;
-
-  const txs = transactions || [];
-  const totalKP = txs.filter(t => t.type === 'KP').reduce((sum, t) => sum + t.amount, 0);
-  const totalKW = txs.filter(t => t.type === 'KW').reduce((sum, t) => sum + t.amount, 0);
-  const pendingApproval = txs.filter(t => !t.is_approved).length;
+  const docs = await getCashTransactions(businessProfileId, { cashAccountId, startDate, endDate });
+  const totalKP = docs.filter(t => t.type === 'KP').reduce((sum, t) => sum + t.amount, 0);
+  const totalKW = docs.filter(t => t.type === 'KW').reduce((sum, t) => sum + t.amount, 0);
+  const pendingApproval = docs.filter(t => !t.is_approved).length;
 
   const lastReconciliation = await getLastReconciliation(businessProfileId, cashAccountId);
 
@@ -564,18 +659,16 @@ export async function getCashRegisterSummary(
     totalKP,
     totalKW,
     netChange: totalKP - totalKW,
-    currentBalance: account.current_balance,
-    transactionCount: txs.length,
+    currentBalance: balance.current_balance,
+    transactionCount: docs.length,
     pendingApproval,
     lastReconciliation,
   };
 }
 
 export async function getTotalCashBalance(businessProfileId: string): Promise<number> {
-  const accounts = await getCashAccounts(businessProfileId);
-  return accounts
-    .filter(a => a.status === 'active')
-    .reduce((sum, a) => sum + a.current_balance, 0);
+  const balances = await getAccountBalances(businessProfileId, 'CASH');
+  return balances.reduce((sum, b) => sum + b.current_balance, 0);
 }
 
 // ============================================================================
@@ -650,7 +743,7 @@ export async function uploadCashAttachment(
 
   // Update transaction with attachment URL
   await supabase
-    .from('cash_transactions')
+    .from('kasa_documents')
     .update({ attachment_url: data.publicUrl, updated_at: new Date().toISOString() })
     .eq('id', transactionId);
 

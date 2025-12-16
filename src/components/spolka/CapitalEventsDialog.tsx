@@ -26,7 +26,7 @@ export const CapitalEventsDialog: React.FC<CapitalEventsDialogProps> = ({
   onSuccess,
 }) => {
   const [eventType, setEventType] = useState<CapitalEventType>('capital_contribution');
-  const [shareholderId, setShareholderId] = useState<string>('');
+  const [shareholderId, setShareholderId] = useState<string>('none');
   const [eventDate, setEventDate] = useState<string>(new Date().toISOString().split('T')[0]);
   const [amount, setAmount] = useState<string>('');
   const [description, setDescription] = useState<string>('');
@@ -42,7 +42,7 @@ export const CapitalEventsDialog: React.FC<CapitalEventsDialogProps> = ({
     try {
       await saveCapitalEvent({
         business_profile_id: businessProfileId,
-        shareholder_id: shareholderId || undefined,
+        shareholder_id: shareholderId === 'none' ? undefined : shareholderId,
         event_type: eventType,
         event_date: eventDate,
         amount: parseFloat(amount),
@@ -57,7 +57,7 @@ export const CapitalEventsDialog: React.FC<CapitalEventsDialogProps> = ({
       
       // Reset form
       setEventType('capital_contribution');
-      setShareholderId('');
+      setShareholderId('none');
       setEventDate(new Date().toISOString().split('T')[0]);
       setAmount('');
       setDescription('');
@@ -105,7 +105,7 @@ export const CapitalEventsDialog: React.FC<CapitalEventsDialogProps> = ({
                   <SelectValue placeholder="Wybierz wspólnika" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="">Brak (ogólne)</SelectItem>
+                  <SelectItem value="none">Brak (ogólne)</SelectItem>
                   {shareholders.map(sh => (
                     <SelectItem key={sh.id} value={sh.id}>
                       {sh.name}
