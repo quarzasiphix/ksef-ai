@@ -63,13 +63,6 @@ const spolkaNavItems: NavItem[] = [
     color: 'text-green-600',
   },
   {
-    label: 'Uchwały',
-    href: '/accounting/resolutions',
-    icon: <FileText className="h-5 w-5" />,
-    description: 'Decyzje wspólników',
-    color: 'text-indigo-600',
-  },
-  {
     label: 'Rejestr Spółki',
     href: '/accounting/company-registry',
     icon: <Building2 className="h-5 w-5" />,
@@ -77,10 +70,10 @@ const spolkaNavItems: NavItem[] = [
     color: 'text-amber-600',
   },
   {
-    label: 'Dokumenty',
-    href: '/accounting/documents',
-    icon: <FolderOpen className="h-5 w-5" />,
-    description: 'Umowy, licencje',
+    label: 'Umowy transakcyjne',
+    href: '/accounting/contracts',
+    icon: <FileText className="h-5 w-5" />,
+    description: 'Przychody i wydatki',
     color: 'text-slate-600',
   },
   {
@@ -102,6 +95,7 @@ const spolkaNavItems: NavItem[] = [
 interface AccountingSidebarProps {
   className?: string;
   onNavigate?: () => void;
+  onNavigateTo?: (href: string) => void;
   deferNavigationMs?: number;
   collapsed?: boolean;
   onToggleCollapsed?: () => void;
@@ -111,6 +105,7 @@ interface AccountingSidebarProps {
 export const AccountingSidebar: React.FC<AccountingSidebarProps> = ({ 
   className,
   onNavigate,
+  onNavigateTo,
   deferNavigationMs,
   collapsed = false,
   onToggleCollapsed,
@@ -121,6 +116,11 @@ export const AccountingSidebar: React.FC<AccountingSidebarProps> = ({
 
   const handleNavigation = (href: string) => {
     onItemSelect?.(href);
+
+    if (onNavigateTo) {
+      onNavigateTo(href);
+      return;
+    }
 
     // When rendered inside a Sheet (mobile), unmounting during close animation can crash
     // with 'removeChild' errors. Close first, then navigate after animation.

@@ -151,3 +151,128 @@ export interface BalanceSheetData {
     total: number;
   };
 }
+
+// Year-end closing and fiscal periods
+export interface AccountingPeriod {
+  id: string;
+  business_profile_id: string;
+  fiscal_year: number;
+  start_date: string;
+  end_date: string;
+  status: 'open' | 'closing' | 'closed';
+  closed_at?: string | null;
+  closed_by?: string | null;
+  retained_earnings_brought_forward: number;
+  unpaid_cit_brought_forward: number;
+  net_profit_loss?: number | null;
+  total_revenue?: number | null;
+  total_expenses?: number | null;
+  cit_liability?: number | null;
+  cit_rate?: number | null;
+  created_at?: string;
+  created_by?: string | null;
+  updated_at?: string | null;
+  updated_by?: string | null;
+}
+
+// Shareholder loans (pożyczka wspólnika)
+export interface ShareholderLoan {
+  id: string;
+  business_profile_id: string;
+  shareholder_id: string;
+  shareholder?: Shareholder;
+  loan_type: 'to_company' | 'from_company';
+  amount: number;
+  currency: string;
+  loan_date: string;
+  repayment_date?: string | null;
+  interest_rate?: number | null;
+  purpose?: string | null;
+  status: 'active' | 'repaid' | 'written_off';
+  repaid_at?: string | null;
+  disbursement_movement_id?: string | null;
+  repayment_movement_id?: string | null;
+  created_at?: string;
+  created_by: string;
+  updated_at?: string | null;
+  updated_by?: string | null;
+  version: number;
+  locked: boolean;
+  locked_at?: string | null;
+  locked_by?: string | null;
+  notes?: string | null;
+}
+
+// Shareholder expense reimbursements (zwroty kosztów)
+export interface ShareholderReimbursement {
+  id: string;
+  business_profile_id: string;
+  shareholder_id: string;
+  shareholder?: Shareholder;
+  expense_date: string;
+  amount: number;
+  currency: string;
+  description: string;
+  category?: string | null;
+  receipt_document_id?: string | null;
+  status: 'pending' | 'approved' | 'reimbursed' | 'rejected';
+  approved_at?: string | null;
+  approved_by?: string | null;
+  reimbursed_at?: string | null;
+  reimbursement_movement_id?: string | null;
+  created_at?: string;
+  created_by: string;
+  updated_at?: string | null;
+  updated_by?: string | null;
+  version: number;
+  notes?: string | null;
+}
+
+// Compliance deadlines
+export type ComplianceDeadlineType = 
+  | 'nip8'
+  | 'vatr'
+  | 'crbr'
+  | 'cit8'
+  | 'financial_statements'
+  | 'zgz'
+  | 'nzgz'
+  | 'krs_update'
+  | 'custom';
+
+export interface ComplianceDeadline {
+  id: string;
+  business_profile_id: string;
+  deadline_type: ComplianceDeadlineType;
+  fiscal_year: number;
+  due_date: string;
+  reminder_date?: string | null;
+  status: 'pending' | 'in_progress' | 'completed' | 'overdue' | 'not_applicable';
+  completed_at?: string | null;
+  completed_by?: string | null;
+  document_id?: string | null;
+  filing_number?: string | null;
+  title: string;
+  description?: string | null;
+  notes?: string | null;
+  created_at?: string;
+  created_by?: string | null;
+  updated_at?: string | null;
+  updated_by?: string | null;
+}
+
+// Audit log for evidence integrity
+export interface AuditLogEntry {
+  id: string;
+  business_profile_id: string;
+  table_name: string;
+  record_id: string;
+  action: 'create' | 'update' | 'delete';
+  user_id: string;
+  timestamp: string;
+  old_values?: Record<string, any> | null;
+  new_values: Record<string, any>;
+  ip_address?: string | null;
+  user_agent?: string | null;
+  description?: string | null;
+}

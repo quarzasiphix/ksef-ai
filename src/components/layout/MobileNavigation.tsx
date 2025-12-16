@@ -80,10 +80,11 @@ const MobileNavigation = () => {
   ];
 
   // Zarządzanie group (updated to match desktop)
+  const isSpoolka = selectedProfile?.entityType === 'sp_zoo' || selectedProfile?.entityType === 'sa';
   const zarzadzanieItems = [
     { title: "Klienci", path: "/customers", icon: Users },
     { title: "Produkty", path: "/products", icon: Package },
-    { title: "Umowy", path: "/contracts", icon: Signature },
+    { title: isSpoolka ? "Dokumenty" : "Umowy", path: "/contracts", icon: Signature },
     { title: "Pracownicy", path: "/employees", icon: UserCheck },
     { title: "Magazyn", path: "/inventory", icon: Boxes, premium: true },
   ];

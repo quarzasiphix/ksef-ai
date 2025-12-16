@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useEffect } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Search } from 'lucide-react';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import {
   Form,
   FormControl,
@@ -59,11 +60,17 @@ const formSchema = z.object({
 interface BusinessProfileFormProps {
   initialData?: BusinessProfile;
   onSuccess?: () => void;
+  onCancel?: () => void;
+  onComplete?: (profileId: string) => void;
+  lockedEntityType?: "dzialalnosc" | "sp_zoo" | "sa";
 }
 
 const BusinessProfileForm = ({
   initialData,
   onSuccess,
+  onCancel,
+  onComplete,
+  lockedEntityType,
 }: BusinessProfileFormProps) => {
   const { user } = useAuth();
   const navigate = useNavigate();
@@ -82,7 +89,7 @@ const BusinessProfileForm = ({
       email: initialData?.email || "",
       phone: initialData?.phone || "",
       isDefault: initialData?.isDefault || false,
-      entityType: initialData?.entityType || "dzialalnosc",
+      entityType: lockedEntityType || initialData?.entityType || "dzialalnosc",
       taxType: (initialData as any)?.taxType || "skala",
       pkdCodes: (initialData as any)?.pkdCodes || [],
       is_vat_exempt: initialData?.is_vat_exempt || false,
@@ -97,6 +104,12 @@ const BusinessProfileForm = ({
       pkd_main: initialData?.pkd_main || "",
     },
   });
+
+  useEffect(() => {
+    if (lockedEntityType) {
+      form.setValue("entityType", lockedEntityType);
+    }
+  }, [lockedEntityType, form]);
 
   const onSubmit = async (values: z.infer<typeof formSchema>) => {
     console.log('onSubmit called with values:', values);
@@ -147,6 +160,14 @@ const BusinessProfileForm = ({
         pkd_main: values.pkd_main,
       };
 
+  const handleCancel = () => {
+    if (onCancel) {
+      onCancel();
+      return;
+    }
+    navigate("/settings");
+  };
+
       console.log('Saving business profile with VAT exemption:', {
         is_vat_exempt: profile.is_vat_exempt,
         vat_exemption_reason: profile.vat_exemption_reason,
@@ -166,12 +187,19 @@ const BusinessProfileForm = ({
       toast.success(
         isEditing ? "Profil zaktualizowany" : "Profil utworzony"
       );
-      
+
+      const savedId = (savedProfile as any)?.id || profile.id;
+      if (onComplete && savedId) {
+        onComplete(savedId);
+        return;
+      }
+
       if (onSuccess) {
         onSuccess();
-      } else {
-        navigate("/settings");
+        return;
       }
+
+      navigate("/settings");
     } catch (error) {
       console.error("Error saving business profile:", error);
       console.error("Error details:", JSON.stringify(error, null, 2));
@@ -233,11 +261,34 @@ const BusinessProfileForm = ({
   };
 
   return (
-    <Form {...form}>
-      <form
-        onSubmit={form.handleSubmit(onSubmit, onError)}
-        className="space-y-6 pb-10 max-w-full mx-auto"
-      >
+    <div className={lockedEntityType === "dzialalnosc" && !isEditing ? "mx-auto w-full max-w-3xl px-4 py-10" : ""}>
+      {lockedEntityType === "dzialalnosc" && !isEditing ? (
+        <Card className="mb-6">
+          <CardHeader className="space-y-1">
+            <CardTitle className="text-2xl">Utwórz JDG</CardTitle>
+            <CardDescription>
+              Uzupełnij dane firmy. Na podstawie tych informacji skonfigurujemy księgowość i dokumenty.
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="grid grid-cols-1 md:grid-cols-3 gap-3 text-sm text-muted-foreground">
+            <div className="rounded-lg border bg-background p-3">
+              Nazwa firmy
+            </div>
+            <div className="rounded-lg border bg-background p-3">
+              NIP + adres
+            </div>
+            <div className="rounded-lg border bg-background p-3">
+              Forma opodatkowania
+            </div>
+          </CardContent>
+        </Card>
+      ) : null}
+
+      <Form {...form}>
+        <form
+          onSubmit={form.handleSubmit(onSubmit, onError)}
+          className={lockedEntityType === "dzialalnosc" && !isEditing ? "space-y-6 pb-10" : "space-y-6 pb-10 max-w-full mx-auto"}
+        >
         <div className="space-y-4">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <FormField
@@ -481,28 +532,30 @@ const BusinessProfileForm = ({
             )}
           />
 
-          <FormField
-            control={form.control}
-            name="entityType"
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel>Forma prawna</FormLabel>
-                <Select onValueChange={field.onChange} value={field.value}>
-                  <FormControl>
-                    <SelectTrigger>
-                      <SelectValue placeholder="Wybierz formę prawną" />
-                    </SelectTrigger>
-                  </FormControl>
-                  <SelectContent>
-                    <SelectItem value="dzialalnosc">Działalność gospodarcza</SelectItem>
-                    <SelectItem value="sp_zoo">Spółka z o.o.</SelectItem>
-                    <SelectItem value="sa">Spółka akcyjna (S.A.)</SelectItem>
-                  </SelectContent>
-                </Select>
-                <FormMessage />
-              </FormItem>
-            )}
-          />
+          {!lockedEntityType && (
+            <FormField
+              control={form.control}
+              name="entityType"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Forma prawna</FormLabel>
+                  <Select onValueChange={field.onChange} value={field.value}>
+                    <FormControl>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Wybierz formę prawną" />
+                      </SelectTrigger>
+                    </FormControl>
+                    <SelectContent>
+                      <SelectItem value="dzialalnosc">Działalność gospodarcza</SelectItem>
+                      <SelectItem value="sp_zoo">Spółka z o.o.</SelectItem>
+                      <SelectItem value="sa">Spółka akcyjna (S.A.)</SelectItem>
+                    </SelectContent>
+                  </Select>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+          )}
 
           {/* Only show tax type for JDG (działalność gospodarcza) */}
           {form.watch("entityType") === "dzialalnosc" && (
@@ -737,7 +790,7 @@ const BusinessProfileForm = ({
           <Button
             type="button"
             variant="outline"
-            onClick={() => navigate("/settings")}
+            onClick={handleCancel}
             className={isMobile ? 'w-full' : ''}
           >
             Anuluj
@@ -748,6 +801,7 @@ const BusinessProfileForm = ({
         </div>
       </form>
     </Form>
+    </div>
   );
 };
 

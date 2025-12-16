@@ -329,6 +329,23 @@ export interface Contract {
   isActive: boolean;
   created_at?: string;
   updated_at?: string;
+  
+  // Document categorization (new fields)
+  document_category?: 'transactional_payout' | 'transactional_payin' | 'informational';
+  is_transactional?: boolean;
+  contract_type?: 'general' | 'employment' | 'service' | 'lease' | 'purchase' | 'board_member' | 'management_board' | 'supervisory_board' | 'nda' | 'partnership' | 'other';
+  is_template?: boolean;
+  folder_id?: string;
+  signing_parties?: any; // JSONB
+  board_member_id?: string;
+  
+  // Transactional contract fields
+  payment_account_id?: string;
+  expected_amount?: number;
+  payment_frequency?: 'one_time' | 'monthly' | 'quarterly' | 'annual' | 'custom';
+  next_payment_date?: string;
+  auto_generate_invoices?: boolean;
+  currency?: string;
 }
 
 export interface ContractInvoiceLink {

@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useEffect, useMemo } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
@@ -55,9 +55,13 @@ const CustomerForm = ({
   const { user } = useAuth();
   const isEditing = !!initialData?.id;
 
-  const form = useForm<z.infer<typeof formSchema>>({
-    resolver: zodResolver(formSchema),
-    defaultValues: {
+  const storageKey = useMemo(() => {
+    const userId = user?.id ?? 'anonymous';
+    return `customer_form_draft:${userId}:${isEditing ? (initialData?.id ?? 'edit') : 'new'}`;
+  }, [user?.id, isEditing, initialData?.id]);
+
+  const defaultValues = useMemo(
+    () => ({
       name: initialData?.name || "",
       taxId: initialData?.taxId || "",
       address: initialData?.address || "",
@@ -66,8 +70,62 @@ const CustomerForm = ({
       email: initialData?.email || "",
       phone: initialData?.phone || "",
       customerType: initialData?.customerType || defaultCustomerType || 'odbiorca',
-    },
+    }),
+    [
+      initialData?.name,
+      initialData?.taxId,
+      initialData?.address,
+      initialData?.postalCode,
+      initialData?.city,
+      initialData?.email,
+      initialData?.phone,
+      initialData?.customerType,
+      defaultCustomerType,
+    ]
+  );
+
+  const form = useForm<z.infer<typeof formSchema>>({
+    resolver: zodResolver(formSchema),
+    defaultValues,
   });
+
+  useEffect(() => {
+    if (!isOpen) return;
+    if (isEditing) return;
+    try {
+      const raw = localStorage.getItem(storageKey);
+      if (!raw) return;
+      const parsed = JSON.parse(raw);
+      if (!parsed || typeof parsed !== 'object') return;
+      form.reset({ ...defaultValues, ...parsed });
+    } catch {
+      // ignore
+    }
+  }, [isOpen, isEditing, storageKey, form, defaultValues]);
+
+  useEffect(() => {
+    if (!isOpen) return;
+    if (isEditing) return;
+    const sub = form.watch((values) => {
+      try {
+        localStorage.setItem(storageKey, JSON.stringify(values));
+      } catch {
+        // ignore
+      }
+    });
+    return () => sub.unsubscribe();
+  }, [form, isOpen, isEditing, storageKey]);
+
+  const handleCancel = () => {
+    if (!isEditing) {
+      try {
+        localStorage.removeItem(storageKey);
+      } catch {
+        // ignore
+      }
+    }
+    onClose();
+  };
 
   const onSubmit = async (values: z.infer<typeof formSchema>) => {
     try {
@@ -93,6 +151,15 @@ const CustomerForm = ({
       toast.success(
         isEditing ? "Klient zaktualizowany" : "Klient utworzony"
       );
+
+      if (!isEditing) {
+        try {
+          localStorage.removeItem(storageKey);
+        } catch {
+          // ignore
+        }
+      }
+
       onSuccess(savedCustomer);
       onClose();
     } catch (error) {
@@ -102,7 +169,7 @@ const CustomerForm = ({
   };
 
   return (
-    <Dialog open={isOpen} onOpenChange={onClose}>
+    <Dialog open={isOpen} onOpenChange={(open) => { if (!open) onClose(); }}>
       <DialogContent className="sm:max-w-[525px] max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>
@@ -351,7 +418,7 @@ const CustomerForm = ({
               )}
             />
             <div className="flex justify-end gap-2 pt-4">
-              <Button type="button" variant="outline" onClick={onClose}>
+              <Button type="button" variant="outline" onClick={handleCancel}>
                 Anuluj
               </Button>
               <Button type="submit">

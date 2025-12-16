@@ -79,7 +79,8 @@ const AppSidebar = () => {
   // Zarządzanie group
   const clientsItem = { title: "Klienci", path: "/customers", icon: Users, className: "lg:hidden" } as SidebarItem;
   const productsItem = { title: "Produkty", path: "/products", icon: Package, className: "lg:hidden" } as SidebarItem;
-  const contractsItem: SidebarItem = { title: "Umowy", path: "/contracts", icon: Signature };
+  const isSpoolka = selectedProfile?.entityType === 'sp_zoo' || selectedProfile?.entityType === 'sa';
+  const contractsItem: SidebarItem = { title: isSpoolka ? "Dokumenty" : "Umowy", path: "/contracts", icon: Signature };
   const employeesItem = { title: "Pracownicy", path: "/employees", icon: UserCheck } as SidebarItem;
   const inventoryItem: SidebarItem = { title: "Magazyn", path: "/inventory", icon: Boxes, premium: true };
 

@@ -39,11 +39,22 @@ export async function getBusinessProfiles(userId: string): Promise<BusinessProfi
       logo: item.logo || undefined,
       isDefault: item.is_default || false,
       entityType: (item as any).entity_type || 'dzialalnosc',
+      tax_type: (item as any).tax_type ?? null,
       user_id: item.user_id,
       is_vat_exempt: item.is_vat_exempt ?? false,
       vat_exemption_reason: item.vat_exemption_reason,
       vat_threshold_pln: (item as any).vat_threshold_pln ?? 200000,
       vat_threshold_year: (item as any).vat_threshold_year ?? new Date().getFullYear(),
+
+      // Spółka fields
+      share_capital: (item as any).share_capital ?? undefined,
+      krs_number: (item as any).krs_number ?? undefined,
+      court_registry: (item as any).court_registry ?? undefined,
+      establishment_date: (item as any).establishment_date ?? undefined,
+      headquarters_address: (item as any).headquarters_address ?? undefined,
+      headquarters_postal_code: (item as any).headquarters_postal_code ?? undefined,
+      headquarters_city: (item as any).headquarters_city ?? undefined,
+      pkd_main: (item as any).pkd_main ?? undefined,
     };
   });
 }
@@ -63,6 +74,7 @@ interface BusinessProfileRow {
   logo: string | null;
   is_default: boolean;
   entity_type?: 'dzialalnosc' | 'sp_zoo' | 'sa';
+  tax_type?: 'skala' | 'liniowy' | 'ryczalt' | 'karta' | null;
   user_id: string | null;
   created_at: string;
   updated_at: string;
@@ -70,6 +82,16 @@ interface BusinessProfileRow {
   vat_exemption_reason?: string | null;
   vat_threshold_pln?: number | null;
   vat_threshold_year?: number | null;
+
+  // Spółka fields
+  share_capital?: number | null;
+  krs_number?: string | null;
+  court_registry?: string | null;
+  establishment_date?: string | null;
+  headquarters_address?: string | null;
+  headquarters_postal_code?: string | null;
+  headquarters_city?: string | null;
+  pkd_main?: string | null;
 }
 
 export async function getDefaultBusinessProfile(): Promise<BusinessProfile | null> {
@@ -106,11 +128,22 @@ export async function getDefaultBusinessProfile(): Promise<BusinessProfile | nul
     logo: data.logo || undefined,
     isDefault: data.is_default || false,
     entityType: (data as any).entity_type || 'dzialalnosc',
+    tax_type: (data as any).tax_type ?? null,
     user_id: data.user_id,
     is_vat_exempt: data.is_vat_exempt ?? false,
     vat_exemption_reason: data.vat_exemption_reason,
     vat_threshold_pln: data.vat_threshold_pln ?? 200000,
     vat_threshold_year: data.vat_threshold_year ?? new Date().getFullYear(),
+
+    // Spółka fields
+    share_capital: (data as any).share_capital ?? undefined,
+    krs_number: (data as any).krs_number ?? undefined,
+    court_registry: (data as any).court_registry ?? undefined,
+    establishment_date: (data as any).establishment_date ?? undefined,
+    headquarters_address: (data as any).headquarters_address ?? undefined,
+    headquarters_postal_code: (data as any).headquarters_postal_code ?? undefined,
+    headquarters_city: (data as any).headquarters_city ?? undefined,
+    pkd_main: (data as any).pkd_main ?? undefined,
   };
 }
 
@@ -153,11 +186,22 @@ export async function getBusinessProfileById(id: string, userId: string): Promis
     logo: data.logo || undefined,
     isDefault: data.is_default || false,
     entityType: (data as any).entity_type || 'dzialalnosc',
+    tax_type: (data as any).tax_type ?? null,
     user_id: data.user_id,
     is_vat_exempt: data.is_vat_exempt ?? false,
     vat_exemption_reason: data.vat_exemption_reason,
     vat_threshold_pln: data.vat_threshold_pln ?? 200000,
     vat_threshold_year: data.vat_threshold_year ?? new Date().getFullYear(),
+
+    // Spółka fields
+    share_capital: (data as any).share_capital ?? undefined,
+    krs_number: (data as any).krs_number ?? undefined,
+    court_registry: (data as any).court_registry ?? undefined,
+    establishment_date: (data as any).establishment_date ?? undefined,
+    headquarters_address: (data as any).headquarters_address ?? undefined,
+    headquarters_postal_code: (data as any).headquarters_postal_code ?? undefined,
+    headquarters_city: (data as any).headquarters_city ?? undefined,
+    pkd_main: (data as any).pkd_main ?? undefined,
   };
 }
 
@@ -228,11 +272,22 @@ export async function saveBusinessProfile(profile: BusinessProfile): Promise<Bus
       logo: profile.logo || null,
       is_default: profile.isDefault || false,
       entity_type: profile.entityType || 'dzialalnosc',
+      tax_type: (profile as any).tax_type ?? null,
       user_id: profile.user_id,
       is_vat_exempt: profile.is_vat_exempt ?? false,
       vat_exemption_reason: profile.is_vat_exempt ? profile.vat_exemption_reason || null : null,
       vat_threshold_pln: profile.vat_threshold_pln ?? 200000,
       vat_threshold_year: profile.vat_threshold_year ?? new Date().getFullYear(),
+
+      // Spółka fields
+      share_capital: (profile as any).share_capital ?? null,
+      krs_number: (profile as any).krs_number ?? null,
+      court_registry: (profile as any).court_registry ?? null,
+      establishment_date: (profile as any).establishment_date ?? null,
+      headquarters_address: (profile as any).headquarters_address ?? null,
+      headquarters_postal_code: (profile as any).headquarters_postal_code ?? null,
+      headquarters_city: (profile as any).headquarters_city ?? null,
+      pkd_main: (profile as any).pkd_main ?? null,
     };
 
     console.log('Supabase payload being sent:', payload);
@@ -285,11 +340,22 @@ export async function saveBusinessProfile(profile: BusinessProfile): Promise<Bus
       logo: result.logo || undefined,
       isDefault: result.is_default || false,
       entityType: (result as any).entity_type || 'dzialalnosc',
+      tax_type: (result as any).tax_type ?? null,
       user_id: result.user_id,
       is_vat_exempt: result.is_vat_exempt ?? false,
       vat_exemption_reason: result.vat_exemption_reason,
       vat_threshold_pln: (result as any).vat_threshold_pln ?? 200000,
       vat_threshold_year: (result as any).vat_threshold_year ?? new Date().getFullYear(),
+
+      // Spółka fields
+      share_capital: (result as any).share_capital ?? undefined,
+      krs_number: (result as any).krs_number ?? undefined,
+      court_registry: (result as any).court_registry ?? undefined,
+      establishment_date: (result as any).establishment_date ?? undefined,
+      headquarters_address: (result as any).headquarters_address ?? undefined,
+      headquarters_postal_code: (result as any).headquarters_postal_code ?? undefined,
+      headquarters_city: (result as any).headquarters_city ?? undefined,
+      pkd_main: (result as any).pkd_main ?? undefined,
     };
   } catch (error) {
     console.error('Error in saveBusinessProfile:', error);

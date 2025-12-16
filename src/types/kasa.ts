@@ -99,6 +99,7 @@ export type CashCategory =
   | 'refund'
   | 'withdrawal'
   | 'deposit'
+  | 'capital_contribution'
   | 'other_income';
 
 export type LinkedDocumentType =
@@ -121,6 +122,7 @@ export const CASH_CATEGORY_LABELS: Record<CashCategory, string> = {
   refund: 'Zwrot',
   withdrawal: 'Pobranie z banku',
   deposit: 'Wpłata do banku',
+  capital_contribution: 'Wpłata kapitału',
   other_income: 'Inne przychody',
 };
 
@@ -132,6 +134,7 @@ export const LINKED_DOCUMENT_TYPE_LABELS: Record<LinkedDocumentType, string> = {
 };
 
 export const KP_CATEGORIES: CashCategory[] = [
+  'capital_contribution',
   'sales_income',
   'refund',
   'withdrawal',

@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle, SheetTrigger } from '@/components/ui/sheet';
@@ -6,6 +6,7 @@ import { Menu } from 'lucide-react';
 import AccountingSidebar from './AccountingSidebar';
 import { usePageHeaderActions } from '@/context/PageHeaderActionsContext';
 import { flushSync } from 'react-dom';
+import { useLocation, useNavigate } from 'react-router-dom';
 
 interface AccountingLayoutProps {
   children: React.ReactNode;
@@ -19,6 +20,7 @@ export const AccountingLayout: React.FC<AccountingLayoutProps> = ({
   const COLLAPSED_KEY = 'accounting_sidebar_collapsed';
 
   const [mobileOpen, setMobileOpen] = useState(false);
+  const [pendingMobileHref, setPendingMobileHref] = useState<string | null>(null);
   const [desktopCollapsed, setDesktopCollapsed] = useState<boolean>(() => {
     try {
       const v = window.localStorage.getItem(COLLAPSED_KEY);
@@ -47,6 +49,37 @@ export const AccountingLayout: React.FC<AccountingLayoutProps> = ({
   });
   const [desktopHoverLockUntil, setDesktopHoverLockUntil] = useState<number>(0);
   const { setActions } = usePageHeaderActions();
+  const navigate = useNavigate();
+  const location = useLocation();
+
+  const handleMobileNavigateTo = useCallback((href: string) => {
+    // Close the sheet first (sync), then navigate after the close has committed.
+    flushSync(() => setMobileOpen(false));
+
+    // If the user tapped the current route, just close the sheet.
+    if (location.pathname === href) {
+      setPendingMobileHref(null);
+      return;
+    }
+
+    setPendingMobileHref(href);
+  }, [location.pathname]);
+
+  useEffect(() => {
+    if (mobileOpen) return;
+    if (!pendingMobileHref) return;
+
+    // Radix Sheet/Dialog close animations can briefly conflict with React unmounting during navigation.
+    // Defer navigation until after the close has been committed.
+    const href = pendingMobileHref;
+    setPendingMobileHref(null);
+
+    const t = window.setTimeout(() => {
+      navigate(href);
+    }, 650);
+
+    return () => window.clearTimeout(t);
+  }, [mobileOpen, navigate, pendingMobileHref]);
 
   const headerActions = useMemo(() => {
     if (!showSidebar) return null;
@@ -64,7 +97,9 @@ export const AccountingLayout: React.FC<AccountingLayoutProps> = ({
               <SheetTitle>Menu księgowości</SheetTitle>
               <SheetDescription>Nawigacja po modułach księgowości</SheetDescription>
             </SheetHeader>
-            <AccountingSidebar onNavigate={() => setMobileOpen(false)} deferNavigationMs={350} />
+            <AccountingSidebar
+              onNavigateTo={handleMobileNavigateTo}
+            />
           </SheetContent>
         </Sheet>
         <span className="text-xs font-semibold text-muted-foreground whitespace-nowrap">
@@ -72,7 +107,7 @@ export const AccountingLayout: React.FC<AccountingLayoutProps> = ({
         </span>
       </div>
     );
-  }, [mobileOpen, showSidebar]);
+  }, [handleMobileNavigateTo, mobileOpen, showSidebar]);
 
   useEffect(() => {
     // Register header actions (only when sidebar is enabled)

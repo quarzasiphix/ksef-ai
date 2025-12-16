@@ -1,4 +1,24 @@
 import { supabase } from '../client';
+import type {
+  DocumentFolder,
+  DocumentTemplate,
+  GeneratedDocument,
+  CreateFolderInput,
+  CreateTemplateInput,
+  GenerateDocumentInput,
+  FolderTreeNode,
+} from '@/types/documents';
+
+// Re-export types for convenience
+export type {
+  DocumentFolder,
+  DocumentTemplate,
+  GeneratedDocument,
+  CreateFolderInput,
+  CreateTemplateInput,
+  GenerateDocumentInput,
+  FolderTreeNode,
+} from '@/types/documents';
 
 export type DocumentCategory = 
   | 'contracts_vehicles'
@@ -269,4 +289,341 @@ export async function getExpiringDocuments(
   
   if (error) throw error;
   return data || [];
+}
+
+// ============================================
+// FOLDER MANAGEMENT
+// ============================================
+
+export async function getDocumentFolders(
+  businessProfileId: string
+): Promise<DocumentFolder[]> {
+  const { data, error } = await supabase
+    .from('document_folders')
+    .select('*')
+    .eq('business_profile_id', businessProfileId)
+    .order('sort_order', { ascending: true })
+    .order('name', { ascending: true });
+  
+  if (error) throw error;
+  return data || [];
+}
+
+export async function getFolderTree(
+  businessProfileId: string
+): Promise<FolderTreeNode[]> {
+  const { data, error } = await supabase
+    .rpc('get_folder_tree', { profile_id: businessProfileId });
+  
+  if (error) throw error;
+  
+  // Build tree structure
+  const folders = data || [];
+  const folderMap = new Map<string, FolderTreeNode>();
+  const rootFolders: FolderTreeNode[] = [];
+  
+  // First pass: create all nodes
+  folders.forEach((folder: any) => {
+    folderMap.set(folder.id, {
+      ...folder,
+      children: [],
+    });
+  });
+  
+  // Second pass: build tree
+  folders.forEach((folder: any) => {
+    const node = folderMap.get(folder.id)!;
+    if (folder.parent_folder_id) {
+      const parent = folderMap.get(folder.parent_folder_id);
+      if (parent) {
+        parent.children.push(node);
+      }
+    } else {
+      rootFolders.push(node);
+    }
+  });
+  
+  return rootFolders;
+}
+
+export async function createFolder(
+  input: CreateFolderInput
+): Promise<DocumentFolder> {
+  const { data, error } = await supabase
+    .from('document_folders')
+    .insert({
+      business_profile_id: input.business_profile_id,
+      parent_folder_id: input.parent_folder_id || null,
+      name: input.name,
+      description: input.description || null,
+      folder_type: input.folder_type || null,
+      icon: input.icon || null,
+      color: input.color || null,
+      sort_order: 0,
+    })
+    .select()
+    .single();
+  
+  if (error) throw error;
+  return data;
+}
+
+export async function updateFolder(
+  id: string,
+  updates: Partial<DocumentFolder>
+): Promise<void> {
+  const { error } = await supabase
+    .from('document_folders')
+    .update({
+      ...updates,
+      updated_at: new Date().toISOString(),
+    })
+    .eq('id', id);
+  
+  if (error) throw error;
+}
+
+export async function deleteFolder(id: string): Promise<void> {
+  const { error } = await supabase
+    .from('document_folders')
+    .delete()
+    .eq('id', id);
+  
+  if (error) throw error;
+}
+
+export async function getDocumentsByFolder(
+  folderId: string
+): Promise<CompanyDocument[]> {
+  const { data, error } = await supabase
+    .from('company_documents')
+    .select('*')
+    .eq('folder_id', folderId)
+    .order('created_at', { ascending: false });
+  
+  if (error) throw error;
+  return data || [];
+}
+
+// ============================================
+// DOCUMENT TEMPLATES
+// ============================================
+
+export async function getDocumentTemplates(
+  businessProfileId?: string,
+  templateType?: string
+): Promise<DocumentTemplate[]> {
+  let query = supabase
+    .from('document_templates')
+    .select('*')
+    .eq('is_active', true)
+    .order('name', { ascending: true });
+  
+  if (businessProfileId) {
+    query = query.or(`business_profile_id.eq.${businessProfileId},is_public.eq.true`);
+  } else {
+    query = query.eq('is_public', true);
+  }
+  
+  if (templateType) {
+    query = query.eq('template_type', templateType);
+  }
+  
+  const { data, error } = await query;
+  
+  if (error) throw error;
+  return data || [];
+}
+
+export async function getDocumentTemplate(id: string): Promise<DocumentTemplate | null> {
+  const { data, error } = await supabase
+    .from('document_templates')
+    .select('*')
+    .eq('id', id)
+    .maybeSingle();
+  
+  if (error) throw error;
+  return data;
+}
+
+export async function createTemplate(
+  input: CreateTemplateInput
+): Promise<DocumentTemplate> {
+  const { data: { user } } = await supabase.auth.getUser();
+  
+  const { data, error } = await supabase
+    .from('document_templates')
+    .insert({
+      business_profile_id: input.business_profile_id || null,
+      name: input.name,
+      description: input.description || null,
+      template_type: input.template_type,
+      content: input.content,
+      variables: input.variables,
+      css_styles: input.css_styles || null,
+      category: input.category || null,
+      tags: input.tags || null,
+      is_public: false,
+      is_active: true,
+      created_by: user?.id,
+    })
+    .select()
+    .single();
+  
+  if (error) throw error;
+  return data;
+}
+
+export async function updateTemplate(
+  id: string,
+  updates: Partial<DocumentTemplate>
+): Promise<void> {
+  const { error } = await supabase
+    .from('document_templates')
+    .update({
+      ...updates,
+      updated_at: new Date().toISOString(),
+    })
+    .eq('id', id);
+  
+  if (error) throw error;
+}
+
+export async function deleteTemplate(id: string): Promise<void> {
+  const { error } = await supabase
+    .from('document_templates')
+    .delete()
+    .eq('id', id);
+  
+  if (error) throw error;
+}
+
+// ============================================
+// GENERATED DOCUMENTS
+// ============================================
+
+export async function generateDocument(
+  input: GenerateDocumentInput
+): Promise<GeneratedDocument> {
+  const { data: { user } } = await supabase.auth.getUser();
+  
+  // Get template
+  const template = await getDocumentTemplate(input.template_id);
+  if (!template) throw new Error('Template not found');
+  
+  // Replace variables in content
+  let contentHtml = template.content;
+  Object.entries(input.variables_filled).forEach(([key, value]) => {
+    const regex = new RegExp(`{{${key}}}`, 'g');
+    contentHtml = contentHtml.replace(regex, String(value || ''));
+  });
+  
+  const { data, error } = await supabase
+    .from('generated_documents')
+    .insert({
+      business_profile_id: input.business_profile_id,
+      template_id: input.template_id,
+      folder_id: input.folder_id || null,
+      title: input.title,
+      document_type: input.document_type,
+      content_html: contentHtml,
+      variables_filled: input.variables_filled,
+      document_number: input.document_number || null,
+      document_date: input.document_date || null,
+      status: 'draft',
+      linked_contract_id: input.linked_contract_id || null,
+      linked_resolution_id: input.linked_resolution_id || null,
+      created_by: user?.id,
+    })
+    .select()
+    .single();
+  
+  if (error) throw error;
+  return data;
+}
+
+export async function getGeneratedDocuments(
+  businessProfileId: string,
+  folderId?: string
+): Promise<GeneratedDocument[]> {
+  let query = supabase
+    .from('generated_documents')
+    .select(`
+      *,
+      template:document_templates(*),
+      folder:document_folders(*)
+    `)
+    .eq('business_profile_id', businessProfileId)
+    .order('created_at', { ascending: false });
+  
+  if (folderId) {
+    query = query.eq('folder_id', folderId);
+  }
+  
+  const { data, error } = await query;
+  
+  if (error) throw error;
+  return data || [];
+}
+
+export async function getGeneratedDocument(id: string): Promise<GeneratedDocument | null> {
+  const { data, error } = await supabase
+    .from('generated_documents')
+    .select(`
+      *,
+      template:document_templates(*),
+      folder:document_folders(*)
+    `)
+    .eq('id', id)
+    .maybeSingle();
+  
+  if (error) throw error;
+  return data;
+}
+
+export async function updateGeneratedDocument(
+  id: string,
+  updates: Partial<GeneratedDocument>
+): Promise<void> {
+  const { error } = await supabase
+    .from('generated_documents')
+    .update({
+      ...updates,
+      updated_at: new Date().toISOString(),
+    })
+    .eq('id', id);
+  
+  if (error) throw error;
+}
+
+export async function deleteGeneratedDocument(id: string): Promise<void> {
+  // Get document to find PDF path
+  const doc = await getGeneratedDocument(id);
+  
+  if (doc?.pdf_file_path) {
+    // Delete PDF from storage
+    await supabase.storage
+      .from('company-documents')
+      .remove([doc.pdf_file_path]);
+  }
+  
+  const { error } = await supabase
+    .from('generated_documents')
+    .delete()
+    .eq('id', id);
+  
+  if (error) throw error;
+}
+
+// ============================================
+// INITIALIZE DEFAULT FOLDERS
+// ============================================
+
+export async function initializeDefaultFolders(
+  businessProfileId: string
+): Promise<void> {
+  const { error } = await supabase
+    .rpc('create_default_document_folders', { profile_id: businessProfileId });
+  
+  if (error) throw error;
 }

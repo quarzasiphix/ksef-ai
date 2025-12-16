@@ -155,6 +155,7 @@ const Kasa = () => {
 
   useEffect(() => {
     if (selectedProfileId) {
+      setSelectedAccountId(null);
       loadData();
     }
   }, [selectedProfileId]);
@@ -164,7 +165,7 @@ const Kasa = () => {
       loadTransactions();
       loadSummary();
     }
-  }, [selectedAccountId, dateFilter]);
+  }, [selectedAccountId, selectedProfileId, dateFilter]);
 
   const loadData = async () => {
     if (!selectedProfileId) return;
@@ -178,9 +179,12 @@ const Kasa = () => {
       setAccounts(accountsData);
       setSettings(settingsData);
       setBankAccounts(bankAccountsData);
-      
-      if (accountsData.length > 0 && !selectedAccountId) {
-        setSelectedAccountId(accountsData[0].id);
+
+      if (accountsData.length > 0) {
+        const stillValid = selectedAccountId && accountsData.some(a => a.id === selectedAccountId);
+        setSelectedAccountId(stillValid ? selectedAccountId : accountsData[0].id);
+      } else {
+        setSelectedAccountId(null);
       }
     } catch (error) {
       console.error('Error loading cash data:', error);
@@ -590,7 +594,27 @@ const Kasa = () => {
         <Card>
           <CardHeader className="pb-3">
             <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-              <div className="flex items-center gap-2">
+              <div className="flex items-center gap-2 flex-wrap">
+                <Button
+                  onClick={() => {
+                    setTransactionType('KP');
+                    setTransactionForm({
+                      amount: 0,
+                      date: format(new Date(), 'yyyy-MM-dd'),
+                      description: 'Wpłata kapitału własnego',
+                      counterparty_name: selectedProfile?.name || '',
+                      counterparty_tax_id: '',
+                      category: 'capital_contribution',
+                      is_tax_deductible: false,
+                    });
+                    setTransactionDialogOpen(true);
+                  }}
+                  size="sm"
+                  className="bg-purple-600 hover:bg-purple-700 text-white"
+                >
+                  <Wallet className="h-4 w-4 mr-2" />
+                  Wpłata kapitału
+                </Button>
                 <Button
                   onClick={() => openNewTransaction('KP')}
                   size="sm"
@@ -923,6 +947,12 @@ const Kasa = () => {
                   ))}
                 </SelectContent>
               </Select>
+              {transactionForm.category === 'capital_contribution' && (
+                <p className="text-xs text-muted-foreground mt-1 flex items-center gap-1">
+                  <Wallet className="h-3 w-3" />
+                  Wpłata kapitału własnego do kasy firmowej (nie podlega opodatkowaniu)
+                </p>
+              )}
             </div>
             <div>
               <Label htmlFor="tx-description">Opis / tytuł</Label>

@@ -47,7 +47,7 @@ import Shareholders from '@/pages/accounting/Shareholders';
 import Welcome from '@/components/welcome/Welcome';
 import Premium from '@/pages/Premium';
 import ShareDocuments from '@/pages/public/ShareDocuments';
-import ContractList from '@/pages/contracts/ContractList';
+import DocumentsHub from '@/pages/contracts/DocumentsHub';
 import ContractNew from '@/pages/contracts/ContractNew';
 import ContractDetails from '@/pages/contracts/ContractDetails';
 import BankAccounts from "@/pages/bank/BankAccounts";
@@ -60,6 +60,7 @@ import CITDashboard from '@/pages/spolka/CITDashboard';
 import Documents from '@/pages/spolka/Documents';
 import AccountingShell from '@/pages/accounting/AccountingShell';
 import Kasa from '@/pages/accounting/Kasa';
+import TransactionalContracts from '@/pages/accounting/TransactionalContracts';
 
 import { queryClient } from '@/lib/queryClient';
 import { useAuth } from '@/hooks/useAuth';
@@ -367,9 +368,10 @@ const App = () => {
                   <Route path="shareholders" element={<Shareholders />} />
                   <Route path="company-registry" element={<CompanyRegistry />} />
                   <Route path="capital-events" element={<CapitalEvents />} />
-                  <Route path="resolutions" element={<Resolutions />} />
+                  <Route path="resolutions" element={<Navigate to="/contracts/resolutions" replace />} />
                   <Route path="cit" element={<CITDashboard />} />
-                  <Route path="documents" element={<Documents />} />
+                  <Route path="contracts" element={<TransactionalContracts />} />
+                  <Route path="documents" element={<Navigate to="/contracts" replace />} />
                   <Route path="kasa" element={<Kasa />} />
                 </Route>
 
@@ -386,12 +388,17 @@ const App = () => {
                 {/* Contracts routes */}
                 <Route path="/contracts" element={
                   <ProtectedRoute>
-                    <ContractList />
+                    <DocumentsHub />
                   </ProtectedRoute>
                 } />
                 <Route path="/contracts/new" element={
                   <ProtectedRoute>
                     <ContractNew />
+                  </ProtectedRoute>
+                } />
+                <Route path="/contracts/resolutions" element={
+                  <ProtectedRoute>
+                    <Resolutions />
                   </ProtectedRoute>
                 } />
                 <Route path="/contracts/:id" element={

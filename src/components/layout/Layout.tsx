@@ -20,6 +20,16 @@ const Layout = ({ children }: LayoutProps) => {
     const { actions } = usePageHeaderActions();
     const location = useLocation();
     const isAccountingRoute = location.pathname.startsWith('/accounting');
+    const isFullBleedRoute = isAccountingRoute || location.pathname.startsWith('/contracts');
+    const isNewBusinessProfileWizardRoute = location.pathname === '/settings/business-profiles/new';
+
+    if (isNewBusinessProfileWizardRoute) {
+      return (
+        <div className="min-h-screen w-full bg-background">
+          {innerChildren || <Outlet />}
+        </div>
+      );
+    }
 
     return (
       <div className="flex min-h-screen w-full bg-background">
@@ -35,18 +45,21 @@ const Layout = ({ children }: LayoutProps) => {
           <main
             className={cn(
               "flex-1 overflow-auto w-full max-w-full",
-              isAccountingRoute
-                ? "pt-4 pb-4 pr-2 pl-2 md:pt-6 md:pb-6 md:pr-3 md:pl-3"
+              isFullBleedRoute
+                ? "pt-2 pb-2 pr-2 pl-2 md:pt-3 md:pb-3 md:pr-2 md:pl-2"
                 : "p-4 md:p-6"
             )}
           >
             <div
               className={cn(
                 "w-full",
-                isAccountingRoute ? "max-w-none mr-auto" : "max-w-7xl mx-auto"
+                isFullBleedRoute ? "max-w-none" : "max-w-7xl mx-auto"
               )}
             >
-              <div className="flex items-center justify-between gap-3 mb-6">
+              <div className={cn(
+                "flex items-center justify-between gap-3",
+                isFullBleedRoute ? "mb-3" : "mb-6"
+              )}>
                 <Breadcrumbs />
                 {actions ? <div className="shrink-0">{actions}</div> : null}
               </div>
