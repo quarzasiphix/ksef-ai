@@ -814,7 +814,7 @@ const DocumentsHub = () => {
         <div className="p-2 space-y-3">
           <Card>
             <CardContent className="p-4 space-y-4">
-              <div className="flex items-start justify-between gap-4">
+              <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
                 <div className="flex items-start gap-3 min-w-0">
                   <div className="md:hidden pt-0.5">
                     <SheetTrigger asChild>
@@ -849,12 +849,12 @@ const DocumentsHub = () => {
                   </div>
                 </div>
 
-                <div className="flex gap-2 shrink-0">
-                  <Button variant="outline" onClick={() => setUploadDialogOpen(true)}>
+                <div className="flex w-full flex-col gap-2 sm:flex-row md:w-auto md:shrink-0">
+                  <Button className="w-full sm:w-auto" variant="outline" onClick={() => setUploadDialogOpen(true)}>
                     <Upload className="h-4 w-4 mr-2" />
                     Prześlij plik
                   </Button>
-                  <Button onClick={() => safeNavigate('/contracts/new')}>
+                  <Button className="w-full sm:w-auto" onClick={() => safeNavigate('/contracts/new')}>
                     <Plus className="h-4 w-4 mr-2" />
                     Nowy dokument
                   </Button>
@@ -1048,12 +1048,12 @@ const DocumentsHub = () => {
               {view === 'decisions' && decisions.length > 0 && (
                 <Card>
                   <CardHeader>
-                    <div className="flex items-center justify-between gap-3">
+                    <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                       <CardTitle className="flex items-center gap-2">
                         <Award className="h-5 w-5" />
                         Decyzje (mandaty)
                       </CardTitle>
-                      <Button size="sm" variant="outline" onClick={() => safeNavigate('/decisions')}>
+                      <Button className="w-full sm:w-auto" size="sm" variant="outline" onClick={() => safeNavigate('/decisions')}>
                         Przejdź do decyzji
                       </Button>
                     </div>
