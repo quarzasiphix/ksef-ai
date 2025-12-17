@@ -10,7 +10,7 @@ import {
   DollarSign, Calendar
 } from 'lucide-react';
 import { toast } from 'sonner';
-import { getContracts } from '@/integrations/supabase/repositories/contractRepository';
+import { getContractsByBusinessProfile } from '@/integrations/supabase/repositories/contractRepository';
 import type { Contract } from '@/types';
 import {
   ResponsiveContainer,
@@ -41,7 +41,7 @@ const TransactionalContracts = () => {
       
       setLoading(true);
       try {
-        const allContracts = await getContracts(selectedProfileId);
+        const allContracts = await getContractsByBusinessProfile(selectedProfileId);
         // Filter to only transactional contracts (money in/out)
         const transactional = allContracts.filter(c => 
           c.document_category === 'transactional_payout' || 

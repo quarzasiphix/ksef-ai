@@ -5,7 +5,6 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { flushSync } from 'react-dom';
 import { 
   FileText, FolderOpen, Plus, Upload, Search, Filter,
@@ -17,6 +16,8 @@ import { toast } from 'sonner';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { Label } from '@/components/ui/label';
+import { Textarea } from '@/components/ui/textarea';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from '@/components/ui/sheet';
 import {
@@ -30,13 +31,17 @@ import {
   createFolder,
   updateFolder,
   deleteFolder,
+  uploadCompanyDocument,
+  getDocumentDownloadUrl,
   type DocumentFolder,
   type FolderTreeNode,
   type CompanyDocument,
   type GeneratedDocument,
   type DocumentTemplate,
+  type DocumentCategory,
 } from '@/integrations/supabase/repositories/documentsRepository';
-import { getContracts } from '@/integrations/supabase/repositories/contractRepository';
+import { FOLDER_TYPE_LABELS, type FolderType } from '@/types/documents';
+import { getContractsByBusinessProfile } from '@/integrations/supabase/repositories/contractRepository';
 import type { Contract } from '@/types';
 
 type DocumentView = 'all' | 'transactional_payout' | 'transactional_payin' | 'informational' | 'generated' | 'uploaded';
@@ -55,19 +60,32 @@ const DocumentsHub = () => {
   const [createFolderDialogOpen, setCreateFolderDialogOpen] = useState(false);
   const [newFolderName, setNewFolderName] = useState('');
   const [newFolderParentId, setNewFolderParentId] = useState<string | null>(null);
+  const [newFolderType, setNewFolderType] = useState<FolderType>('custom');
   const [deleteFolderDialogOpen, setDeleteFolderDialogOpen] = useState(false);
   const [folderToDelete, setFolderToDelete] = useState<string | null>(null);
   const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
   const [pendingNavigationTo, setPendingNavigationTo] = useState<string | null>(null);
+  
+  // Upload states
+  const [uploadDialogOpen, setUploadDialogOpen] = useState(false);
+  const [uploading, setUploading] = useState(false);
+  const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  const [isDragging, setIsDragging] = useState(false);
+  const [uploadData, setUploadData] = useState({
+    title: '',
+    description: '',
+    category: 'other' as DocumentCategory,
+  });
 
   const safeNavigate = useCallback((to: string) => {
-    const hadOverlaysOpen = mobileSidebarOpen || createFolderDialogOpen || deleteFolderDialogOpen;
+    const hadOverlaysOpen = mobileSidebarOpen || createFolderDialogOpen || deleteFolderDialogOpen || uploadDialogOpen;
 
     // Always close overlays first (Sheet / Dialog) before route transition.
     flushSync(() => {
       setMobileSidebarOpen(false);
       setCreateFolderDialogOpen(false);
       setDeleteFolderDialogOpen(false);
+      setUploadDialogOpen(false);
     });
 
     if (!hadOverlaysOpen) {
@@ -77,7 +95,7 @@ const DocumentsHub = () => {
 
     // If an overlay was open, defer navigation until after close animations.
     setPendingNavigationTo(to);
-  }, [createFolderDialogOpen, deleteFolderDialogOpen, mobileSidebarOpen, navigate]);
+  }, [createFolderDialogOpen, deleteFolderDialogOpen, mobileSidebarOpen, uploadDialogOpen, navigate]);
 
   useEffect(() => {
     if (!pendingNavigationTo) return;
@@ -112,7 +130,7 @@ const DocumentsHub = () => {
         templatesData,
       ] = await Promise.all([
         getFolderTree(selectedProfileId).catch(() => []),
-        getContracts(selectedProfileId).catch(() => []),
+        getContractsByBusinessProfile(selectedProfileId).catch(() => []),
         getCompanyDocuments(selectedProfileId).catch(() => []),
         getGeneratedDocuments(selectedProfileId).catch(() => []),
         getDocumentTemplates(selectedProfileId).catch(() => []),
@@ -148,13 +166,16 @@ const DocumentsHub = () => {
     try {
       await createFolder({
         business_profile_id: selectedProfileId,
-        name: newFolderName.trim(),
         parent_folder_id: newFolderParentId,
+        name: newFolderName.trim(),
+        folder_type: newFolderType,
       });
+      
       toast.success('Folder utworzony');
       setCreateFolderDialogOpen(false);
       setNewFolderName('');
       setNewFolderParentId(null);
+      setNewFolderType('custom');
       loadData();
     } catch (error) {
       console.error('Error creating folder:', error);
@@ -193,10 +214,136 @@ const DocumentsHub = () => {
     }
   };
 
+  const handleFileSelect = (file: File) => {
+    setSelectedFile(file);
+    setUploadData(prev => ({ ...prev, title: file.name.replace(/\.[^/.]+$/, '') }));
+    setUploadDialogOpen(true);
+  };
+
+  const handleDragOver = (e: React.DragEvent) => {
+    e.preventDefault();
+    setIsDragging(true);
+  };
+
+  const handleDragLeave = (e: React.DragEvent) => {
+    e.preventDefault();
+    setIsDragging(false);
+  };
+
+  const handleDrop = (e: React.DragEvent) => {
+    e.preventDefault();
+    setIsDragging(false);
+    const file = e.dataTransfer.files[0];
+    if (file) {
+      handleFileSelect(file);
+    }
+  };
+
+  const handleUpload = async () => {
+    if (!selectedProfileId || !selectedFile) return;
+    
+    if (!uploadData.title) {
+      toast.error('Podaj tytuł dokumentu');
+      return;
+    }
+    
+    setUploading(true);
+    try {
+      await uploadCompanyDocument(
+        selectedProfileId,
+        uploadData.category,
+        selectedFile,
+        {
+          title: uploadData.title,
+          description: uploadData.description || undefined,
+          folder_id: selectedFolder || undefined,
+        }
+      );
+      
+      toast.success('Dokument przesłany');
+      setUploadDialogOpen(false);
+      setSelectedFile(null);
+      setUploadData({
+        title: '',
+        description: '',
+        category: 'other',
+      });
+      loadData();
+    } catch (error) {
+      console.error('Error uploading document:', error);
+      toast.error('Błąd przesyłania dokumentu');
+    } finally {
+      setUploading(false);
+    }
+  };
+
+  const getCurrentFolderName = () => {
+    if (!selectedFolder) return null;
+    const findFolder = (folders: FolderTreeNode[]): FolderTreeNode | null => {
+      for (const folder of folders) {
+        if (folder.id === selectedFolder) return folder;
+        if (folder.children) {
+          const found = findFolder(folder.children);
+          if (found) return found;
+        }
+      }
+      return null;
+    };
+    return findFolder(folderTree);
+  };
+
+  const currentFolder = getCurrentFolderName();
+
+  const getFolderPurpose = (folderType?: FolderType | null) => {
+    switch (folderType) {
+      case 'tax_documents':
+        return 'Zbieraj tutaj deklaracje, potwierdzenia, korespondencję i inne dokumenty podatkowe. Ułatwia to szybkie odnalezienie plików podczas kontroli i rozliczeń.';
+      case 'board_documents':
+        return 'Dokumenty Zarządu: protokoły, decyzje, notatki, pełnomocnictwa i inne pliki związane z prowadzeniem spółki.';
+      case 'correspondence':
+        return 'Korespondencja urzędowa i firmowa: pisma, odpowiedzi, wezwania, potwierdzenia nadania/odbioru.';
+      case 'financial_reports':
+        return 'Sprawozdania finansowe i raporty: bilans, RZiS, zestawienia, pliki do audytu i dokumenty roczne.';
+      case 'licenses':
+        return 'Licencje, pozwolenia i certyfikaty: dokumenty, które mają ważność i często wymagają odnowienia.';
+      case 'contracts':
+        return 'Umowy i dokumenty powiązane: porządkuj je tematycznie, aby łatwo śledzić zobowiązania i terminy.';
+      case 'resolutions':
+        return 'Uchwały: trzymaj tutaj uchwały Zarządu/Wspólników oraz dokumenty wspierające (załączniki, projekty, podpisy).';
+      case 'custom':
+      default:
+        return 'Folder do organizacji dokumentów według Twojej struktury. Możesz tu trzymać dowolne pliki powiązane z tematem folderu.';
+    }
+  };
+
   // Filter contracts by category
-  const transactionalPayoutContracts = contracts.filter(c => c.document_category === 'transactional_payout');
-  const transactionalPayinContracts = contracts.filter(c => c.document_category === 'transactional_payin');
-  const informationalContracts = contracts.filter(c => c.document_category === 'informational' || !c.document_category);
+  const scopedContracts = selectedFolder ? contracts.filter(c => c.folder_id === selectedFolder) : contracts;
+  const scopedGeneratedDocs = selectedFolder ? generatedDocs.filter(d => d.folder_id === selectedFolder) : generatedDocs;
+  const scopedUploadedDocs = selectedFolder ? uploadedDocs.filter(d => d.folder_id === selectedFolder) : uploadedDocs;
+
+  const scopedTotalCount = scopedContracts.length + scopedGeneratedDocs.length + scopedUploadedDocs.length;
+
+  const mixedItems = [
+    ...scopedContracts.map(c => ({
+      kind: 'contract' as const,
+      ts: new Date(c.created_at || c.issueDate || 0).getTime(),
+      contract: c,
+    })),
+    ...scopedGeneratedDocs.map(d => ({
+      kind: 'generated' as const,
+      ts: new Date(d.created_at || 0).getTime(),
+      doc: d,
+    })),
+    ...scopedUploadedDocs.map(d => ({
+      kind: 'uploaded' as const,
+      ts: new Date((d as any).created_at || 0).getTime(),
+      doc: d,
+    })),
+  ].sort((a, b) => b.ts - a.ts);
+
+  const transactionalPayoutContracts = scopedContracts.filter(c => c.document_category === 'transactional_payout');
+  const transactionalPayinContracts = scopedContracts.filter(c => c.document_category === 'transactional_payin');
+  const informationalContracts = scopedContracts.filter(c => c.document_category === 'informational' || !c.document_category);
 
   // Search filter
   const filterBySearch = (items: any[], searchFields: string[]) => {
@@ -218,11 +365,11 @@ const DocumentsHub = () => {
       case 'informational':
         return informationalContracts.length;
       case 'generated':
-        return generatedDocs.length;
+        return scopedGeneratedDocs.length;
       case 'uploaded':
-        return uploadedDocs.length;
+        return scopedUploadedDocs.length;
       default:
-        return contracts.length + generatedDocs.length + uploadedDocs.length;
+        return scopedContracts.length + scopedGeneratedDocs.length + scopedUploadedDocs.length;
     }
   };
 
@@ -484,6 +631,24 @@ const DocumentsHub = () => {
                 }}
               />
             </div>
+            <div className="space-y-2">
+              <Label htmlFor="folder-type">Kategoria folderu</Label>
+              <Select value={newFolderType} onValueChange={(value) => setNewFolderType(value as FolderType)}>
+                <SelectTrigger id="folder-type">
+                  <SelectValue placeholder="Wybierz kategorię" />
+                </SelectTrigger>
+                <SelectContent>
+                  {Object.entries(FOLDER_TYPE_LABELS).map(([key, label]) => (
+                    <SelectItem key={key} value={key}>
+                      {label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <p className="text-xs text-muted-foreground">
+                Kategoria pomaga w organizacji i filtrowaniu dokumentów
+              </p>
+            </div>
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setCreateFolderDialogOpen(false)}>
@@ -492,6 +657,95 @@ const DocumentsHub = () => {
             <Button onClick={handleCreateFolder} disabled={!newFolderName.trim()}>
               Utwórz
             </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Upload Dialog */}
+      <Dialog open={uploadDialogOpen} onOpenChange={setUploadDialogOpen}>
+        <DialogContent className="w-[calc(100vw-2rem)] sm:max-w-md overflow-hidden">
+          <DialogHeader>
+            <DialogTitle>Prześlij dokument</DialogTitle>
+            <DialogDescription>
+              {currentFolder ? `Dokument zostanie dodany do folderu: ${currentFolder.name}` : 'Prześlij plik PDF lub inny dokument'}
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            {!selectedFile ? (
+              <div
+                className="border-2 border-dashed rounded-lg p-8 text-center cursor-pointer hover:bg-muted/50 transition-colors"
+                onDragOver={handleDragOver}
+                onDragLeave={handleDragLeave}
+                onDrop={handleDrop}
+                onClick={() => {
+                  const input = document.createElement('input');
+                  input.type = 'file';
+                  input.accept = '.pdf,.doc,.docx,.xls,.xlsx,.jpg,.jpeg,.png';
+                  input.onchange = (e: any) => {
+                    const file = e.target.files?.[0];
+                    if (file) handleFileSelect(file);
+                  };
+                  input.click();
+                }}
+              >
+                <Upload className="h-12 w-12 mx-auto mb-4 text-muted-foreground" />
+                <p className="text-sm font-medium mb-1">Przeciągnij plik tutaj</p>
+                <p className="text-xs text-muted-foreground">lub kliknij, aby wybrać plik</p>
+              </div>
+            ) : (
+              <>
+                <div className="flex items-center gap-3 p-3 bg-muted rounded-lg">
+                  <FileText className="h-8 w-8 text-muted-foreground" />
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-medium truncate">{selectedFile.name}</p>
+                    <p className="text-xs text-muted-foreground">
+                      {(selectedFile.size / 1024 / 1024).toFixed(2)} MB
+                    </p>
+                  </div>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => setSelectedFile(null)}
+                  >
+                    <X className="h-4 w-4" />
+                  </Button>
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="upload-title">Tytuł dokumentu *</Label>
+                  <Input
+                    id="upload-title"
+                    className="w-full"
+                    value={uploadData.title}
+                    onChange={(e) => setUploadData(prev => ({ ...prev, title: e.target.value }))}
+                    placeholder="np. Umowa najmu biura"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="upload-description">Opis (opcjonalnie)</Label>
+                  <Textarea
+                    id="upload-description"
+                    className="w-full"
+                    value={uploadData.description}
+                    onChange={(e) => setUploadData(prev => ({ ...prev, description: e.target.value }))}
+                    placeholder="Dodatkowe informacje o dokumencie"
+                    rows={3}
+                  />
+                </div>
+              </>
+            )}
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => {
+              setUploadDialogOpen(false);
+              setSelectedFile(null);
+            }}>
+              Anuluj
+            </Button>
+            {selectedFile && (
+              <Button onClick={handleUpload} disabled={uploading || !uploadData.title}>
+                {uploading ? 'Przesyłanie...' : 'Prześlij'}
+              </Button>
+            )}
           </DialogFooter>
         </DialogContent>
       </Dialog>
@@ -514,97 +768,161 @@ const DocumentsHub = () => {
         </AlertDialogContent>
       </AlertDialog>
 
-      {/* Main content */}
-      <div className="flex-1 overflow-y-auto">
-        <div className="p-2 space-y-3">
-          {/* Header */}
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-2">
-              <div className="md:hidden">
-                <SheetTrigger asChild>
-                  <Button variant="outline" size="icon" className="shrink-0">
-                    <Menu className="h-5 w-5" />
-                    <span className="sr-only">Menu dokumentów</span>
-                  </Button>
-                </SheetTrigger>
-              </div>
-              <div>
-                <h1 className="text-xl font-bold">
-                {view === 'all' && 'Wszystkie dokumenty'}
-                {view === 'transactional_payout' && 'Umowy - Wydatki'}
-                {view === 'transactional_payin' && 'Umowy - Przychody'}
-                {view === 'informational' && 'Dokumenty informacyjne'}
-                {view === 'generated' && 'Wygenerowane dokumenty'}
-                {view === 'uploaded' && 'Przesłane pliki'}
-              </h1>
-              <p className="text-muted-foreground">
-                {getDocumentCount()} dokumentów
-              </p>
-            </div>
-            </div>
-            <div className="flex gap-2">
-              {(view === 'transactional_payin' || view === 'transactional_payout') && (
-                <Button
-                  variant="outline"
-                  onClick={() => {
-                    const focus = view === 'transactional_payin' ? 'payin' : 'payout';
-                    safeNavigate(`/accounting/contracts?focus=${focus}`);
-                  }}
-                >
-                  <BarChart className="h-4 w-4 mr-2" />
-                  Analizy w księgowości
-                </Button>
-              )}
-              <Button variant="outline" onClick={() => toast.info('Przesyłanie plików - wkrótce')}>
-                <Upload className="h-4 w-4 mr-2" />
-                Prześlij PDF
-              </Button>
-              <Button onClick={() => toast.info('Generator dokumentów - wkrótce')}>
-                <Plus className="h-4 w-4 mr-2" />
-                Generuj dokument
-              </Button>
-            </div>
+      {/* Drag and Drop Overlay */}
+      {isDragging && (
+        <div 
+          className="fixed inset-0 z-50 bg-primary/10 backdrop-blur-sm flex items-center justify-center"
+          onDragOver={handleDragOver}
+          onDragLeave={handleDragLeave}
+          onDrop={handleDrop}
+        >
+          <div className="bg-background border-2 border-dashed border-primary rounded-lg p-12 text-center">
+            <Upload className="h-16 w-16 mx-auto mb-4 text-primary" />
+            <p className="text-xl font-semibold mb-2">Upuść plik tutaj</p>
+            <p className="text-muted-foreground">
+              {currentFolder ? `Zostanie dodany do: ${currentFolder.name}` : 'Prześlij dokument'}
+            </p>
           </div>
+        </div>
+      )}
 
+      {/* Main content */}
+      <div className="flex-1 overflow-y-auto" onDragOver={handleDragOver} onDragLeave={handleDragLeave} onDrop={handleDrop}>
+        <div className="p-2 space-y-3">
           <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <FileCheck className="h-5 w-5" />
-                Uchwały
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="flex items-start justify-between gap-3">
-                <p className="text-sm text-muted-foreground">
-                  Uchwały to kluczowe dokumenty korporacyjne (np. zatwierdzenie sprawozdania, podział zysku, powołania).
-                </p>
+            <CardContent className="p-4 space-y-4">
+              <div className="flex items-start justify-between gap-4">
+                <div className="flex items-start gap-3 min-w-0">
+                  <div className="md:hidden pt-0.5">
+                    <SheetTrigger asChild>
+                      <Button variant="outline" size="icon" className="shrink-0">
+                        <Menu className="h-5 w-5" />
+                        <span className="sr-only">Menu dokumentów</span>
+                      </Button>
+                    </SheetTrigger>
+                  </div>
+                  <div className="min-w-0">
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <h1 className="text-xl font-bold truncate">
+                        {currentFolder ? currentFolder.name : 'Dokumenty'}
+                      </h1>
+                      {currentFolder?.folder_type && currentFolder.folder_type !== 'custom' && (
+                        <Badge variant="secondary" className="text-xs">
+                          {FOLDER_TYPE_LABELS[currentFolder.folder_type]}
+                        </Badge>
+                      )}
+                      {currentFolder && (
+                        <Badge variant="outline" className="text-xs">
+                          {currentFolder.path || currentFolder.name}
+                        </Badge>
+                      )}
+                    </div>
+                    <p className="text-sm text-muted-foreground mt-1">
+                      {currentFolder ? getFolderPurpose(currentFolder.folder_type) : 'Wybierz folder po lewej, aby pracować w kontekście konkretnego tematu. Tutaj widzisz podział dokumentów na kategorie i szybkie akcje.'}
+                    </p>
+                    <div className="text-xs text-muted-foreground mt-2">
+                      {scopedTotalCount} dokumentów
+                    </div>
+                  </div>
+                </div>
+
+                <div className="flex gap-2 shrink-0">
+                  <Button variant="outline" onClick={() => setUploadDialogOpen(true)}>
+                    <Upload className="h-4 w-4 mr-2" />
+                    Prześlij plik
+                  </Button>
+                  <Button onClick={() => safeNavigate('/contracts/new')}>
+                    <Plus className="h-4 w-4 mr-2" />
+                    Nowy dokument
+                  </Button>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2">
                 <Button
-                  variant="outline"
-                  onClick={() => {
-                    safeNavigate('/contracts/resolutions');
-                  }}
+                  variant={view === 'all' ? 'secondary' : 'outline'}
+                  className="justify-between h-auto py-3"
+                  onClick={() => setView('all')}
                 >
-                  Otwórz
+                  <span className="flex items-center gap-2">
+                    <FileText className="h-4 w-4" />
+                    Wszystkie
+                  </span>
+                  <Badge variant="outline">{scopedTotalCount}</Badge>
+                </Button>
+                <Button
+                  variant={view === 'transactional_payout' ? 'secondary' : 'outline'}
+                  className="justify-between h-auto py-3"
+                  onClick={() => setView('transactional_payout')}
+                >
+                  <span className="flex items-center gap-2">
+                    <ArrowUpCircle className="h-4 w-4 text-red-600" />
+                    Wydatki
+                  </span>
+                  <Badge variant="outline">{transactionalPayoutContracts.length}</Badge>
+                </Button>
+                <Button
+                  variant={view === 'transactional_payin' ? 'secondary' : 'outline'}
+                  className="justify-between h-auto py-3"
+                  onClick={() => setView('transactional_payin')}
+                >
+                  <span className="flex items-center gap-2">
+                    <ArrowDownCircle className="h-4 w-4 text-green-600" />
+                    Przychody
+                  </span>
+                  <Badge variant="outline">{transactionalPayinContracts.length}</Badge>
+                </Button>
+                <Button
+                  variant={view === 'informational' ? 'secondary' : 'outline'}
+                  className="justify-between h-auto py-3"
+                  onClick={() => setView('informational')}
+                >
+                  <span className="flex items-center gap-2">
+                    <Info className="h-4 w-4" />
+                    Informacyjne
+                  </span>
+                  <Badge variant="outline">{informationalContracts.length}</Badge>
+                </Button>
+                <Button
+                  variant={view === 'generated' ? 'secondary' : 'outline'}
+                  className="justify-between h-auto py-3"
+                  onClick={() => setView('generated')}
+                >
+                  <span className="flex items-center gap-2">
+                    <FileCheck className="h-4 w-4" />
+                    Wygenerowane
+                  </span>
+                  <Badge variant="outline">{scopedGeneratedDocs.length}</Badge>
+                </Button>
+                <Button
+                  variant={view === 'uploaded' ? 'secondary' : 'outline'}
+                  className="justify-between h-auto py-3"
+                  onClick={() => setView('uploaded')}
+                >
+                  <span className="flex items-center gap-2">
+                    <Upload className="h-4 w-4" />
+                    Pliki
+                  </span>
+                  <Badge variant="outline">{scopedUploadedDocs.length}</Badge>
+                </Button>
+              </div>
+
+              <div className="flex gap-2">
+                <div className="relative flex-1">
+                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                  <Input
+                    placeholder={currentFolder ? `Szukaj w folderze: ${currentFolder.name}` : 'Szukaj dokumentów...'}
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                    className="pl-10"
+                  />
+                </div>
+                <Button variant="outline" size="icon">
+                  <Filter className="h-4 w-4" />
                 </Button>
               </div>
             </CardContent>
           </Card>
-
-          {/* Search */}
-          <div className="flex gap-2">
-            <div className="relative flex-1">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-              <Input
-                placeholder="Szukaj dokumentów..."
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                className="pl-10"
-              />
-            </div>
-            <Button variant="outline" size="icon">
-              <Filter className="h-4 w-4" />
-            </Button>
-          </div>
 
           {/* Document list */}
           {loading ? (
@@ -613,8 +931,41 @@ const DocumentsHub = () => {
             </div>
           ) : (
             <div className="space-y-3">
+              {/* Mixed list (All) */}
+              {view === 'all' && mixedItems.length > 0 && (
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="flex items-center gap-2">
+                      <FileText className="h-5 w-5" />
+                      Wszystko (chronologicznie)
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="space-y-2">
+                      {mixedItems.map((item) => {
+                        if (item.kind === 'contract') {
+                          return (
+                            <ContractItem
+                              key={`c_${item.contract.id}`}
+                              contract={item.contract}
+                              onNavigate={safeNavigate}
+                            />
+                          );
+                        }
+
+                        if (item.kind === 'generated') {
+                          return <GeneratedDocItem key={`g_${item.doc.id}`} doc={item.doc} />;
+                        }
+
+                        return <UploadedDocItem key={`u_${item.doc.id}`} doc={item.doc} />;
+                      })}
+                    </div>
+                  </CardContent>
+                </Card>
+              )}
+
               {/* Transactional Payout Contracts */}
-              {(view === 'all' || view === 'transactional_payout') && transactionalPayoutContracts.length > 0 && (
+              {view === 'transactional_payout' && transactionalPayoutContracts.length > 0 && (
                 <Card>
                   <CardHeader>
                     <CardTitle className="flex items-center gap-2">
@@ -633,7 +984,7 @@ const DocumentsHub = () => {
               )}
 
               {/* Transactional Payin Contracts */}
-              {(view === 'all' || view === 'transactional_payin') && transactionalPayinContracts.length > 0 && (
+              {view === 'transactional_payin' && transactionalPayinContracts.length > 0 && (
                 <Card>
                   <CardHeader>
                     <CardTitle className="flex items-center gap-2">
@@ -652,7 +1003,7 @@ const DocumentsHub = () => {
               )}
 
               {/* Informational Contracts */}
-              {(view === 'all' || view === 'informational') && informationalContracts.length > 0 && (
+              {view === 'informational' && informationalContracts.length > 0 && (
                 <Card>
                   <CardHeader>
                     <CardTitle className="flex items-center gap-2">
@@ -671,7 +1022,7 @@ const DocumentsHub = () => {
               )}
 
               {/* Generated Documents */}
-              {(view === 'all' || view === 'generated') && generatedDocs.length > 0 && (
+              {view === 'generated' && scopedGeneratedDocs.length > 0 && (
                 <Card>
                   <CardHeader>
                     <CardTitle className="flex items-center gap-2">
@@ -681,7 +1032,7 @@ const DocumentsHub = () => {
                   </CardHeader>
                   <CardContent>
                     <div className="space-y-2">
-                      {filterBySearch(generatedDocs, ['title', 'document_type']).map(doc => (
+                      {filterBySearch(scopedGeneratedDocs, ['title', 'document_type']).map(doc => (
                         <GeneratedDocItem key={doc.id} doc={doc} />
                       ))}
                     </div>
@@ -690,7 +1041,7 @@ const DocumentsHub = () => {
               )}
 
               {/* Uploaded Documents */}
-              {(view === 'all' || view === 'uploaded') && uploadedDocs.length > 0 && (
+              {view === 'uploaded' && scopedUploadedDocs.length > 0 && (
                 <Card>
                   <CardHeader>
                     <CardTitle className="flex items-center gap-2">
@@ -700,7 +1051,7 @@ const DocumentsHub = () => {
                   </CardHeader>
                   <CardContent>
                     <div className="space-y-2">
-                      {filterBySearch(uploadedDocs, ['title', 'file_name', 'description']).map(doc => (
+                      {filterBySearch(scopedUploadedDocs, ['title', 'file_name', 'description']).map(doc => (
                         <UploadedDocItem key={doc.id} doc={doc} />
                       ))}
                     </div>
@@ -712,11 +1063,19 @@ const DocumentsHub = () => {
               {getDocumentCount() === 0 && (
                 <div className="text-center py-12">
                   <FolderOpen className="h-12 w-12 mx-auto mb-4 text-muted-foreground opacity-50" />
-                  <p className="text-muted-foreground mb-4">Brak dokumentów w tej kategorii</p>
-                  <Button onClick={() => safeNavigate('/contracts/new')}>
-                    <Plus className="h-4 w-4 mr-2" />
-                    Dodaj pierwszy dokument
-                  </Button>
+                  <p className="text-muted-foreground mb-4">
+                    {currentFolder ? 'Brak dokumentów w tym folderze' : 'Brak dokumentów'}
+                  </p>
+                  <div className="flex items-center justify-center gap-2">
+                    <Button variant="outline" onClick={() => setUploadDialogOpen(true)}>
+                      <Upload className="h-4 w-4 mr-2" />
+                      Prześlij plik
+                    </Button>
+                    <Button onClick={() => safeNavigate('/contracts/new')}>
+                      <Plus className="h-4 w-4 mr-2" />
+                      Dodaj pierwszy dokument
+                    </Button>
+                  </div>
                 </div>
               )}
             </div>
@@ -780,8 +1139,8 @@ const FolderTreeItem: React.FC<{
                 setIsOpen(!isOpen);
               }}
             >
-              <FolderOpen className="h-4 w-4 mr-2" />
-              {folder.name}
+              <FolderOpen className="h-4 w-4 mr-2 shrink-0" />
+              <span className="truncate">{folder.name}</span>
             </Button>
             <DropdownMenu>
               <DropdownMenuTrigger asChild>

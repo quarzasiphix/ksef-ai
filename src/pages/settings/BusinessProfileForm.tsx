@@ -76,6 +76,7 @@ const BusinessProfileForm = ({
   const navigate = useNavigate();
   const isEditing = !!initialData?.id;
   const isMobile = useIsMobile();
+  const isWizardJdg = lockedEntityType === "dzialalnosc" && !isEditing;
 
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
@@ -110,6 +111,14 @@ const BusinessProfileForm = ({
       form.setValue("entityType", lockedEntityType);
     }
   }, [lockedEntityType, form]);
+
+  const handleCancel = () => {
+    if (onCancel) {
+      onCancel();
+      return;
+    }
+    navigate("/settings");
+  };
 
   const onSubmit = async (values: z.infer<typeof formSchema>) => {
     console.log('onSubmit called with values:', values);
@@ -159,14 +168,6 @@ const BusinessProfileForm = ({
         headquarters_city: values.headquarters_city,
         pkd_main: values.pkd_main,
       };
-
-  const handleCancel = () => {
-    if (onCancel) {
-      onCancel();
-      return;
-    }
-    navigate("/settings");
-  };
 
       console.log('Saving business profile with VAT exemption:', {
         is_vat_exempt: profile.is_vat_exempt,
@@ -261,35 +262,39 @@ const BusinessProfileForm = ({
   };
 
   return (
-    <div className={lockedEntityType === "dzialalnosc" && !isEditing ? "mx-auto w-full max-w-3xl px-4 py-10" : ""}>
-      {lockedEntityType === "dzialalnosc" && !isEditing ? (
+    <div className={isWizardJdg ? "mx-auto w-full max-w-3xl px-4 py-10" : ""}>
+      {isWizardJdg ? (
         <Card className="mb-6">
           <CardHeader className="space-y-1">
             <CardTitle className="text-2xl">Utwórz JDG</CardTitle>
             <CardDescription>
-              Uzupełnij dane firmy. Na podstawie tych informacji skonfigurujemy księgowość i dokumenty.
+              Uzupełnij dane firmy. Na podstawie tych informacji skonfigurujemy księgowość, dokumenty i domyślne ustawienia.
             </CardDescription>
           </CardHeader>
           <CardContent className="grid grid-cols-1 md:grid-cols-3 gap-3 text-sm text-muted-foreground">
             <div className="rounded-lg border bg-background p-3">
-              Nazwa firmy
+              <div className="font-medium text-foreground">Dane podstawowe</div>
+              <div>Nazwa, NIP, adres</div>
             </div>
             <div className="rounded-lg border bg-background p-3">
-              NIP + adres
+              <div className="font-medium text-foreground">Podatki</div>
+              <div>Forma opodatkowania i VAT</div>
             </div>
             <div className="rounded-lg border bg-background p-3">
-              Forma opodatkowania
+              <div className="font-medium text-foreground">PKD</div>
+              <div>Ułatwia kategoryzację i dokumenty</div>
             </div>
           </CardContent>
         </Card>
       ) : null}
 
-      <Form {...form}>
-        <form
-          onSubmit={form.handleSubmit(onSubmit, onError)}
-          className={lockedEntityType === "dzialalnosc" && !isEditing ? "space-y-6 pb-10" : "space-y-6 pb-10 max-w-full mx-auto"}
-        >
-        <div className="space-y-4">
+      <div className={isWizardJdg ? "rounded-2xl border bg-card p-6 md:p-8" : ""}>
+        <Form {...form}>
+          <form
+            onSubmit={form.handleSubmit(onSubmit, onError)}
+            className={isWizardJdg ? "space-y-8 pb-10" : "space-y-6 pb-10 max-w-full mx-auto"}
+          >
+        <div className={isWizardJdg ? "space-y-6" : "space-y-4"}>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <FormField
               control={form.control}
@@ -801,6 +806,7 @@ const BusinessProfileForm = ({
         </div>
       </form>
     </Form>
+    </div>
     </div>
   );
 };

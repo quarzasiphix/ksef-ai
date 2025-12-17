@@ -35,6 +35,7 @@ export interface CompanyDocument {
   id: string;
   business_profile_id: string;
   category: DocumentCategory;
+  folder_id?: string | null;
   file_name: string;
   file_path: string;
   file_size?: number;
@@ -74,6 +75,42 @@ export const DOCUMENT_FOLDER_STRUCTURE: Record<DocumentCategory, string> = {
   tax_filings: 'tax_filings',
   other: 'other',
 };
+
+function buildCompanyDocumentPath(input: {
+  businessProfileId: string;
+  category: DocumentCategory;
+  safeFileName: string;
+  timestamp: number;
+  folderId?: string | null;
+}): string {
+  if (input.folderId) {
+    return `${input.businessProfileId}/folders/${input.folderId}/${input.category}/${input.timestamp}_${input.safeFileName}`;
+  }
+
+  const legacyFolder = DOCUMENT_FOLDER_STRUCTURE[input.category];
+  return `${input.businessProfileId}/${legacyFolder}/${input.timestamp}_${input.safeFileName}`;
+}
+
+async function ensureStorageFolderPlaceholder(input: {
+  businessProfileId: string;
+  folderId: string;
+}): Promise<void> {
+  const keepPath = `${input.businessProfileId}/folders/${input.folderId}/.keep`;
+
+  try {
+    const { error } = await supabase.storage
+      .from('company-documents')
+      .upload(keepPath, new Blob(['']), { upsert: false, cacheControl: '3600' });
+
+    // Ignore "already exists" errors
+    if (error && (error as any)?.statusCode !== 409) {
+      console.warn('Storage placeholder upload failed:', error);
+    }
+  } catch (e) {
+    // Best-effort only
+    console.warn('Storage placeholder upload failed:', e);
+  }
+}
 
 // ============================================
 // DOCUMENT CRUD OPERATIONS
@@ -185,16 +222,22 @@ export async function uploadCompanyDocument(
     reference_number?: string;
     linked_contract_id?: string;
     linked_resolution_id?: string;
+    folder_id?: string;
   }
 ): Promise<CompanyDocument> {
   // Get current user
   const { data: { user } } = await supabase.auth.getUser();
   
   // Generate unique file path
-  const folder = DOCUMENT_FOLDER_STRUCTURE[category];
   const timestamp = Date.now();
   const safeFileName = file.name.replace(/[^a-zA-Z0-9.-]/g, '_');
-  const filePath = `${businessProfileId}/${folder}/${timestamp}_${safeFileName}`;
+  const filePath = buildCompanyDocumentPath({
+    businessProfileId,
+    category,
+    safeFileName,
+    timestamp,
+    folderId: metadata.folder_id ?? null,
+  });
   
   // Upload to storage
   const { error: uploadError } = await supabase.storage
@@ -210,6 +253,7 @@ export async function uploadCompanyDocument(
   const document = await saveCompanyDocument({
     business_profile_id: businessProfileId,
     category,
+    folder_id: metadata.folder_id ?? null,
     file_name: file.name,
     file_path: filePath,
     file_size: file.size,
@@ -365,6 +409,15 @@ export async function createFolder(
     .single();
   
   if (error) throw error;
+
+  // Best-effort: create a placeholder object so the prefix shows in Storage UI
+  if (data?.id) {
+    await ensureStorageFolderPlaceholder({
+      businessProfileId: data.business_profile_id,
+      folderId: data.id,
+    });
+  }
+
   return data;
 }
 

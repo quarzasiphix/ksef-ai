@@ -112,35 +112,39 @@ const BalanceSheet = () => {
       {/* Controls */}
       <Card>
         <CardHeader>
-          <CardTitle>Bilans na dzień</CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <div className="flex flex-col md:flex-row gap-4">
-            <div className="flex-1">
-              <label className="text-sm font-medium mb-2 block">Wybierz datę</label>
-              <input
-                type="date"
-                value={selectedDate}
-                onChange={(e) => setSelectedDate(e.target.value)}
-                className="w-full px-3 py-2 border rounded-md"
-              />
-              <p className="text-xs text-muted-foreground mt-1">
+          <div className="flex flex-col gap-2 md:flex-row md:items-center md:justify-between">
+            <div className="space-y-1">
+              <CardTitle>Bilans na dzień</CardTitle>
+              <p className="text-xs text-muted-foreground">
                 Bilans jest automatycznie obliczany dla wybranej daty
               </p>
             </div>
-            <div className="flex items-end gap-2">
-              <Button onClick={handleCalculateBalanceSheet} disabled={loading} variant="outline">
-                <FileText className="mr-2 h-4 w-4" />
-                Odśwież
-              </Button>
-              {balanceSheetData && (
-                <Button onClick={handleSaveBalanceSheet}>
-                  Zapisz bilans
+
+            <div className="flex flex-col sm:flex-row sm:items-center gap-2">
+              <div className="flex items-center gap-2">
+                <span className="text-sm font-medium whitespace-nowrap">Data</span>
+                <input
+                  type="date"
+                  value={selectedDate}
+                  onChange={(e) => setSelectedDate(e.target.value)}
+                  className="h-9 w-full sm:w-[180px] md:w-[200px] px-2 border rounded-md"
+                />
+              </div>
+              <div className="flex items-center gap-2">
+                <Button onClick={handleCalculateBalanceSheet} disabled={loading} variant="outline" className="h-9">
+                  <FileText className="mr-2 h-4 w-4" />
+                  Odśwież
                 </Button>
-              )}
+                {balanceSheetData && (
+                  <Button onClick={handleSaveBalanceSheet} className="h-9">
+                    Zapisz bilans
+                  </Button>
+                )}
+              </div>
             </div>
           </div>
-        </CardContent>
+        </CardHeader>
+        <CardContent className="pt-0" />
       </Card>
 
       {/* Balance Sheet Display */}

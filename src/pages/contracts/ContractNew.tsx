@@ -1,5 +1,5 @@
-import React, { useEffect } from "react";
-import { useForm } from "react-hook-form";
+import React, { useEffect, useMemo } from "react";
+import { useForm, useWatch } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
@@ -7,10 +7,18 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Switch } from "@/components/ui/switch";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { BusinessProfileSelector } from "@/components/invoices/selectors/BusinessProfileSelector";
 import { CustomerSelector } from "@/components/invoices/selectors/CustomerSelector";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { saveContract, getContract } from "@/integrations/supabase/repositories/contractRepository";
+import { getFolderTree } from "@/integrations/supabase/repositories/documentsRepository";
 import { useAuth } from "@/hooks/useAuth";
 import { toast } from "sonner";
 import { useNavigate, useParams } from "react-router-dom";
@@ -18,6 +26,9 @@ import { Contract } from "@/types";
 import InvoicesForContract from "@/components/contracts/InvoicesForContract";
 import InvoicesPicker from "@/components/contracts/InvoicesPicker";
 import { addLink as addContractLink } from "@/integrations/supabase/repositories/contractInvoiceLinkRepository";
+import type { FolderTreeNode } from "@/types/documents";
+import { CONTRACT_TYPE_LABELS } from "@/types/documents";
+import { useBusinessProfile } from "@/context/BusinessProfileContext";
 
 const formSchema = z.object({
   number: z.string().min(1, "Numer jest wymagany"),
@@ -29,6 +40,22 @@ const formSchema = z.object({
   businessProfileId: z.string().min(1, "Wybierz profil"),
   customerId: z.string().min(1, "Wybierz kontrahenta"),
   isActive: z.boolean().default(true),
+
+  documentCategory: z.enum(["transactional_payout", "transactional_payin", "informational"]).default("informational"),
+  contractType: z.enum([
+    "general",
+    "employment",
+    "service",
+    "lease",
+    "purchase",
+    "board_member",
+    "management_board",
+    "supervisory_board",
+    "nda",
+    "partnership",
+    "other",
+  ]).default("general"),
+  folderId: z.string().optional(),
 });
 
 type FormValues = z.infer<typeof formSchema>;
@@ -38,6 +65,8 @@ const ContractNew: React.FC = () => {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const { id: contractId } = useParams<{ id?: string }>();
+  const { selectedProfileId } = useBusinessProfile();
+  const [folderTree, setFolderTree] = React.useState<FolderTreeNode[]>([]);
 
   const form = useForm<FormValues>({
     resolver: zodResolver(formSchema),
@@ -48,11 +77,57 @@ const ContractNew: React.FC = () => {
       validTo: "",
       subject: "",
       content: "",
-      businessProfileId: "",
+      businessProfileId: selectedProfileId || "",
       customerId: "",
       isActive: true,
+
+      documentCategory: "informational",
+      contractType: "general",
+      folderId: "",
     },
   });
+
+  const businessProfileId = useWatch({ control: form.control, name: "businessProfileId" });
+  const documentCategory = useWatch({ control: form.control, name: "documentCategory" });
+  const contractType = useWatch({ control: form.control, name: "contractType" });
+  const folderId = useWatch({ control: form.control, name: "folderId" });
+
+  const NO_FOLDER_VALUE = "__no_folder__";
+
+  const flatFolders = useMemo(() => {
+    const out: FolderTreeNode[] = [];
+    const walk = (nodes: FolderTreeNode[]) => {
+      nodes.forEach((n) => {
+        out.push(n);
+        if (n.children && n.children.length) {
+          walk(n.children as any);
+        }
+      });
+    };
+    walk(folderTree);
+    return out;
+  }, [folderTree]);
+
+  // Load folder tree for chosen profile (folder structure)
+  useEffect(() => {
+    if (!businessProfileId) {
+      setFolderTree([]);
+      return;
+    }
+
+    let mounted = true;
+    getFolderTree(businessProfileId)
+      .then((tree) => {
+        if (mounted) setFolderTree(tree as any);
+      })
+      .catch(() => {
+        if (mounted) setFolderTree([]);
+      });
+
+    return () => {
+      mounted = false;
+    };
+  }, [businessProfileId]);
 
   // Load existing contract if editing
   useEffect(() => {
@@ -71,6 +146,10 @@ const ContractNew: React.FC = () => {
             businessProfileId: existing.businessProfileId || "",
             customerId: existing.customerId || "",
             isActive: existing.isActive ?? true,
+
+            documentCategory: (existing.document_category as any) || "informational",
+            contractType: (existing.contract_type as any) || "general",
+            folderId: existing.folder_id || "",
           });
         }
       } catch (err) {
@@ -79,6 +158,16 @@ const ContractNew: React.FC = () => {
     };
     load();
   }, [contractId]);
+
+  // Keep transactional flag aligned with chosen category
+  useEffect(() => {
+    if (documentCategory === "transactional_payout" || documentCategory === "transactional_payin") {
+      // Hint: transactional contracts usually map to service/lease etc.
+      if (contractType === "general") {
+        form.setValue("contractType", "service");
+      }
+    }
+  }, [contractType, documentCategory, form]);
 
   // linking invoices before save
   const [invoicesToLink, setInvoicesToLink] = React.useState<string[]>([]);
@@ -99,6 +188,11 @@ const ContractNew: React.FC = () => {
         subject: data.subject,
         content: data.content,
         isActive: data.isActive,
+
+        document_category: data.documentCategory,
+        is_transactional: data.documentCategory === 'transactional_payout' || data.documentCategory === 'transactional_payin',
+        contract_type: data.contractType,
+        folder_id: data.folderId ? data.folderId : undefined,
       };
       if (contractId) {
         // update
@@ -127,13 +221,102 @@ const ContractNew: React.FC = () => {
   };
 
   return (
-    <div className="flex justify-center p-4">
-      <form onSubmit={form.handleSubmit(onSubmit)} className="w-full max-w-3xl space-y-6">
+    <div className="flex justify-center p-4 md:p-8">
+      <form onSubmit={form.handleSubmit(onSubmit)} className="w-full max-w-4xl space-y-6">
         <Card>
           <CardHeader>
             <CardTitle>{contractId ? "Edytuj umowę" : "Nowa umowa"}</CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <div>
+                <label className="block text-sm mb-1">Kategoria</label>
+                <Select
+                  value={form.watch("documentCategory")}
+                  onValueChange={(v) => form.setValue("documentCategory", v as any)}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Wybierz kategorię" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="transactional_payout">Wydatek (transakcyjna)</SelectItem>
+                    <SelectItem value="transactional_payin">Przychód (transakcyjna)</SelectItem>
+                    <SelectItem value="informational">Informacyjny</SelectItem>
+                  </SelectContent>
+                </Select>
+                <p className="text-xs text-muted-foreground mt-1">
+                  To decyduje gdzie dokument pokaże się w Dokumentach i Księgowości.
+                </p>
+              </div>
+              <div>
+                <label className="block text-sm mb-1">Typ dokumentu</label>
+                <Select
+                  value={form.watch("contractType")}
+                  onValueChange={(v) => form.setValue("contractType", v as any)}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Wybierz typ" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {Object.entries(CONTRACT_TYPE_LABELS).map(([key, label]) => (
+                      <SelectItem key={key} value={key}>
+                        {label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div>
+                <label className="block text-sm mb-1">Folder (opcjonalnie)</label>
+                <Select
+                  value={folderId ? folderId : NO_FOLDER_VALUE}
+                  onValueChange={(v) => form.setValue("folderId", v === NO_FOLDER_VALUE ? "" : v)}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Brak folderu" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value={NO_FOLDER_VALUE}>Brak folderu</SelectItem>
+                    {flatFolders.map((f) => (
+                      <SelectItem key={f.id} value={f.id}>
+                        {f.path || f.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                <p className="text-xs text-muted-foreground mt-1">
+                  Foldery są zgodne z układem „Dokumenty spółki”.
+                </p>
+              </div>
+            </div>
+
+            <div className="flex flex-wrap gap-2">
+                         <Button
+                type="button"
+                variant="outline"
+                onClick={() => navigate('/contracts/resolutions')}
+              >
+                Uchwały
+              </Button>
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => {
+                  // best-effort: try to pick a financial folder if present
+                  const fin = flatFolders.find((f) => f.folder_type === 'financial_reports');
+                  if (fin) {
+                    form.setValue('folderId', fin.id);
+                    form.setValue('documentCategory', 'informational');
+                    toast.info('Wybrano folder sprawozdań finansowych');
+                  } else {
+                    toast.info('Nie znaleziono folderu sprawozdań – utwórz go w Dokumentach');
+                  }
+                }}
+              >
+                Rozdział finansowy
+              </Button>
+            </div>
+
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
                 <label className="block text-sm mb-1">Numer umowy</label>

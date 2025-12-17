@@ -18,11 +18,27 @@ function mapRowToContract(row: any): Contract {
     isActive: row.is_active ?? true,
     created_at: row.created_at ?? undefined,
     updated_at: row.updated_at ?? undefined,
+
+    document_category: row.document_category ?? undefined,
+    is_transactional: row.is_transactional ?? undefined,
+    contract_type: row.contract_type ?? undefined,
+    is_template: row.is_template ?? undefined,
+    folder_id: row.folder_id ?? undefined,
+    signing_parties: row.signing_parties ?? undefined,
+    board_member_id: row.board_member_id ?? undefined,
+
+    payment_account_id: row.payment_account_id ?? undefined,
+    expected_amount: row.expected_amount ?? undefined,
+    payment_frequency: row.payment_frequency ?? undefined,
+    next_payment_date: row.next_payment_date ?? undefined,
+    auto_generate_invoices: row.auto_generate_invoices ?? undefined,
+    currency: row.currency ?? undefined,
   };
 }
 
 export async function getContracts(userId: string): Promise<Contract[]> {
   if (!userId) return [];
+
   const { data, error } = await (supabase as any)
     .from("contracts")
     .select("*")
@@ -31,6 +47,21 @@ export async function getContracts(userId: string): Promise<Contract[]> {
 
   if (error) {
     console.error("Error fetching contracts:", error);
+    throw error;
+  }
+  return (data || []).map(mapRowToContract);
+}
+
+export async function getContractsByBusinessProfile(businessProfileId: string): Promise<Contract[]> {
+  if (!businessProfileId) return [];
+  const { data, error } = await (supabase as any)
+    .from('contracts')
+    .select('*')
+    .eq('business_profile_id', businessProfileId)
+    .order('created_at', { ascending: false });
+
+  if (error) {
+    console.error('Error fetching contracts by business profile:', error);
     throw error;
   }
   return (data || []).map(mapRowToContract);
@@ -61,6 +92,14 @@ export async function saveContract(contract: Partial<Contract> & { user_id: stri
     content: contract.content ?? null,
     pdf_url: contract.pdfUrl ?? null,
     is_active: contract.isActive ?? true,
+
+    document_category: contract.document_category ?? null,
+    is_transactional: contract.is_transactional ?? null,
+    contract_type: contract.contract_type ?? null,
+    is_template: contract.is_template ?? null,
+    folder_id: contract.folder_id ?? null,
+    signing_parties: contract.signing_parties ?? null,
+    board_member_id: contract.board_member_id ?? null,
   } as any;
 
   let row;

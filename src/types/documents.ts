@@ -184,7 +184,7 @@ export const FOLDER_TYPE_LABELS: Record<FolderType, string> = {
   tax_documents: 'Dokumenty podatkowe',
   financial_reports: 'Sprawozdania finansowe',
   licenses: 'Licencje',
-  custom: 'Własny folder',
+  custom: 'Inny',
 };
 
 export const TEMPLATE_TYPE_LABELS: Record<TemplateType, string> = {

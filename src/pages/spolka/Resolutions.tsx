@@ -4,7 +4,7 @@ import { flushSync } from 'react-dom';
 import { useBusinessProfile } from '@/context/BusinessProfileContext';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Plus, FileText, CheckCircle, Clock, Menu, FileCheck } from 'lucide-react';
+import { Plus, FileText, CheckCircle, Clock, Menu, FileCheck, ChevronLeft } from 'lucide-react';
 import { format } from 'date-fns';
 import { pl } from 'date-fns/locale';
 import { getResolutions, saveResolution, updateResolution } from '@/integrations/supabase/repositories/spolkaRepository';
@@ -195,7 +195,7 @@ const Resolutions = () => {
             safeNavigate('/contracts');
           }}
         >
-          <FileText className="h-4 w-4 mr-2" />
+          <ChevronLeft className="h-4 w-4 mr-2" />
           Dokumenty
         </Button>
 

@@ -15,7 +15,7 @@ import {
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { saveBusinessProfile } from '@/integrations/supabase/repositories/businessProfileRepository';
-import { initializeDefaultFolders } from '@/integrations/supabase/repositories/documentsRepository';
+import { createFolder, initializeDefaultFolders } from '@/integrations/supabase/repositories/documentsRepository';
 import type { BusinessProfile } from '@/types';
 
 interface SpoolkaWizardProps {
@@ -184,6 +184,24 @@ export const SpoolkaWizard: React.FC<SpoolkaWizardProps> = ({ onComplete, onCanc
       // Initialize default folders
       if (savedProfile.id) {
         await initializeDefaultFolders(savedProfile.id);
+
+        // Create user-configured folders from the wizard (best-effort, ignore duplicates)
+        const uniqueFolderNames = Array.from(
+          new Set((wizardData.customFolders || []).map(f => (f || '').trim()).filter(Boolean))
+        );
+
+        for (const name of uniqueFolderNames) {
+          try {
+            await createFolder({
+              business_profile_id: savedProfile.id,
+              name,
+              folder_type: 'custom',
+            });
+          } catch (e: any) {
+            // Ignore unique constraint violations (folder already exists)
+            if (e?.code === '23505') continue;
+          }
+        }
         
         toast.success('Spółka utworzona pomyślnie!');
         
