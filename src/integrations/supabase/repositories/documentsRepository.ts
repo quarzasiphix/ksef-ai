@@ -47,6 +47,8 @@ export interface CompanyDocument {
   reference_number?: string;
   linked_contract_id?: string;
   linked_resolution_id?: string;
+  decision_id?: string | null;
+  decision_reference?: string | null;
   uploaded_by?: string;
   created_at?: string;
   updated_at?: string;

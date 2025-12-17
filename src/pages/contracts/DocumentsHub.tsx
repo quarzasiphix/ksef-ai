@@ -43,8 +43,10 @@ import {
 import { FOLDER_TYPE_LABELS, type FolderType } from '@/types/documents';
 import { getContractsByBusinessProfile } from '@/integrations/supabase/repositories/contractRepository';
 import type { Contract } from '@/types';
+import { getDecisions } from '@/integrations/supabase/repositories/decisionsRepository';
+import type { Decision } from '@/types/decisions';
 
-type DocumentView = 'all' | 'transactional_payout' | 'transactional_payin' | 'informational' | 'generated' | 'uploaded';
+type DocumentView = 'all' | 'transactional_payout' | 'transactional_payin' | 'informational' | 'generated' | 'uploaded' | 'decisions';
 
 const DocumentsHub = () => {
   const navigate = useNavigate();
@@ -116,6 +118,7 @@ const DocumentsHub = () => {
   const [uploadedDocs, setUploadedDocs] = useState<CompanyDocument[]>([]);
   const [generatedDocs, setGeneratedDocs] = useState<GeneratedDocument[]>([]);
   const [templates, setTemplates] = useState<DocumentTemplate[]>([]);
+  const [decisions, setDecisions] = useState<Decision[]>([]);
 
   const loadData = useCallback(async () => {
     if (!selectedProfileId) return;
@@ -128,12 +131,14 @@ const DocumentsHub = () => {
         uploadedData,
         generatedData,
         templatesData,
+        decisionsData,
       ] = await Promise.all([
         getFolderTree(selectedProfileId).catch(() => []),
         getContractsByBusinessProfile(selectedProfileId).catch(() => []),
         getCompanyDocuments(selectedProfileId).catch(() => []),
         getGeneratedDocuments(selectedProfileId).catch(() => []),
         getDocumentTemplates(selectedProfileId).catch(() => []),
+        getDecisions(selectedProfileId, 'active').catch(() => []),
       ]);
 
       setFolderTree(foldersData);
@@ -141,6 +146,7 @@ const DocumentsHub = () => {
       setUploadedDocs(uploadedData);
       setGeneratedDocs(generatedData);
       setTemplates(templatesData);
+      setDecisions(decisionsData);
 
       // Initialize default folders if none exist
       if (foldersData.length === 0 && selectedProfile?.entityType === 'sp_zoo') {
@@ -459,6 +465,23 @@ const DocumentsHub = () => {
         <div className="pt-2 pb-1">
           <p className="text-xs font-semibold text-muted-foreground px-2">INFORMACYJNE</p>
         </div>
+        {isSpoolka && (
+          <Button
+            variant={view === 'decisions' ? 'secondary' : 'ghost'}
+            size="sm"
+            className="w-full justify-start"
+            onClick={() => {
+              setView('decisions');
+              onNavigate?.();
+            }}
+          >
+            <Award className="h-4 w-4 mr-2" />
+            Decyzje
+            <Badge variant="outline" className="ml-auto">
+              {decisions.length}
+            </Badge>
+          </Button>
+        )}
         <Button
           variant="ghost"
           size="sm"
@@ -1021,6 +1044,49 @@ const DocumentsHub = () => {
                 </Card>
               )}
 
+              {/* Decisions */}
+              {view === 'decisions' && decisions.length > 0 && (
+                <Card>
+                  <CardHeader>
+                    <div className="flex items-center justify-between gap-3">
+                      <CardTitle className="flex items-center gap-2">
+                        <Award className="h-5 w-5" />
+                        Decyzje (mandaty)
+                      </CardTitle>
+                      <Button size="sm" variant="outline" onClick={() => safeNavigate('/decisions')}>
+                        Przejdź do decyzji
+                      </Button>
+                    </div>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="space-y-2">
+                      {filterBySearch(decisions as any, ['title', 'decision_number', 'category']).map((d: Decision) => (
+                        <div key={d.id} className="flex items-center justify-between p-3 border rounded-lg hover:bg-accent transition-colors">
+                          <div className="min-w-0">
+                            <div className="flex items-center gap-2 flex-wrap">
+                              {d.decision_number && (
+                                <Badge variant="secondary" className="text-xs">
+                                  {d.decision_number}
+                                </Badge>
+                              )}
+                              <p className="font-medium truncate">{d.title}</p>
+                            </div>
+                            <p className="text-sm text-muted-foreground truncate">
+                              {d.category}
+                            </p>
+                          </div>
+                          <div className="flex items-center gap-2">
+                            <Button size="sm" variant="ghost" onClick={() => safeNavigate(`/decisions/${d.id}`)}>
+                              <Eye className="h-4 w-4" />
+                            </Button>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </CardContent>
+                </Card>
+              )}
+
               {/* Generated Documents */}
               {view === 'generated' && scopedGeneratedDocs.length > 0 && (
                 <Card>
@@ -1196,6 +1262,11 @@ const ContractItem: React.FC<{ contract: Contract; onNavigate: (to: string) => v
           <div className="flex items-center gap-2 text-sm text-muted-foreground">
             <span>{contract.number}</span>
             {contract.issueDate && <span>• {contract.issueDate}</span>}
+            {contract.decision_reference && (
+              <Badge variant="secondary" className="text-xs">
+                {contract.decision_reference}
+              </Badge>
+            )}
             {contract.document_category && (
               <Badge variant="outline" className="text-xs">
                 {contract.document_category === 'transactional_payout' && 'Wydatek'}

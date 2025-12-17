@@ -278,6 +278,8 @@ export interface Invoice {
   customerName?: string;
   bankAccountId?: string | null;
   bankAccountNumber?: string;
+  decisionId?: string;
+  decisionReference?: string;
   currency?: string;
   created_at?: string;
   updated_at?: string;
@@ -338,6 +340,8 @@ export interface Contract {
   folder_id?: string;
   signing_parties?: any; // JSONB
   board_member_id?: string;
+  decision_id?: string; // Link to authorizing decision
+  decision_reference?: string; // Cached § reference (e.g., §1.2.3)
   
   // Transactional contract fields
   payment_account_id?: string;

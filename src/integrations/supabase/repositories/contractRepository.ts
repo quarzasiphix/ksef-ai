@@ -27,6 +27,9 @@ function mapRowToContract(row: any): Contract {
     signing_parties: row.signing_parties ?? undefined,
     board_member_id: row.board_member_id ?? undefined,
 
+    decision_id: row.decision_id ?? undefined,
+    decision_reference: row.decision_reference ?? undefined,
+
     payment_account_id: row.payment_account_id ?? undefined,
     expected_amount: row.expected_amount ?? undefined,
     payment_frequency: row.payment_frequency ?? undefined,
@@ -100,7 +103,9 @@ export async function saveContract(contract: Partial<Contract> & { user_id: stri
     folder_id: contract.folder_id ?? null,
     signing_parties: contract.signing_parties ?? null,
     board_member_id: contract.board_member_id ?? null,
-  } as any;
+
+    decision_id: contract.decision_id ?? null,
+  };
 
   let row;
   if (contract.id) {

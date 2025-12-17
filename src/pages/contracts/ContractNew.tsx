@@ -29,6 +29,7 @@ import { addLink as addContractLink } from "@/integrations/supabase/repositories
 import type { FolderTreeNode } from "@/types/documents";
 import { CONTRACT_TYPE_LABELS } from "@/types/documents";
 import { useBusinessProfile } from "@/context/BusinessProfileContext";
+import DecisionPicker from "@/components/decisions/DecisionPicker";
 
 const formSchema = z.object({
   number: z.string().min(1, "Numer jest wymagany"),
@@ -56,6 +57,7 @@ const formSchema = z.object({
     "other",
   ]).default("general"),
   folderId: z.string().optional(),
+  decisionId: z.string().min(1, "Decyzja autoryzująca jest wymagana"),
 });
 
 type FormValues = z.infer<typeof formSchema>;
@@ -84,6 +86,7 @@ const ContractNew: React.FC = () => {
       documentCategory: "informational",
       contractType: "general",
       folderId: "",
+      decisionId: "",
     },
   });
 
@@ -91,6 +94,7 @@ const ContractNew: React.FC = () => {
   const documentCategory = useWatch({ control: form.control, name: "documentCategory" });
   const contractType = useWatch({ control: form.control, name: "contractType" });
   const folderId = useWatch({ control: form.control, name: "folderId" });
+  const decisionId = useWatch({ control: form.control, name: "decisionId" });
 
   const NO_FOLDER_VALUE = "__no_folder__";
 
@@ -193,6 +197,7 @@ const ContractNew: React.FC = () => {
         is_transactional: data.documentCategory === 'transactional_payout' || data.documentCategory === 'transactional_payin',
         contract_type: data.contractType,
         folder_id: data.folderId ? data.folderId : undefined,
+        decision_id: data.decisionId,
       };
       if (contractId) {
         // update
@@ -363,6 +368,20 @@ const ContractNew: React.FC = () => {
                 />
               </div>
             </div>
+
+            {/* Decision Picker - Required for all contracts */}
+            {businessProfileId && (
+              <DecisionPicker
+                businessProfileId={businessProfileId}
+                value={decisionId}
+                onValueChange={(id) => form.setValue("decisionId", id)}
+                categoryFilter="b2b_contracts"
+                required
+              />
+            )}
+            {form.formState.errors.decisionId && (
+              <p className="text-red-500 text-sm">{form.formState.errors.decisionId.message}</p>
+            )}
 
             <div className="flex items-center gap-2">
               <Switch

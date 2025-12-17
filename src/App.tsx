@@ -50,6 +50,9 @@ import ShareDocuments from '@/pages/public/ShareDocuments';
 import DocumentsHub from '@/pages/contracts/DocumentsHub';
 import ContractNew from '@/pages/contracts/ContractNew';
 import ContractDetails from '@/pages/contracts/ContractDetails';
+import DecisionsHub from '@/pages/decisions/DecisionsHub';
+import DecisionEdit from '@/pages/decisions/DecisionEdit';
+import DecisionDetails from '@/pages/decisions/DecisionDetails';
 import BankAccounts from "@/pages/bank/BankAccounts";
 import Index from "./pages/Index";
 import SharedLinksPage from "./pages/SharedLinks";
@@ -384,6 +387,25 @@ const App = () => {
 
                 {/* Public shared documents route */}
                 <Route path="/share/:slug" element={<PublicLayout><ShareDocuments /></PublicLayout>} />
+
+                {/* Decisions routes */}
+                <Route path="/decisions" element={
+                  <ProtectedRoute>
+                    <DecisionsHub />
+                  </ProtectedRoute>
+                } />
+
+                <Route path="/decisions/:id/edit" element={
+                  <ProtectedRoute>
+                    <DecisionEdit />
+                  </ProtectedRoute>
+                } />
+
+                <Route path="/decisions/:id" element={
+                  <ProtectedRoute>
+                    <DecisionDetails />
+                  </ProtectedRoute>
+                } />
 
                 {/* Contracts routes */}
                 <Route path="/contracts" element={

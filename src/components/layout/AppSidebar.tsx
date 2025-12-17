@@ -17,7 +17,8 @@ import {
   Banknote,
   Calculator,
   FileText,
-  CreditCard
+  CreditCard,
+  Shield
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import {
@@ -80,6 +81,7 @@ const AppSidebar = () => {
   const clientsItem = { title: "Klienci", path: "/customers", icon: Users, className: "lg:hidden" } as SidebarItem;
   const productsItem = { title: "Produkty", path: "/products", icon: Package, className: "lg:hidden" } as SidebarItem;
   const isSpoolka = selectedProfile?.entityType === 'sp_zoo' || selectedProfile?.entityType === 'sa';
+  const decisionsItem: SidebarItem = { title: "Decyzje", path: "/decisions", icon: Shield };
   const contractsItem: SidebarItem = { title: isSpoolka ? "Dokumenty" : "Umowy", path: "/contracts", icon: Signature };
   const employeesItem = { title: "Pracownicy", path: "/employees", icon: UserCheck } as SidebarItem;
   const inventoryItem: SidebarItem = { title: "Magazyn", path: "/inventory", icon: Boxes, premium: true };
@@ -92,7 +94,7 @@ const AppSidebar = () => {
   const finanseItems: SidebarItem[] = [fakturyItem, wydatkiItem, bankItem, accountingItem];
 
   // Zarządzanie sidebar group
-  const zarzadzanieItems: SidebarItem[] = [clientsItem, productsItem, contractsItem, employeesItem, ...(isPremium ? [inventoryItem] : []), settingsItem];
+  const zarzadzanieItems: SidebarItem[] = [clientsItem, productsItem, decisionsItem, contractsItem, employeesItem, ...(isPremium ? [inventoryItem] : []), settingsItem];
 
   // Premium section for non-premium users (upsell)
   const premiumFeatures: SidebarItem[] = [inventoryItem, ksefItem];

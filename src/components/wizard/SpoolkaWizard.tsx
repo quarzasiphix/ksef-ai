@@ -16,6 +16,7 @@ import {
 import { toast } from 'sonner';
 import { saveBusinessProfile } from '@/integrations/supabase/repositories/businessProfileRepository';
 import { createFolder, initializeDefaultFolders } from '@/integrations/supabase/repositories/documentsRepository';
+import { initializeFoundationalDecisions } from '@/integrations/supabase/repositories/decisionsRepository';
 import type { BusinessProfile } from '@/types';
 
 interface SpoolkaWizardProps {
@@ -184,6 +185,9 @@ export const SpoolkaWizard: React.FC<SpoolkaWizardProps> = ({ onComplete, onCanc
       // Initialize default folders
       if (savedProfile.id) {
         await initializeDefaultFolders(savedProfile.id);
+
+        // Initialize foundational decisions (6 base mandates)
+        await initializeFoundationalDecisions(savedProfile.id);
 
         // Create user-configured folders from the wizard (best-effort, ignore duplicates)
         const uniqueFolderNames = Array.from(
