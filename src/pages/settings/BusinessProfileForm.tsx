@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useEffect } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Search } from 'lucide-react';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import {
   Form,
   FormControl,
@@ -45,21 +46,37 @@ const formSchema = z.object({
   pkdCodes: z.array(z.string()).optional(),
   is_vat_exempt: z.boolean().optional().default(false),
   vat_exemption_reason: z.string().optional().or(z.literal("")),
+  // Spółka z o.o. specific fields
+  share_capital: z.number().optional(),
+  krs_number: z.string().optional(),
+  court_registry: z.string().optional(),
+  establishment_date: z.string().optional(),
+  headquarters_address: z.string().optional(),
+  headquarters_postal_code: z.string().optional(),
+  headquarters_city: z.string().optional(),
+  pkd_main: z.string().optional(),
 });
 
 interface BusinessProfileFormProps {
   initialData?: BusinessProfile;
   onSuccess?: () => void;
+  onCancel?: () => void;
+  onComplete?: (profileId: string) => void;
+  lockedEntityType?: "dzialalnosc" | "sp_zoo" | "sa";
 }
 
 const BusinessProfileForm = ({
   initialData,
   onSuccess,
+  onCancel,
+  onComplete,
+  lockedEntityType,
 }: BusinessProfileFormProps) => {
   const { user } = useAuth();
   const navigate = useNavigate();
   const isEditing = !!initialData?.id;
   const isMobile = useIsMobile();
+  const isWizardJdg = lockedEntityType === "dzialalnosc" && !isEditing;
 
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
@@ -73,13 +90,35 @@ const BusinessProfileForm = ({
       email: initialData?.email || "",
       phone: initialData?.phone || "",
       isDefault: initialData?.isDefault || false,
-      entityType: initialData?.entityType || "dzialalnosc",
+      entityType: lockedEntityType || initialData?.entityType || "dzialalnosc",
       taxType: (initialData as any)?.taxType || "skala",
       pkdCodes: (initialData as any)?.pkdCodes || [],
       is_vat_exempt: initialData?.is_vat_exempt || false,
       vat_exemption_reason: initialData?.vat_exemption_reason || "",
+      share_capital: initialData?.share_capital || undefined,
+      krs_number: initialData?.krs_number || "",
+      court_registry: initialData?.court_registry || "",
+      establishment_date: initialData?.establishment_date || "",
+      headquarters_address: initialData?.headquarters_address || "",
+      headquarters_postal_code: initialData?.headquarters_postal_code || "",
+      headquarters_city: initialData?.headquarters_city || "",
+      pkd_main: initialData?.pkd_main || "",
     },
   });
+
+  useEffect(() => {
+    if (lockedEntityType) {
+      form.setValue("entityType", lockedEntityType);
+    }
+  }, [lockedEntityType, form]);
+
+  const handleCancel = () => {
+    if (onCancel) {
+      onCancel();
+      return;
+    }
+    navigate("/settings");
+  };
 
   const onSubmit = async (values: z.infer<typeof formSchema>) => {
     console.log('onSubmit called with values:', values);
@@ -119,6 +158,15 @@ const BusinessProfileForm = ({
         vat_exemption_reason: values.is_vat_exempt ? values.vat_exemption_reason || null : null,
         vat_threshold_pln: initialData?.vat_threshold_pln ?? 200000,
         vat_threshold_year: initialData?.vat_threshold_year ?? new Date().getFullYear(),
+        // Spółka z o.o. specific fields
+        share_capital: values.share_capital,
+        krs_number: values.krs_number,
+        court_registry: values.court_registry,
+        establishment_date: values.establishment_date,
+        headquarters_address: values.headquarters_address,
+        headquarters_postal_code: values.headquarters_postal_code,
+        headquarters_city: values.headquarters_city,
+        pkd_main: values.pkd_main,
       };
 
       console.log('Saving business profile with VAT exemption:', {
@@ -140,12 +188,19 @@ const BusinessProfileForm = ({
       toast.success(
         isEditing ? "Profil zaktualizowany" : "Profil utworzony"
       );
-      
+
+      const savedId = (savedProfile as any)?.id || profile.id;
+      if (onComplete && savedId) {
+        onComplete(savedId);
+        return;
+      }
+
       if (onSuccess) {
         onSuccess();
-      } else {
-        navigate("/settings");
+        return;
       }
+
+      navigate("/settings");
     } catch (error) {
       console.error("Error saving business profile:", error);
       console.error("Error details:", JSON.stringify(error, null, 2));
@@ -207,12 +262,39 @@ const BusinessProfileForm = ({
   };
 
   return (
-    <Form {...form}>
-      <form
-        onSubmit={form.handleSubmit(onSubmit, onError)}
-        className="space-y-6 pb-10 max-w-full mx-auto"
-      >
-        <div className="space-y-4">
+    <div className={isWizardJdg ? "mx-auto w-full max-w-3xl px-4 py-10" : ""}>
+      {isWizardJdg ? (
+        <Card className="mb-6">
+          <CardHeader className="space-y-1">
+            <CardTitle className="text-2xl">Utwórz JDG</CardTitle>
+            <CardDescription>
+              Uzupełnij dane firmy. Na podstawie tych informacji skonfigurujemy księgowość, dokumenty i domyślne ustawienia.
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="grid grid-cols-1 md:grid-cols-3 gap-3 text-sm text-muted-foreground">
+            <div className="rounded-lg border bg-background p-3">
+              <div className="font-medium text-foreground">Dane podstawowe</div>
+              <div>Nazwa, NIP, adres</div>
+            </div>
+            <div className="rounded-lg border bg-background p-3">
+              <div className="font-medium text-foreground">Podatki</div>
+              <div>Forma opodatkowania i VAT</div>
+            </div>
+            <div className="rounded-lg border bg-background p-3">
+              <div className="font-medium text-foreground">PKD</div>
+              <div>Ułatwia kategoryzację i dokumenty</div>
+            </div>
+          </CardContent>
+        </Card>
+      ) : null}
+
+      <div className={isWizardJdg ? "rounded-2xl border bg-card p-6 md:p-8" : ""}>
+        <Form {...form}>
+          <form
+            onSubmit={form.handleSubmit(onSubmit, onError)}
+            className={isWizardJdg ? "space-y-8 pb-10" : "space-y-6 pb-10 max-w-full mx-auto"}
+          >
+        <div className={isWizardJdg ? "space-y-6" : "space-y-4"}>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <FormField
               control={form.control}
@@ -455,54 +537,59 @@ const BusinessProfileForm = ({
             )}
           />
 
-          <FormField
-            control={form.control}
-            name="entityType"
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel>Forma prawna</FormLabel>
-                <Select onValueChange={field.onChange} value={field.value}>
-                  <FormControl>
-                    <SelectTrigger>
-                      <SelectValue placeholder="Wybierz formę prawną" />
-                    </SelectTrigger>
-                  </FormControl>
-                  <SelectContent>
-                    <SelectItem value="dzialalnosc">Działalność gospodarcza</SelectItem>
-                    <SelectItem value="sp_zoo">Spółka z o.o.</SelectItem>
-                    <SelectItem value="sa">Spółka akcyjna (S.A.)</SelectItem>
-                  </SelectContent>
-                </Select>
-                <FormMessage />
-              </FormItem>
-            )}
-          />
-
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          {!lockedEntityType && (
             <FormField
               control={form.control}
-              name="taxType"
+              name="entityType"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Forma opodatkowania</FormLabel>
+                  <FormLabel>Forma prawna</FormLabel>
                   <Select onValueChange={field.onChange} value={field.value}>
                     <FormControl>
                       <SelectTrigger>
-                        <SelectValue placeholder="Wybierz formę opodatkowania" />
+                        <SelectValue placeholder="Wybierz formę prawną" />
                       </SelectTrigger>
                     </FormControl>
                     <SelectContent>
-                      <SelectItem value="skala">Skala podatkowa</SelectItem>
-                      <SelectItem value="liniowy">Podatek liniowy 19%</SelectItem>
-                      <SelectItem value="ryczalt">Ryczałt od przychodów ewidencjonowanych</SelectItem>
-                      <SelectItem value="karta">Karta podatkowa</SelectItem>
+                      <SelectItem value="dzialalnosc">Działalność gospodarcza</SelectItem>
+                      <SelectItem value="sp_zoo">Spółka z o.o.</SelectItem>
+                      <SelectItem value="sa">Spółka akcyjna (S.A.)</SelectItem>
                     </SelectContent>
                   </Select>
                   <FormMessage />
                 </FormItem>
               )}
             />
-          </div>
+          )}
+
+          {/* Only show tax type for JDG (działalność gospodarcza) */}
+          {form.watch("entityType") === "dzialalnosc" && (
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <FormField
+                control={form.control}
+                name="taxType"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Forma opodatkowania</FormLabel>
+                    <Select onValueChange={field.onChange} value={field.value}>
+                      <FormControl>
+                        <SelectTrigger>
+                          <SelectValue placeholder="Wybierz formę opodatkowania" />
+                        </SelectTrigger>
+                      </FormControl>
+                      <SelectContent>
+                        <SelectItem value="skala">Skala podatkowa</SelectItem>
+                        <SelectItem value="liniowy">Podatek liniowy 19%</SelectItem>
+                        <SelectItem value="ryczalt">Ryczałt od przychodów ewidencjonowanych</SelectItem>
+                        <SelectItem value="karta">Karta podatkowa</SelectItem>
+                      </SelectContent>
+                    </Select>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+            </div>
+          )}
 
           <FormField
             control={form.control}
@@ -518,6 +605,135 @@ const BusinessProfileForm = ({
               </FormItem>
             )}
           />
+
+          {/* Spółka z o.o. specific fields */}
+          {(form.watch("entityType") === "sp_zoo" || form.watch("entityType") === "sa") && (
+            <div className="space-y-4 mt-6 p-4 border rounded-lg bg-blue-50 dark:bg-blue-950">
+              <h3 className="font-semibold text-lg">Dane Spółki</h3>
+              
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <FormField
+                  control={form.control}
+                  name="share_capital"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Kapitał zakładowy (PLN)</FormLabel>
+                      <FormControl>
+                        <Input 
+                          type="number" 
+                          step="0.01"
+                          placeholder="5000.00" 
+                          {...field}
+                          onChange={(e) => field.onChange(parseFloat(e.target.value) || undefined)}
+                        />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                <FormField
+                  control={form.control}
+                  name="krs_number"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Numer KRS</FormLabel>
+                      <FormControl>
+                        <Input placeholder="0000123456" {...field} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <FormField
+                  control={form.control}
+                  name="court_registry"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Sąd rejestrowy</FormLabel>
+                      <FormControl>
+                        <Input placeholder="Sąd Rejonowy dla m.st. Warszawy" {...field} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                <FormField
+                  control={form.control}
+                  name="establishment_date"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Data założenia</FormLabel>
+                      <FormControl>
+                        <Input type="date" {...field} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              </div>
+
+              <h4 className="font-semibold mt-4">Siedziba spółki</h4>
+              <FormField
+                control={form.control}
+                name="headquarters_address"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Adres siedziby</FormLabel>
+                    <FormControl>
+                      <Input placeholder="ul. Przykładowa 1/2" {...field} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <FormField
+                  control={form.control}
+                  name="headquarters_postal_code"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Kod pocztowy siedziby</FormLabel>
+                      <FormControl>
+                        <Input placeholder="00-000" {...field} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                <FormField
+                  control={form.control}
+                  name="headquarters_city"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Miasto siedziby</FormLabel>
+                      <FormControl>
+                        <Input placeholder="Warszawa" {...field} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              </div>
+
+              <FormField
+                control={form.control}
+                name="pkd_main"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Główny kod PKD</FormLabel>
+                    <FormControl>
+                      <Input placeholder="62.01.Z" {...field} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+            </div>
+          )}
         </div>
         {/* VAT zwolnienie */}
         <div className="mt-6">
@@ -579,7 +795,7 @@ const BusinessProfileForm = ({
           <Button
             type="button"
             variant="outline"
-            onClick={() => navigate("/settings")}
+            onClick={handleCancel}
             className={isMobile ? 'w-full' : ''}
           >
             Anuluj
@@ -590,6 +806,8 @@ const BusinessProfileForm = ({
         </div>
       </form>
     </Form>
+    </div>
+    </div>
   );
 };
 

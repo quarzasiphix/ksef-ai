@@ -63,11 +63,14 @@ const InvoiceDetail: React.FC<InvoiceDetailProps> = ({ type }) => {
     queryKey: ["invoice", id],
     queryFn: async () => {
       if (!id) return null;
-      return await getInvoiceById(id);
+      const fetchedInvoice = await getInvoiceById(id);
+      console.log('Fetched invoice from database:', fetchedInvoice);
+      return fetchedInvoice;
     },
     enabled: !!id,
     initialData: baseInvoice,
-    staleTime: 1000 * 30,
+    staleTime: 0, // Always fetch fresh data for invoice details
+    refetchOnMount: true, // Refetch when component mounts
   });
 
   useEffect(() => {

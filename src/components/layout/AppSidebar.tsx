@@ -17,7 +17,8 @@ import {
   Banknote,
   Calculator,
   FileText,
-  CreditCard
+  CreditCard,
+  Shield
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import {
@@ -38,13 +39,19 @@ import { useAuth } from "@/hooks/useAuth";
 import { Button } from "@/components/ui/button";
 import { BusinessProfileSwitcher } from "./BusinessProfileSwitcher";
 import { ThemeToggle } from "@/components/theme/ThemeToggle";
+import { useBusinessProfile } from "@/context/BusinessProfileContext";
 
 const AppSidebar = () => {
   const { state } = useSidebar();
   const location = useLocation();
   const { isPremium, openPremiumDialog, user, logout } = useAuth();
+  const { profiles, selectedProfileId } = useBusinessProfile();
   const isCollapsed = state === "collapsed";
   const navigate = useNavigate();
+
+  const selectedProfile = profiles?.find((p) => p.id === selectedProfileId);
+  const isSpZoo = selectedProfile?.entityType === 'sp_zoo' || selectedProfile?.entityType === 'sa';
+  const bankPath = isSpZoo ? '/accounting/bank' : '/bank';
 
   // Quick actions
   const quickActions = [
@@ -67,13 +74,15 @@ const AppSidebar = () => {
   // Finanse group
   const fakturyItem: SidebarItem = { title: "Faktury", path: "/income", icon: FileText, className: "lg:hidden" };
   const wydatkiItem: SidebarItem = { title: "Wydatki", path: "/expense", icon: CreditCard, className: "lg:hidden" };
-  const bankItem: SidebarItem = { title: "Bankowość", path: "/bank", icon: Banknote };
+  const bankItem: SidebarItem = { title: "Bankowość", path: bankPath, icon: Banknote };
   const accountingItem: SidebarItem = { title: "Księgowość", path: "/accounting", icon: Calculator };
 
   // Zarządzanie group
   const clientsItem = { title: "Klienci", path: "/customers", icon: Users, className: "lg:hidden" } as SidebarItem;
   const productsItem = { title: "Produkty", path: "/products", icon: Package, className: "lg:hidden" } as SidebarItem;
-  const contractsItem: SidebarItem = { title: "Umowy", path: "/contracts", icon: Signature };
+  const isSpoolka = selectedProfile?.entityType === 'sp_zoo' || selectedProfile?.entityType === 'sa';
+  const decisionsItem: SidebarItem = { title: "Decyzje", path: "/decisions", icon: Shield };
+  const contractsItem: SidebarItem = { title: isSpoolka ? "Dokumenty" : "Umowy", path: "/contracts", icon: Signature };
   const employeesItem = { title: "Pracownicy", path: "/employees", icon: UserCheck } as SidebarItem;
   const inventoryItem: SidebarItem = { title: "Magazyn", path: "/inventory", icon: Boxes, premium: true };
 
@@ -85,7 +94,7 @@ const AppSidebar = () => {
   const finanseItems: SidebarItem[] = [fakturyItem, wydatkiItem, bankItem, accountingItem];
 
   // Zarządzanie sidebar group
-  const zarzadzanieItems: SidebarItem[] = [clientsItem, productsItem, contractsItem, employeesItem, ...(isPremium ? [inventoryItem] : []), settingsItem];
+  const zarzadzanieItems: SidebarItem[] = [clientsItem, productsItem, decisionsItem, contractsItem, employeesItem, ...(isPremium ? [inventoryItem] : []), settingsItem];
 
   // Premium section for non-premium users (upsell)
   const premiumFeatures: SidebarItem[] = [inventoryItem, ksefItem];

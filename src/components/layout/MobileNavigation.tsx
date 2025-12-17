@@ -26,7 +26,7 @@ import {
 } from 'lucide-react';
 import { useTheme } from '@/components/theme/ThemeProvider';
 import { cn } from '@/lib/utils';
-import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet';
+import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle, SheetTrigger } from '@/components/ui/sheet';
 import { Button } from '@/components/ui/button';
 import { useAuth } from '@/hooks/useAuth';
 import { BusinessProfileSwitcher } from './BusinessProfileSwitcher';
@@ -36,6 +36,11 @@ const MobileNavigation = () => {
   const { theme, setTheme } = useTheme();
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
   const { isPremium, openPremiumDialog } = useAuth();
+  const { profiles, selectedProfileId } = useBusinessProfile();
+
+  const selectedProfile = profiles?.find((p) => p.id === selectedProfileId);
+  const isSpZoo = selectedProfile?.entityType === 'sp_zoo' || selectedProfile?.entityType === 'sa';
+  const bankPath = isSpZoo ? '/accounting/bank' : '/bank';
 
   // Main bottom navigation items - most used features
   const mainNavItems = [
@@ -70,15 +75,16 @@ const MobileNavigation = () => {
   const finanseItems = [
     { title: "Faktury", path: "/income", icon: FileText },
     { title: "Wydatki", path: "/expense", icon: CreditCard },
-    { title: "Bankowość", path: "/bank", icon: Banknote },
+    { title: "Bankowość", path: bankPath, icon: Banknote },
     { title: "Księgowość", path: "/accounting", icon: Calculator, premium: true },
   ];
 
   // Zarządzanie group (updated to match desktop)
+  const isSpoolka = selectedProfile?.entityType === 'sp_zoo' || selectedProfile?.entityType === 'sa';
   const zarzadzanieItems = [
     { title: "Klienci", path: "/customers", icon: Users },
     { title: "Produkty", path: "/products", icon: Package },
-    { title: "Umowy", path: "/contracts", icon: Signature },
+    { title: isSpoolka ? "Dokumenty" : "Umowy", path: "/contracts", icon: Signature },
     { title: "Pracownicy", path: "/employees", icon: UserCheck },
     { title: "Magazyn", path: "/inventory", icon: Boxes, premium: true },
   ];
@@ -130,6 +136,10 @@ const MobileNavigation = () => {
           <span className="text-xs mt-1">Menu</span>
         </SheetTrigger>
         <SheetContent side="right" className="w-[280px] p-0 flex flex-col">
+          <SheetHeader className="sr-only">
+            <SheetTitle>Menu aplikacji</SheetTitle>
+            <SheetDescription>Nawigacja oraz szybkie akcje</SheetDescription>
+          </SheetHeader>
           {/* Scrollable content area */}
           <div className="flex-1 overflow-y-auto scrollbar-hide pt-6">
             <div className="flex flex-col space-y-6 px-6">

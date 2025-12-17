@@ -61,6 +61,7 @@ import { InvoiceItemsForm } from "@/components/invoices/forms/InvoiceItemsForm";
 import { InvoiceFormActions } from "@/components/invoices/forms/InvoiceFormActions";
 import ContractsPicker from "@/components/contracts/ContractsPicker";
 import { BankAccountEditDialog } from "@/components/bank/BankAccountEditDialog";
+import DecisionPicker from "@/components/decisions/DecisionPicker";
 
 // Schema
 const invoiceFormSchema = z.object({
@@ -94,6 +95,9 @@ const invoiceFormSchema = z.object({
   totalGrossValue: z.number().default(0),
   isPaid: z.boolean().default(false),
   fakturaBezVAT: z.boolean().default(false)
+  ,
+
+  decisionId: z.string().optional()
 });
 
 type InvoiceFormValues = z.infer<typeof invoiceFormSchema>;
@@ -126,7 +130,7 @@ const NewInvoice = React.forwardRef<{
 
     // All hooks at the top, always called in the same order
     const { user } = useAuth();
-    const { profiles } = useBusinessProfile();
+    const { profiles, selectedProfileId } = useBusinessProfile();
     const [searchParams] = useSearchParams();
     const navigate = useNavigate();
     const location = useLocation();
@@ -139,11 +143,11 @@ const NewInvoice = React.forwardRef<{
         issueDate: new Date().toISOString().split('T')[0],
         sellDate: new Date().toISOString().split('T')[0],
         dueDate: new Date(new Date().setDate(new Date().getDate() + 14)).toISOString().split('T')[0],
-        paymentMethod: 'przelew' as unknown as PaymentMethod,
+        paymentMethod: PaymentMethod.TRANSFER,
         status: 'draft',
         type: type === TransactionType.INCOME ? InvoiceType.SALES : InvoiceType.RECEIPT,
         customerId: '',
-        businessProfileId: '',
+        businessProfileId: initialData?.businessProfileId || selectedProfileId || '',
         items: initialData?.items || [],
         comments: '',
         vat: initialData ? !initialData.fakturaBezVAT : true, // Set based on fakturaBezVAT from initialData
@@ -154,6 +158,7 @@ const NewInvoice = React.forwardRef<{
         exchangeRateSource: 'NBP',
         isPaid: false,
         fakturaBezVAT: initialData?.fakturaBezVAT || false,
+        decisionId: initialData?.decisionId || '',
         ...(initialData ? {
           ...initialData,
           paymentMethod: toPaymentMethodUi(initialData.paymentMethod as PaymentMethodDb),
@@ -183,6 +188,13 @@ const NewInvoice = React.forwardRef<{
 
     const businessProfileId = form.watch("businessProfileId");
     
+    // Set the selected profile from context when creating a new invoice (not editing)
+    useEffect(() => {
+      if (!initialData && selectedProfileId && !businessProfileId) {
+        form.setValue('businessProfileId', selectedProfileId, { shouldValidate: false });
+      }
+    }, [selectedProfileId, initialData, businessProfileId, form]);
+    
     // Helpers to determine if current path is for income or expense invoice creation/edit
     const isIncomeRoute = location.pathname === "/income/new" || location.pathname.startsWith("/income/edit/");
     const isExpenseRoute = location.pathname === "/expense/new" || location.pathname.startsWith("/expense/edit/");
@@ -190,6 +202,9 @@ const NewInvoice = React.forwardRef<{
     // Get selected profile to check VAT exemption status
     const selectedProfile = profiles.find(p => p.id === businessProfileId);
     const isProfileVatExempt = selectedProfile?.is_vat_exempt || false;
+    const isSpoolka = selectedProfile?.entityType === 'sp_zoo' || selectedProfile?.entityType === 'sa';
+
+    const decisionId = form.watch('decisionId');
 
     // Auto-lock VAT settings when profile is VAT exempt (income invoices only)
     useEffect(() => {
@@ -335,10 +350,10 @@ const NewInvoice = React.forwardRef<{
 
     // Listen for settings update event and reload invoice number
     useEffect(() => {
-      const handler = () => reloadInvoiceNumberingSettings();
+      const handler = () => reloadInvoiceNumberingSettings(user?.id, businessProfileId, allInvoices, initialData);
       window.addEventListener('invoiceNumberingSettingsUpdated', handler);
       return () => window.removeEventListener('invoiceNumberingSettingsUpdated', handler);
-    }, [allInvoices, businessProfileId, initialData?.number]);
+    }, [allInvoices, businessProfileId, initialData, reloadInvoiceNumberingSettings, user?.id]);
 
 
     // --- Transaction type state ---
@@ -534,7 +549,7 @@ const NewInvoice = React.forwardRef<{
           issueDate: initialData.issueDate,
           sellDate: initialData.sellDate,
           dueDate: initialData.dueDate,
-          paymentMethod: initialData.paymentMethod ? toPaymentMethodUi(initialData.paymentMethod as PaymentMethodDb) : "przelew",
+          paymentMethod: initialData.paymentMethod ? toPaymentMethodUi(initialData.paymentMethod as PaymentMethodDb) : PaymentMethod.TRANSFER,
           comments: initialData.comments || "",
           transactionType: initialData.transactionType || type,
           customerId: initialData.customerId || "",
@@ -717,6 +732,7 @@ const NewInvoice = React.forwardRef<{
           customerId: formValues.customerId,
           userId: user.id,
           user_id: user.id,
+          decisionId: formValues.decisionId || undefined,
           
           // Items and totals
           items: processedItems.map(item => ({
@@ -762,10 +778,22 @@ const NewInvoice = React.forwardRef<{
             // Update existing invoice
             savedInvoice = await saveInvoice({ ...invoiceData, id: initialData.id });
             toast.success('Faktura została zaktualizowana');
+            
+            // Invalidate queries to refresh the data
+            await queryClient.invalidateQueries({ queryKey: ["invoices"] });
+            await queryClient.invalidateQueries({ queryKey: ["invoice", initialData.id] });
           } else {
             // Create new invoice
             savedInvoice = await saveInvoice(invoiceData);
             toast.success('Faktura została utworzona');
+            
+            // Invalidate queries to refresh the data
+            await queryClient.invalidateQueries({ queryKey: ["invoices"] });
+            
+            // If we have the saved invoice, also set it in the cache for immediate access
+            if (savedInvoice?.id) {
+              queryClient.setQueryData(["invoice", savedInvoice.id], savedInvoice);
+            }
           }
 
           if (!initialData) {
@@ -800,6 +828,11 @@ const handleFormSubmit = form.handleSubmit(async (formData) => {
     // Ensure business profile is set
     if (!formValues.businessProfileId) {
       toast.error('Proszę wybrać profil biznesowy');
+      return;
+    }
+
+    if (isSpoolka && !formValues.decisionId) {
+      toast.error('Wybierz decyzję autoryzującą (Decyzja/Mandat)');
       return;
     }
     // Ensure we have items
@@ -1006,6 +1039,25 @@ const handleFormSubmit = form.handleSubmit(async (formData) => {
                 onBusinessProfileChange={handleBusinessProfileChange}
                 onCustomerChange={handleCustomerChange}
               />
+
+              {isSpoolka && businessProfileId && (
+                <div className="space-y-2">
+                  <DecisionPicker
+                    businessProfileId={businessProfileId}
+                    value={decisionId}
+                    onValueChange={(id) => form.setValue('decisionId', id, { shouldValidate: true })}
+                    categoryFilter={
+                      transactionType === TransactionType.INCOME
+                        ? 'sales_services'
+                        : transactionType === TransactionType.EXPENSE
+                          ? 'operational_costs'
+                          : undefined
+                    }
+                    label="Podstawa prawna (Decyzja / Mandat)"
+                    required
+                  />
+                </div>
+              )}
               
               <div>
                 <InvoiceItemsForm 

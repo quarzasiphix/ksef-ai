@@ -28,7 +28,7 @@ async function findBusinessProfileByTaxId(taxId: string) {
   return null;
 }
 
-export async function getCustomers(): Promise<Customer[]> {
+export async function getCustomers(businessProfileId?: string): Promise<Customer[]> {
   const reverseTypeMap = {
     buyer: 'odbiorca',
     supplier: 'sprzedawca',
@@ -73,6 +73,8 @@ export async function getCustomers(): Promise<Customer[]> {
         email: item.email || undefined,
         phone: item.phone || undefined,
         user_id: item.user_id,
+        business_profile_id: item.business_profile_id,
+        is_shared: item.is_shared,
         customerType:
           reverseTypeMap[item.client_type as keyof typeof reverseTypeMap] ||
           "odbiorca",
@@ -89,7 +91,17 @@ export async function getCustomers(): Promise<Customer[]> {
     }),
   );
 
-  return customersWithLinks;
+  // Filter by business profile if specified
+  let filteredCustomers = customersWithLinks;
+  if (businessProfileId) {
+    filteredCustomers = customersWithLinks.filter(c => 
+      c.is_shared || 
+      !c.business_profile_id || 
+      c.business_profile_id === businessProfileId
+    );
+  }
+
+  return filteredCustomers;
 }
 
 export async function getCustomerWithLinkedProfile(customerId: string): Promise<Customer | null> {
@@ -170,6 +182,8 @@ export async function saveCustomer(customer: Customer): Promise<Customer> {
     email: customer.email || null,
     phone: customer.phone || null,
     user_id: customer.user_id, // Always include user_id for RLS
+    business_profile_id: customer.business_profile_id || null,
+    is_shared: customer.is_shared || false,
     client_type: typeMap[customer.customerType] || 'buyer',
   };
 
@@ -197,6 +211,8 @@ export async function saveCustomer(customer: Customer): Promise<Customer> {
       email: data.email || undefined,
       phone: data.phone || undefined,
       user_id: data.user_id,
+      business_profile_id: data.business_profile_id,
+      is_shared: data.is_shared,
       customerType: (data as any).client_type || 'odbiorca',
     };
   } else {
@@ -222,6 +238,8 @@ export async function saveCustomer(customer: Customer): Promise<Customer> {
       email: data.email || undefined,
       phone: data.phone || undefined,
       user_id: data.user_id,
+      business_profile_id: data.business_profile_id,
+      is_shared: data.is_shared,
       customerType: (data as any).client_type || 'odbiorca',
     };
   }

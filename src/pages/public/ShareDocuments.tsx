@@ -1,5 +1,5 @@
 import React, { useEffect, useState, useMemo } from "react";
-import { useParams, Link } from "react-router-dom";
+import { useParams, Link, useSearchParams } from "react-router-dom";
 import {
   Card,
   CardHeader,
@@ -9,7 +9,7 @@ import {
 } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Download, Eye, Moon, Sun } from "lucide-react";
+import { Download, Moon, Sun, CreditCard, CheckCircle2, XCircle } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { getPublicShare, markShareViewed } from "@/integrations/supabase/repositories/publicShareRepository";
 import {
@@ -31,6 +31,7 @@ import { TransactionType } from "@/types/common";
 import SignaturePadModal from "@/components/contracts/SignaturePadModal";
 import { useAuth } from "@/hooks/useAuth";
 import { toast } from "sonner";
+import { Alert, AlertDescription } from "@/components/ui/alert";
 
 // Define the signDocument function
 const signDocument = async (contractId: string, signature: string): Promise<string> => {
@@ -58,6 +59,7 @@ const translateInvoiceType = (type?: string) => {
 
 const ShareDocuments: React.FC = () => {
   const { slug } = useParams<{ slug: string }>();
+  const [searchParams] = useSearchParams();
   const [state, setState] = useState({
     invoice: null as any | null,
     contract: null as any | null,
@@ -67,10 +69,14 @@ const ShareDocuments: React.FC = () => {
     signOpen: false,
     signedUrl: null as string | null,
     darkMode: false,
+    paymentLoading: false,
   });
   
   const { user } = useAuth();
-  const [isViewerOpen, setIsViewerOpen] = useState(false);
+  
+  // Check for payment status in URL
+  const paymentStatus = searchParams.get('payment');
+  const sessionId = searchParams.get('session_id');
   
   // Helper function to update state
   const updateState = (updates: Partial<typeof state>) => {
@@ -362,6 +368,37 @@ const ShareDocuments: React.FC = () => {
     }
   };
 
+  // Handle online payment
+  const handlePayOnline = async () => {
+    if (!slug) return;
+    
+    updateState({ paymentLoading: true });
+    
+    try {
+      const { data, error } = await supabase.functions.invoke('stripe-create-payment-checkout', {
+        body: { shareSlug: slug },
+      });
+
+      if (error) {
+        console.error('Payment checkout error:', error);
+        toast.error(error.message || 'Nie udało się utworzyć sesji płatności');
+        return;
+      }
+
+      if (data?.url) {
+        // Redirect to Stripe Checkout
+        window.location.href = data.url;
+      } else {
+        toast.error('Nie otrzymano adresu płatności');
+      }
+    } catch (error: any) {
+      console.error('Error creating payment:', error);
+      toast.error('Wystąpił błąd podczas tworzenia płatności');
+    } finally {
+      updateState({ paymentLoading: false });
+    }
+  };
+
   if (!state.loading && state.shareMeta && state.shareMeta.view_once && !state.allowed) {
     const alreadyViewedAny = !!state.shareMeta.viewed_at;
     const alreadyViewedThisDevice = localStorage.getItem(`share_${slug}_viewed`) === "1";
@@ -425,98 +462,207 @@ const ShareDocuments: React.FC = () => {
     ? (state.invoice?.customers || {}) 
     : (state.invoice?.business_profiles || {});
 
-  return (
-    <div className={`min-h-screen transition-colors duration-200 ${state.darkMode ? 'bg-gray-900' : 'bg-gray-50'}`}>
-      <div className="max-w-5xl mx-auto px-4 sm:px-6 py-6 sm:py-8 space-y-6">
-        {/* Header with dark mode toggle */}
-        <div className="flex justify-end mb-2">
-          <button
-            onClick={toggleDarkMode}
-            className="p-2 rounded-full hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors"
-            aria-label={state.darkMode ? 'Switch to light mode' : 'Switch to dark mode'}
-          >
-            {state.darkMode ? (
-              <Sun className="h-5 w-5 text-yellow-300" />
-            ) : (
-              <Moon className="h-5 w-5 text-gray-700" />
-            )}
-          </button>
-        </div>
-        
-        {/* Invoice Container */}
-        <div className={`rounded-2xl shadow-lg overflow-hidden border ${state.darkMode ? 'border-gray-700 bg-gray-800' : 'border-gray-200 bg-white'}`}>
-          {/* Header */}
-          <div className={`p-5 sm:p-6 ${state.darkMode ? 'bg-gray-800' : 'bg-gray-50'} border-b ${state.darkMode ? 'border-gray-700' : 'border-gray-200'}`}>
-            <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
-              <div className="space-y-1">
-                <h1 className={`text-2xl sm:text-3xl font-bold ${state.darkMode ? 'text-white' : 'text-gray-900'}`}>
-                  {state.invoice?.number}
-                </h1>
-                <p className={`${state.darkMode ? 'text-gray-300' : 'text-gray-600'} text-sm sm:text-base`}>
-                  {translateInvoiceType(state.invoice?.type)} • {state.invoice?.issue_date && format(new Date(state.invoice.issue_date), "dd.MM.yyyy", { locale: pl })}
-                </p>
-              </div>
-              <div className="flex flex-col sm:flex-row gap-2 w-full sm:w-auto">
-                <Button
-                  variant={state.darkMode ? "secondary" : "outline"}
-                  onClick={handleViewPdf}
-                  className="flex items-center justify-center gap-2"
-                  disabled={!invoiceForViewer}
-                >
-                  <Eye className="h-4 w-4" />
-                  <span>Podgląd</span>
-                </Button>
-                <Button 
-                  variant={state.darkMode ? "secondary" : "default"} 
-                  onClick={handleDownloadPdf}
-                  className="flex items-center justify-center gap-2"
-                  disabled={!invoiceForViewer}
-                >
-                  <Download className="h-4 w-4" />
-                  <span>Pobierz PDF</span>
-                </Button>
-              </div>
+// Debug log to check the data (commented out in production)
+// console.log('Seller data:', sellerData);
+// console.log('Buyer data:', buyerData);
+// console.log('Invoice data:', state.invoice);
+
+return (
+  <div className={`min-h-screen transition-colors duration-200 ${state.darkMode ? 'bg-gray-900' : 'bg-gray-50'}`}>
+    <div className="max-w-5xl mx-auto px-4 py-8 space-y-6">
+      {/* Header with dark mode toggle */}
+      <div className="flex justify-end mb-2">
+        <button
+          onClick={toggleDarkMode}
+          className="p-2 rounded-full hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors"
+          aria-label={state.darkMode ? 'Switch to light mode' : 'Switch to dark mode'}
+        >
+          {state.darkMode ? (
+            <Sun className="h-5 w-5 text-yellow-300" />
+          ) : (
+            <Moon className="h-5 w-5 text-gray-700" />
+          )}
+        </button>
+      </div>
+      
+      {/* Invoice Container */}
+      <div className={`rounded-xl shadow-lg overflow-hidden border ${state.darkMode ? 'border-gray-700 bg-gray-800' : 'border-gray-200 bg-white'}`}>
+        {/* Header */}
+        <div className={`p-6 ${state.darkMode ? 'bg-gray-800' : 'bg-gray-50'} border-b ${state.darkMode ? 'border-gray-700' : 'border-gray-200'}`}>
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+            <div>
+              <h1 className={`text-3xl font-bold ${state.darkMode ? 'text-white' : 'text-gray-900'}`}>
+                {state.invoice?.number}
+              </h1>
+              <p className={`${state.darkMode ? 'text-gray-300' : 'text-gray-600'} mt-1`}>
+                {translateInvoiceType(state.invoice?.type)} • {state.invoice?.issue_date && format(new Date(state.invoice.issue_date), "dd.MM.yyyy", { locale: pl })}
+              </p>
             </div>
-            
-            {/* Status Badges */}
-            <div className="flex flex-wrap gap-2 mt-4">
-              <Badge variant={state.invoice?.is_paid ? "default" : "secondary"}>
-                {state.invoice?.is_paid ? "Opłacone" : "Nieopłacone"}
-              </Badge>
-              <Badge variant="outline">{isIncome ? "Przychód" : "Wydatek"}</Badge>
+            <div className="flex flex-wrap gap-2">
+              <Button 
+                variant={state.darkMode ? "secondary" : "outline"} 
+                onClick={handleDownloadPdf}
+                className="flex items-center gap-2"
+              >
+                <Download className="h-4 w-4" />
+                <span>Pobierz PDF</span>
+              </Button>
             </div>
           </div>
+          
+          {/* Status Badges */}
+          <div className="flex flex-wrap gap-2 mt-4">
+            <Badge variant={state.invoice?.is_paid || state.invoice?.payment_status === 'paid' ? "default" : "secondary"}>
+              {state.invoice?.is_paid || state.invoice?.payment_status === 'paid' ? "Opłacone" : "Nieopłacone"}
+            </Badge>
+            <Badge variant="outline">{isIncome ? "Przychód" : "Wydatek"}</Badge>
+            {state.invoice?.payment_status === 'pending' && (
+              <Badge variant="outline" className="bg-yellow-50 text-yellow-700 border-yellow-300">
+                Oczekuje na płatność
+              </Badge>
+            )}
+          </div>
+        </div>
+    </div>
 
-          {/* Content */}
-          <div className="p-5 sm:p-6 space-y-5 sm:space-y-6">
-            {/* Seller & Buyer */}
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6">
-              <ContractorCard
-                title={isIncome ? "Sprzedawca" : "Nabywca"}
-                contractor={{
-                  name: sellerData?.name || "",
-                  taxId: sellerData?.tax_id,
-                  address: sellerData?.address,
-                  postalCode: sellerData?.postal_code,
-                  city: sellerData?.city,
-                  email: sellerData?.email,
-                  phone: sellerData?.phone,
-                }}
-              />
+    {/* Payment Status Alerts */}
+    {paymentStatus === 'success' && (
+      <div className="p-6">
+        <Alert className="bg-green-50 border-green-200">
+          <CheckCircle2 className="h-4 w-4 text-green-600" />
+          <AlertDescription className="text-green-800">
+            <strong>Płatność zakończona sukcesem!</strong> Faktura została opłacona. Dziękujemy za płatność.
+          </AlertDescription>
+        </Alert>
+      </div>
+    )}
+    
+    {paymentStatus === 'cancelled' && (
+      <div className="p-6">
+        <Alert className="bg-yellow-50 border-yellow-200">
+          <XCircle className="h-4 w-4 text-yellow-600" />
+          <AlertDescription className="text-yellow-800">
+            Płatność została anulowana. Możesz spróbować ponownie w dowolnym momencie.
+          </AlertDescription>
+        </Alert>
+      </div>
+    )}
 
-              <ContractorCard
-                title={isIncome ? "Nabywca" : "Sprzedawca"}
-                contractor={{
-                  name: buyerData?.name || "",
-                  taxId: buyerData?.tax_id,
-                  address: buyerData?.address,
-                  postalCode: buyerData?.postal_code,
-                  city: buyerData?.city,
-                  email: buyerData?.email,
-                  phone: buyerData?.phone,
-                }}
-              />
-            </div>
+    {/* Main Content */}
+    <div className="p-6">
+      {/* Parties & Payment */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+        <ContractorCard
+          title={isIncome ? "Sprzedawca" : "Nabywca"}
+          contractor={{
+            id: sellerData?.id,
+            name: sellerData?.full_name || sellerData?.name || "Brak nazwy",
+            taxId: sellerData?.tax_id,
+            regon: sellerData?.regon,
+            address: sellerData?.address,
+            postalCode: sellerData?.postal_code,
+            city: sellerData?.city,
+            email: sellerData?.email,
+            phone: sellerData?.phone,
+            bankAccount: sellerData?.bank_account,
+          }}
+        />
+        <ContractorCard
+          title={isIncome ? "Nabywca" : "Sprzedawca"}
+          contractor={{
+          id: buyerData?.id,
+          name: buyerData?.full_name || buyerData?.name || "Brak nazwy",
+          taxId: buyerData?.tax_id,
+          regon: buyerData?.regon,
+          address: buyerData?.address,
+          postalCode: buyerData?.postal_code,
+          city: buyerData?.city,
+          email: buyerData?.email,
+          phone: buyerData?.phone,
+        }}
+      />
+
+      {/* Payment card spans full width on small screens */}
+      <div className="md:col-span-2">
+        <InvoicePaymentCard
+          paymentMethod={state.invoice.payment_method}
+          totalNetValue={totals.net}
+          totalVatValue={totals.vat}
+          totalGrossValue={totals.gross}
+          type={state.invoice.type as InvoiceType}
+        />
+      </div>
+
+      {/* Online Payment Section */}
+      {state.invoice?.payments_enabled && !state.invoice?.is_paid && state.invoice?.payment_status !== 'paid' && (
+        <div className="md:col-span-2">
+          <Card className={`${state.darkMode ? 'bg-gradient-to-br from-blue-900/20 to-purple-900/20 border-blue-700' : 'bg-gradient-to-br from-blue-50 to-purple-50 border-blue-200'}`}>
+            <CardHeader>
+              <CardTitle className={`flex items-center gap-2 ${state.darkMode ? 'text-white' : 'text-gray-900'}`}>
+                <CreditCard className="h-5 w-5 text-blue-600" />
+                Płatność Online
+              </CardTitle>
+              <CardDescription className={state.darkMode ? 'text-gray-300' : ''}>
+                Opłać fakturę szybko i bezpiecznie przez Stripe
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className={`text-sm space-y-2 ${state.darkMode ? 'text-gray-300' : 'text-gray-600'}`}>
+                <p className="flex items-center gap-2">
+                  <CheckCircle2 className="h-4 w-4 text-green-600" />
+                  <span><strong>Bezpieczeństwo:</strong> Płatność obsługiwana przez Stripe - zaufany partner płatności</span>
+                </p>
+                <p className="flex items-center gap-2">
+                  <CheckCircle2 className="h-4 w-4 text-green-600" />
+                  <span><strong>Wygoda:</strong> Płać kartą, BLIK lub Przelewy24</span>
+                </p>
+                <p className="flex items-center gap-2">
+                  <CheckCircle2 className="h-4 w-4 text-green-600" />
+                  <span><strong>Szybkość:</strong> Natychmiastowe potwierdzenie płatności</span>
+                </p>
+                <p className="flex items-center gap-2">
+                  <CheckCircle2 className="h-4 w-4 text-green-600" />
+                  <span><strong>Księgowość:</strong> Automatyczne oznaczenie faktury jako opłaconej</span>
+                </p>
+              </div>
+              
+              <div className={`p-4 rounded-lg ${state.darkMode ? 'bg-gray-800/50' : 'bg-white'} border ${state.darkMode ? 'border-gray-700' : 'border-gray-200'}`}>
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className={`text-sm ${state.darkMode ? 'text-gray-400' : 'text-gray-600'}`}>Kwota do zapłaty:</p>
+                    <p className={`text-2xl font-bold ${state.darkMode ? 'text-white' : 'text-gray-900'}`}>
+                      {formatCurrency(totals.gross, state.invoice.currency || 'PLN')}
+                    </p>
+                  </div>
+                  <Button
+                    onClick={handlePayOnline}
+                    disabled={state.paymentLoading}
+                    size="lg"
+                    className="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white font-semibold shadow-lg"
+                  >
+                    {state.paymentLoading ? (
+                      <>
+                        <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
+                        Przekierowanie...
+                      </>
+                    ) : (
+                      <>
+                        <CreditCard className="h-4 w-4 mr-2" />
+                        Zapłać Online
+                      </>
+                    )}
+                  </Button>
+                </div>
+              </div>
+              
+              <p className={`text-xs ${state.darkMode ? 'text-gray-400' : 'text-gray-500'} text-center`}>
+                Klikając "Zapłać Online" zostaniesz przekierowany do bezpiecznej strony płatności Stripe
+              </p>
+            </CardContent>
+          </Card>
+        </div>
+      )}
+    </div>
 
             {/* Invoice Items */}
             <Card className="shadow-none border border-gray-200 dark:border-gray-700">

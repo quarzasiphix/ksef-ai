@@ -78,6 +78,8 @@ interface DatabaseInvoiceResponse {
   currency: string;
   bank_account_id?: string | null;
   exchange_rate?: number | null;
+  decision_id?: string | null;
+  decision_reference?: string | null;
 }
 
 const mapDatabaseInvoiceToInvoice = (dbInvoice: DatabaseInvoiceResponse): Invoice => {
@@ -145,6 +147,8 @@ const mapDatabaseInvoiceToInvoice = (dbInvoice: DatabaseInvoiceResponse): Invoic
     customerName: customer?.name || '',
     bankAccountId: dbInvoice.bank_account_id || null,
     bankAccountNumber: undefined,
+    decisionId: dbInvoice.decision_id ?? undefined,
+    decisionReference: dbInvoice.decision_reference ?? undefined,
     created_at: dbInvoice.created_at,
     updated_at: dbInvoice.updated_at,
     vat: typeof dbInvoice.vat === 'boolean' ? dbInvoice.vat : true,
@@ -278,6 +282,7 @@ export async function saveInvoice(invoice: Omit<Invoice, 'id' | 'ksef' | 'vat' |
     currency: string;
     bank_account_id?: string | null;
     exchange_rate?: number | null;
+    decision_id?: string | null;
   };
 
   const fakturaBezVAT = invoice.fakturaBezVAT ?? (invoice as any).fakturaBezVat ?? false;
@@ -350,6 +355,7 @@ export async function saveInvoice(invoice: Omit<Invoice, 'id' | 'ksef' | 'vat' |
     currency: invoice.currency || 'PLN',
     bank_account_id: invoice.bankAccountId || null,
     exchange_rate: invoice.exchangeRate || null,
+    decision_id: invoice.decisionId || null,
   };
 
   console.log('Prepared invoice payload:', basePayload);
@@ -519,6 +525,8 @@ export async function getInvoice(id: string): Promise<Invoice> {
     business_profile_id,
     customer_id,
     payment_method,
+    decision_id,
+    decision_reference,
     is_paid,
     comments,
     total_net_value,
@@ -588,7 +596,7 @@ export async function getInvoice(id: string): Promise<Invoice> {
     businessProfileId: data.business_profile_id,
     customerId: data.customer_id || '',
     items,
-    paymentMethod: toPaymentMethodUi(data.payment_method),
+    paymentMethod: data.payment_method as PaymentMethodDb,
     isPaid: data.is_paid || false,
     paid: data.is_paid || false,
     status: data.status as InvoiceStatus,
@@ -622,6 +630,8 @@ export async function getInvoice(id: string): Promise<Invoice> {
     customerName: customer?.name || '',
     bankAccountId: data.bank_account_id || null,
     bankAccountNumber: undefined,
+    decisionId: (data as any).decision_id ?? undefined,
+    decisionReference: (data as any).decision_reference ?? undefined,
     created_at: data.created_at,
     updated_at: data.updated_at,
     vat: typeof data.vat === 'boolean' ? data.vat : true,
@@ -704,6 +714,8 @@ export async function getInvoiceById(id: string): Promise<Invoice | null> {
     .select(
       `
       *,
+      decision_id,
+      decision_reference,
       business_profiles ( id, name, user_id, tax_id, address, city, postal_code ),
       customers ( id, name, user_id, tax_id, address, city, postal_code ),
       invoice_items (

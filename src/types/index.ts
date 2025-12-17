@@ -29,6 +29,49 @@ export interface BusinessProfile {
   vat_exemption_reason?: string | null;
   vat_threshold_pln?: number;
   vat_threshold_year?: number;
+  // Spółka z o.o. specific fields
+  share_capital?: number;
+  krs_number?: string;
+  court_registry?: string;
+  establishment_date?: string;
+  headquarters_address?: string;
+  headquarters_postal_code?: string;
+  headquarters_city?: string;
+  correspondence_address?: string;
+  correspondence_postal_code?: string;
+  correspondence_city?: string;
+  business_activity_address?: string;
+  business_activity_postal_code?: string;
+  business_activity_city?: string;
+  pkd_main?: string;
+  vat_status?: 'none' | 'vat' | 'vat_ue';
+  accounting_method?: 'ksiegi_rachunkowe' | 'uproszczona';
+  cit_rate?: 9 | 19;
+  fiscal_year_end_month?: number;
+  nip_8_filed?: boolean;
+  nip_8_filed_date?: string;
+  cit_advance_type?: 'monthly' | 'quarterly';
+  is_small_taxpayer?: boolean;
+}
+
+export interface BoardMember {
+  id: string;
+  business_profile_id: string;
+  first_name: string;
+  last_name: string;
+  position: 'prezes' | 'wiceprezes' | 'czlonek_zarzadu' | 'prokurent';
+  pesel?: string;
+  tax_id?: string;
+  address?: string;
+  email?: string;
+  phone?: string;
+  appointed_date?: string;
+  term_end_date?: string;
+  is_active: boolean;
+  can_represent_alone: boolean;
+  notes?: string;
+  created_at?: string;
+  updated_at?: string;
 }
 
 export interface Customer {
@@ -42,6 +85,8 @@ export interface Customer {
   email?: string;
   phone?: string;
   user_id: string; // Added for RLS
+  business_profile_id?: string; // Links to specific business profile
+  is_shared?: boolean; // If true, available for all user's business profiles
   customerType: 'odbiorca' | 'sprzedawca' | 'both';
   linkedBusinessProfile?: {
     id: string;
@@ -50,11 +95,15 @@ export interface Customer {
     phone?: string;
     user_id: string;
   } | null;
+  business_profile_name?: string; // From view
+  business_profile_entity_type?: string; // From view
 }
 
 export interface Product {
   id: string;
   user_id: string; // Added for RLS
+  business_profile_id?: string; // Links to specific business profile
+  is_shared?: boolean; // If true, available for all user's business profiles
   name: string;
   unitPrice: number; // Netto price
   vatRate: number; // VAT percentage, e.g., 23 or -1 for VAT-exempt
@@ -63,6 +112,8 @@ export interface Product {
   product_type: 'income' | 'expense';
   track_stock: boolean;
   stock: number;
+  business_profile_name?: string; // From view
+  business_profile_entity_type?: string; // From view
 }
 
 export enum TransactionType {
@@ -227,6 +278,8 @@ export interface Invoice {
   customerName?: string;
   bankAccountId?: string | null;
   bankAccountNumber?: string;
+  decisionId?: string;
+  decisionReference?: string;
   currency?: string;
   created_at?: string;
   updated_at?: string;
@@ -278,6 +331,25 @@ export interface Contract {
   isActive: boolean;
   created_at?: string;
   updated_at?: string;
+  
+  // Document categorization (new fields)
+  document_category?: 'transactional_payout' | 'transactional_payin' | 'informational';
+  is_transactional?: boolean;
+  contract_type?: 'general' | 'employment' | 'service' | 'lease' | 'purchase' | 'board_member' | 'management_board' | 'supervisory_board' | 'nda' | 'partnership' | 'other';
+  is_template?: boolean;
+  folder_id?: string;
+  signing_parties?: any; // JSONB
+  board_member_id?: string;
+  decision_id?: string; // Link to authorizing decision
+  decision_reference?: string; // Cached § reference (e.g., §1.2.3)
+  
+  // Transactional contract fields
+  payment_account_id?: string;
+  expected_amount?: number;
+  payment_frequency?: 'one_time' | 'monthly' | 'quarterly' | 'annual' | 'custom';
+  next_payment_date?: string;
+  auto_generate_invoices?: boolean;
+  currency?: string;
 }
 
 export interface ContractInvoiceLink {
@@ -291,6 +363,7 @@ export interface ContractInvoiceLink {
 export interface Employee {
   id: string;
   user_id: string;
+  business_profile_id?: string;
   first_name: string;
   last_name: string;
   position: string;
@@ -299,6 +372,9 @@ export interface Employee {
   start_date: string;
   end_date?: string;
   is_active: boolean;
+  employment_type?: 'umowa_o_prace' | 'umowa_zlecenie' | 'umowa_o_dzielo' | 'b2b' | 'other';
+  requires_pit?: boolean;
+  requires_zus?: boolean;
   created_at: string;
   updated_at: string;
 }

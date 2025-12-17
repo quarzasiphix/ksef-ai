@@ -42,15 +42,28 @@ import LabourHoursPage from '@/pages/employees/LabourHoursPage';
 import NotFound from '@/pages/NotFound';
 import InventoryPage from '@/pages/inventory/InventoryPage';
 import Accounting from '@/pages/accounting/Accounting';
+import BalanceSheet from '@/pages/accounting/BalanceSheet';
+import Shareholders from '@/pages/accounting/Shareholders';
 import Welcome from '@/components/welcome/Welcome';
 import Premium from '@/pages/Premium';
 import ShareDocuments from '@/pages/public/ShareDocuments';
-import ContractList from '@/pages/contracts/ContractList';
+import DocumentsHub from '@/pages/contracts/DocumentsHub';
 import ContractNew from '@/pages/contracts/ContractNew';
 import ContractDetails from '@/pages/contracts/ContractDetails';
+import DecisionsHub from '@/pages/decisions/DecisionsHub';
+import DecisionEdit from '@/pages/decisions/DecisionEdit';
+import DecisionDetails from '@/pages/decisions/DecisionDetails';
 import BankAccounts from "@/pages/bank/BankAccounts";
 import Index from "./pages/Index";
 import SharedLinksPage from "./pages/SharedLinks";
+import CompanyRegistry from '@/pages/spolka/CompanyRegistry';
+import CapitalEvents from '@/pages/spolka/CapitalEvents';
+import Resolutions from '@/pages/spolka/Resolutions';
+import CITDashboard from '@/pages/spolka/CITDashboard';
+import Documents from '@/pages/spolka/Documents';
+import AccountingShell from '@/pages/accounting/AccountingShell';
+import Kasa from '@/pages/accounting/Kasa';
+import TransactionalContracts from '@/pages/accounting/TransactionalContracts';
 
 import { queryClient } from '@/lib/queryClient';
 import { useAuth } from '@/hooks/useAuth';
@@ -344,14 +357,26 @@ const App = () => {
                   </ProtectedRoute>
                 } />
 
-                {/* Accounting (Premium) */}
+                {/* Accounting (Premium) - persistent shell to avoid sidebar remount flicker */}
                 <Route path="/accounting" element={
                   <ProtectedRoute>
                     <RequirePremium>
-                      <Accounting />
+                      <AccountingShell />
                     </RequirePremium>
                   </ProtectedRoute>
-                } />
+                }>
+                  <Route index element={<Accounting />} />
+                  <Route path="bank" element={<BankAccounts />} />
+                  <Route path="balance-sheet" element={<BalanceSheet />} />
+                  <Route path="shareholders" element={<Shareholders />} />
+                  <Route path="company-registry" element={<CompanyRegistry />} />
+                  <Route path="capital-events" element={<CapitalEvents />} />
+                  <Route path="resolutions" element={<Navigate to="/contracts/resolutions" replace />} />
+                  <Route path="cit" element={<CITDashboard />} />
+                  <Route path="contracts" element={<TransactionalContracts />} />
+                  <Route path="documents" element={<Navigate to="/contracts" replace />} />
+                  <Route path="kasa" element={<Kasa />} />
+                </Route>
 
                 {/* Onboarding / Welcome setup (full-page, no layout) */}
                 <Route path="/welcome" element={
@@ -363,15 +388,39 @@ const App = () => {
                 {/* Public shared documents route */}
                 <Route path="/share/:slug" element={<PublicLayout><ShareDocuments /></PublicLayout>} />
 
+                {/* Decisions routes */}
+                <Route path="/decisions" element={
+                  <ProtectedRoute>
+                    <DecisionsHub />
+                  </ProtectedRoute>
+                } />
+
+                <Route path="/decisions/:id/edit" element={
+                  <ProtectedRoute>
+                    <DecisionEdit />
+                  </ProtectedRoute>
+                } />
+
+                <Route path="/decisions/:id" element={
+                  <ProtectedRoute>
+                    <DecisionDetails />
+                  </ProtectedRoute>
+                } />
+
                 {/* Contracts routes */}
                 <Route path="/contracts" element={
                   <ProtectedRoute>
-                    <ContractList />
+                    <DocumentsHub />
                   </ProtectedRoute>
                 } />
                 <Route path="/contracts/new" element={
                   <ProtectedRoute>
                     <ContractNew />
+                  </ProtectedRoute>
+                } />
+                <Route path="/contracts/resolutions" element={
+                  <ProtectedRoute>
+                    <Resolutions />
                   </ProtectedRoute>
                 } />
                 <Route path="/contracts/:id" element={

@@ -4,6 +4,8 @@ import { getBusinessProfiles } from '@/integrations/supabase/repositories/busine
 import { useQuery } from '@tanstack/react-query';
 import { useAuth } from '@/hooks/useAuth';
 
+const getSelectedProfileStorageKey = (userId: string) => `selected_business_profile_id:${userId}`;
+
 interface BusinessProfileContextType {
   selectedProfileId: string | null;
   selectProfile: (id: string | null) => void;
@@ -16,6 +18,7 @@ const BusinessProfileContext = createContext<BusinessProfileContextType | undefi
 export const BusinessProfileProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const { user } = useAuth();
   const [selectedProfileId, setSelectedProfileId] = useState<string | null>(null);
+  const [hasRestoredSelection, setHasRestoredSelection] = useState(false);
 
   const { data: profiles, isLoading: isLoadingProfiles } = useQuery<BusinessProfile[]> ({
     queryKey: ['businessProfiles', user?.id],
@@ -30,18 +33,66 @@ export const BusinessProfileProvider: React.FC<{ children: React.ReactNode }> = 
     staleTime: 1000 * 60 * 5,
   });
 
+  // Restore selected profile from localStorage (per-user)
+  useEffect(() => {
+    if (!user?.id) {
+      setSelectedProfileId(null);
+      setHasRestoredSelection(false);
+      return;
+    }
+
+    try {
+      const saved = localStorage.getItem(getSelectedProfileStorageKey(user.id));
+      if (saved) {
+        setSelectedProfileId(saved);
+      } else {
+        setSelectedProfileId(null);
+      }
+    } catch {
+      setSelectedProfileId(null);
+    } finally {
+      setHasRestoredSelection(true);
+    }
+  }, [user?.id]);
+
   // Set default profile on initial load if available and no profile is selected
   useEffect(() => {
-    if (!isLoadingProfiles && profiles && selectedProfileId === null) {
+    if (!hasRestoredSelection) return;
+    if (isLoadingProfiles || !profiles) return;
+
+    // If a selected profile exists but is not in the loaded list, fall back.
+    const selectedExists = selectedProfileId ? profiles.some(p => p.id === selectedProfileId) : false;
+    if (selectedProfileId && !selectedExists) {
+      setSelectedProfileId(null);
+      return;
+    }
+
+    // If none selected, choose saved/default/first.
+    if (selectedProfileId === null) {
       const defaultProfile = profiles.find(p => p.isDefault);
-      if (defaultProfile) {
-        setSelectedProfileId(defaultProfile.id);
-      } else if (profiles.length > 0) {
-        // If no default, select the first one
-        setSelectedProfileId(profiles[0].id);
+      const nextId = defaultProfile?.id || profiles[0]?.id || null;
+      if (nextId) {
+        setSelectedProfileId(nextId);
       }
     }
   }, [isLoadingProfiles, profiles, selectedProfileId]);
+
+  // Persist selection to localStorage
+  useEffect(() => {
+    if (!user?.id) return;
+    if (!hasRestoredSelection) return;
+    const key = getSelectedProfileStorageKey(user.id);
+
+    try {
+      if (selectedProfileId) {
+        localStorage.setItem(key, selectedProfileId);
+      } else {
+        localStorage.removeItem(key);
+      }
+    } catch {
+      // ignore storage errors
+    }
+  }, [user?.id, selectedProfileId, hasRestoredSelection]);
 
   const selectProfile = (id: string | null) => {
     setSelectedProfileId(id);

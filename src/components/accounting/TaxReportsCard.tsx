@@ -75,6 +75,12 @@ export const TaxReportsCard: React.FC<TaxReportsCardProps> = ({ monthIndex, repo
         <CardTitle className="text-lg">Obowiązki podatkowe – {monthNamesFull[monthIndex]}</CardTitle>
       </CardHeader>
       <CardContent className="space-y-3">
+        {reports.length === 0 && zusTypes.length === 0 && (
+          <div className="text-center py-6 text-muted-foreground">
+            <p className="text-sm">Brak obowiązków podatkowych w tym miesiącu</p>
+            <p className="text-xs mt-1">Dla Spółki z o.o. bez pracowników obowiązuje tylko roczny CIT-8 (termin: marzec)</p>
+          </div>
+        )}
         {reports.map((rep) => {
           const dueDate = new Date(year, monthIndex, rep.dueDay);
           const { status, icon } = getStatus(dueDate);

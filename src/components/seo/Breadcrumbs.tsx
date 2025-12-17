@@ -56,8 +56,8 @@ export function Breadcrumbs() {
   const pathnames = location.pathname.split('/').filter((x) => x);
 
   return (
-    <nav aria-label="breadcrumb" className="mb-6">
-      <ol className="flex items-center text-sm text-gray-500">
+    <nav aria-label="breadcrumb" className="min-w-0">
+      <ol className="flex flex-wrap items-center text-sm text-gray-500">
         <li className="flex items-center">
           <Link 
             to="/dashboard" 
