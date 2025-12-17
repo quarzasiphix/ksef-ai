@@ -141,11 +141,19 @@ const InvoiceDetail: React.FC<InvoiceDetailProps> = ({ type }) => {
   const editPath = isIncome ? `/income/edit/${invoice.id}` : `/expense/${invoice.id}/edit`;
 
   const handleDownloadPdf = async () => {
+    const recalculatedInvoice = {
+      ...invoice,
+      items: processedItems,
+      totalNetValue,
+      totalVatValue,
+      totalGrossValue,
+    };
+
     await generateInvoicePdf({
-      invoice,
+      invoice: recalculatedInvoice,
       businessProfile: sellerProfile,
       customer: buyerCustomer,
-      filename: getInvoiceFileName(invoice),
+      filename: getInvoiceFileName(recalculatedInvoice),
       bankAccounts,
     });
   };
@@ -164,6 +172,12 @@ const InvoiceDetail: React.FC<InvoiceDetailProps> = ({ type }) => {
       if (error) throw error;
 
       await refreshAllData();
+      queryClient.setQueryData<Invoice | null>(["invoice", invoice.id], (prev) => {
+        if (!prev) return prev;
+        return { ...prev, isPaid: !prev.isPaid };
+      });
+      await queryClient.invalidateQueries({ queryKey: ["invoice", invoice.id] });
+      await queryClient.invalidateQueries({ queryKey: ["invoices"] });
       toast.success(
         invoice.isPaid 
           ? "Faktura oznaczona jako nieopłacona" 
