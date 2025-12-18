@@ -523,220 +523,219 @@ return (
             )}
           </div>
         </div>
-    </div>
 
-    {/* Payment Status Alerts */}
-    {paymentStatus === 'success' && (
-      <div className="p-6">
-        <Alert className="bg-green-50 border-green-200">
-          <CheckCircle2 className="h-4 w-4 text-green-600" />
-          <AlertDescription className="text-green-800">
-            <strong>Płatność zakończona sukcesem!</strong> Faktura została opłacona. Dziękujemy za płatność.
-          </AlertDescription>
-        </Alert>
-      </div>
-    )}
-    
-    {paymentStatus === 'cancelled' && (
-      <div className="p-6">
-        <Alert className="bg-yellow-50 border-yellow-200">
-          <XCircle className="h-4 w-4 text-yellow-600" />
-          <AlertDescription className="text-yellow-800">
-            Płatność została anulowana. Możesz spróbować ponownie w dowolnym momencie.
-          </AlertDescription>
-        </Alert>
-      </div>
-    )}
+        {/* Payment Status Alerts */}
+        {paymentStatus === 'success' && (
+          <div className="p-6">
+            <Alert className="bg-green-50 border-green-200">
+              <CheckCircle2 className="h-4 w-4 text-green-600" />
+              <AlertDescription className="text-green-800">
+                <strong>Płatność zakończona sukcesem!</strong> Faktura została opłacona. Dziękujemy za płatność.
+              </AlertDescription>
+            </Alert>
+          </div>
+        )}
+        
+        {paymentStatus === 'cancelled' && (
+          <div className="p-6">
+            <Alert className="bg-yellow-50 border-yellow-200">
+              <XCircle className="h-4 w-4 text-yellow-600" />
+              <AlertDescription className="text-yellow-800">
+                Płatność została anulowana. Możesz spróbować ponownie w dowolnym momencie.
+              </AlertDescription>
+            </Alert>
+          </div>
+        )}
 
-    {/* Main Content */}
-    <div className="p-6">
-      {/* Parties & Payment */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-        <ContractorCard
-          title={isIncome ? "Sprzedawca" : "Nabywca"}
-          contractor={{
-            id: sellerData?.id,
-            name: sellerData?.full_name || sellerData?.name || "Brak nazwy",
-            taxId: sellerData?.tax_id,
-            regon: sellerData?.regon,
-            address: sellerData?.address,
-            postalCode: sellerData?.postal_code,
-            city: sellerData?.city,
-            email: sellerData?.email,
-            phone: sellerData?.phone,
-            bankAccount: sellerData?.bank_account,
-          }}
-        />
-        <ContractorCard
-          title={isIncome ? "Nabywca" : "Sprzedawca"}
-          contractor={{
-          id: buyerData?.id,
-          name: buyerData?.full_name || buyerData?.name || "Brak nazwy",
-          taxId: buyerData?.tax_id,
-          regon: buyerData?.regon,
-          address: buyerData?.address,
-          postalCode: buyerData?.postal_code,
-          city: buyerData?.city,
-          email: buyerData?.email,
-          phone: buyerData?.phone,
-        }}
-      />
+        {/* Main Content */}
+        <div className="p-6">
+          {/* Parties & Payment */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <ContractorCard
+              title={isIncome ? "Sprzedawca" : "Nabywca"}
+              contractor={{
+                id: sellerData?.id,
+                name: sellerData?.full_name || sellerData?.name || "Brak nazwy",
+                taxId: sellerData?.tax_id,
+                regon: sellerData?.regon,
+                address: sellerData?.address,
+                postalCode: sellerData?.postal_code,
+                city: sellerData?.city,
+                email: sellerData?.email,
+                phone: sellerData?.phone,
+                bankAccount: sellerData?.bank_account,
+              }}
+            />
+            <ContractorCard
+              title={isIncome ? "Nabywca" : "Sprzedawca"}
+              contractor={{
+                id: buyerData?.id,
+                name: buyerData?.full_name || buyerData?.name || "Brak nazwy",
+                taxId: buyerData?.tax_id,
+                regon: buyerData?.regon,
+                address: buyerData?.address,
+                postalCode: buyerData?.postal_code,
+                city: buyerData?.city,
+                email: buyerData?.email,
+                phone: buyerData?.phone,
+              }}
+            />
 
-      {/* Payment card spans full width on small screens */}
-      <div className="md:col-span-2">
-        <InvoicePaymentCard
-          paymentMethod={state.invoice.payment_method}
-          totalNetValue={totals.net}
-          totalVatValue={totals.vat}
-          totalGrossValue={totals.gross}
-          type={state.invoice.type as InvoiceType}
-        />
-      </div>
-
-      {/* Online Payment Section */}
-      {state.invoice?.payments_enabled && !state.invoice?.is_paid && state.invoice?.payment_status !== 'paid' && (
-        <div className="md:col-span-2">
-          <Card className={`${state.darkMode ? 'bg-gradient-to-br from-blue-900/20 to-purple-900/20 border-blue-700' : 'bg-gradient-to-br from-blue-50 to-purple-50 border-blue-200'}`}>
-            <CardHeader>
-              <CardTitle className={`flex items-center gap-2 ${state.darkMode ? 'text-white' : 'text-gray-900'}`}>
-                <CreditCard className="h-5 w-5 text-blue-600" />
-                Płatność Online
-              </CardTitle>
-              <CardDescription className={state.darkMode ? 'text-gray-300' : ''}>
-                Opłać fakturę szybko i bezpiecznie przez Stripe
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div className={`text-sm space-y-2 ${state.darkMode ? 'text-gray-300' : 'text-gray-600'}`}>
-                <p className="flex items-center gap-2">
-                  <CheckCircle2 className="h-4 w-4 text-green-600" />
-                  <span><strong>Bezpieczeństwo:</strong> Płatność obsługiwana przez Stripe - zaufany partner płatności</span>
-                </p>
-                <p className="flex items-center gap-2">
-                  <CheckCircle2 className="h-4 w-4 text-green-600" />
-                  <span><strong>Wygoda:</strong> Płać kartą, BLIK lub Przelewy24</span>
-                </p>
-                <p className="flex items-center gap-2">
-                  <CheckCircle2 className="h-4 w-4 text-green-600" />
-                  <span><strong>Szybkość:</strong> Natychmiastowe potwierdzenie płatności</span>
-                </p>
-                <p className="flex items-center gap-2">
-                  <CheckCircle2 className="h-4 w-4 text-green-600" />
-                  <span><strong>Księgowość:</strong> Automatyczne oznaczenie faktury jako opłaconej</span>
-                </p>
-              </div>
-              
-              <div className={`p-4 rounded-lg ${state.darkMode ? 'bg-gray-800/50' : 'bg-white'} border ${state.darkMode ? 'border-gray-700' : 'border-gray-200'}`}>
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className={`text-sm ${state.darkMode ? 'text-gray-400' : 'text-gray-600'}`}>Kwota do zapłaty:</p>
-                    <p className={`text-2xl font-bold ${state.darkMode ? 'text-white' : 'text-gray-900'}`}>
-                      {formatCurrency(totals.gross, state.invoice.currency || 'PLN')}
-                    </p>
-                  </div>
-                  <Button
-                    onClick={handlePayOnline}
-                    disabled={state.paymentLoading}
-                    size="lg"
-                    className="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white font-semibold shadow-lg"
-                  >
-                    {state.paymentLoading ? (
-                      <>
-                        <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
-                        Przekierowanie...
-                      </>
-                    ) : (
-                      <>
-                        <CreditCard className="h-4 w-4 mr-2" />
-                        Zapłać Online
-                      </>
-                    )}
-                  </Button>
-                </div>
-              </div>
-              
-              <p className={`text-xs ${state.darkMode ? 'text-gray-400' : 'text-gray-500'} text-center`}>
-                Klikając "Zapłać Online" zostaniesz przekierowany do bezpiecznej strony płatności Stripe
-              </p>
-            </CardContent>
-          </Card>
-        </div>
-      )}
-    </div>
-
-            {/* Invoice Items */}
-            <Card className="shadow-none border border-gray-200 dark:border-gray-700">
-              <CardHeader className="pb-3">
-                <CardTitle className="text-lg sm:text-xl">Pozycje dokumentu</CardTitle>
-              </CardHeader>
-              <CardContent className="p-0">
-                <InvoiceItemsCard invoice={{ ...state.invoice, invoice_items: processedItems }} hideActions />
-              </CardContent>
-            </Card>
-
-            {/* Totals */}
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6">
-              <Card className="shadow-none border border-gray-200 dark:border-gray-700">
-                <CardHeader className="pb-4">
-                  <CardTitle className="text-lg sm:text-xl">Podsumowanie</CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-3 text-sm sm:text-base">
-                  <div className="flex justify-between">
-                    <span className="text-muted-foreground">Wartość netto:</span>
-                    <span className="font-medium">{formatCurrency(totals.net, state.invoice?.currency || "PLN")}</span>
-                  </div>
-                  {!state.invoice?.fakturaBezVAT && state.invoice?.vat !== false && (
-                    <div className="flex justify-between">
-                      <span className="text-muted-foreground">Podatek VAT:</span>
-                      <span className="font-medium">{formatCurrency(totals.vat, state.invoice?.currency || "PLN")}</span>
-                    </div>
-                  )}
-                  <div className="flex justify-between pt-2 border-t">
-                    <span className="font-semibold">Wartość brutto:</span>
-                    <span className="font-semibold">{formatCurrency(totals.gross, state.invoice?.currency || "PLN")}</span>
-                  </div>
-                </CardContent>
-              </Card>
-
+            {/* Payment card spans full width on small screens */}
+            <div className="md:col-span-2">
               <InvoicePaymentCard
-                invoice={{
-                  issueDate: state.invoice?.issue_date,
-                  dueDate: state.invoice?.due_date,
-                  sellDate: state.invoice?.sell_date,
-                  paymentMethod: state.invoice?.payment_method,
-                  isPaid: state.invoice?.is_paid,
-                  currency: state.invoice?.currency || "PLN",
-                }}
+                paymentMethod={state.invoice.payment_method}
+                totalNetValue={totals.net}
+                totalVatValue={totals.vat}
+                totalGrossValue={totals.gross}
+                type={state.invoice.type as InvoiceType}
               />
             </div>
 
-            {state.invoice?.comments && (
-              <Card className="shadow-none border border-gray-200 dark:border-gray-700">
-                <CardHeader className="pb-3">
-                  <CardTitle className="text-lg sm:text-xl">Uwagi</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <p className="text-sm sm:text-base text-muted-foreground whitespace-pre-line">
-                    {state.invoice.comments}
-                  </p>
-                </CardContent>
-              </Card>
+            {/* Online Payment Section */}
+            {state.invoice?.payments_enabled && !state.invoice?.is_paid && state.invoice?.payment_status !== 'paid' && (
+              <div className="md:col-span-2">
+                <Card className={`${state.darkMode ? 'bg-gradient-to-br from-blue-900/20 to-purple-900/20 border-blue-700' : 'bg-gradient-to-br from-blue-50 to-purple-50 border-blue-200'}`}>
+                  <CardHeader>
+                    <CardTitle className={`flex items-center gap-2 ${state.darkMode ? 'text-white' : 'text-gray-900'}`}>
+                      <CreditCard className="h-5 w-5 text-blue-600" />
+                      Płatność Online
+                    </CardTitle>
+                    <CardDescription className={state.darkMode ? 'text-gray-300' : ''}>
+                      Opłać fakturę szybko i bezpiecznie przez Stripe
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent className="space-y-4">
+                    <div className={`text-sm space-y-2 ${state.darkMode ? 'text-gray-300' : 'text-gray-600'}`}>
+                      <p className="flex items-center gap-2">
+                        <CheckCircle2 className="h-4 w-4 text-green-600" />
+                        <span><strong>Bezpieczeństwo:</strong> Płatność obsługiwana przez Stripe - zaufany partner płatności</span>
+                      </p>
+                      <p className="flex items-center gap-2">
+                        <CheckCircle2 className="h-4 w-4 text-green-600" />
+                        <span><strong>Wygoda:</strong> Płać kartą, BLIK lub Przelewy24</span>
+                      </p>
+                      <p className="flex items-center gap-2">
+                        <CheckCircle2 className="h-4 w-4 text-green-600" />
+                        <span><strong>Szybkość:</strong> Natychmiastowe potwierdzenie płatności</span>
+                      </p>
+                      <p className="flex items-center gap-2">
+                        <CheckCircle2 className="h-4 w-4 text-green-600" />
+                        <span><strong>Księgowość:</strong> Automatyczne oznaczenie faktury jako opłaconej</span>
+                      </p>
+                    </div>
+                    
+                    <div className={`p-4 rounded-lg ${state.darkMode ? 'bg-gray-800/50' : 'bg-white'} border ${state.darkMode ? 'border-gray-700' : 'border-gray-200'}`}>
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <p className={`text-sm ${state.darkMode ? 'text-gray-400' : 'text-gray-600'}`}>Kwota do zapłaty:</p>
+                          <p className={`text-2xl font-bold ${state.darkMode ? 'text-white' : 'text-gray-900'}`}>
+                            {formatCurrency(totals.gross, state.invoice.currency || 'PLN')}
+                          </p>
+                        </div>
+                        <Button
+                          onClick={handlePayOnline}
+                          disabled={state.paymentLoading}
+                          size="lg"
+                          className="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white font-semibold shadow-lg"
+                        >
+                          {state.paymentLoading ? (
+                            <>
+                              <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
+                              Przekierowanie...
+                            </>
+                          ) : (
+                            <>
+                              <CreditCard className="h-4 w-4 mr-2" />
+                              Zapłać Online
+                            </>
+                          )}
+                        </Button>
+                      </div>
+                    </div>
+                    
+                    <p className={`text-xs ${state.darkMode ? 'text-gray-400' : 'text-gray-500'} text-center`}>
+                      Klikając "Zapłać Online" zostaniesz przekierowany do bezpiecznej strony płatności Stripe
+                    </p>
+                  </CardContent>
+                </Card>
+              </div>
             )}
           </div>
-        </div>
-      </div>
 
-      {invoiceForViewer && (
-        <InvoicePDFViewer
-          invoice={invoiceForViewer}
-          businessProfile={businessProfileForViewer ?? undefined}
-          customer={customerForViewer ?? undefined}
-          isOpen={isViewerOpen}
-          onClose={() => setIsViewerOpen(false)}
-        />
-      )}
-    </div>
-  );
+          {/* Invoice Items */}
+          <Card className="shadow-none border border-gray-200 dark:border-gray-700">
+            <CardHeader className="pb-3">
+              <CardTitle className="text-lg sm:text-xl">Pozycje dokumentu</CardTitle>
+            </CardHeader>
+            <CardContent className="p-0">
+              <InvoiceItemsCard invoice={{ ...state.invoice, invoice_items: processedItems }} hideActions />
+            </CardContent>
+          </Card>
+
+          {/* Totals */}
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6">
+            <Card className="shadow-none border border-gray-200 dark:border-gray-700">
+              <CardHeader className="pb-4">
+                <CardTitle className="text-lg sm:text-xl">Podsumowanie</CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-3 text-sm sm:text-base">
+                <div className="flex justify-between">
+                  <span className="text-muted-foreground">Wartość netto:</span>
+                  <span className="font-medium">{formatCurrency(totals.net, state.invoice?.currency || "PLN")}</span>
+                </div>
+                {!state.invoice?.fakturaBezVAT && state.invoice?.vat !== false && (
+                  <div className="flex justify-between">
+                    <span className="text-muted-foreground">Podatek VAT:</span>
+                    <span className="font-medium">{formatCurrency(totals.vat, state.invoice?.currency || "PLN")}</span>
+                  </div>
+                )}
+                <div className="flex justify-between pt-2 border-t">
+                  <span className="font-semibold">Wartość brutto:</span>
+                  <span className="font-semibold">{formatCurrency(totals.gross, state.invoice?.currency || "PLN")}</span>
+                </div>
+              </CardContent>
+            </Card>
+
+            <InvoicePaymentCard
+              invoice={{
+                issueDate: state.invoice?.issue_date,
+                dueDate: state.invoice?.due_date,
+                sellDate: state.invoice?.sell_date,
+                paymentMethod: state.invoice?.payment_method,
+                isPaid: state.invoice?.is_paid,
+                currency: state.invoice?.currency || "PLN",
+              }}
+            />
+          </div>
+
+          {state.invoice?.comments && (
+            <Card className="shadow-none border border-gray-200 dark:border-gray-700">
+              <CardHeader className="pb-3">
+                <CardTitle className="text-lg sm:text-xl">Uwagi</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <p className="text-sm sm:text-base text-muted-foreground whitespace-pre-line">
+                  {state.invoice.comments}
+                </p>
+              </CardContent>
+            </Card>
+          )}
+        </div>
+  </div>
+
+  {invoiceForViewer && (
+    <InvoicePDFViewer
+      invoice={invoiceForViewer}
+      businessProfile={businessProfileForViewer ?? undefined}
+      customer={customerForViewer ?? undefined}
+      isOpen={isViewerOpen}
+      onClose={() => setIsViewerOpen(false)}
+    />
+  )}
+  </div>
+  </div>
+);
 };
 
 export default ShareDocuments;
