@@ -18,7 +18,12 @@ import {
   Calculator,
   FileText,
   CreditCard,
-  Shield
+  Shield,
+  TrendingUp,
+  DollarSign,
+  Scale,
+  Briefcase,
+  Wallet
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import {
@@ -68,35 +73,125 @@ const AppSidebar = () => {
     className?: string;
   }
 
-  // Dashboard item
-  const dashboardItem: SidebarItem = { title: "Dashboard", path: "/dashboard", icon: BarChart };
+  interface SidebarSection {
+    label: string;
+    subtitle?: string;
+    items: SidebarItem[];
+    showForJdg?: boolean;
+    showForSpoolka?: boolean;
+  }
 
-  // Finanse group
-  const fakturyItem: SidebarItem = { title: "Faktury", path: "/income", icon: FileText, className: "lg:hidden" };
-  const wydatkiItem: SidebarItem = { title: "Wydatki", path: "/expense", icon: CreditCard, className: "lg:hidden" };
-  const bankItem: SidebarItem = { title: "Bankowość", path: bankPath, icon: Banknote };
-  const accountingItem: SidebarItem = { title: "Księgowość", path: "/accounting", icon: Calculator };
-
-  // Zarządzanie group
-  const clientsItem = { title: "Klienci", path: "/customers", icon: Users, className: "lg:hidden" } as SidebarItem;
-  const productsItem = { title: "Produkty", path: "/products", icon: Package, className: "lg:hidden" } as SidebarItem;
   const isSpoolka = selectedProfile?.entityType === 'sp_zoo' || selectedProfile?.entityType === 'sa';
-  const decisionsItem: SidebarItem = { title: "Decyzje", path: "/decisions", icon: Shield };
-  const contractsItem: SidebarItem = { title: isSpoolka ? "Dokumenty" : "Umowy", path: "/contracts", icon: Signature };
-  const employeesItem = { title: "Pracownicy", path: "/employees", icon: UserCheck } as SidebarItem;
-  const inventoryItem: SidebarItem = { title: "Magazyn", path: "/inventory", icon: Boxes, premium: true };
 
-  // KSeF and settings (not in main sidebar groups)
-  const ksefItem: SidebarItem = { title: "KSeF", path: "/ksef", icon: Building, premium: true };
-  const settingsItem = { title: "Ustawienia", path: "/settings", icon: Settings } as SidebarItem;
+  // 1️⃣ OVERVIEW
+  const overviewItem: SidebarItem = { 
+    title: isSpoolka ? "Przegląd" : "Dashboard", 
+    path: "/dashboard", 
+    icon: BarChart 
+  };
 
-  // Finanse sidebar group
-  const finanseItems: SidebarItem[] = [fakturyItem, wydatkiItem, bankItem, accountingItem];
+  // 2️⃣ FINANSE (Money responsibility)
+  const finanseSection: SidebarSection = {
+    label: "FINANSE",
+    subtitle: "Przepływy pieniężne i rozliczenia",
+    showForJdg: true,
+    showForSpoolka: true,
+    items: [
+      { title: "Faktury", path: "/income", icon: FileText, className: "lg:hidden" },
+      { title: "Wydatki", path: "/expense", icon: CreditCard, className: "lg:hidden" },
+      { title: "Bankowość", path: bankPath, icon: Banknote },
+      { title: "Kasa", path: "/accounting/kasa", icon: Wallet },
+      { title: "Analizy", path: "/analytics", icon: TrendingUp },
+    ],
+  };
 
-  // Zarządzanie sidebar group
-  const zarzadzanieItems: SidebarItem[] = [clientsItem, productsItem, decisionsItem, contractsItem, employeesItem, ...(isPremium ? [inventoryItem] : []), settingsItem];
+  // 3️⃣ KSIĘGOWOŚĆ (Tax & compliance - spółka only)
+  const ksiegowoscSection: SidebarSection = {
+    label: "KSIĘGOWOŚĆ",
+    subtitle: "Podatki i sprawozdania",
+    showForJdg: false,
+    showForSpoolka: true,
+    items: [
+      { title: "Panel główny", path: "/accounting", icon: Calculator },
+      { title: "Bilans", path: "/accounting/balance-sheet", icon: TrendingUp },
+      { title: "Kapitał", path: "/accounting/capital-events", icon: DollarSign },
+      { title: "Wspólnicy", path: "/accounting/shareholders", icon: Users },
+    ],
+  };
+
+  // For JDG: simplified accounting
+  const ksiegowoscJdgSection: SidebarSection = {
+    label: "KSIĘGOWOŚĆ",
+    subtitle: "Podatki i rozliczenia",
+    showForJdg: true,
+    showForSpoolka: false,
+    items: [
+      { title: "Księgowość", path: "/accounting", icon: Calculator },
+    ],
+  };
+
+  // 4️⃣ FORMALNOŚCI (Legal spine - spółka only)
+  const formalnosciSection: SidebarSection = {
+    label: "FORMALNOŚCI",
+    subtitle: "Wymagania prawne i dokumenty",
+    showForJdg: false,
+    showForSpoolka: true,
+    items: [
+      { title: "Decyzje", path: "/decisions", icon: Shield },
+      { title: "Dokumenty", path: "/contracts", icon: Signature },
+      { title: "Rejestr spółki", path: "/accounting/company-registry", icon: Building },
+    ],
+  };
+
+  // For JDG: just contracts
+  const formalnosciJdgSection: SidebarSection = {
+    label: "DOKUMENTY",
+    subtitle: "Umowy i pliki",
+    showForJdg: true,
+    showForSpoolka: false,
+    items: [
+      { title: "Umowy", path: "/contracts", icon: Signature },
+    ],
+  };
+
+  // 5️⃣ OPERACJE (Operations - lower priority)
+  const operacjeSection: SidebarSection = {
+    label: "OPERACJE",
+    subtitle: "Zasoby i działania",
+    showForJdg: true,
+    showForSpoolka: true,
+    items: [
+      { title: "Klienci", path: "/customers", icon: Users, className: "lg:hidden" },
+      { title: "Produkty", path: "/products", icon: Package, className: "lg:hidden" },
+      { title: "Pracownicy", path: "/employees", icon: UserCheck },
+      ...(isPremium ? [{ title: "Magazyn", path: "/inventory", icon: Boxes, premium: true }] : []),
+    ],
+  };
+
+  // 6️⃣ SYSTEM (Settings - last)
+  const systemSection: SidebarSection = {
+    label: "SYSTEM",
+    subtitle: undefined,
+    showForJdg: true,
+    showForSpoolka: true,
+    items: [
+      { title: "Ustawienia", path: "/settings", icon: Settings },
+    ],
+  };
+
+  // Build sections based on entity type
+  const sections: SidebarSection[] = [
+    finanseSection,
+    ...(isSpoolka ? [ksiegowoscSection, formalnosciSection] : [ksiegowoscJdgSection, formalnosciJdgSection]),
+    operacjeSection,
+    systemSection,
+  ].filter(section => 
+    isSpoolka ? section.showForSpoolka !== false : section.showForJdg !== false
+  );
 
   // Premium section for non-premium users (upsell)
+  const inventoryItem: SidebarItem = { title: "Magazyn", path: "/inventory", icon: Boxes, premium: true };
+  const ksefItem: SidebarItem = { title: "KSeF", path: "/ksef", icon: Building, premium: true };
   const premiumFeatures: SidebarItem[] = [inventoryItem, ksefItem];
 
   const isActive = (path: string) => {
@@ -197,19 +292,40 @@ const AppSidebar = () => {
           <BusinessProfileSwitcher isCollapsed={isCollapsed} />
         </div>
 
-        {/* Dashboard button */}
+        {/* Spółka Context Header - only for spółki */}
+        {isSpoolka && selectedProfile && !isCollapsed && (
+          <div 
+            className="px-3 py-3 border-b border-sidebar-border cursor-pointer hover:bg-muted/30 transition-colors"
+            onClick={() => navigate('/accounting/company-registry')}
+          >
+            <div className="flex items-start gap-2">
+              <Building className="h-4 w-4 text-sidebar-foreground/60 mt-0.5 flex-shrink-0" />
+              <div className="flex-1 min-w-0">
+                <p className="text-sm font-medium text-sidebar-foreground truncate">
+                  {selectedProfile.name}
+                </p>
+                <div className="flex items-center gap-1.5 mt-1">
+                  <div className="h-1.5 w-1.5 rounded-full bg-green-500" />
+                  <span className="text-[10px] text-sidebar-foreground/60">stabilna</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Overview - always first */}
         <SidebarGroup>
           <SidebarGroupContent>
             <SidebarMenu>
-              <SidebarMenuItem key={dashboardItem.path}>
+              <SidebarMenuItem key={overviewItem.path}>
                 <SidebarMenuButton
                   asChild
-                  isActive={isActive(dashboardItem.path)}
-                  tooltip={isCollapsed ? dashboardItem.title : undefined}
+                  isActive={isActive(overviewItem.path)}
+                  tooltip={isCollapsed ? overviewItem.title : undefined}
                 >
-                  <NavLink to={dashboardItem.path} className={getNavClassName(dashboardItem.path, dashboardItem.premium)}>
-                    <dashboardItem.icon className="h-5 w-5 flex-shrink-0" />
-                    {!isCollapsed && <span className="text-base">{dashboardItem.title}</span>}
+                  <NavLink to={overviewItem.path} className={getNavClassName(overviewItem.path)}>
+                    <overviewItem.icon className="h-5 w-5 flex-shrink-0" />
+                    {!isCollapsed && <span className="text-base">{overviewItem.title}</span>}
                   </NavLink>
                 </SidebarMenuButton>
               </SidebarMenuItem>
@@ -217,52 +333,41 @@ const AppSidebar = () => {
           </SidebarGroupContent>
         </SidebarGroup>
 
-
-        {/* Finanse */}
-        <SidebarGroup>
-          {!isCollapsed && <SidebarGroupLabel className="text-xs font-semibold tracking-wider text-sidebar-foreground/50">FINANSE</SidebarGroupLabel>}
-          <SidebarGroupContent>
-            <SidebarMenu>
-              {finanseItems.map((item) => (
-                <SidebarMenuItem key={item.path} className={item.className}>
-                  <SidebarMenuButton
-                    asChild
-                    isActive={isActive(item.path)}
-                    tooltip={isCollapsed ? item.title : undefined}
-                  >
-                    <NavLink to={item.path} className={getNavClassName(item.path, item.premium)}>
-                      <item.icon className="h-5 w-5 flex-shrink-0" />
-                      {!isCollapsed && <span className="text-base">{item.title}</span>}
-                    </NavLink>
-                  </SidebarMenuButton>
-                </SidebarMenuItem>
-              ))}
-            </SidebarMenu>
-          </SidebarGroupContent>
-        </SidebarGroup>
-
-        {/* Zarządzanie */}
-        <SidebarGroup>
-          {!isCollapsed && <SidebarGroupLabel className="text-xs font-semibold tracking-wider text-sidebar-foreground/50">ZARZĄDZANIE</SidebarGroupLabel>}
-          <SidebarGroupContent>
-            <SidebarMenu>
-              {zarzadzanieItems.map((item) => (
-                <SidebarMenuItem key={item.path} className={item.className}>
-                  <SidebarMenuButton
-                    asChild
-                    isActive={isActive(item.path)}
-                    tooltip={isCollapsed ? item.title : undefined}
-                  >
-                    <NavLink to={item.path} className={getNavClassName(item.path, item.premium)}>
-                      <item.icon className="h-5 w-5 flex-shrink-0" />
-                      {!isCollapsed && <span className="text-base">{item.title}</span>}
-                    </NavLink>
-                  </SidebarMenuButton>
-                </SidebarMenuItem>
-              ))}
-            </SidebarMenu>
-          </SidebarGroupContent>
-        </SidebarGroup>
+        {/* Dynamic sections based on entity type */}
+        {sections.map((section) => (
+          <SidebarGroup key={section.label}>
+            {!isCollapsed && (
+              <div className="px-2 mb-1">
+                <SidebarGroupLabel className="text-xs font-semibold tracking-wider text-sidebar-foreground/50">
+                  {section.label}
+                </SidebarGroupLabel>
+                {section.subtitle && (
+                  <p className="text-[10px] text-sidebar-foreground/40 mt-0.5 leading-tight">
+                    {section.subtitle}
+                  </p>
+                )}
+              </div>
+            )}
+            <SidebarGroupContent>
+              <SidebarMenu>
+                {section.items.map((item) => (
+                  <SidebarMenuItem key={item.path} className={item.className}>
+                    <SidebarMenuButton
+                      asChild
+                      isActive={isActive(item.path)}
+                      tooltip={isCollapsed ? item.title : undefined}
+                    >
+                      <NavLink to={item.path} className={getNavClassName(item.path, item.premium)}>
+                        <item.icon className="h-5 w-5 flex-shrink-0" />
+                        {!isCollapsed && <span className="text-base">{item.title}</span>}
+                      </NavLink>
+                    </SidebarMenuButton>
+                  </SidebarMenuItem>
+                ))}
+              </SidebarMenu>
+            </SidebarGroupContent>
+          </SidebarGroup>
+        ))}
 
         {/* Upsell Premium Section (visible only for non-premium users) */}
         {!isPremium && (

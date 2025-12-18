@@ -147,13 +147,11 @@ const Shareholders = () => {
         </div>
         
         {/* Header */}
-        <div className="flex items-center justify-between">
-          <div className="space-y-2">
-            <h1 className="text-2xl font-bold tracking-tight">
-              Wspólnicy
-            </h1>
-            <p className="text-muted-foreground text-sm">
-              Zarządzaj wspólnikami i strukturą kapitałową
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+          <div>
+            <h1 className="text-2xl md:text-3xl font-bold">Wspólnicy</h1>
+            <p className="text-sm text-muted-foreground mt-1">
+              Struktura kapitałowa spółki i dane wspólników
             </p>
           </div>
           <Button onClick={() => handleOpenDialog()}>

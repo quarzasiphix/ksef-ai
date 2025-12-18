@@ -53,6 +53,7 @@ import ContractDetails from '@/pages/contracts/ContractDetails';
 import DecisionsHub from '@/pages/decisions/DecisionsHub';
 import DecisionEdit from '@/pages/decisions/DecisionEdit';
 import DecisionDetails from '@/pages/decisions/DecisionDetails';
+import Analytics from '@/pages/Analytics';
 import BankAccounts from "@/pages/bank/BankAccounts";
 import Index from "./pages/Index";
 import SharedLinksPage from "./pages/SharedLinks";
@@ -184,11 +185,6 @@ const App = () => {
                     <Home />
                   </PublicRoute>
                 } />
-                <Route path="/dashboard" element={
-                  <ProtectedRoute>
-                    <Dashboard />
-                  </ProtectedRoute>
-                } />
                 <Route path="/auth/login" element={
                   <PublicRoute>
                     <Login />
@@ -206,13 +202,13 @@ const App = () => {
                 {/* Protected routes */}
                 <Route path="/dashboard" element={
                   <ProtectedRoute>
-                    <SidebarProvider>
-                      <BusinessProfileProvider>
-                        <Layout>
-                          <Dashboard />
-                        </Layout>
-                      </BusinessProfileProvider>
-                    </SidebarProvider>
+                    <Dashboard />
+                  </ProtectedRoute>
+                } />
+
+                <Route path="/analytics" element={
+                  <ProtectedRoute>
+                    <Analytics />
                   </ProtectedRoute>
                 } />
                 <Route path="/bank" element={

@@ -5,12 +5,14 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
+import { useBusinessProfile } from '@/context/BusinessProfileContext';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Shield } from 'lucide-react';
 import { getDecision, getDecisions, updateDecision } from '@/integrations/supabase/repositories/decisionsRepository';
 import {
   DECISION_CATEGORY_LABELS,
@@ -41,6 +43,10 @@ const DecisionEdit: React.FC = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
+  const { selectedProfileId, profiles } = useBusinessProfile();
+
+  const selectedProfile = profiles.find(p => p.id === selectedProfileId);
+  const isSpoolka = selectedProfile?.entityType === 'sp_zoo' || selectedProfile?.entityType === 'sa';
 
   const { data: decision, isLoading } = useQuery({
     queryKey: ['decision', id],
@@ -67,6 +73,31 @@ const DecisionEdit: React.FC = () => {
       status: 'active',
     },
   });
+
+  if (!selectedProfile) {
+    return (
+      <div className="p-6">
+        <p className="text-muted-foreground">Wybierz profil biznesowy</p>
+      </div>
+    );
+  }
+
+  if (!isSpoolka) {
+    return (
+      <div className="p-6">
+        <div className="text-center py-12">
+          <Shield className="mx-auto h-16 w-16 text-muted-foreground mb-4 opacity-50" />
+          <h2 className="text-2xl font-bold mb-2">Decyzje dostępne tylko dla Spółek</h2>
+          <p className="text-muted-foreground mb-6">
+            Ta sekcja jest dostępna tylko dla Spółek z o.o. i S.A.
+          </p>
+          <Button variant="outline" onClick={() => navigate('/accounting')}>
+            Przejdź do księgowości
+          </Button>
+        </div>
+      </div>
+    );
+  }
 
   const decisionType = form.watch('decision_type');
 

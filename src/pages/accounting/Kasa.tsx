@@ -481,12 +481,9 @@ const Kasa = () => {
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold tracking-tight flex items-center gap-2">
-            <Wallet className="h-6 w-6" />
-            Kasa
-          </h1>
-          <p className="text-muted-foreground text-sm">
-            Zarządzaj gotówką i dokumentami kasowymi KP/KW
+          <h1 className="text-2xl md:text-3xl font-bold">Kasa</h1>
+          <p className="text-sm text-muted-foreground mt-1">
+            Zarządzaj gotówką spółki (wpłaty i wypłaty fizycznej gotówki)
           </p>
         </div>
         <div className="flex items-center gap-2">

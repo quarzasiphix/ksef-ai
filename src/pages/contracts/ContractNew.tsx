@@ -57,7 +57,7 @@ const formSchema = z.object({
     "other",
   ]).default("general"),
   folderId: z.string().optional(),
-  decisionId: z.string().min(1, "Decyzja autoryzująca jest wymagana"),
+  decisionId: z.string().optional().default(""),
 });
 
 type FormValues = z.infer<typeof formSchema>;
@@ -67,7 +67,7 @@ const ContractNew: React.FC = () => {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const { id: contractId } = useParams<{ id?: string }>();
-  const { selectedProfileId } = useBusinessProfile();
+  const { selectedProfileId, profiles } = useBusinessProfile();
   const [folderTree, setFolderTree] = React.useState<FolderTreeNode[]>([]);
 
   const form = useForm<FormValues>({
@@ -95,6 +95,9 @@ const ContractNew: React.FC = () => {
   const contractType = useWatch({ control: form.control, name: "contractType" });
   const folderId = useWatch({ control: form.control, name: "folderId" });
   const decisionId = useWatch({ control: form.control, name: "decisionId" });
+
+  const selectedProfile = profiles?.find((p) => p.id === businessProfileId);
+  const isSpoolka = selectedProfile?.entityType === 'sp_zoo' || selectedProfile?.entityType === 'sa';
 
   const NO_FOLDER_VALUE = "__no_folder__";
 
@@ -197,7 +200,7 @@ const ContractNew: React.FC = () => {
         is_transactional: data.documentCategory === 'transactional_payout' || data.documentCategory === 'transactional_payin',
         contract_type: data.contractType,
         folder_id: data.folderId ? data.folderId : undefined,
-        decision_id: data.decisionId,
+        decision_id: isSpoolka && data.decisionId ? data.decisionId : undefined,
       };
       if (contractId) {
         // update
@@ -222,6 +225,14 @@ const ContractNew: React.FC = () => {
   });
 
   const onSubmit = (values: FormValues) => {
+    if (isSpoolka && !values.decisionId) {
+      form.setError('decisionId', {
+        type: 'manual',
+        message: 'Decyzja autoryzująca jest wymagana',
+      });
+      return;
+    }
+    form.clearErrors('decisionId');
     mutation.mutate(values);
   };
 
@@ -369,8 +380,8 @@ const ContractNew: React.FC = () => {
               </div>
             </div>
 
-            {/* Decision Picker - Required for all contracts */}
-            {businessProfileId && (
+            {/* Decision Picker - only for spółka */}
+            {isSpoolka && businessProfileId && (
               <DecisionPicker
                 businessProfileId={businessProfileId}
                 value={decisionId}

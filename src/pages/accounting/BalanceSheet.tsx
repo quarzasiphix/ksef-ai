@@ -103,20 +103,20 @@ const BalanceSheet = () => {
 
   return (
     <div className="space-y-6 pb-20 px-4 md:px-6">
-        {/* Breadcrumbs */}
-        <div className="mb-4">
-          <Breadcrumbs />
-        </div>
-        
-        {/* Header */}
-        <div className="space-y-2">
-          <h1 className="text-2xl font-bold tracking-tight">
-            Bilans
-          </h1>
-          <p className="text-muted-foreground text-sm">
-            Zestawienie aktywów, pasywów i kapitału własnego
+      {/* Breadcrumbs */}
+      <div className="mb-4">
+        <Breadcrumbs />
+      </div>
+
+      {/* Header */}
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+        <div>
+          <h1 className="text-2xl md:text-3xl font-bold">Bilans</h1>
+          <p className="text-sm text-muted-foreground mt-1">
+            Zestawienie aktywów i pasywów spółki na wybrany dzień
           </p>
         </div>
+      </div>
 
       {/* Controls */}
       <Card>

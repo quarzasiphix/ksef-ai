@@ -70,15 +70,23 @@ export const TaxReportsCard: React.FC<TaxReportsCardProps> = ({ monthIndex, repo
   };
 
   return (
-    <Card>
+    <Card className="border-2">
       <CardHeader>
         <CardTitle className="text-lg">Obowiązki podatkowe – {monthNamesFull[monthIndex]}</CardTitle>
       </CardHeader>
       <CardContent className="space-y-3">
         {reports.length === 0 && zusTypes.length === 0 && (
-          <div className="text-center py-6 text-muted-foreground">
-            <p className="text-sm">Brak obowiązków podatkowych w tym miesiącu</p>
-            <p className="text-xs mt-1">Dla Spółki z o.o. bez pracowników obowiązuje tylko roczny CIT-8 (termin: marzec)</p>
+          <div className="py-6 space-y-3">
+            <div className="flex items-start gap-3">
+              <CheckCircle className="h-5 w-5 text-green-600 mt-0.5 flex-shrink-0" />
+              <div>
+                <p className="font-medium text-foreground">Brak obowiązków podatkowych</p>
+                <p className="text-sm text-muted-foreground mt-1">Ten miesiąc nie wymaga żadnych działań</p>
+              </div>
+            </div>
+            <div className="pl-8 text-xs text-muted-foreground border-l-2 border-muted ml-2">
+              <p>CIT-8: termin w marcu</p>
+            </div>
           </div>
         )}
         {reports.map((rep) => {

@@ -70,6 +70,7 @@ const DecisionsHub = () => {
   const { selectedProfileId, profiles } = useBusinessProfile();
 
   const selectedProfile = profiles.find(p => p.id === selectedProfileId);
+  const isSpoolka = selectedProfile?.entityType === 'sp_zoo' || selectedProfile?.entityType === 'sa';
 
   const { data: decisions = [], isLoading } = useQuery({
     queryKey: ['decisions', selectedProfileId],
@@ -110,6 +111,23 @@ const DecisionsHub = () => {
     );
   }
 
+  if (!isSpoolka) {
+    return (
+      <div className="p-6">
+        <div className="text-center py-12">
+          <Shield className="mx-auto h-16 w-16 text-muted-foreground mb-4 opacity-50" />
+          <h2 className="text-2xl font-bold mb-2">Decyzje dostępne tylko dla Spółek</h2>
+          <p className="text-muted-foreground mb-6">
+            Ta sekcja jest dostępna tylko dla Spółek z o.o. i S.A.
+          </p>
+          <Button variant="outline" onClick={() => navigate('/accounting')}>
+            Przejdź do księgowości
+          </Button>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="p-6 space-y-6">
       {/* Header */}
@@ -117,7 +135,7 @@ const DecisionsHub = () => {
         <div>
           <h1 className="text-2xl font-bold">Decyzje</h1>
           <p className="text-sm text-muted-foreground mt-1">
-            Wszystko w porządku, ale te 2 decyzje warto sprawdzić
+            Decyzje wspólników i zarządu wymagane do legalnego działania spółki
           </p>
         </div>
         <Button onClick={() => navigate('/decisions/new')} size="sm">
@@ -130,10 +148,11 @@ const DecisionsHub = () => {
       {/* Strategic Decisions */}
       <div>
         <div className="flex items-center gap-2 mb-3">
+          <Users className="h-4 w-4 text-purple-600" />
           <h2 className="text-base font-semibold">Decyzje strategiczne <span className="text-muted-foreground font-normal">(uchwały wspólników)</span></h2>
           <Badge variant="secondary" className="text-xs">{strategicDecisions.length}</Badge>
         </div>
-        <div className="border rounded-lg divide-y">
+        <div className="border rounded-lg divide-y border-l-4 border-l-purple-200">
           {strategicDecisions.map(decision => (
             <div 
               key={decision.id} 
@@ -175,10 +194,11 @@ const DecisionsHub = () => {
       {/* Operational Decisions */}
       <div>
         <div className="flex items-center gap-2 mb-3">
+          <Briefcase className="h-4 w-4 text-blue-600" />
           <h2 className="text-base font-semibold">Decyzje operacyjne <span className="text-muted-foreground font-normal">(uchwały zarządu)</span></h2>
           <Badge variant="secondary" className="text-xs">{operationalDecisions.length}</Badge>
         </div>
-        <div className="border rounded-lg divide-y">
+        <div className="border rounded-lg divide-y border-l-4 border-l-blue-200">
           {operationalDecisions.map(decision => {
             const parent = decision.parent_decision_id ? decisions.find((d) => d.id === decision.parent_decision_id) : null;
             return (

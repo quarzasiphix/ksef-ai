@@ -166,13 +166,13 @@ export const AccountingSidebar: React.FC<AccountingSidebarProps> = ({
 
   return (
     <div className={cn("flex flex-col h-full module-sidebar", className)}>
-      <div className={cn("border-b border-module-sidebar-border", collapsed ? "p-2" : "p-3")}>
+      <div className={cn("border-b border-module-sidebar-border", collapsed ? "p-2" : "p-3 pl-4")}>
         <div className={cn("flex items-start", collapsed ? "justify-center" : "justify-between")}
         >
           {!collapsed && (
             <div>
-              <h2 className="font-semibold text-base">Księgowość Spółki</h2>
-              <p className="text-xs text-muted-foreground mt-0.5">Pełna księgowość sp. z o.o.</p>
+              <h2 className="font-semibold text-sm">Księgowość Spółki</h2>
+              <p className="text-xs text-muted-foreground/70 mt-0.5">Pełna księgowość sp. z o.o.</p>
             </div>
           )}
           {onToggleCollapsed && (
@@ -190,11 +190,11 @@ export const AccountingSidebar: React.FC<AccountingSidebarProps> = ({
       </div>
       
       <ScrollArea className="flex-1">
-        <nav className="p-2">
+        <nav className="p-2 pl-3">
           {spolkaNavSections.map((section, sectionIdx) => (
             <div key={section.title}>
               {!collapsed && (
-                <div className="module-sidebar-section-header">
+                <div className="module-sidebar-section-header opacity-60">
                   {section.title}
                 </div>
               )}
@@ -209,20 +209,20 @@ export const AccountingSidebar: React.FC<AccountingSidebarProps> = ({
                       className={cn(
                         "module-sidebar-item",
                         collapsed
-                          ? "w-full justify-center h-9 px-0"
-                          : "w-full justify-start h-9 px-2",
+                          ? "w-full justify-center h-8 px-0"
+                          : "w-full justify-start h-8 px-2",
                         "hover:bg-muted/40 hover:text-foreground",
                         isActive && "active"
                       )}
                       onClick={() => handleNavigation(item.href)}
                       title={collapsed ? item.label : undefined}
                     >
-                      <div className={cn(collapsed ? "" : "mr-2.5", "opacity-70")}>
+                      <div className={cn(collapsed ? "" : "mr-2", "opacity-60")}>
                         {item.icon}
                       </div>
                       {!collapsed && (
                         <div className="flex flex-col items-start text-left">
-                          <span className="text-sm leading-tight">{item.label}</span>
+                          <span className="text-xs leading-tight">{item.label}</span>
                         </div>
                       )}
                     </Button>

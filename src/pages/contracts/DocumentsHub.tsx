@@ -47,6 +47,7 @@ import type { Contract } from '@/types';
 import { getDecisions } from '@/integrations/supabase/repositories/decisionsRepository';
 import type { Decision } from '@/types/decisions';
 import { Breadcrumbs } from '@/components/seo/Breadcrumbs';
+import NextActionPanel from '@/components/accounting/NextActionPanel';
 
 type DocumentView = 'all' | 'transactional_payout' | 'transactional_payin' | 'informational' | 'generated' | 'uploaded' | 'decisions';
 
@@ -54,6 +55,7 @@ const DocumentsHub = () => {
   const navigate = useNavigate();
   const { profiles, selectedProfileId } = useBusinessProfile();
   const selectedProfile = profiles?.find(p => p.id === selectedProfileId);
+  const isSpoolka = selectedProfile?.entityType === 'sp_zoo' || selectedProfile?.entityType === 'sa';
 
   const [loading, setLoading] = useState(true);
   const [view, setView] = useState<DocumentView>('all');
@@ -381,21 +383,72 @@ const DocumentsHub = () => {
     }
   };
 
+  // Generate smart next actions for documents
+  const getDocumentNextActions = () => {
+    const actions = [];
+
+    // Check for missing critical documents (spółka only)
+    if (isSpoolka && contracts.length === 0) {
+      actions.push({
+        id: 'first-contract',
+        title: 'Dodaj pierwszą umowę',
+        description: 'Każda transakcja powinna mieć umowę. Zacznij od umowy z kluczowym kontrahentem.',
+        href: '/contracts/new',
+        variant: 'info' as const,
+        dismissible: true,
+      });
+    }
+
+    // Check for missing decisions link (spółka only)
+    if (isSpoolka && decisions.length === 0) {
+      actions.push({
+        id: 'add-decision',
+        title: 'Brak decyzji autoryzujących',
+        description: 'Umowy wymagają decyzji zarządu lub wspólników. Utwórz pierwszą decyzję.',
+        href: '/decisions',
+        variant: 'warning' as const,
+        dismissible: true,
+      });
+    }
+
+    // Suggest organizing if many unorganized docs
+    if (uploadedDocs.length > 5 && folderTree.length === 0) {
+      actions.push({
+        id: 'create-folders',
+        title: 'Uporządkuj dokumenty w foldery',
+        description: `Masz ${uploadedDocs.length} dokumentów. Utwórz foldery dla lepszej organizacji.`,
+        action: () => setCreateFolderDialogOpen(true),
+        variant: 'info' as const,
+        dismissible: true,
+      });
+    }
+
+    // Suggest uploading if no uploaded docs
+    if (uploadedDocs.length === 0 && contracts.length > 0) {
+      actions.push({
+        id: 'upload-first',
+        title: 'Prześlij skany lub pliki PDF',
+        description: 'Przechowuj oryginały dokumentów w systemie dla łatwego dostępu.',
+        action: () => setUploadDialogOpen(true),
+        variant: 'info' as const,
+        dismissible: true,
+      });
+    }
+
+    return actions;
+  };
+
+  const documentNextActions = getDocumentNextActions();
+
   if (!selectedProfile) {
     return (
-      <div className="p-0">
+      <div className="p-6">
         <p className="text-muted-foreground">Wybierz profil biznesowy</p>
       </div>
     );
   }
 
-  const isSpoolka = selectedProfile.entityType === 'sp_zoo' || selectedProfile.entityType === 'sa';
-
-  const SidebarNavButton = ({
-    active,
-    onClick,
-    children,
-  }: {
+  const SidebarNavButton = ({ active, onClick, children }: {
     active?: boolean;
     onClick: () => void;
     children: React.ReactNode;
@@ -859,75 +912,6 @@ const DocumentsHub = () => {
                 </div>
               </div>
 
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2">
-                <Button
-                  variant={view === 'all' ? 'secondary' : 'outline'}
-                  className="justify-between h-auto py-3"
-                  onClick={() => setView('all')}
-                >
-                  <span className="flex items-center gap-2">
-                    <FileText className="h-4 w-4" />
-                    Wszystkie
-                  </span>
-                  <Badge variant="outline">{scopedTotalCount}</Badge>
-                </Button>
-                <Button
-                  variant={view === 'transactional_payout' ? 'secondary' : 'outline'}
-                  className="justify-between h-auto py-3"
-                  onClick={() => setView('transactional_payout')}
-                >
-                  <span className="flex items-center gap-2">
-                    <ArrowUpCircle className="h-4 w-4 text-red-600" />
-                    Wydatki
-                  </span>
-                  <Badge variant="outline">{transactionalPayoutContracts.length}</Badge>
-                </Button>
-                <Button
-                  variant={view === 'transactional_payin' ? 'secondary' : 'outline'}
-                  className="justify-between h-auto py-3"
-                  onClick={() => setView('transactional_payin')}
-                >
-                  <span className="flex items-center gap-2">
-                    <ArrowDownCircle className="h-4 w-4 text-green-600" />
-                    Przychody
-                  </span>
-                  <Badge variant="outline">{transactionalPayinContracts.length}</Badge>
-                </Button>
-                <Button
-                  variant={view === 'informational' ? 'secondary' : 'outline'}
-                  className="justify-between h-auto py-3"
-                  onClick={() => setView('informational')}
-                >
-                  <span className="flex items-center gap-2">
-                    <Info className="h-4 w-4" />
-                    Informacyjne
-                  </span>
-                  <Badge variant="outline">{informationalContracts.length}</Badge>
-                </Button>
-                <Button
-                  variant={view === 'generated' ? 'secondary' : 'outline'}
-                  className="justify-between h-auto py-3"
-                  onClick={() => setView('generated')}
-                >
-                  <span className="flex items-center gap-2">
-                    <FileCheck className="h-4 w-4" />
-                    Wygenerowane
-                  </span>
-                  <Badge variant="outline">{scopedGeneratedDocs.length}</Badge>
-                </Button>
-                <Button
-                  variant={view === 'uploaded' ? 'secondary' : 'outline'}
-                  className="justify-between h-auto py-3"
-                  onClick={() => setView('uploaded')}
-                >
-                  <span className="flex items-center gap-2">
-                    <Upload className="h-4 w-4" />
-                    Pliki
-                  </span>
-                  <Badge variant="outline">{scopedUploadedDocs.length}</Badge>
-                </Button>
-              </div>
-
               <div className="flex gap-2">
                 <div className="relative flex-1">
                   <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
@@ -944,6 +928,11 @@ const DocumentsHub = () => {
               </div>
             </CardContent>
           </Card>
+
+          {/* Next Action Panel - contextual guidance */}
+          {!loading && documentNextActions.length > 0 && (
+            <NextActionPanel actions={documentNextActions} />
+          )}
 
           {/* Document list */}
           {loading ? (

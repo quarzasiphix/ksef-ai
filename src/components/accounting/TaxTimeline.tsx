@@ -28,11 +28,11 @@ export const TaxTimeline: React.FC<TaxTimelineProps> = ({ year = new Date().getF
 
   return (
     <div className="w-full select-none">
-      {/* Year label */}
-      <div className="text-center font-semibold mb-2">{year}</div>
+      {/* Filter label */}
+      <div className="text-xs text-muted-foreground mb-2">Okres rozliczeniowy</div>
 
-      {/* Timeline */}
-      <div className="flex items-end relative">
+      {/* Timeline - demoted, filter-like */}
+      <div className="flex items-end relative opacity-70 hover:opacity-100 transition-opacity">
         {monthNames.map((name, idx) => {
           const isQuarterEnd = (idx + 1) % 3 === 0;
           const isSelected = idx === selectedMonth;
@@ -47,16 +47,16 @@ export const TaxTimeline: React.FC<TaxTimelineProps> = ({ year = new Date().getF
               )}
               onClick={() => onMonthSelect(idx)}
             >
-              {/* Tick */}
+              {/* Tick - reduced height */}
               <div
                 className={cn(
                   "w-0.5",
-                  isQuarterEnd ? "h-8" : "h-4",
+                  isQuarterEnd ? "h-5" : "h-3",
                   isSelected
-                    ? "bg-blue-600 h-9"
+                    ? "bg-blue-600 h-6"
                     : isPastOrCurrent
-                    ? "bg-blue-500 group-hover:bg-blue-600"
-                    : "bg-muted"
+                    ? "bg-muted-foreground/40 group-hover:bg-blue-500"
+                    : "bg-muted-foreground/20"
                 )}
               />
               {/* Label */}

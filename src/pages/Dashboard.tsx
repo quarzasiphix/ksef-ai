@@ -36,6 +36,7 @@ import AccountOnboardingWidget from '@/components/welcome/AccountOnboardingWidge
 import TaxReportsCard, { TaxReport } from '@/components/accounting/TaxReportsCard';
 import { getInvoiceValueInPLN } from "@/lib/invoice-utils";
 import { toast } from "sonner";
+import NextActionPanel from "@/components/accounting/NextActionPanel";
 
 const Dashboard = () => {
   const [monthlySummaries, setMonthlySummaries] = useState<any[]>([]);
@@ -46,6 +47,13 @@ const Dashboard = () => {
   const { isPremium, openPremiumDialog } = useAuth();
   
   const isLoading = isLoadingInvoices || isLoadingExpenses || isLoadingProfiles;
+
+  const selectedProfile = profiles?.find((p) => p.id === selectedProfileId);
+  const isSpoolka = selectedProfile?.entityType === 'sp_zoo' || selectedProfile?.entityType === 'sa';
+
+  const missingSpoolkaBasics =
+    isSpoolka &&
+    (!selectedProfile?.krs_number || !selectedProfile?.share_capital);
   
   // Prevent flicker: mark when all data finished first load
   const [dataReady, setDataReady] = useState(false);
@@ -222,26 +230,28 @@ const Dashboard = () => {
   const { user } = useAuth();
 
   return (
-    <div className="space-y-8 max-w-full pb-20">
+    <div className="space-y-6 pb-20 px-4 md:px-6">
       {showOnboardingWidget && (
         <AccountOnboardingWidget mode="inline" />
       )}
       
-      {/* Header - Premium styling */}
-      <div className="flex items-center justify-between">
+      {/* Header */}
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
-          <h1 className={`text-3xl font-bold ${isPremium ? 'bg-gradient-to-r from-amber-400 via-yellow-500 to-amber-600 bg-clip-text text-transparent' : ''}`}>
-            Dashboard
-            {isPremium && <Crown className="inline ml-2 h-6 w-6 text-amber-500" />}
+          <h1 className="text-2xl md:text-3xl font-bold">
+            {isSpoolka ? 'Przegląd' : 'Dashboard'}
           </h1>
-          <p className="text-muted-foreground mt-1">
-            {isPremium ? 'Profesjonalny przegląd Twojej działalności' : 'Przegląd Twojej działalności'}
+          <p className="text-sm text-muted-foreground mt-1">
+            {isSpoolka
+              ? 'Czy firma jest OK? Najważniejsze wskaźniki i następne kroki'
+              : 'Przegląd Twojej działalności'}
           </p>
         </div>
         {!isPremium && (
           <Button 
             onClick={openPremiumDialog}
-            className="bg-gradient-to-r from-amber-500 to-orange-600 hover:from-amber-600 hover:to-orange-700 text-white"
+            size="sm"
+            className="bg-gradient-to-r from-amber-500 to-orange-600 hover:from-amber-600 hover:to-orange-700 text-white w-full sm:w-auto"
           >
             <Crown className="mr-2 h-4 w-4" />
             Kup Premium
@@ -249,298 +259,287 @@ const Dashboard = () => {
         )}
       </div>
 
-      {/* Premium Banner */}
-      {!isPremium && (
-        <Card className="border-amber-200 bg-gradient-to-r from-amber-50 to-orange-50">
-          <CardContent className="p-6">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center space-x-4">
-                <div className="h-12 w-12 rounded-lg bg-gradient-to-br from-amber-400 to-orange-500 flex items-center justify-center">
-                  <Crown className="h-6 w-6 text-white" />
+      {isSpoolka && (
+        <Card>
+          <CardContent className="p-6 space-y-4">
+            <div className="flex items-start justify-between gap-4">
+              <div className="min-w-0">
+                <p className="text-sm font-semibold">Status spółki</p>
+                <p className="text-sm text-muted-foreground mt-1">
+                  Szybki przegląd: formalności, podatki i pieniądze
+                </p>
+              </div>
+              <div className="flex items-center gap-2 text-xs text-muted-foreground shrink-0">
+                <div className={`h-2 w-2 rounded-full ${missingSpoolkaBasics || unpaidInvoices > 0 ? 'bg-amber-500' : 'bg-green-500'}`} />
+                <span>{missingSpoolkaBasics || unpaidInvoices > 0 ? 'do sprawdzenia' : 'stabilna'}</span>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+              <div className="rounded-lg border p-4 bg-muted/20">
+                <div className="flex items-center gap-2">
+                  <Shield className="h-4 w-4 text-muted-foreground" />
+                  <p className="text-sm font-medium">Formalności</p>
                 </div>
-                <div>
-                  <h3 className="text-lg font-semibold text-amber-900">Odblokuj Pełną Funkcjonalność</h3>
-                  <p className="text-amber-700">Księgowość • JPK-V7M • KSeF • Zarządzanie ZUS</p>
+                <p className="text-xs text-muted-foreground mt-1">
+                  {missingSpoolkaBasics
+                    ? 'Uzupełnij podstawowe dane spółki'
+                    : 'Dokumenty i decyzje pod kontrolą'}
+                </p>
+                <div className="mt-3">
+                  <Button asChild variant="outline" size="sm">
+                    <Link to="/accounting/company-registry">Rejestr spółki</Link>
+                  </Button>
                 </div>
               </div>
-              <Button 
-                onClick={openPremiumDialog}
-                className="bg-gradient-to-r from-amber-500 to-orange-600 hover:from-amber-600 hover:to-orange-700"
-              >
-                Rozpocznij <ArrowRight className="ml-2 h-4 w-4" />
-              </Button>
+
+              <div className="rounded-lg border p-4 bg-muted/20">
+                <div className="flex items-center gap-2">
+                  <Calendar className="h-4 w-4 text-muted-foreground" />
+                  <p className="text-sm font-medium">Podatki</p>
+                </div>
+                <p className="text-xs text-muted-foreground mt-1">
+                  Terminy i deklaracje w bieżącym miesiącu
+                </p>
+                <div className="mt-3">
+                  <Button asChild variant="outline" size="sm">
+                    <Link to="/accounting">Przejdź do księgowości</Link>
+                  </Button>
+                </div>
+              </div>
+
+              <div className="rounded-lg border p-4 bg-muted/20">
+                <div className="flex items-center gap-2">
+                  <Banknote className="h-4 w-4 text-muted-foreground" />
+                  <p className="text-sm font-medium">Pieniądze</p>
+                </div>
+                <p className="text-xs text-muted-foreground mt-1">
+                  {unpaidInvoices > 0
+                    ? `${unpaidInvoices} niezapłaconych faktur`
+                    : 'Brak zaległych płatności'}
+                </p>
+                <div className="mt-3">
+                  <Button asChild variant="outline" size="sm">
+                    <Link to="/income">Faktury</Link>
+                  </Button>
+                </div>
+              </div>
             </div>
+
+            <NextActionPanel
+              actions={[
+                ...(missingSpoolkaBasics
+                  ? [
+                      {
+                        id: 'complete-company',
+                        title: 'Uzupełnij dane spółki',
+                        description: 'KRS i kapitał zakładowy są potrzebne do formalności i dokumentów.',
+                        href: '/accounting/company-registry',
+                        variant: 'warning' as const,
+                        dismissible: true,
+                      },
+                    ]
+                  : []),
+                ...(unpaidInvoices > 0
+                  ? [
+                      {
+                        id: 'unpaid-invoices',
+                        title: 'Sprawdź niezapłacone faktury',
+                        description: 'Zadbaj o płynność: przypomnij kontrahentom lub oznacz płatności.',
+                        href: '/income',
+                        variant: 'info' as const,
+                        dismissible: true,
+                      },
+                    ]
+                  : []),
+                {
+                  id: 'documents-hub',
+                  title: 'Uporządkuj dokumenty spółki',
+                  description: 'Umowy, uchwały i pliki w jednym miejscu — łatwiej znaleźć w razie kontroli.',
+                  href: '/contracts',
+                  variant: 'info' as const,
+                  dismissible: true,
+                },
+              ]}
+            />
           </CardContent>
         </Card>
       )}
 
-      {/* Quick Actions */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        {quickActions.map((action) => (
-          <Link key={action.path} to={action.path}>
-            <Card className={`hover:shadow-lg transition-all duration-200 hover:scale-105 cursor-pointer ${isPremium ? 'border-amber-200 hover:border-amber-300' : ''}`}>
-              <CardContent className="p-6">
-                <div className="flex items-center space-x-4">
-                  <div className={`h-12 w-12 rounded-lg ${action.color} flex items-center justify-center`}>
-                    <action.icon className="h-6 w-6 text-white" />
-                  </div>
-                  <div>
-                    <h3 className="font-semibold text-lg">{action.title}</h3>
-                    <p className="text-muted-foreground">{action.description}</p>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-          </Link>
-        ))}
-      </div>
 
-      {/* Stats Overview */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-        <Card>
-          <CardContent className="p-6">
-            <div className="flex items-center space-x-2">
-              <FileText className={`h-5 w-5 ${isPremium ? 'text-amber-600' : 'text-blue-500'}`} />
-              <div>
-                <p className="text-sm font-medium text-muted-foreground">Faktury</p>
-                <p className="text-2xl font-bold">{totalInvoices}</p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardContent className="p-6">
-            <div className="flex items-center space-x-2">
-              <TrendingUp className="h-5 w-5 text-amber-500" />
-              <div>
-                <p className="text-sm font-medium text-muted-foreground">Niezapłacone</p>
-                <p className="text-2xl font-bold text-amber-600">{unpaidInvoices}</p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardContent className="p-6">
-            <div className="flex items-center space-x-2">
-              <CreditCard className={`h-5 w-5 ${isPremium ? 'text-amber-600' : 'text-green-500'}`} />
-              <div>
-                <p className="text-sm font-medium text-muted-foreground">Przychody</p>
-                <p className="text-xl font-bold text-green-600">{formatCurrency(totalGross)}</p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardContent className="p-6">
-            <div className="flex items-center space-x-2">
-              <Receipt className={`h-5 w-5 ${isPremium ? 'text-amber-600' : 'text-red-500'}`} />
-              <div>
-                <p className="text-sm font-medium text-muted-foreground">Wydatki</p>
-                <p className="text-xl font-bold text-red-600">{formatCurrency(totalExpenses)}</p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-      </div>
-      {/* Navigation Sections */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-        {/* Management Tools */}
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center space-x-2">
-              <Settings className={`h-5 w-5 ${isPremium ? 'text-amber-600' : ''}`} />
-              <span>Zarządzanie</span>
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-3">
-            {managementLinks.map((link) => (
-              <Link key={link.path} to={link.path}>
-                <div className={`flex items-center space-x-3 p-3 rounded-lg hover:bg-muted transition-colors cursor-pointer ${isPremium ? 'hover:bg-amber-50' : ''}`}>
-                  <link.icon className={`h-5 w-5 ${isPremium ? 'text-amber-600' : 'text-blue-500'}`} />
-                  <div>
-                    <p className="font-medium">{link.title}</p>
-                    <p className="text-sm text-muted-foreground">{link.description}</p>
-                  </div>
-                </div>
-              </Link>
-            ))}
-          </CardContent>
-        </Card>
-
-        {/* Premium Features */}
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center space-x-2">
-              {isPremium ? <Shield className="h-5 w-5 text-amber-500" /> : <Crown className="h-5 w-5 text-amber-500" />}
-              <span>Funkcje {isPremium ? 'Premium' : 'Premium'}</span>
-              {!isPremium && <Star className="h-4 w-4 text-amber-500" />}
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-3">
-            {premiumFeatures.map((feature) => (
-              <div key={feature.path} className="relative">
-                {isPremium ? (
-                  <Link to={feature.path}>
-                    <div className="flex items-center space-x-3 p-3 rounded-lg hover:bg-amber-50 transition-colors cursor-pointer">
-                      <feature.icon className="h-5 w-5 text-amber-500" />
-                      <div>
-                        <p className="font-medium">{feature.title}</p>
-                        <p className="text-sm text-muted-foreground">{feature.description}</p>
-                      </div>
+      {/* Quick Actions - only for non-spółka */}
+      {!isSpoolka && (
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          {quickActions.map((action) => (
+            <Link key={action.path} to={action.path}>
+              <Card className="hover:shadow-md transition-all cursor-pointer">
+                <CardContent className="p-4">
+                  <div className="flex items-center gap-3">
+                    <div className={`h-10 w-10 rounded-lg ${action.color} flex items-center justify-center shrink-0`}>
+                      <action.icon className="h-5 w-5 text-white" />
                     </div>
-                  </Link>
-                ) : (
-                  <div 
-                    className="flex items-center space-x-3 p-3 rounded-lg bg-amber-50 border border-amber-200 cursor-pointer"
-                    onClick={openPremiumDialog}
-                  >
-                    <feature.icon className="h-5 w-5 text-amber-600" />
-                    <div className="flex-1">
-                      <p className="font-medium text-amber-900">{feature.title}</p>
-                      <p className="text-sm text-amber-700">{feature.description}</p>
+                    <div className="min-w-0">
+                      <h3 className="font-semibold text-base">{action.title}</h3>
+                      <p className="text-sm text-muted-foreground truncate">{action.description}</p>
                     </div>
-                    <Crown className="h-4 w-4 text-amber-600" />
                   </div>
-                )}
-              </div>
-            ))}
-            {!isPremium && (
-              <Button 
-                onClick={openPremiumDialog}
-                className="w-full bg-gradient-to-r from-amber-500 to-orange-600 hover:from-amber-600 hover:to-orange-700"
-              >
-                <Crown className="mr-2 h-4 w-4" />
-                Kup Premium - Pełen Dostęp
-              </Button>
-            )}
-          </CardContent>
-        </Card>
-      </div>
+                </CardContent>
+              </Card>
+            </Link>
+          ))}
+        </div>
+      )}
+
 
       
 
       {/* Chart - Different for Premium vs Free */}
-      {isPremium ? (
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-          {/* Premium Accounting Overview */}
-          <Card>
+      {isSpoolka ? (
+        <Link to="/analytics" className="block">
+          <Card className="hover:shadow-md transition-all cursor-pointer">
             <CardHeader>
-              <CardTitle className="flex items-center space-x-2">
-                <Calculator className="h-5 w-5 text-amber-600" />
-                <span>Przegląd Księgowy</span>
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="h-64">
-                <ResponsiveContainer width="100%" height="100%">
-                  <PieChart>
-                    <Pie
-                      data={accountingData}
-                      cx="50%"
-                      cy="50%"
-                      innerRadius={60}
-                      outerRadius={80}
-                      paddingAngle={5}
-                      dataKey="value"
-                    >
-                      {accountingData.map((entry, index) => (
-                        <Cell key={`cell-${index}`} fill={entry.color} />
-                      ))}
-                    </Pie>
-                    <Tooltip formatter={(value) => formatCurrency(Number(value))} />
-                  </PieChart>
-                </ResponsiveContainer>
+              <div className="flex items-center justify-between gap-4">
+                <CardTitle className="flex items-center space-x-2">
+                  <TrendingUp className="h-5 w-5 text-muted-foreground" />
+                  <span>Mini-analizy</span>
+                </CardTitle>
+                <ArrowRight className="h-4 w-4 text-muted-foreground" />
               </div>
-              <div className="mt-4 space-y-2">
-                <div className="flex justify-between items-center">
-                  <span className="text-sm font-medium">Zysk netto:</span>
-                  <span className="font-bold text-green-600">{formatCurrency(netProfit)}</span>
-                </div>
-                <div className="flex justify-between items-center">
-                  <span className="text-sm font-medium">Szacowany podatek:</span>
-                  <span className="font-bold text-amber-600">{formatCurrency(Number(taxEstimate))}</span>
-                </div>
+            </CardHeader>
+            <CardContent className="space-y-2">
+              <div className="flex items-center justify-between text-sm">
+                <span className="text-muted-foreground">Zysk netto (szacunek)</span>
+                <span className="font-medium">{formatCurrency(netProfit)}</span>
+              </div>
+              <div className="flex items-center justify-between text-sm">
+                <span className="text-muted-foreground">Szacowany podatek</span>
+                <span className="font-medium">{formatCurrency(Number(taxEstimate))}</span>
+              </div>
+              <div className="flex items-center justify-between text-sm">
+                <span className="text-muted-foreground">Przychody (łącznie)</span>
+                <span className="font-medium">{formatCurrency(totalGross)}</span>
               </div>
             </CardContent>
           </Card>
+        </Link>
+      ) : (
+        (isPremium ? (
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            {/* Premium Accounting Overview */}
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center space-x-2">
+                  <Calculator className="h-5 w-5 text-amber-600" />
+                  <span>Przegląd Księgowy</span>
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="h-64">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <PieChart>
+                      <Pie
+                        data={accountingData}
+                        cx="50%"
+                        cy="50%"
+                        innerRadius={60}
+                        outerRadius={80}
+                        paddingAngle={5}
+                        dataKey="value"
+                      >
+                        {accountingData.map((entry, index) => (
+                          <Cell key={`cell-${index}`} fill={entry.color} />
+                        ))}
+                      </Pie>
+                      <Tooltip formatter={(value) => formatCurrency(Number(value))} />
+                    </PieChart>
+                  </ResponsiveContainer>
+                </div>
+                <div className="mt-4 space-y-2">
+                  <div className="flex justify-between items-center">
+                    <span className="text-sm font-medium">Zysk netto:</span>
+                    <span className="font-bold text-green-600">{formatCurrency(netProfit)}</span>
+                  </div>
+                  <div className="flex justify-between items-center">
+                    <span className="text-sm font-medium">Szacowany podatek:</span>
+                    <span className="font-bold text-amber-600">{formatCurrency(Number(taxEstimate))}</span>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
 
-          
-
-          {/* Premium Monthly Revenue */}
+            {/* Premium Monthly Revenue */}
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center space-x-2">
+                  <BarChart3 className="h-5 w-5 text-amber-600" />
+                  <span>Miesięczne Przychody</span>
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="h-64">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <BarChart data={monthlySummaries}>
+                      <XAxis dataKey="monthLabel" fontSize={10} />
+                      <YAxis fontSize={10} />
+                      <Tooltip formatter={(value) => formatCurrency(Number(value))} />
+                      <Bar dataKey="totalGrossValue" name="Brutto" fill="#d97706" />
+                    </BarChart>
+                  </ResponsiveContainer>
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+        ) : (
+          // Standard Chart for Free Users
           <Card>
             <CardHeader>
               <CardTitle className="flex items-center space-x-2">
-                <BarChart3 className="h-5 w-5 text-amber-600" />
-                <span>Miesięczne Przychody</span>
+                <BarChart3 className="h-5 w-5" />
+                <span>Miesięczna Sprzedaż</span>
               </CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="h-64">
-                <ResponsiveContainer width="100%" height="100%">
-                  <BarChart data={monthlySummaries}>
-                    <XAxis dataKey="monthLabel" fontSize={10} />
-                    <YAxis fontSize={10} />
-                    <Tooltip formatter={(value) => formatCurrency(Number(value))} />
-                    <Bar dataKey="totalGrossValue" name="Brutto" fill="#d97706" />
+              <div className={isMobile ? "h-48" : "h-64 md:h-80"}>
+                <ResponsiveContainer width="99%" height="100%">
+                  <BarChart 
+                    data={monthlySummaries}
+                    margin={isMobile ? { top: 5, right: 0, left: -30, bottom: 0 } : { top: 5, right: 10, left: 0, bottom: 0 }}
+                  >
+                    <XAxis 
+                      dataKey="monthLabel" 
+                      fontSize={isMobile ? 9 : 12}
+                      tickMargin={5}
+                    />
+                    <YAxis 
+                      fontSize={isMobile ? 9 : 12} 
+                      width={isMobile ? 30 : 60}
+                      tickFormatter={(value) => isMobile ? value.toLocaleString('pl-PL', {notation: 'compact'}) : value.toLocaleString('pl-PL')}
+                    />
+                    <Tooltip
+                      formatter={(value) => formatCurrency(Number(value))}
+                      labelFormatter={(label) => `Miesiąc: ${label}`}
+                      contentStyle={{ fontSize: isMobile ? '10px' : '12px' }}
+                    />
+                    {isMobile ? (
+                      <Bar dataKey="totalGrossValue" name="Brutto" fill="#1d4ed8" />
+                    ) : (
+                      <>
+                        <Bar dataKey="totalNetValue" name="Netto" fill="#93c5fd" />
+                        <Bar dataKey="totalVatValue" name="VAT" fill="#3b82f6" />
+                        <Bar dataKey="totalGrossValue" name="Brutto" fill="#1d4ed8" />
+                      </>
+                    )}
                   </BarChart>
                 </ResponsiveContainer>
               </div>
             </CardContent>
           </Card>
-        </div>
-      ) : (
-        // Standard Chart for Free Users
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center space-x-2">
-              <BarChart3 className="h-5 w-5" />
-              <span>Miesięczna Sprzedaż</span>
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className={isMobile ? "h-48" : "h-64 md:h-80"}>
-              <ResponsiveContainer width="99%" height="100%">
-                <BarChart 
-                  data={monthlySummaries}
-                  margin={isMobile ? { top: 5, right: 0, left: -30, bottom: 0 } : { top: 5, right: 10, left: 0, bottom: 0 }}
-                >
-                  <XAxis 
-                    dataKey="monthLabel" 
-                    fontSize={isMobile ? 9 : 12}
-                    tickMargin={5}
-                  />
-                  <YAxis 
-                    fontSize={isMobile ? 9 : 12} 
-                    width={isMobile ? 30 : 60}
-                    tickFormatter={(value) => isMobile ? value.toLocaleString('pl-PL', {notation: 'compact'}) : value.toLocaleString('pl-PL')}
-                  />
-                  <Tooltip
-                    formatter={(value) => formatCurrency(Number(value))}
-                    labelFormatter={(label) => `Miesiąc: ${label}`}
-                    contentStyle={{ fontSize: isMobile ? '10px' : '12px' }}
-                  />
-                  {isMobile ? (
-                    <Bar dataKey="totalGrossValue" name="Brutto" fill="#1d4ed8" />
-                  ) : (
-                    <>
-                      <Bar dataKey="totalNetValue" name="Netto" fill="#93c5fd" />
-                      <Bar dataKey="totalVatValue" name="VAT" fill="#3b82f6" />
-                      <Bar dataKey="totalGrossValue" name="Brutto" fill="#1d4ed8" />
-                    </>
-                  )}
-                </BarChart>
-              </ResponsiveContainer>
-            </div>
-          </CardContent>
-        </Card>
+        ))
       )}
 
       
-      {/* Premium Tax Obligations with generate buttons */}
-      {isPremium && (
+      {/* Tax Obligations - for spółka */}
+      {isSpoolka && isPremium && (
         <TaxReportsCard
           monthIndex={currentMonth}
           reports={getMonthlyReports(currentMonth)}
@@ -548,85 +547,31 @@ const Dashboard = () => {
       )}
 
 
-      {/* Recent Invoices */}
-      <Card>
-        <CardHeader>
-          <div className="flex justify-between items-center">
-            <CardTitle className="flex items-center space-x-2">
-              <FileText className={`h-5 w-5 ${isPremium ? 'text-amber-600' : ''}`} />
-              <span>Ostatnie Faktury</span>
-            </CardTitle>
-            <Button variant="outline" asChild size="sm">
-              <Link to="/income">Zobacz wszystkie</Link>
-            </Button>
-          </div>
-        </CardHeader>
-        <CardContent>
-          {isLoadingInvoices ? (
-            <div className="text-center py-8">
-              <p>Ładowanie...</p>
-            </div>
-          ) : invoices.length === 0 ? (
-            <div className="text-center py-8">
-              <FileText className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
-              <p className="text-muted-foreground">Brak faktur</p>
-              <Button asChild className="mt-4">
-                <Link to="/income/new">Wystaw pierwszą fakturę</Link>
-              </Button>
-            </div>
-          ) : (
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              {invoices.slice(0, 4).map((invoice) => (
-                <InvoiceCard key={invoice.id} invoice={invoice as any} />
-              ))}
-            </div>
-          )}
-        </CardContent>
-      </Card>
-
-      {/* Recent Expenses */}
-      <Card>
-        <CardHeader>
-          <div className="flex justify-between items-center">
-            <CardTitle className="flex items-center space-x-2">
-              <Receipt className={`h-5 w-5 ${isPremium ? 'text-amber-600' : 'text-red-500'}`} />
-              <span>Ostatnie Wydatki</span>
-            </CardTitle>
-            <Button variant="outline" asChild size="sm">
-              <Link to="/expense">Zobacz wszystkie</Link>
-            </Button>
-          </div>
-        </CardHeader>
-        <CardContent>
-          {isLoadingInvoices ? (
-            <div className="text-center py-8">
-              <p>Ładowanie...</p>
-            </div>
-          ) : (
-            (() => {
-              const recentExpenses = (invoices as any[]).filter(inv => inv.transactionType === 'expense');
-              if (recentExpenses.length === 0) {
-                return (
-                  <div className="text-center py-8">
-                    <Receipt className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
-                    <p className="text-muted-foreground">Brak wydatków</p>
-                    <Button asChild className="mt-4">
-                      <Link to="/expense/new">Dodaj pierwszy wydatek</Link>
-                    </Button>
-                  </div>
-                );
-              }
-              return (
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                  {recentExpenses.slice(0, 4).map((invoice) => (
-                    <InvoiceCard key={invoice.id} invoice={invoice as any} />
-                  ))}
-                </div>
-              );
-            })()
-          )}
-        </CardContent>
-      </Card>
+      {/* Recent Activity - only show for non-spółka or if they have data */}
+      {!isSpoolka && invoices.length > 0 && (
+        <>
+          <Card>
+            <CardHeader>
+              <div className="flex justify-between items-center gap-2">
+                <CardTitle className="flex items-center gap-2 text-base md:text-lg">
+                  <FileText className="h-4 w-4 md:h-5 md:w-5" />
+                  <span>Ostatnie Faktury</span>
+                </CardTitle>
+                <Button variant="outline" asChild size="sm">
+                  <Link to="/income">Wszystkie</Link>
+                </Button>
+              </div>
+            </CardHeader>
+            <CardContent>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                {invoices.slice(0, 4).map((invoice) => (
+                  <InvoiceCard key={invoice.id} invoice={invoice as any} />
+                ))}
+              </div>
+            </CardContent>
+          </Card>
+        </>
+      )}
     </div>
   );
 };
