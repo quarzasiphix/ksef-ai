@@ -1,5 +1,5 @@
 
-import React, { useImperativeHandle, forwardRef } from "react";
+import React, { useEffect, useImperativeHandle, forwardRef, useMemo } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
@@ -43,6 +43,12 @@ const OnboardingCustomerForm = forwardRef<OnboardingCustomerFormHandle, Onboardi
   const { user } = useAuth();
   const isEditing = !!initialData?.id;
 
+  const draftKey = useMemo(() => {
+    if (isEditing) return null;
+    if (!user?.id) return null;
+    return `onboarding:customer:${user.id}`;
+  }, [isEditing, user?.id]);
+
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
     defaultValues: {
@@ -55,6 +61,29 @@ const OnboardingCustomerForm = forwardRef<OnboardingCustomerFormHandle, Onboardi
       phone: initialData?.phone || "",
     },
   });
+
+  useEffect(() => {
+    if (!draftKey) return;
+    if (typeof window === 'undefined') return;
+
+    const rawDraft = localStorage.getItem(draftKey);
+    if (rawDraft) {
+      try {
+        const draft = JSON.parse(rawDraft) as Partial<z.infer<typeof formSchema>>;
+        form.reset({
+          ...form.getValues(),
+          ...draft,
+        });
+      } catch {
+      }
+    }
+
+    const subscription = form.watch((values) => {
+      localStorage.setItem(draftKey, JSON.stringify(values));
+    });
+
+    return () => subscription.unsubscribe();
+  }, [draftKey, form]);
 
   const onSubmit = async (values: z.infer<typeof formSchema>) => {
     try {
@@ -76,6 +105,9 @@ const OnboardingCustomerForm = forwardRef<OnboardingCustomerFormHandle, Onboardi
       };
       const savedCustomer = await saveCustomer(customer);
       toast.success(isEditing ? "Klient zaktualizowany" : "Klient utworzony");
+      if (draftKey && typeof window !== 'undefined') {
+        localStorage.removeItem(draftKey);
+      }
       onSuccess(savedCustomer);
     } catch (error) {
       console.error("Error saving customer:", error);

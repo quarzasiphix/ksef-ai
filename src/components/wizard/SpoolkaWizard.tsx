@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -18,6 +18,7 @@ import { saveBusinessProfile } from '@/integrations/supabase/repositories/busine
 import { createFolder, initializeDefaultFolders } from '@/integrations/supabase/repositories/documentsRepository';
 import { initializeFoundationalDecisions } from '@/integrations/supabase/repositories/decisionsRepository';
 import type { BusinessProfile } from '@/types';
+import { useAuth } from '@/hooks/useAuth';
 
 interface SpoolkaWizardProps {
   onComplete?: (profileId: string) => void;
@@ -111,8 +112,10 @@ const DEFAULT_FOLDERS = [
 
 export const SpoolkaWizard: React.FC<SpoolkaWizardProps> = ({ onComplete, onCancel, initialCompanyType }) => {
   const navigate = useNavigate();
+  const { user } = useAuth();
   const [currentStep, setCurrentStep] = useState(1);
   const [loading, setLoading] = useState(false);
+  const hasLoadedDraftRef = useRef(false);
   
   const [wizardData, setWizardData] = useState<WizardData>({
     companyType: 'sp_zoo' as 'sp_zoo' | 'sa' | 'sp_jawna' | 'sp_komandytowa' | 'sp_partnerska',
@@ -145,6 +148,49 @@ export const SpoolkaWizard: React.FC<SpoolkaWizardProps> = ({ onComplete, onCanc
     if (!initialCompanyType) return;
     setWizardData(prev => ({ ...prev, companyType: initialCompanyType }));
   }, [initialCompanyType]);
+
+  const draftKey = user?.id
+    ? `onboarding:spoolka:${user.id}:${initialCompanyType ?? 'unlocked'}`
+    : null;
+
+  useEffect(() => {
+    if (!draftKey) return;
+    if (typeof window === 'undefined') return;
+
+    const rawDraft = localStorage.getItem(draftKey);
+    if (!rawDraft) {
+      hasLoadedDraftRef.current = true;
+      return;
+    }
+
+    try {
+      const parsed = JSON.parse(rawDraft) as Partial<{ wizardData: WizardData; currentStep: number }>;
+      if (parsed.wizardData) {
+        setWizardData(prev => {
+          const next = { ...prev, ...parsed.wizardData } as WizardData;
+          if (initialCompanyType) {
+            next.companyType = initialCompanyType;
+          }
+          return next;
+        });
+      }
+
+      if (typeof parsed.currentStep === 'number' && parsed.currentStep >= 1 && parsed.currentStep <= STEPS.length) {
+        setCurrentStep(parsed.currentStep);
+      }
+    } catch {
+    } finally {
+      hasLoadedDraftRef.current = true;
+    }
+  }, [draftKey, initialCompanyType]);
+
+  useEffect(() => {
+    if (!draftKey) return;
+    if (typeof window === 'undefined') return;
+    if (!hasLoadedDraftRef.current) return;
+
+    localStorage.setItem(draftKey, JSON.stringify({ wizardData, currentStep }));
+  }, [draftKey, wizardData, currentStep]);
 
   const progress = (currentStep / STEPS.length) * 100;
 
@@ -208,6 +254,10 @@ export const SpoolkaWizard: React.FC<SpoolkaWizardProps> = ({ onComplete, onCanc
         }
         
         toast.success('Spółka utworzona pomyślnie!');
+
+        if (draftKey && typeof window !== 'undefined') {
+          localStorage.removeItem(draftKey);
+        }
         
         if (onComplete) {
           onComplete(savedProfile.id);
@@ -528,7 +578,10 @@ const Step2Shareholders: React.FC<{
                     type="number"
                     placeholder="50"
                     value={shareholder.shares}
-                    onChange={(e) => updateShareholder(index, 'shares', parseFloat(e.target.value))}
+                    onChange={(e) => {
+                      const raw = e.target.value;
+                      updateShareholder(index, 'shares', raw === '' ? 0 : Number(raw));
+                    }}
                   />
                 </div>
               </div>

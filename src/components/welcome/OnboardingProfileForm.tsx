@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useImperativeHandle, forwardRef } from 'react';
+import React, { useState, useEffect, useImperativeHandle, forwardRef, useRef } from 'react';
 import { useAuth } from "@/hooks/useAuth";
 import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
@@ -25,10 +25,29 @@ const OnboardingProfileForm = forwardRef<OnboardingProfileFormHandle, Onboarding
   const [fullName, setFullName] = useState('');
   const [phoneNumber, setPhoneNumber] = useState('');
   const [avatarUrl, setAvatarUrl] = useState('');
+  const hasLoadedRef = useRef(false);
+
+  useEffect(() => {
+    hasLoadedRef.current = false;
+  }, [user?.id]);
 
   useEffect(() => {
     const fetchProfile = async () => {
       if (!user) return;
+
+      const draftKey = `onboarding:profile:${user.id}`;
+      let draft: { fullName?: string; phoneNumber?: string; avatarUrl?: string } | null = null;
+      if (typeof window !== 'undefined') {
+        const rawDraft = localStorage.getItem(draftKey);
+        if (rawDraft) {
+          try {
+            draft = JSON.parse(rawDraft);
+          } catch {
+            draft = null;
+          }
+        }
+      }
+
       setLoading(true);
       const { data, error } = await supabase
         .from('profiles')
@@ -38,21 +57,33 @@ const OnboardingProfileForm = forwardRef<OnboardingProfileFormHandle, Onboarding
       if (error) {
         setProfile(null);
         toast.error("Nie udało się pobrać danych profilu.");
-      } else if (data) {
-        setProfile(data);
-        setFullName(data.full_name || '');
-        setPhoneNumber(data.phone_number || '');
-        setAvatarUrl(data.avatar_url || '');
       } else {
-        setProfile(null);
-        setFullName('');
-        setPhoneNumber('');
-        setAvatarUrl('');
+        if (data) {
+          setProfile(data);
+        } else {
+          setProfile(null);
+        }
+        setFullName(draft?.fullName ?? data?.full_name ?? '');
+        setPhoneNumber(draft?.phoneNumber ?? data?.phone_number ?? '');
+        setAvatarUrl(draft?.avatarUrl ?? data?.avatar_url ?? '');
       }
       setLoading(false);
+      hasLoadedRef.current = true;
     };
     fetchProfile();
   }, [user, supabase]);
+
+  useEffect(() => {
+    if (!user?.id) return;
+    if (!hasLoadedRef.current) return;
+    if (typeof window === 'undefined') return;
+
+    const draftKey = `onboarding:profile:${user.id}`;
+    localStorage.setItem(
+      draftKey,
+      JSON.stringify({ fullName, phoneNumber, avatarUrl })
+    );
+  }, [user?.id, fullName, phoneNumber, avatarUrl]);
 
   const handleSave = async () => {
     if (!user || !supabase) return;
@@ -62,7 +93,6 @@ const OnboardingProfileForm = forwardRef<OnboardingProfileFormHandle, Onboarding
       full_name: fullName,
       phone_number: phoneNumber,
       avatar_url: avatarUrl,
-      updated_at: new Date().toISOString(),
     };
     const { error } = await supabase
       .from('profiles')
@@ -71,6 +101,9 @@ const OnboardingProfileForm = forwardRef<OnboardingProfileFormHandle, Onboarding
     if (error) {
       toast.error('Nie udało się zapisać profilu.');
     } else {
+      if (typeof window !== 'undefined') {
+        localStorage.removeItem(`onboarding:profile:${user.id}`);
+      }
       toast.success('Profil został zapisany!');
       onSuccess();
     }

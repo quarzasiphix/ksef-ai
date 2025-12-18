@@ -2,6 +2,36 @@ import { supabase } from "../client";
 import type { BusinessProfile } from "../../../types";
 import { queryClient } from "../../../lib/queryClient";
 
+function normalizeEmptyString(value: unknown): string | null {
+  if (typeof value !== 'string') return value as any;
+  const trimmed = value.trim();
+  return trimmed.length === 0 ? null : trimmed;
+}
+
+function normalizeDateValue(value: unknown): string | null {
+  if (value == null) return null;
+  if (value instanceof Date) {
+    if (Number.isNaN(value.getTime())) return null;
+    return value.toISOString().slice(0, 10);
+  }
+  if (typeof value === 'string') {
+    return normalizeEmptyString(value);
+  }
+  return null;
+}
+
+function normalizeNumberValue(value: unknown): number | null {
+  if (value == null) return null;
+  if (typeof value === 'number') return Number.isFinite(value) ? value : null;
+  if (typeof value === 'string') {
+    const trimmed = value.trim();
+    if (!trimmed) return null;
+    const n = Number(trimmed.replace(',', '.'));
+    return Number.isFinite(n) ? n : null;
+  }
+  return null;
+}
+
 export async function getBusinessProfiles(userId: string): Promise<BusinessProfile[]> {
   if (!userId) {
     console.error("No user ID provided to getBusinessProfiles");
@@ -252,11 +282,18 @@ export async function saveBusinessProfile(profile: BusinessProfile): Promise<Bus
     
     // If setting as default, first reset any existing default
     if (profile.isDefault) {
-      await supabase
+      let resetQuery = supabase
         .from("business_profiles")
         .update({ is_default: false })
-        .neq("id", profile.id || "")
-        .eq("user_id", profile.user_id);
+        .eq("user_id", profile.user_id)
+        .eq("is_default", true);
+
+      if (profile.id) {
+        resetQuery = resetQuery.neq("id", profile.id);
+      }
+
+      const { error: resetError } = await resetQuery;
+      if (resetError) throw resetError;
     }
     
     const payload = {
@@ -280,14 +317,14 @@ export async function saveBusinessProfile(profile: BusinessProfile): Promise<Bus
       vat_threshold_year: profile.vat_threshold_year ?? new Date().getFullYear(),
 
       // Spółka fields
-      share_capital: (profile as any).share_capital ?? null,
-      krs_number: (profile as any).krs_number ?? null,
-      court_registry: (profile as any).court_registry ?? null,
-      establishment_date: (profile as any).establishment_date ?? null,
-      headquarters_address: (profile as any).headquarters_address ?? null,
-      headquarters_postal_code: (profile as any).headquarters_postal_code ?? null,
-      headquarters_city: (profile as any).headquarters_city ?? null,
-      pkd_main: (profile as any).pkd_main ?? null,
+      share_capital: normalizeNumberValue((profile as any).share_capital),
+      krs_number: normalizeEmptyString((profile as any).krs_number) ?? null,
+      court_registry: normalizeEmptyString((profile as any).court_registry) ?? null,
+      establishment_date: normalizeDateValue((profile as any).establishment_date),
+      headquarters_address: normalizeEmptyString((profile as any).headquarters_address) ?? null,
+      headquarters_postal_code: normalizeEmptyString((profile as any).headquarters_postal_code) ?? null,
+      headquarters_city: normalizeEmptyString((profile as any).headquarters_city) ?? null,
+      pkd_main: normalizeEmptyString((profile as any).pkd_main) ?? null,
     };
 
     console.log('Supabase payload being sent:', payload);

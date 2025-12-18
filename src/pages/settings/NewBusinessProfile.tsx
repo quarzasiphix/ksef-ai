@@ -1,18 +1,59 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Building2, User, Building, Sparkles, ArrowRight } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useBusinessProfile } from '@/context/BusinessProfileContext';
 import BusinessProfileForm from './BusinessProfileForm';
 import SpoolkaWizard from '@/components/wizard/SpoolkaWizard';
+import { useAuth } from '@/hooks/useAuth';
 
 const NewBusinessProfile = () => {
   const navigate = useNavigate();
+  const { user } = useAuth();
   const { selectProfile } = useBusinessProfile();
   const [mode, setMode] = useState<'choose' | 'jdg' | 'sp_zoo' | 'sa'>('choose');
 
+  const modeStorageKey = user?.id ? `onboarding:newBusinessProfile:mode:${user.id}` : null;
+
+  useEffect(() => {
+    if (!modeStorageKey) return;
+    if (typeof window === 'undefined') return;
+
+    const raw = localStorage.getItem(modeStorageKey);
+
+    // If user was in the middle of a spółka wizard, resume it automatically.
+    // This is intentionally checked BEFORE applying raw mode, because a full remount
+    // may reset mode to 'choose' while the wizard draft still exists.
+    const hasSpZooDraft = !!localStorage.getItem(`onboarding:spoolka:${user.id}:sp_zoo`);
+    const hasSaDraft = !!localStorage.getItem(`onboarding:spoolka:${user.id}:sa`);
+    if (hasSpZooDraft) {
+      setMode('sp_zoo');
+      return;
+    }
+    if (hasSaDraft) {
+      setMode('sa');
+      return;
+    }
+
+    if (raw === 'choose' || raw === 'jdg' || raw === 'sp_zoo' || raw === 'sa') {
+      setMode(raw);
+      return;
+    }
+  }, [modeStorageKey, user?.id]);
+
+  useEffect(() => {
+    if (!modeStorageKey) return;
+    if (typeof window === 'undefined') return;
+    localStorage.setItem(modeStorageKey, mode);
+  }, [modeStorageKey, mode]);
+
   const handleComplete = (profileId: string) => {
     selectProfile(profileId);
+
+    if (modeStorageKey && typeof window !== 'undefined') {
+      localStorage.removeItem(modeStorageKey);
+    }
+
     navigate('/dashboard');
   };
 

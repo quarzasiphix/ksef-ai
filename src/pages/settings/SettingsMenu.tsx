@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Outlet, useSearchParams, useLocation, useNavigate } from 'react-router-dom';
-import { Settings, Building2, Star, User, CreditCard, FileText, Crown, Plus, Edit2, ArrowLeft, AlertCircle } from "lucide-react";
+import { Settings, Building2, Star, User, CreditCard, FileText, Crown, Plus, Edit2, ArrowLeft, AlertCircle, Users } from "lucide-react";
 import { useAuth } from "@/context/AuthContext";
 import { toast } from "sonner";
 import { motion } from "framer-motion";
@@ -323,6 +323,26 @@ const SettingsMenu = () => {
               className="w-full"
             >
               Przeglądaj linki
+            </Button>
+          </CardContent>
+        </Card>
+
+        {/* Team Management */}
+        <Card className="hover:shadow-lg transition-shadow">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Users className="h-5 w-5 text-teal-500" />
+              Zespół
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <p className="text-muted-foreground mb-4">Zaproś księgowych, pełnomocników i współpracowników</p>
+            <Button 
+              variant="outline" 
+              onClick={() => navigate('/settings/team')}
+              className="w-full"
+            >
+              Zarządzaj zespołem
             </Button>
           </CardContent>
         </Card>

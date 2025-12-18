@@ -71,6 +71,7 @@ import { useAuth } from '@/hooks/useAuth';
 import { TransactionType } from '@/types/common';
 import SettingsMenu from './pages/settings/SettingsMenu';
 import ProfileSettings from './pages/settings/ProfileSettings';
+import TeamManagement from './pages/settings/TeamManagement';
 import PzCallbackHandler from './pages/ksef/PzCallbackHandler';
 
 const AppLoadingScreen = () => (
@@ -147,7 +148,11 @@ const OnboardingRoute = ({ children }: { children: React.ReactNode }) => {
     return <Navigate to="/auth/login" replace state={{ from: location }} />;
   }
 
-  return <>{children}</>;
+  return (
+    <BusinessProfileProvider>
+      {children}
+    </BusinessProfileProvider>
+  );
 };
 
 // Route that chooses layout based on auth
@@ -324,6 +329,11 @@ const App = () => {
                 <Route path="/settings/documents" element={
                   <ProtectedRoute>
                     <DocumentSettings />
+                  </ProtectedRoute>
+                } />
+                <Route path="/settings/team" element={
+                  <ProtectedRoute>
+                    <TeamManagement />
                   </ProtectedRoute>
                 } />
 

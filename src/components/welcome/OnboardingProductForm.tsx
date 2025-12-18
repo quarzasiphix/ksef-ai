@@ -1,5 +1,5 @@
 
-import React, { useState, useImperativeHandle, forwardRef } from "react";
+import React, { useEffect, useMemo, useState, useImperativeHandle, forwardRef } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
@@ -42,6 +42,12 @@ const OnboardingProductForm = forwardRef<OnboardingProductFormHandle, Onboarding
   const { user } = useAuth();
   const [isLoading, setIsLoading] = useState(false);
 
+  const draftKey = useMemo(() => {
+    if (initialData?.id) return null;
+    if (!user?.id) return null;
+    return `onboarding:product:${user.id}`;
+  }, [initialData?.id, user?.id]);
+
   const form = useForm<ProductFormData>({
     resolver: zodResolver(productSchema),
     defaultValues: {
@@ -52,6 +58,29 @@ const OnboardingProductForm = forwardRef<OnboardingProductFormHandle, Onboarding
       product_type: initialData?.product_type || "income",
     },
   });
+
+  useEffect(() => {
+    if (!draftKey) return;
+    if (typeof window === 'undefined') return;
+
+    const rawDraft = localStorage.getItem(draftKey);
+    if (rawDraft) {
+      try {
+        const draft = JSON.parse(rawDraft) as Partial<ProductFormData>;
+        form.reset({
+          ...form.getValues(),
+          ...draft,
+        });
+      } catch {
+      }
+    }
+
+    const subscription = form.watch((values) => {
+      localStorage.setItem(draftKey, JSON.stringify(values));
+    });
+
+    return () => subscription.unsubscribe();
+  }, [draftKey, form]);
 
   const onSubmit = async (data: ProductFormData) => {
     if (!user?.id) {
@@ -73,6 +102,9 @@ const OnboardingProductForm = forwardRef<OnboardingProductFormHandle, Onboarding
       };
       const savedProduct = await saveProduct(productData);
       toast.success(initialData ? "Produkt został zaktualizowany" : "Produkt został utworzony");
+      if (draftKey && typeof window !== 'undefined') {
+        localStorage.removeItem(draftKey);
+      }
       onSuccess(savedProduct);
     } catch (error) {
       console.error("Error saving product:", error);
