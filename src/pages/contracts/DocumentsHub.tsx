@@ -40,11 +40,13 @@ import {
   type DocumentTemplate,
   type DocumentCategory,
 } from '@/integrations/supabase/repositories/documentsRepository';
+import { cn } from '@/lib/utils';
 import { FOLDER_TYPE_LABELS, type FolderType } from '@/types/documents';
 import { getContractsByBusinessProfile } from '@/integrations/supabase/repositories/contractRepository';
 import type { Contract } from '@/types';
 import { getDecisions } from '@/integrations/supabase/repositories/decisionsRepository';
 import type { Decision } from '@/types/decisions';
+import { Breadcrumbs } from '@/components/seo/Breadcrumbs';
 
 type DocumentView = 'all' | 'transactional_payout' | 'transactional_payin' | 'informational' | 'generated' | 'uploaded' | 'decisions';
 
@@ -389,162 +391,155 @@ const DocumentsHub = () => {
 
   const isSpoolka = selectedProfile.entityType === 'sp_zoo' || selectedProfile.entityType === 'sa';
 
+  const SidebarNavButton = ({
+    active,
+    onClick,
+    children,
+  }: {
+    active?: boolean;
+    onClick: () => void;
+    children: React.ReactNode;
+  }) => (
+    <button
+      type="button"
+      onClick={onClick}
+      className={cn(
+        'w-full flex items-center gap-2 rounded-md px-3 py-2 text-sm transition-colors',
+        'text-foreground/85 hover:bg-muted/40',
+        active && 'bg-muted/60 text-foreground font-medium'
+      )}
+    >
+      {children}
+    </button>
+  );
+
   const SidebarContent = ({ onNavigate }: { onNavigate?: () => void }) => (
-    <div className="h-full bg-muted/30 p-2 overflow-y-auto">
+    <div className="h-full module-sidebar p-3 overflow-y-auto">
       <div className="mb-2">
-        <h2 className="font-semibold text-base mb-2">Dokumenty</h2>
-        <Button
+        <h2 className="font-semibold text-sm mb-2">Dokumenty</h2>
+        <button
+          type="button"
           onClick={() => {
             onNavigate?.();
             // Defer route change until after the mobile Sheet close animation
             safeNavigate('/contracts/new');
           }}
-          size="sm"
-          className="w-full"
+          className="w-full flex items-center gap-2 rounded-md px-3 py-2 text-sm bg-muted/60 hover:bg-muted/80 transition-colors"
         >
-          <Plus className="h-4 w-4 mr-2" />
-          Nowy dokument
-        </Button>
+          <Plus className="h-4 w-4" />
+          <span className="font-medium">Nowy dokument</span>
+        </button>
       </div>
 
       <div className="space-y-1 mb-2">
-        <Button
-          variant={view === 'all' ? 'secondary' : 'ghost'}
-          size="sm"
-          className="w-full justify-start"
+        <SidebarNavButton
+          active={view === 'all'}
           onClick={() => {
             setView('all');
             onNavigate?.();
           }}
         >
-          <FileText className="h-4 w-4 mr-2" />
-          Wszystkie
-          <Badge variant="outline" className="ml-auto">
+          <FileText className="h-4 w-4" />
+          <span className="flex-1 text-left">Wszystkie</span>
+          <span className="text-xs text-muted-foreground">
             {contracts.length + generatedDocs.length + uploadedDocs.length}
-          </Badge>
-        </Button>
+          </span>
+        </SidebarNavButton>
 
         {isSpoolka && (
           <>
             <div className="pt-2 pb-1">
-              <p className="text-xs font-semibold text-muted-foreground px-2">TRANSAKCYJNE</p>
+              <p className="text-[11px] font-semibold tracking-wide text-muted-foreground px-2">TRANSAKCYJNE</p>
             </div>
-            <Button
-              variant={view === 'transactional_payout' ? 'secondary' : 'ghost'}
-              size="sm"
-              className="w-full justify-start"
+            <SidebarNavButton
+              active={view === 'transactional_payout'}
               onClick={() => {
                 setView('transactional_payout');
                 onNavigate?.();
               }}
             >
-              <ArrowUpCircle className="h-4 w-4 mr-2 text-red-600" />
-              Wydatki
-              <Badge variant="outline" className="ml-auto">
-                {transactionalPayoutContracts.length}
-              </Badge>
-            </Button>
-            <Button
-              variant={view === 'transactional_payin' ? 'secondary' : 'ghost'}
-              size="sm"
-              className="w-full justify-start"
+              <ArrowUpCircle className="h-4 w-4 text-muted-foreground" />
+              <span className="flex-1 text-left">Wydatki</span>
+              <span className="text-xs text-muted-foreground">{transactionalPayoutContracts.length}</span>
+            </SidebarNavButton>
+            <SidebarNavButton
+              active={view === 'transactional_payin'}
               onClick={() => {
                 setView('transactional_payin');
                 onNavigate?.();
               }}
             >
-              <ArrowDownCircle className="h-4 w-4 mr-2 text-green-600" />
-              Przychody
-              <Badge variant="outline" className="ml-auto">
-                {transactionalPayinContracts.length}
-              </Badge>
-            </Button>
+              <ArrowDownCircle className="h-4 w-4 text-muted-foreground" />
+              <span className="flex-1 text-left">Przychody</span>
+              <span className="text-xs text-muted-foreground">{transactionalPayinContracts.length}</span>
+            </SidebarNavButton>
           </>
         )}
 
         <div className="pt-2 pb-1">
-          <p className="text-xs font-semibold text-muted-foreground px-2">INFORMACYJNE</p>
+          <p className="text-[11px] font-semibold tracking-wide text-muted-foreground px-2">INFORMACYJNE</p>
         </div>
         {isSpoolka && (
-          <Button
-            variant={view === 'decisions' ? 'secondary' : 'ghost'}
-            size="sm"
-            className="w-full justify-start"
+          <SidebarNavButton
+            active={view === 'decisions'}
             onClick={() => {
               setView('decisions');
               onNavigate?.();
             }}
           >
-            <Award className="h-4 w-4 mr-2" />
-            Decyzje
-            <Badge variant="outline" className="ml-auto">
-              {decisions.length}
-            </Badge>
-          </Button>
+            <Award className="h-4 w-4" />
+            <span className="flex-1 text-left">Decyzje</span>
+            <span className="text-xs text-muted-foreground">{decisions.length}</span>
+          </SidebarNavButton>
         )}
-        <Button
-          variant="ghost"
-          size="sm"
-          className="w-full justify-start"
+        <SidebarNavButton
           onClick={() => {
             onNavigate?.();
             safeNavigate('/contracts/resolutions');
           }}
         >
-          <FileCheck className="h-4 w-4 mr-2" />
-          Uchwały
-        </Button>
+          <FileCheck className="h-4 w-4" />
+          <span className="flex-1 text-left">Uchwały</span>
+        </SidebarNavButton>
         {isSpoolka && (
-          <Button
-            variant={view === 'informational' ? 'secondary' : 'ghost'}
-            size="sm"
-            className="w-full justify-start"
+          <SidebarNavButton
+            active={view === 'informational'}
             onClick={() => {
               setView('informational');
               onNavigate?.();
             }}
           >
-            <Info className="h-4 w-4 mr-2" />
-            Dokumenty spółki
-            <Badge variant="outline" className="ml-auto">
-              {informationalContracts.length}
-            </Badge>
-          </Button>
+            <Info className="h-4 w-4" />
+            <span className="flex-1 text-left">Dokumenty spółki</span>
+            <span className="text-xs text-muted-foreground">{informationalContracts.length}</span>
+          </SidebarNavButton>
         )}
 
         <div className="pt-2 pb-1">
-          <p className="text-xs font-semibold text-muted-foreground px-2">TYP DOKUMENTU</p>
+          <p className="text-[11px] font-semibold tracking-wide text-muted-foreground px-2">TYP DOKUMENTU</p>
         </div>
-        <Button
-          variant={view === 'generated' ? 'secondary' : 'ghost'}
-          size="sm"
-          className="w-full justify-start"
+        <SidebarNavButton
+          active={view === 'generated'}
           onClick={() => {
             setView('generated');
             onNavigate?.();
           }}
         >
-          <FileCheck className="h-4 w-4 mr-2" />
-          Wygenerowane
-          <Badge variant="outline" className="ml-auto">
-            {generatedDocs.length}
-          </Badge>
-        </Button>
-        <Button
-          variant={view === 'uploaded' ? 'secondary' : 'ghost'}
-          size="sm"
-          className="w-full justify-start"
+          <FileCheck className="h-4 w-4" />
+          <span className="flex-1 text-left">Wygenerowane</span>
+          <span className="text-xs text-muted-foreground">{generatedDocs.length}</span>
+        </SidebarNavButton>
+        <SidebarNavButton
+          active={view === 'uploaded'}
           onClick={() => {
             setView('uploaded');
             onNavigate?.();
           }}
         >
-          <Upload className="h-4 w-4 mr-2" />
-          Przesłane
-          <Badge variant="outline" className="ml-auto">
-            {uploadedDocs.length}
-          </Badge>
-        </Button>
+          <Upload className="h-4 w-4" />
+          <span className="flex-1 text-left">Przesłane</span>
+          <span className="text-xs text-muted-foreground">{uploadedDocs.length}</span>
+        </SidebarNavButton>
       </div>
 
       {isSpoolka && (
@@ -618,8 +613,8 @@ const DocumentsHub = () => {
 
   return (
     <Sheet open={mobileSidebarOpen} onOpenChange={setMobileSidebarOpen}>
-      <div className="flex h-[calc(100vh-4rem)]">
-        <div className="hidden md:block w-64 border-r">
+      <div className="flex h-[calc(100vh-4rem)] overflow-hidden">
+        <div className="hidden md:flex md:flex-col w-64 border-r border-module-sidebar-border h-full overflow-hidden">
           <SidebarContent />
         </div>
 
@@ -812,6 +807,9 @@ const DocumentsHub = () => {
       {/* Main content */}
       <div className="flex-1 overflow-y-auto" onDragOver={handleDragOver} onDragLeave={handleDragLeave} onDrop={handleDrop}>
         <div className="p-2 space-y-3">
+          <div className="px-2 pt-1">
+            <Breadcrumbs />
+          </div>
           <Card>
             <CardContent className="p-4 space-y-4">
               <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">

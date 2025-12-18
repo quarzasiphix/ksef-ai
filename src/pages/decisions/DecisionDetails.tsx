@@ -18,7 +18,7 @@ import {
   CheckCircle2,
   Clock,
 } from 'lucide-react';
-import { getDecisionWithUsage } from '@/integrations/supabase/repositories/decisionsRepository';
+import { getDecision, getDecisionWithUsage } from '@/integrations/supabase/repositories/decisionsRepository';
 import type { DecisionWithUsage } from '@/types/decisions';
 import { DECISION_CATEGORY_LABELS, DECISION_STATUS_LABELS, DECISION_TYPE_LABELS } from '@/types/decisions';
 
@@ -33,6 +33,17 @@ const DecisionDetails: React.FC = () => {
       return getDecisionWithUsage(id);
     },
     enabled: !!id,
+  });
+
+  const parentDecisionId = (decision as DecisionWithUsage | null)?.parent_decision_id ?? null;
+
+  const { data: parentDecision } = useQuery({
+    queryKey: ['decision-parent', parentDecisionId],
+    queryFn: async () => {
+      if (!parentDecisionId) return null;
+      return getDecision(parentDecisionId);
+    },
+    enabled: !!parentDecisionId,
   });
 
   const getStatusIcon = (status: string) => {
@@ -133,6 +144,20 @@ const DecisionDetails: React.FC = () => {
               </div>
             </div>
           </div>
+
+          {d.parent_decision_id && (
+            <div>
+              <div className="text-sm font-medium text-muted-foreground mb-1">Uchwała strategiczna</div>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => navigate(`/decisions/${d.parent_decision_id}`)}
+              >
+                {parentDecision?.decision_number ? `${parentDecision.decision_number} ` : ''}
+                {parentDecision?.title || 'Otwórz decyzję nadrzędną'}
+              </Button>
+            </div>
+          )}
 
           {(d.valid_from || d.valid_to) && (
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">

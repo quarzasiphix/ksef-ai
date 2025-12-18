@@ -329,6 +329,13 @@ const InvoiceDetail: React.FC<InvoiceDetailProps> = ({ type }) => {
           <Badge variant="outline">
             {isIncome ? "Przychód" : "Wydatek"}
           </Badge>
+          {invoice.decisionId && (
+            <Link to={`/decisions/${invoice.decisionId}`} className="inline-flex">
+              <Badge variant="outline">
+                {invoice.decisionReference ? `Decyzja ${invoice.decisionReference}` : "Decyzja"}
+              </Badge>
+            </Link>
+          )}
         </div>
       </div>
 

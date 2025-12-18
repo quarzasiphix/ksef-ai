@@ -112,6 +112,7 @@ export async function createDecision(
     .insert({
       business_profile_id: input.business_profile_id,
       resolution_id: input.resolution_id || null,
+      parent_decision_id: input.parent_decision_id || null,
       title: input.title,
       description: input.description || null,
       decision_type: input.decision_type,

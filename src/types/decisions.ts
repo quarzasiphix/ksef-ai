@@ -31,6 +31,7 @@ export interface Decision {
   business_profile_id: string;
   resolution_id?: string | null;
   decision_number?: string | null;
+  parent_decision_id?: string | null;
   
   // Metadata
   title: string;
@@ -96,6 +97,7 @@ export interface DecisionWithUsage extends Decision {
 export interface CreateDecisionInput {
   business_profile_id: string;
   resolution_id?: string;
+  parent_decision_id?: string | null;
   title: string;
   description?: string;
   decision_type: DecisionType;
@@ -114,6 +116,7 @@ export interface UpdateDecisionInput {
   description?: string;
   decision_type?: DecisionType;
   category?: DecisionCategory;
+  parent_decision_id?: string | null;
   scope_description?: string;
   amount_limit?: number | null;
   currency?: string;

@@ -20,8 +20,15 @@ const Layout = ({ children }: LayoutProps) => {
     const { actions } = usePageHeaderActions();
     const location = useLocation();
     const isAccountingRoute = location.pathname.startsWith('/accounting');
+    const isContractsRoute = location.pathname.startsWith('/contracts');
     const isFullBleedRoute = isAccountingRoute || location.pathname.startsWith('/contracts');
     const isNewBusinessProfileWizardRoute = location.pathname === '/settings/business-profiles/new';
+
+    const mainPaddingClass = isFullBleedRoute
+      ? isAccountingRoute
+        ? "pt-0 pb-2 pr-2 pl-2 md:pt-0 md:pb-3 md:pr-2 md:pl-2"
+        : "pt-2 pb-2 pr-2 pl-2 md:pt-3 md:pb-3 md:pr-2 md:pl-2"
+      : "p-4 md:p-6";
 
     if (isNewBusinessProfileWizardRoute) {
       return (
@@ -44,10 +51,9 @@ const Layout = ({ children }: LayoutProps) => {
           <Header />
           <main
             className={cn(
-              "flex-1 overflow-auto w-full max-w-full",
-              isFullBleedRoute
-                ? "pt-2 pb-2 pr-2 pl-2 md:pt-3 md:pb-3 md:pr-2 md:pl-2"
-                : "p-4 md:p-6"
+              "flex-1 w-full max-w-full",
+              isFullBleedRoute ? "overflow-hidden" : "overflow-auto",
+              mainPaddingClass
             )}
           >
             <div
@@ -56,13 +62,15 @@ const Layout = ({ children }: LayoutProps) => {
                 isFullBleedRoute ? "max-w-none" : "max-w-7xl mx-auto"
               )}
             >
-              <div className={cn(
-                "flex items-center justify-between gap-3",
-                isFullBleedRoute ? "mb-3" : "mb-6"
-              )}>
-                <Breadcrumbs />
-                {actions ? <div className="shrink-0">{actions}</div> : null}
-              </div>
+              {!isAccountingRoute && !isContractsRoute && (
+                <div className={cn(
+                  "flex items-center justify-between gap-3",
+                  isFullBleedRoute ? "mb-3" : "mb-6"
+                )}>
+                  <Breadcrumbs />
+                  {actions ? <div className="shrink-0">{actions}</div> : null}
+                </div>
+              )}
               {innerChildren || <Outlet />}
             </div>
           </main>

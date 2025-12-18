@@ -26,69 +26,92 @@ interface NavItem {
   color: string;
 }
 
-const spolkaNavItems: NavItem[] = [
+interface NavSection {
+  title: string;
+  items: NavItem[];
+}
+
+const spolkaNavSections: NavSection[] = [
   {
-    label: 'Panel główny',
-    href: '/accounting',
-    icon: <LayoutDashboard className="h-5 w-5" />,
-    description: 'Przegląd finansów',
-    color: 'text-blue-600',
+    title: 'KSIĘGOWOŚĆ',
+    items: [
+      {
+        label: 'Panel główny',
+        href: '/accounting',
+        icon: <LayoutDashboard className="h-4 w-4" />,
+        description: 'Przegląd finansów',
+        color: 'text-blue-600',
+      },
+    ],
   },
   {
-    label: 'Zaliczki CIT',
-    href: '/accounting/cit',
-    icon: <Calculator className="h-5 w-5" />,
-    description: 'Podatek dochodowy',
-    color: 'text-red-600',
+    title: 'PODATKI',
+    items: [
+      {
+        label: 'Zaliczki CIT',
+        href: '/accounting/cit',
+        icon: <Calculator className="h-4 w-4" />,
+        description: 'Podatek dochodowy',
+        color: 'text-red-600',
+      },
+    ],
   },
   {
-    label: 'Bilans',
-    href: '/accounting/balance-sheet',
-    icon: <TrendingUp className="h-5 w-5" />,
-    description: 'Aktywa i pasywa',
-    color: 'text-blue-600',
+    title: 'SPRAWOZDANIA',
+    items: [
+      {
+        label: 'Bilans',
+        href: '/accounting/balance-sheet',
+        icon: <TrendingUp className="h-4 w-4" />,
+        description: 'Aktywa i pasywa',
+        color: 'text-blue-600',
+      },
+      {
+        label: 'Kapitał',
+        href: '/accounting/capital-events',
+        icon: <DollarSign className="h-4 w-4" />,
+        description: 'Transakcje kapitałowe',
+        color: 'text-green-600',
+      },
+      {
+        label: 'Wspólnicy',
+        href: '/accounting/shareholders',
+        icon: <Users className="h-4 w-4" />,
+        description: 'Struktura kapitałowa',
+        color: 'text-purple-600',
+      },
+    ],
   },
   {
-    label: 'Wspólnicy',
-    href: '/accounting/shareholders',
-    icon: <Users className="h-5 w-5" />,
-    description: 'Struktura kapitałowa',
-    color: 'text-purple-600',
+    title: 'FORMALNE',
+    items: [
+      {
+        label: 'Rejestr spółki',
+        href: '/accounting/company-registry',
+        icon: <Building2 className="h-4 w-4" />,
+        description: 'NIP-8, KRS, VAT-R',
+        color: 'text-amber-600',
+      },
+    ],
   },
   {
-    label: 'Kapitał',
-    href: '/accounting/capital-events',
-    icon: <DollarSign className="h-5 w-5" />,
-    description: 'Transakcje kapitałowe',
-    color: 'text-green-600',
-  },
-  {
-    label: 'Rejestr Spółki',
-    href: '/accounting/company-registry',
-    icon: <Building2 className="h-5 w-5" />,
-    description: 'NIP-8, KRS, VAT-R',
-    color: 'text-amber-600',
-  },
-  {
-    label: 'Umowy transakcyjne',
-    href: '/accounting/contracts',
-    icon: <FileText className="h-5 w-5" />,
-    description: 'Przychody i wydatki',
-    color: 'text-slate-600',
-  },
-  {
-    label: 'Bankowość',
-    href: '/accounting/bank',
-    icon: <Landmark className="h-5 w-5" />,
-    description: 'Konta bankowe',
-    color: 'text-emerald-600',
-  },
-  {
-    label: 'Kasa',
-    href: '/accounting/kasa',
-    icon: <Wallet className="h-5 w-5" />,
-    description: 'Gotówka KP/KW',
-    color: 'text-orange-600',
+    title: 'PIENIĄDZE',
+    items: [
+      {
+        label: 'Bankowość',
+        href: '/accounting/bank',
+        icon: <Landmark className="h-4 w-4" />,
+        description: 'Konta bankowe',
+        color: 'text-emerald-600',
+      },
+      {
+        label: 'Kasa',
+        href: '/accounting/kasa',
+        icon: <Wallet className="h-4 w-4" />,
+        description: 'Gotówka KP/KW',
+        color: 'text-orange-600',
+      },
+    ],
   },
 ];
 
@@ -142,14 +165,14 @@ export const AccountingSidebar: React.FC<AccountingSidebarProps> = ({
   };
 
   return (
-    <div className={cn("flex flex-col h-full", className)}>
-      <div className={cn("border-b", collapsed ? "p-2" : "p-4")}>
+    <div className={cn("flex flex-col h-full module-sidebar", className)}>
+      <div className={cn("border-b border-module-sidebar-border", collapsed ? "p-2" : "p-3")}>
         <div className={cn("flex items-start", collapsed ? "justify-center" : "justify-between")}
         >
           {!collapsed && (
             <div>
-              <h2 className="font-semibold text-lg">Księgowość Spółki</h2>
-              <p className="text-xs text-muted-foreground">Pełna księgowość sp. z o.o.</p>
+              <h2 className="font-semibold text-base">Księgowość Spółki</h2>
+              <p className="text-xs text-muted-foreground mt-0.5">Pełna księgowość sp. z o.o.</p>
             </div>
           )}
           {onToggleCollapsed && (
@@ -157,45 +180,57 @@ export const AccountingSidebar: React.FC<AccountingSidebarProps> = ({
               variant="ghost"
               size="icon"
               onClick={onToggleCollapsed}
-              className="h-9 w-9"
+              className="h-8 w-8"
               title={collapsed ? "Rozwiń menu" : "Zwiń menu"}
             >
-              {collapsed ? <PanelLeftOpen className="h-5 w-5" /> : <PanelLeftClose className="h-5 w-5" />}
+              {collapsed ? <PanelLeftOpen className="h-4 w-4" /> : <PanelLeftClose className="h-4 w-4" />}
             </Button>
           )}
         </div>
       </div>
       
       <ScrollArea className="flex-1">
-        <nav className="p-2 space-y-1">
-          {spolkaNavItems.map((item) => {
-            const isActive = location.pathname === item.href;
-            
-            return (
-              <Button
-                key={item.href}
-                variant={isActive ? "secondary" : "ghost"}
-                className={cn(
-                  collapsed
-                    ? "w-full justify-center h-10 px-0"
-                    : "w-full justify-start h-auto py-3 px-3",
-                  isActive && "bg-accent"
-                )}
-                onClick={() => handleNavigation(item.href)}
-                title={collapsed ? item.label : undefined}
-              >
-                <div className={cn(collapsed ? "" : "mr-3", item.color)}>
-                  {item.icon}
+        <nav className="p-2">
+          {spolkaNavSections.map((section, sectionIdx) => (
+            <div key={section.title}>
+              {!collapsed && (
+                <div className="module-sidebar-section-header">
+                  {section.title}
                 </div>
-                {!collapsed && (
-                  <div className="flex flex-col items-start transition-opacity duration-150 ease-out">
-                    <span className="font-medium text-sm">{item.label}</span>
-                    <span className="text-xs text-muted-foreground">{item.description}</span>
-                  </div>
-                )}
-              </Button>
-            );
-          })}
+              )}
+              <div className="space-y-0.5 mb-1">
+                {section.items.map((item) => {
+                  const isActive = location.pathname === item.href;
+                  
+                  return (
+                    <Button
+                      key={item.href}
+                      variant="ghost"
+                      className={cn(
+                        "module-sidebar-item",
+                        collapsed
+                          ? "w-full justify-center h-9 px-0"
+                          : "w-full justify-start h-9 px-2",
+                        "hover:bg-muted/40 hover:text-foreground",
+                        isActive && "active"
+                      )}
+                      onClick={() => handleNavigation(item.href)}
+                      title={collapsed ? item.label : undefined}
+                    >
+                      <div className={cn(collapsed ? "" : "mr-2.5", "opacity-70")}>
+                        {item.icon}
+                      </div>
+                      {!collapsed && (
+                        <div className="flex flex-col items-start text-left">
+                          <span className="text-sm leading-tight">{item.label}</span>
+                        </div>
+                      )}
+                    </Button>
+                  );
+                })}
+              </div>
+            </div>
+          ))}
         </nav>
       </ScrollArea>
     </div>

@@ -105,14 +105,22 @@ html.sidebar-transition body {
     --input: 217.2 32.6% 17.5%;
     --ring: 224.3 76.3% 48%;
     
-    --sidebar-background: 240 5.9% 10%;
-    --sidebar-foreground: 240 4.8% 95.9%;
-    --sidebar-primary: 224.3 76.3% 48%;
-    --sidebar-primary-foreground: 0 0% 100%;
-    --sidebar-accent: 240 3.7% 15.9%;
-    --sidebar-accent-foreground: 240 4.8% 95.9%;
-    --sidebar-border: 240 3.7% 15.9%;
-    --sidebar-ring: 217.2 91.2% 59.8%;
+    /* Global Sidebar - Darkest zone, muted professional colors */
+    --sidebar-background: 240 6% 8%;
+    --sidebar-foreground: 240 5% 96%;
+    --sidebar-primary: 240 5% 85%;
+    --sidebar-primary-foreground: 240 5% 26%;
+    --sidebar-accent: 240 5% 18%;
+    --sidebar-accent-foreground: 240 5% 96%;
+    --sidebar-border: 240 5% 20%;
+    --sidebar-ring: 240 5% 30%;
+    
+    /* Module Sub-Sidebar - Lighter than global, contextual */
+    --module-sidebar-background: 222 35% 14%;
+    --module-sidebar-foreground: 215 20% 82%;
+    --module-sidebar-accent: 217 25% 18%;
+    --module-sidebar-border: 217 20% 22%;
+    --module-sidebar-muted: 215 16% 55%;
   }
 }
 
@@ -164,20 +172,41 @@ html.sidebar-transition body {
   }
 }
 
-/* Sidebar button text colors */
-.sidebar-menu-button,
-.sidebar-menu-button .text-muted-foreground,
-.sidebar-menu-button a,
-.sidebar-menu-button a *,
-.sidebar-menu-button a span,
-.sidebar-menu-button a div,
-.sidebar-menu-button[data-state="active"],
-.sidebar-menu-button[data-state="active"] a,
-.sidebar-menu-button[data-state="active"] a *,
-.sidebar-menu-button[data-state="active"] a span,
-.sidebar-menu-button[data-state="active"] a div {
-  color: white !important;
-  fill: white !important;
+/* Global Sidebar - Remove color override to allow Tailwind classes to work */
+
+/* Module Sub-Sidebar - Contextual, lighter, smaller */
+.module-sidebar {
+  background: hsl(var(--module-sidebar-background));
+  border-color: hsl(var(--module-sidebar-border));
+}
+
+.module-sidebar-section-header {
+  font-size: 0.7rem;
+  font-weight: 600;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: hsl(var(--module-sidebar-muted));
+  padding: 0.5rem 0.75rem;
+  margin-top: 1rem;
+}
+
+.module-sidebar-section-header:first-child {
+  margin-top: 0;
+}
+
+.module-sidebar-item {
+  font-size: 0.875rem;
+  color: hsl(var(--module-sidebar-foreground));
+}
+
+.module-sidebar-item:hover {
+  background: hsl(var(--module-sidebar-accent));
+}
+
+.module-sidebar-item.active {
+  background: hsl(var(--module-sidebar-accent));
+  color: hsl(var(--module-sidebar-foreground));
+  font-weight: 600;
 }
 
 /* Hide scrollbar for webkit browsers */

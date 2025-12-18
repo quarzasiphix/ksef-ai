@@ -14,6 +14,7 @@ import { useGlobalData } from "@/hooks/use-global-data";
 import { pl } from 'date-fns/locale';
 import { calculateIncomeTax } from "@/utils/taxCalculations";
 import { LineChart, Line, AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, BarChart, Bar } from 'recharts';
+import { Breadcrumbs } from "@/components/seo/Breadcrumbs";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { toast } from 'sonner';
@@ -606,6 +607,11 @@ const Accounting = () => {
 
   return (
     <div className="space-y-6 pb-20 px-4 md:px-6">
+        {/* Breadcrumbs - positioned at top of content area */}
+        <div className="mb-4">
+          <Breadcrumbs />
+        </div>
+        
         {/* Header */}
         <div className="space-y-2 lg:hidden">
           <h1 className="text-2xl md:text-3xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-amber-400 via-amber-500 to-amber-700">

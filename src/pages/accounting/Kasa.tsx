@@ -60,6 +60,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { toast } from 'sonner';
 import { format } from 'date-fns';
 import { pl } from 'date-fns/locale';
+import { Breadcrumbs } from "@/components/seo/Breadcrumbs";
 import {
   getCashAccounts,
   createCashAccount,
@@ -462,6 +463,9 @@ const Kasa = () => {
   if (!selectedProfile) {
     return (
       <div className="p-6">
+        <div className="mb-4">
+          <Breadcrumbs />
+        </div>
         <p className="text-muted-foreground">Wybierz profil biznesowy</p>
       </div>
     );
@@ -469,6 +473,11 @@ const Kasa = () => {
 
   return (
     <div className="space-y-6 pb-20 px-4 md:px-6">
+      {/* Breadcrumbs */}
+      <div className="mb-4">
+        <Breadcrumbs />
+      </div>
+      
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>

@@ -11,7 +11,7 @@ import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { getDecision, updateDecision } from '@/integrations/supabase/repositories/decisionsRepository';
+import { getDecision, getDecisions, updateDecision } from '@/integrations/supabase/repositories/decisionsRepository';
 import {
   DECISION_CATEGORY_LABELS,
   DECISION_STATUS_LABELS,
@@ -26,6 +26,7 @@ const formSchema = z.object({
   description: z.string().optional(),
   decision_type: z.custom<DecisionType>(),
   category: z.custom<DecisionCategory>(),
+  parent_decision_id: z.string().optional(),
   scope_description: z.string().optional(),
   amount_limit: z.union([z.number(), z.nan()]).optional(),
   currency: z.string().min(1).default('PLN'),
@@ -57,6 +58,7 @@ const DecisionEdit: React.FC = () => {
       description: '',
       decision_type: 'operational_board',
       category: 'other',
+      parent_decision_id: '',
       scope_description: '',
       amount_limit: undefined,
       currency: 'PLN',
@@ -64,6 +66,24 @@ const DecisionEdit: React.FC = () => {
       valid_to: '',
       status: 'active',
     },
+  });
+
+  const decisionType = form.watch('decision_type');
+
+  useEffect(() => {
+    if (decisionType !== 'operational_board') {
+      form.setValue('parent_decision_id', '');
+    }
+  }, [decisionType, form]);
+
+  const { data: strategicDecisions = [] } = useQuery({
+    queryKey: ['decisions', decision?.business_profile_id, 'strategic_shareholders', 'active'],
+    queryFn: async () => {
+      if (!decision?.business_profile_id) return [];
+      const all = await getDecisions(decision.business_profile_id, 'active');
+      return all.filter((d) => d.decision_type === 'strategic_shareholders');
+    },
+    enabled: !!decision?.business_profile_id,
   });
 
   useEffect(() => {
@@ -74,6 +94,7 @@ const DecisionEdit: React.FC = () => {
       description: decision.description ?? '',
       decision_type: decision.decision_type,
       category: decision.category,
+      parent_decision_id: decision.parent_decision_id ?? '',
       scope_description: decision.scope_description ?? '',
       amount_limit: typeof decision.amount_limit === 'number' ? decision.amount_limit : undefined,
       currency: decision.currency ?? 'PLN',
@@ -92,6 +113,10 @@ const DecisionEdit: React.FC = () => {
         description: values.description || undefined,
         decision_type: values.decision_type,
         category: values.category,
+        parent_decision_id:
+          values.decision_type === 'operational_board'
+            ? (values.parent_decision_id ? values.parent_decision_id : null)
+            : null,
         scope_description: values.scope_description || undefined,
         amount_limit: typeof values.amount_limit === 'number' && !Number.isNaN(values.amount_limit) ? values.amount_limit : null,
         currency: values.currency || 'PLN',
@@ -202,6 +227,28 @@ const DecisionEdit: React.FC = () => {
               </Select>
             </div>
           </div>
+
+          {decisionType === 'operational_board' && (
+            <div className="space-y-2">
+              <Label>Uchwała strategiczna (opcjonalnie)</Label>
+              <Select
+                value={form.watch('parent_decision_id') || '__none__'}
+                onValueChange={(v) => form.setValue('parent_decision_id', v === '__none__' ? '' : v)}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Wybierz uchwałę strategiczną" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="__none__">Brak</SelectItem>
+                  {strategicDecisions.map((d) => (
+                    <SelectItem key={d.id} value={d.id}>
+                      {d.decision_number ? `${d.decision_number} ` : ''}{d.title}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          )}
 
           <div className="space-y-2">
             <Label htmlFor="scope">Zakres (opcjonalnie)</Label>

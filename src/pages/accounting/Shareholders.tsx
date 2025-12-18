@@ -10,6 +10,7 @@ import type { Shareholder } from '@/types/accounting';
 import { toast } from 'sonner';
 import { format } from 'date-fns';
 import { pl } from 'date-fns/locale';
+import { Breadcrumbs } from "@/components/seo/Breadcrumbs";
 
 const Shareholders = () => {
   const { selectedProfileId, profiles } = useBusinessProfile();
@@ -124,6 +125,9 @@ const Shareholders = () => {
   if (selectedProfile?.entityType !== 'sp_zoo' && selectedProfile?.entityType !== 'sa') {
     return (
       <div className="space-y-6 pb-20 px-4 md:px-6">
+        <div className="mb-4">
+          <Breadcrumbs />
+        </div>
         <div className="text-center py-12">
           <Building2 className="mx-auto h-16 w-16 text-muted-foreground mb-4" />
           <h2 className="text-2xl font-bold mb-2">Wspólnicy dostępni tylko dla Spółek</h2>
@@ -137,6 +141,11 @@ const Shareholders = () => {
 
   return (
     <div className="space-y-6 pb-20 px-4 md:px-6">
+        {/* Breadcrumbs */}
+        <div className="mb-4">
+          <Breadcrumbs />
+        </div>
+        
         {/* Header */}
         <div className="flex items-center justify-between">
           <div className="space-y-2">

@@ -108,38 +108,14 @@ const AppSidebar = () => {
     return location.pathname.startsWith(path);
   };
 
-  const getNavClassName = (path: string, premiumItem?: boolean, extraClass?: string) => {
-    const base = "flex items-center px-3 py-2 rounded-lg transition-all duration-200 w-full text-white";
-    const align = isCollapsed ? "justify-center" : "gap-3 justify-start";
-    const extra = extraClass || "";
-
-    if (premiumItem && isPremium) {
-      return cn(
-        base,
-        align,
-        extra,
-        isActive(path)
-          ? "bg-amber-600 text-white shadow-sm"
-          : "hover:bg-amber-500/80 text-white"
-      );
-    }
-
-    if (premiumItem) {
-      return cn(
-        base,
-        align,
-        extra,
-        "text-white/50 hover:text-white/70 cursor-not-allowed opacity-50"
-      );
-    }
-
+  const getNavClassName = (path: string, premium?: boolean) => {
+    const active = isActive(path);
     return cn(
-      base,
-      align,
-      extra,
-      isActive(path)
-        ? "bg-primary text-white shadow-sm"
-        : "text-white/90 hover:bg-primary/80 hover:text-white"
+      "flex items-center gap-3 px-3 py-2.5 rounded-lg transition-all duration-200",
+      active
+        ? "bg-muted/60 text-foreground font-medium"
+        : "text-sidebar-foreground/75 hover:bg-muted/30 hover:text-foreground",
+      premium && !isPremium && "opacity-50"
     );
   };
 
@@ -198,14 +174,14 @@ const AppSidebar = () => {
 
   return (
     <Sidebar className={cn("border-r-2 transition-all duration-300", isCollapsed ? "w-32" : "w-64")}>
-      <SidebarHeader className="border-b">
-        <div className="flex items-center gap-2 px-2">
+      <SidebarHeader className="border-b border-sidebar-border">
+        <div className="flex items-center gap-2 px-3 py-3">
           {!isCollapsed && (
             <div className="flex-1">
-              <h2 className="text-lg font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
-                Polski System
+              <h2 className="text-base font-bold text-sidebar-foreground">
+                KsiegaI
               </h2>
-              <p className="text-xs text-muted-foreground">Fakturowy</p>
+              <p className="text-xs text-sidebar-foreground/60 mt-0.5">System księgowy</p>
             </div>
           )}
           <div className="flex items-center gap-1">
@@ -217,7 +193,7 @@ const AppSidebar = () => {
 
       <SidebarContent className="px-2">
         {/* Business Profile Switcher */}
-        <div className="py-2 border-b">
+        <div className="py-2 border-b border-sidebar-border">
           <BusinessProfileSwitcher isCollapsed={isCollapsed} />
         </div>
 
@@ -233,7 +209,7 @@ const AppSidebar = () => {
                 >
                   <NavLink to={dashboardItem.path} className={getNavClassName(dashboardItem.path, dashboardItem.premium)}>
                     <dashboardItem.icon className="h-5 w-5 flex-shrink-0" />
-                    {!isCollapsed && <span>{dashboardItem.title}</span>}
+                    {!isCollapsed && <span className="text-base">{dashboardItem.title}</span>}
                   </NavLink>
                 </SidebarMenuButton>
               </SidebarMenuItem>
@@ -241,38 +217,10 @@ const AppSidebar = () => {
           </SidebarGroupContent>
         </SidebarGroup>
 
-                {/* Quick Actions */}
-        <SidebarGroup>
-          {!isCollapsed && <SidebarGroupLabel>SZYBKIE AKCJE</SidebarGroupLabel>}
-          <SidebarGroupContent>
-            <SidebarMenu>
-              {quickActions.map((action) => (
-                <SidebarMenuItem key={action.path}>
-                  <SidebarMenuButton
-                    asChild
-                    tooltip={isCollapsed ? action.title : undefined}
-                  >
-                    <a href={action.path} className={cn(
-                        "flex items-center rounded-lg bg-muted/50 hover:bg-muted/80 transition-colors w-full text-white/90 hover:text-white",
-                        isCollapsed ? "justify-center h-10 px-0" : "gap-3 px-3 py-2"
-                    )}>
-                      <action.icon className={`h-5 w-5 flex-shrink-0 ${action.color} opacity-90`} />
-                      {!isCollapsed && (
-                        <span className="font-medium">
-                          {action.title}
-                        </span>
-                      )}
-                    </a>
-                  </SidebarMenuButton>
-                </SidebarMenuItem>
-              ))}
-            </SidebarMenu>
-          </SidebarGroupContent>
-        </SidebarGroup>
 
         {/* Finanse */}
         <SidebarGroup>
-          {!isCollapsed && <SidebarGroupLabel>FINANSE</SidebarGroupLabel>}
+          {!isCollapsed && <SidebarGroupLabel className="text-xs font-semibold tracking-wider text-sidebar-foreground/50">FINANSE</SidebarGroupLabel>}
           <SidebarGroupContent>
             <SidebarMenu>
               {finanseItems.map((item) => (
@@ -284,7 +232,7 @@ const AppSidebar = () => {
                   >
                     <NavLink to={item.path} className={getNavClassName(item.path, item.premium)}>
                       <item.icon className="h-5 w-5 flex-shrink-0" />
-                      {!isCollapsed && <span>{item.title}</span>}
+                      {!isCollapsed && <span className="text-base">{item.title}</span>}
                     </NavLink>
                   </SidebarMenuButton>
                 </SidebarMenuItem>
@@ -295,7 +243,7 @@ const AppSidebar = () => {
 
         {/* Zarządzanie */}
         <SidebarGroup>
-          {!isCollapsed && <SidebarGroupLabel>ZARZĄDZANIE</SidebarGroupLabel>}
+          {!isCollapsed && <SidebarGroupLabel className="text-xs font-semibold tracking-wider text-sidebar-foreground/50">ZARZĄDZANIE</SidebarGroupLabel>}
           <SidebarGroupContent>
             <SidebarMenu>
               {zarzadzanieItems.map((item) => (
@@ -307,7 +255,7 @@ const AppSidebar = () => {
                   >
                     <NavLink to={item.path} className={getNavClassName(item.path, item.premium)}>
                       <item.icon className="h-5 w-5 flex-shrink-0" />
-                      {!isCollapsed && <span>{item.title}</span>}
+                      {!isCollapsed && <span className="text-base">{item.title}</span>}
                     </NavLink>
                   </SidebarMenuButton>
                 </SidebarMenuItem>
@@ -358,7 +306,7 @@ const AppSidebar = () => {
         )}
       </SidebarContent>
       
-      <SidebarFooter className="border-t p-4">
+      <SidebarFooter className="border-t border-sidebar-border p-4">
         <SidebarUserInfo />
       </SidebarFooter>
     </Sidebar>

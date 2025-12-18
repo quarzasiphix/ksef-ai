@@ -12,6 +12,7 @@ import {
 import { toast } from 'sonner';
 import { getContractsByBusinessProfile } from '@/integrations/supabase/repositories/contractRepository';
 import type { Contract } from '@/types';
+import { Breadcrumbs } from "@/components/seo/Breadcrumbs";
 import {
   ResponsiveContainer,
   BarChart,
@@ -102,6 +103,9 @@ const TransactionalContracts = () => {
   if (!selectedProfile) {
     return (
       <div className="p-4">
+        <div className="mb-4">
+          <Breadcrumbs />
+        </div>
         <p className="text-muted-foreground">Wybierz profil biznesowy</p>
       </div>
     );
@@ -109,6 +113,11 @@ const TransactionalContracts = () => {
 
   return (
     <div className="space-y-4">
+      {/* Breadcrumbs */}
+      <div className="mb-4">
+        <Breadcrumbs />
+      </div>
+      
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>

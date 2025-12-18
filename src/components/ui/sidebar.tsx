@@ -277,13 +277,12 @@ const SidebarMenuButton = React.forwardRef<
   const content = (
     <Button
       ref={ref}
+      variant="ghost"
       className={cn(
-        "flex w-full items-center rounded-md text-sm font-medium transition-colors",
-        isActive
-          ? "bg-accent text-accent-foreground"
-          : "text-muted-foreground hover:bg-accent hover:text-accent-foreground",
+        "flex w-full items-center rounded-md text-sm font-medium transition-colors sidebar-menu-button",
         className
       )}
+      data-state={isActive ? "active" : undefined}
       style={{ display: 'flex', alignItems: 'center', width: '100%', padding: '0.5rem', justifyContent: state === 'expanded' ? 'flex-start' : 'center' }}
       {...props}
     >

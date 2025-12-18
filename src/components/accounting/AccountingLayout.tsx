@@ -227,16 +227,16 @@ export const AccountingLayout: React.FC<AccountingLayoutProps> = ({
   };
 
   return (
-    <div className="flex min-h-[calc(100vh-4rem)]">
+    <div className="flex h-[calc(100vh-4rem)] overflow-hidden">
       {!showSidebar ? (
         <div className="flex-1 flex flex-col min-w-0">
-          <main className="flex-1">{children}</main>
+          <main className="flex-1 overflow-y-auto">{children}</main>
         </div>
       ) : (
         <>
-          {/* Desktop Sidebar - hidden on mobile */}
+          {/* Desktop Sidebar - hidden on mobile, sticky to top with header offset */}
           {!desktopCollapsed ? (
-            <aside className="hidden lg:flex lg:flex-col lg:w-64 lg:ml-2 lg:border-r lg:bg-background transition-[width] duration-200 ease-in-out">
+            <aside className="hidden lg:flex lg:flex-col lg:w-64 lg:border-r lg:bg-background transition-[width] duration-200 ease-in-out lg:h-full overflow-hidden">
               <AccountingSidebar
                 collapsed={false}
                 onToggleCollapsed={handleToggleDesktopCollapsed}
@@ -246,7 +246,7 @@ export const AccountingLayout: React.FC<AccountingLayoutProps> = ({
             // Collapsed sidebar expands inline on hover (pushes content like normal open)
             <aside
               className={cn(
-                'hidden lg:flex lg:flex-col lg:ml-2 lg:border-r lg:bg-background overflow-hidden transition-[width] duration-200 ease-in-out',
+                'hidden lg:flex lg:flex-col lg:border-r lg:bg-background overflow-hidden transition-[width] duration-200 ease-in-out lg:h-full',
                 desktopPeek ? 'lg:w-64' : 'lg:w-16'
               )}
               onMouseEnter={() => {
@@ -266,7 +266,7 @@ export const AccountingLayout: React.FC<AccountingLayoutProps> = ({
           {/* Main Content Area */}
           <div className="flex-1 flex flex-col min-w-0">
             {/* Page Content */}
-            <main className="flex-1">{children}</main>
+            <main className="flex-1 overflow-y-auto">{children}</main>
           </div>
         </>
       )}

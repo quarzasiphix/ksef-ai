@@ -8,6 +8,7 @@ import type { BalanceSheetData, BalanceSheet as BalanceSheetType } from '@/types
 import { toast } from 'sonner';
 import { format } from 'date-fns';
 import { pl } from 'date-fns/locale';
+import { Breadcrumbs } from "@/components/seo/Breadcrumbs";
 
 const BalanceSheet = () => {
   const { selectedProfileId, profiles } = useBusinessProfile();
@@ -86,6 +87,9 @@ const BalanceSheet = () => {
   if (selectedProfile?.entityType !== 'sp_zoo' && selectedProfile?.entityType !== 'sa') {
     return (
       <div className="space-y-6 pb-20 px-4 md:px-6">
+        <div className="mb-4">
+          <Breadcrumbs />
+        </div>
         <div className="text-center py-12">
           <Building2 className="mx-auto h-16 w-16 text-muted-foreground mb-4" />
           <h2 className="text-2xl font-bold mb-2">Bilans dostępny tylko dla Spółek</h2>
@@ -99,6 +103,11 @@ const BalanceSheet = () => {
 
   return (
     <div className="space-y-6 pb-20 px-4 md:px-6">
+        {/* Breadcrumbs */}
+        <div className="mb-4">
+          <Breadcrumbs />
+        </div>
+        
         {/* Header */}
         <div className="space-y-2">
           <h1 className="text-2xl font-bold tracking-tight">
