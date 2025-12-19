@@ -54,6 +54,13 @@ const CustomerForm = ({
 }: CustomerFormProps) => {
   const { user } = useAuth();
   const isEditing = !!initialData?.id;
+  const [isConnectedUser, setIsConnectedUser] = React.useState(false);
+  const [connectedUserInfo, setConnectedUserInfo] = React.useState<{
+    entityType?: string;
+    legalForm?: string;
+    ownerEmail?: string;
+  } | null>(null);
+  const [isSearching, setIsSearching] = React.useState(false);
 
   const storageKey = useMemo(() => {
     const userId = user?.id ?? 'anonymous';
@@ -181,132 +188,241 @@ const CustomerForm = ({
             onSubmit={form.handleSubmit(onSubmit)}
             className="space-y-4 pt-2"
           >
-
-<FormField
+            <FormField
               control={form.control}
               name="taxId"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>NIP</FormLabel>
+                  <FormLabel className="flex items-center gap-2">
+                    NIP
+                    {isConnectedUser && connectedUserInfo && (
+                      <div className="flex items-center gap-2">
+                        <span className="inline-flex items-center gap-1 bg-green-100 text-green-800 text-xs px-2 py-0.5 rounded-full font-medium">
+                          ✓ Połączony
+                        </span>
+                        {connectedUserInfo.entityType && (
+                          <span className="text-xs text-muted-foreground">
+                            ({connectedUserInfo.entityType === 'dzialalnosc' ? 'JDG' : connectedUserInfo.legalForm || 'Spółka'})
+                          </span>
+                        )}
+                      </div>
+                    )}
+                  </FormLabel>
                   <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
                     <FormControl>
-                      <Input placeholder="NIP" maxLength={10} {...field} />
+                      <Input 
+                        placeholder="NIP" 
+                        maxLength={10} 
+                        {...field}
+                        onChange={(e) => {
+                          field.onChange(e);
+                          setIsConnectedUser(false);
+                          setConnectedUserInfo(null);
+                        }}
+                      />
                     </FormControl>
                     <Button
                       type="button"
                       size="sm"
                       variant="secondary"
                       style={{ minWidth: 60, padding: '0 10px' }}
+                      disabled={isSearching}
                       onClick={async () => {
                         const nip = form.getValues("taxId");
-                        if (!nip || nip.length !== 10) {
-                          toast.error("Podaj poprawny NIP (10 cyfr)");
+                        
+                        // Validate NIP format
+                        if (!nip) {
+                          toast.error("Podaj NIP");
                           return;
                         }
+                        
+                        const cleanNip = nip.replace(/[^0-9]/g, '');
+                        if (cleanNip.length !== 10) {
+                          toast.error("NIP musi mieć dokładnie 10 cyfr");
+                          return;
+                        }
+                        
+                        setIsSearching(true);
+                        
                         try {
-                          const today = new Date().toISOString().slice(0, 10);
-                          const res = await fetch(`https://wl-api.mf.gov.pl/api/search/nip/${nip}?date=${today}`);
-
                           let found = false;
 
-                          if (res.ok) {
-                            const data = await res.json();
-                            if (data.result && data.result.subject) {
-                              const subject = data.result.subject;
-                              form.setValue("name", subject.name || "");
-                              form.setValue("address", subject.workingAddress || subject.residenceAddress || "");
-                              // Try to extract postal code and city from address
-                              if (subject.workingAddress || subject.residenceAddress) {
-                                const addr = subject.workingAddress || subject.residenceAddress;
-                                const match = addr.match(/(\d{2}-\d{3})\s+(.+)/);
-                                if (match) {
-                                  form.setValue("postalCode", match[1]);
-                                  form.setValue("city", match[2]);
+                          // PRIORITY 1: Check internal database FIRST to see if user is connected
+                          const { data: bpData, error: bpError } = await supabase.rpc("find_user_by_tax_id", {
+                            tax_id_param: cleanNip,
+                          });
+
+                          if (!bpError && bpData && bpData.length > 0) {
+                            const bp: any = bpData[0];
+                            
+                            // Fill form with complete data
+                            if (bp.business_name) form.setValue("name", bp.business_name);
+                            if (bp.full_address) {
+                              form.setValue("address", bp.full_address);
+                            } else {
+                              if (bp.address) form.setValue("address", bp.address);
+                            }
+                            if (bp.postal_code) form.setValue("postalCode", bp.postal_code);
+                            if (bp.city) form.setValue("city", bp.city);
+                            if (bp.owner_email) form.setValue("email", bp.owner_email);
+                            if (bp.owner_phone) form.setValue("phone", bp.owner_phone);
+                            
+                            // Set connected user state with entity info
+                            setIsConnectedUser(true);
+                            setConnectedUserInfo({
+                              entityType: bp.entity_type,
+                              legalForm: bp.legal_form,
+                              ownerEmail: bp.owner_email
+                            });
+                            
+                            toast.success("✅ Użytkownik połączony w systemie - dokumenty trafią do Skrzynki");
+                            found = true;
+                          }
+
+                          // PRIORITY 2: If not in internal DB, try CEIDG API first (for JDG)
+                          if (!found) {
+                            try {
+                              const ceidgRes = await fetch(
+                                `https://dane.biznes.gov.pl/api/ceidg/v2/firmy?nip=${cleanNip}`,
+                                {
+                                  headers: {
+                                    'Accept': 'application/json'
+                                  }
+                                }
+                              );
+
+                              if (ceidgRes.ok) {
+                                const ceidgData = await ceidgRes.json();
+                                if (ceidgData && ceidgData.firma && ceidgData.firma.length > 0) {
+                                  const firma = ceidgData.firma[0];
+                                  
+                                  // Extract name
+                                  const name = firma.nazwa || 
+                                    (firma.wlasciciel ? `${firma.wlasciciel.imie || ''} ${firma.wlasciciel.nazwisko || ''}`.trim() : '');
+                                  
+                                  if (name) form.setValue("name", name);
+                                  
+                                  // Extract address
+                                  if (firma.adres) {
+                                    const addr = firma.adres;
+                                    const ulica = addr.ulica || '';
+                                    const nrDomu = addr.nrDomu || '';
+                                    const nrLokalu = addr.nrLokalu ? `/${addr.nrLokalu}` : '';
+                                    const fullAddress = `${ulica} ${nrDomu}${nrLokalu}`.trim();
+                                    
+                                    if (fullAddress) form.setValue("address", fullAddress);
+                                    if (addr.kodPocztowy) form.setValue("postalCode", addr.kodPocztowy);
+                                    if (addr.miejscowosc) form.setValue("city", addr.miejscowosc);
+                                  }
+                                  
+                                  // Extract contact info
+                                  if (firma.email) form.setValue("email", firma.email);
+                                  if (firma.telefon) form.setValue("phone", firma.telefon);
+                                  
+                                  toast.success("Dane firmy pobrane z CEIDG (JDG)");
+                                  found = true;
                                 }
                               }
-                              toast.success("Dane firmy pobrane z GUS");
-                              found = true;
+                            } catch (ceidgErr) {
+                              console.warn("CEIDG API failed:", ceidgErr);
                             }
                           }
 
-                          // Second fallback: MojePaństwo KRS API
+                          // PRIORITY 3: If not in CEIDG, try GUS API (Biała Lista VAT)
+                          if (!found) {
+                            try {
+                              const today = new Date().toISOString().slice(0, 10);
+                              const gusRes = await fetch(`https://wl-api.mf.gov.pl/api/search/nip/${cleanNip}?date=${today}`);
+
+                              if (gusRes.ok) {
+                                const gusData = await gusRes.json();
+                                if (gusData.result && gusData.result.subject) {
+                                  const subject = gusData.result.subject;
+                                  
+                                  if (subject.name) form.setValue("name", subject.name);
+                                  
+                                  // Extract address with better parsing
+                                  const workAddr = subject.workingAddress || subject.residenceAddress || '';
+                                  if (workAddr) {
+                                    // Try to parse: "ul. Przykładowa 1, 00-001 Warszawa"
+                                    const addressMatch = workAddr.match(/^(.+?),?\s*(\d{2}-\d{3})\s+(.+)$/);
+                                    if (addressMatch) {
+                                      form.setValue("address", addressMatch[1].trim());
+                                      form.setValue("postalCode", addressMatch[2]);
+                                      form.setValue("city", addressMatch[3].trim());
+                                    } else {
+                                      form.setValue("address", workAddr);
+                                    }
+                                  }
+                                  
+                                  toast.success("Dane firmy pobrane z GUS (Biała Lista VAT)");
+                                  found = true;
+                                }
+                              }
+                            } catch (gusErr) {
+                              console.warn("GUS API failed:", gusErr);
+                            }
+                          }
+
+                          // PRIORITY 4: MojePaństwo KRS API (last resort for spółki)
                           if (!found) {
                             try {
                               const mpRes = await fetch(
-                                `https://api-v3.mojepanstwo.pl/dane/krs_podmioty.json?conditions%5Bpubliczny_nip%5D=${nip}&limit=1`
+                                `https://api-v3.mojepanstwo.pl/dane/krs_podmioty.json?conditions%5Bpubliczny_nip%5D=${cleanNip}&limit=1`
                               );
 
                               if (mpRes.ok) {
                                 const mpJson: any = await mpRes.json();
-                                // The response format may include an array under "data" or "Dataobject" depending on API version.
                                 const mpItem =
                                   mpJson?.data?.[0]?.data ||
                                   mpJson?.Dataobject?.[0]?.data ||
                                   mpJson?.items?.[0]?.data;
 
                                 if (mpItem) {
-                                  form.setValue("name", mpItem.nazwa || mpItem.name || "");
+                                  const nazwa = mpItem.nazwa || mpItem.name || '';
+                                  if (nazwa) form.setValue("name", nazwa);
 
+                                  // Better address parsing for KRS
                                   const addressField =
                                     mpItem.adres ||
                                     mpItem.siedziba ||
                                     mpItem.working_address ||
                                     mpItem.residence_address ||
-                                    "";
+                                    '';
 
                                   if (addressField) {
-                                    form.setValue("address", addressField);
-                                    const match = addressField.match(/(\d{2}-\d{3})\s+(.+)/);
-                                    if (match) {
-                                      form.setValue("postalCode", match[1]);
-                                      form.setValue("city", match[2]);
+                                    // Try to parse structured address
+                                    const addressMatch = addressField.match(/^(.+?),?\s*(\d{2}-\d{3})\s+(.+)$/);
+                                    if (addressMatch) {
+                                      form.setValue("address", addressMatch[1].trim());
+                                      form.setValue("postalCode", addressMatch[2]);
+                                      form.setValue("city", addressMatch[3].trim());
+                                    } else {
+                                      form.setValue("address", addressField);
                                     }
                                   }
 
-                                  toast.success("Dane firmy pobrane z KRS (MojePaństwo)");
+                                  toast.success("Dane firmy pobrane z KRS (Spółka)");
                                   found = true;
                                 }
                               }
                             } catch (mpErr) {
-                              console.warn("MojePaństwo request failed", mpErr);
+                              console.warn("MojePaństwo KRS API failed:", mpErr);
                             }
                           }
 
-                          // Fallback: search in internal database if not found via external APIs
                           if (!found) {
-                            const { data: bpData, error: bpError } = await supabase.rpc("find_user_by_tax_id", {
-                              tax_id_param: nip,
-                            });
-
-                            if (bpError) {
-                              console.error("RPC error find_user_by_tax_id:", bpError);
-                            }
-
-                            if (bpData && bpData.length > 0) {
-                              const bp: any = bpData[0];
-                              form.setValue("name", bp.business_name || bp.name || "");
-                              if (bp.address) form.setValue("address", bp.address);
-                              if (bp.postal_code) form.setValue("postalCode", bp.postal_code);
-                              if (bp.city) form.setValue("city", bp.city);
-                              toast.success("Dane firmy pobrane z bazy");
-                            } else {
-                              // If API responded with error earlier, show that; otherwise generic not found
-                              if (!res.ok) {
-                                const errorData = await res.json().catch(() => null);
-                                const errorMessage = errorData?.error ? errorData.error.message : `Błąd HTTP: ${res.status} ${res.statusText}`;
-                                toast.error(`Błąd pobierania danych: ${errorMessage}`);
-                              } else {
-                                toast.error("Nie znaleziono firmy dla podanego NIP");
-                              }
-                            }
+                            toast.error("Nie znaleziono firmy dla podanego NIP. Sprawdź poprawność numeru.");
                           }
                         } catch (err: any) {
                           console.error("Error during NIP search:", err);
-                          toast.error(`Błąd podczas wyszukiwania danych: ${err.message || err}`);
+                          toast.error(`Błąd podczas wyszukiwania: ${err.message || 'Nieznany błąd'}`);
+                        } finally {
+                          setIsSearching(false);
                         }
                       }}
                     >
-                      Szukaj
+                      {isSearching ? 'Szukam...' : 'Szukaj'}
                     </Button>
                   </div>
                   <FormMessage />

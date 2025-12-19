@@ -16,9 +16,9 @@ export async function getInvoiceNumberingSettings(userId: string, businessProfil
     .select('*')
     .eq('user_id', userId)
     .eq('business_profile_id', businessProfileId)
-    .single();
+    .maybeSingle();
   if (error) return null;
-  return data as InvoiceNumberingSettings;
+  return data as InvoiceNumberingSettings | null;
 }
 
 export async function upsertInvoiceNumberingSettings(settings: InvoiceNumberingSettings): Promise<InvoiceNumberingSettings | null> {

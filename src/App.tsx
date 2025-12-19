@@ -56,6 +56,8 @@ import DecisionEdit from '@/pages/decisions/DecisionEdit';
 import DecisionDetails from '@/pages/decisions/DecisionDetails';
 import Analytics from '@/pages/Analytics';
 import BankAccounts from "@/pages/bank/BankAccounts";
+import CapitalCommitments from '@/pages/assets/CapitalCommitments';
+import BusinessInbox from '@/pages/inbox/BusinessInbox';
 import Index from "./pages/Index";
 import SharedLinksPage from "./pages/SharedLinks";
 import CompanyRegistry from '@/pages/spolka/CompanyRegistry';
@@ -456,6 +458,20 @@ const App = () => {
                 <Route path="/contracts/:id/edit" element={
                   <ProtectedRoute>
                     <ContractNew />
+                  </ProtectedRoute>
+                } />
+
+                {/* Assets routes */}
+                <Route path="/assets" element={
+                  <ProtectedRoute>
+                    <CapitalCommitments />
+                  </ProtectedRoute>
+                } />
+
+                {/* Business Inbox routes */}
+                <Route path="/inbox" element={
+                  <ProtectedRoute>
+                    <BusinessInbox />
                   </ProtectedRoute>
                 } />
 

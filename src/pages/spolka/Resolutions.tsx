@@ -150,14 +150,28 @@ const Resolutions = () => {
     }
   };
 
-  const getStatusBadge = (status: ResolutionStatus) => {
-    const variants: Record<ResolutionStatus, { variant: any; label: string }> = {
+  const getStatusBadge = (status?: ResolutionStatus | null) => {
+    const variants: Record<ResolutionStatus, { variant: 'secondary' | 'default' | 'outline'; label: string }> = {
       draft: { variant: 'secondary', label: 'Szkic' },
       adopted: { variant: 'default', label: 'Przyjęta' },
       executed: { variant: 'outline', label: 'Wykonana' },
     };
-    const config = variants[status];
-    return <Badge variant={config.variant}>{config.label}</Badge>;
+
+    const config = status ? variants[status as ResolutionStatus] : null;
+
+    if (!config) {
+      return (
+        <Badge variant="outline" className="text-xs">
+          {status ? status : 'Nieznany status'}
+        </Badge>
+      );
+    }
+
+    return (
+      <Badge variant={config.variant} className="text-xs">
+        {config.label}
+      </Badge>
+    );
   };
 
   if (!selectedProfile) {

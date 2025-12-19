@@ -12,38 +12,43 @@ const plans = {
     name: "Miesięczny",
     price: "19 zł",
     interval: "miesiąc",
-    tagline: "Najlepszy start, pełen dostęp bez zobowiązań długoterminowych.",
+    tagline: "Pełna kontrola nad spółką bez zobowiązań długoterminowych.",
+    badge: undefined,
     highlights: [
-      "Pełny dostęp do funkcji Premium",
-      "Płatność odnawialna co miesiąc",
-      "Możesz anulować w dowolnym momencie",
+      "System decyzji i uchwał — pełna kontrola uprawnień",
+      "Nieograniczone dokumenty i eksporty (JPK, KSeF)",
+      "Niezależność od księgowej jako gatekeepera",
     ],
+    whoFor: "Idealny dla założycieli testujących system lub firm z sezonową działalnością.",
   },
   annual: {
     id: "annual",
     name: "Roczny",
     price: "150 zł",
     interval: "rok",
-    tagline: "Najlepsza cena — oszczędzasz i masz spokój na cały rok.",
+    tagline: "Najlepsza cena — spokój i kontrola przez cały rok.",
     badge: "Najpopularniejszy",
     highlights: [
-      "Pełny dostęp do funkcji Premium",
-      "Najlepsza cena w przeliczeniu na miesiąc",
-      "Faktura raz w roku, mniej formalności",
+      "System decyzji i uchwał — pełna kontrola uprawnień",
+      "Nieograniczone dokumenty i eksporty (JPK, KSeF)",
+      "Niezależność od księgowej jako gatekeepera",
     ],
+    whoFor: "Najlepszy wybór dla większości spółek — najlepsza cena, najmniej formalności, pełna funkcjonalność.",
   },
   lifetime: {
     id: "lifetime",
-    name: "Dożywotni",
+    name: "Enterprise",
     price: "999 zł",
     interval: "jednorazowo",
-    tagline: "Jednorazowa płatność i dostęp na zawsze.",
-    badge: "Najlepsza wartość",
+    tagline: "Dedykowane wdrożenie, dostęp offline i pełna kontrola nad systemem.",
+    badge: "Oferta indywidualna",
     highlights: [
-      "Pełny dostęp do funkcji Premium",
-      "Jednorazowa płatność",
-      "Najlepsze dla firm planujących długoterminowo",
+      "Wszystko z planu Rocznego",
+      "Dedykowane wdrożenie i szkolenie zespołu",
+      "Dostęp offline i pełna kontrola nad danymi",
+      "Priorytetowe wsparcie techniczne",
     ],
+    whoFor: "Dla firm wymagających pełnej niezależności, kontroli nad infrastrukturą i dedykowanego wsparcia.",
   },
 } as const;
 
@@ -99,9 +104,12 @@ const PremiumPlanDetails = () => {
             </div>
 
             <h1 className="text-3xl md:text-4xl font-extrabold tracking-tight">
-              Plan {plan.name}
+              {plan.name}
             </h1>
             <p className="text-neutral-300 max-w-2xl">{plan.tagline}</p>
+            <p className="text-sm text-neutral-400 max-w-2xl">
+              Governance-first accounting & operations — nie księgowość, system operacyjny dla spółki.
+            </p>
           </div>
 
           <div className="text-left md:text-right space-y-2">
@@ -139,7 +147,7 @@ const PremiumPlanDetails = () => {
         <section className="grid gap-6 md:grid-cols-2">
           <Card className="bg-neutral-900/60 border-neutral-800 text-white">
             <CardHeader>
-              <CardTitle>Co dostajesz</CardTitle>
+              <CardTitle>Kluczowe możliwości</CardTitle>
             </CardHeader>
             <CardContent className="space-y-3">
               {plan.highlights.map((item) => (
@@ -158,17 +166,48 @@ const PremiumPlanDetails = () => {
               <CardTitle>Dla kogo</CardTitle>
             </CardHeader>
             <CardContent className="space-y-3 text-sm text-neutral-200">
-              <p>
-                Ten plan jest idealny, jeśli chcesz korzystać z Premium bez tarcia: wszystkie funkcje, pełne wsparcie i brak limitów.
-              </p>
-              <p className="text-neutral-300">
-                Jeśli nie masz pewności, wybierz <span className="text-white font-medium">Roczny</span> — to najlepsza cena i najmniej formalności.
-              </p>
+              <p>{plan.whoFor}</p>
+              {plan.id !== 'annual' && (
+                <p className="text-neutral-300">
+                  Jeśli nie masz pewności, wybierz <span className="text-white font-medium">Roczny</span> — to najlepsza cena i najmniej formalności.
+                </p>
+              )}
             </CardContent>
           </Card>
         </section>
 
-        <div className="mt-10 text-center text-xs text-neutral-400">
+        <section className="mt-10">
+          <Card className="bg-gradient-to-br from-neutral-900/80 to-neutral-900/60 border-amber-500/30 text-white">
+            <CardContent className="p-6 space-y-4">
+              <div className="text-center">
+                <h3 className="text-lg font-bold mb-2">Nie nickel-and-dime governance</h3>
+                <p className="text-sm text-neutral-300">
+                  Nie oszczędzasz 5 zł. Kupujesz kontrolę, zgodność i niezależność.
+                </p>
+              </div>
+              <div className="grid md:grid-cols-2 gap-4 text-xs">
+                <div className="space-y-2">
+                  <p className="font-semibold text-emerald-400">✓ To jest dla Ciebie:</p>
+                  <ul className="space-y-1 text-neutral-200">
+                    <li>• Prowadzisz sp. z o.o. lub S.A.</li>
+                    <li>• Chcesz kontroli nad decyzjami</li>
+                    <li>• Potrzebujesz niezależności</li>
+                  </ul>
+                </div>
+                <div className="space-y-2">
+                  <p className="font-semibold text-red-400">✗ To NIE jest dla Ciebie:</p>
+                  <ul className="space-y-1 text-neutral-200">
+                    <li>• Szukasz najtańszego rozwiązania</li>
+                    <li>• Wystarczy Ci fakturowanie</li>
+                    <li>• Nie potrzebujesz governance</li>
+                  </ul>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        </section>
+
+        <div className="mt-6 text-center text-xs text-neutral-400">
           * Możesz anulować w każdej chwili. Szczegóły płatności pokażemy w kolejnym kroku.
         </div>
       </div>

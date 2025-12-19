@@ -25,43 +25,229 @@ export default function Home() {
   return (
     <div className="min-h-screen bg-white dark:bg-gray-950">
       <Seo 
-        title="Nowoczesne Fakturowanie i Księgowość" 
-        description="Profesjonalne narzędzie dla przedsiębiorców i księgowych. Zarządzaj fakturami, wydatkami i księgowością w jednym, intuicyjnym interfejsie."
+        title="Nie myśl o księgowości - KsięgaI dopilnuje wszystko za Ciebie" 
+        description="Przestań martwić się księgowością, podatkami i fakturami. KsięgaI ogarnia faktury, wydatki i zgodność podatkową za Ciebie — bez stresu, bez chaosu."
       />
-      {/* Hero Section */}
-      <section className="relative py-16 md:py-24 bg-gradient-to-br from-blue-600 to-purple-700 dark:from-gray-900 dark:to-gray-900 text-white">
-        <div className="absolute inset-0 bg-gradient-to-br from-blue-50 to-purple-50 dark:from-blue-500/10 dark:via-purple-500/5 dark:to-transparent pointer-events-none" />
-        <div className="container mx-auto px-6 md:px-4 py-20 md:py-24">
-          <div className="mx-auto text-center sm:max-w-4xl sm:px-0 px-2">
-            <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-gradient-to-r from-blue-500/10 to-purple-500/10 border border-blue-200 dark:border-blue-500/20 mb-6">
-              <Star className="h-4 w-4 text-blue-600 dark:text-blue-400" />
-              <span className="text-blue-600 dark:text-blue-400 text-sm font-medium">Najlepsze darmowe narzędzie do fakturowania</span>
+      {/* Hero Section - NUCLEAR HEADLINE */}
+      <section className="relative py-12 md:py-20 bg-gradient-to-br from-gray-900 via-gray-900 to-gray-950">
+        <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_right,_var(--tw-gradient-stops))] from-blue-600/20 via-transparent to-transparent pointer-events-none" />
+        <div className="container mx-auto px-6 md:px-4 py-8 md:py-12">
+          <div className="mx-auto text-center max-w-5xl">
+            <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-blue-600/10 border border-blue-500/30 mb-8">
+              <span className="text-base">🇵🇱</span>
+              <span className="text-blue-300 text-sm font-semibold">Dla polskich przedsiębiorców — także tych, którzy sprzedają za granicę</span>
             </div>
-            <h1 className="text-4xl md:text-6xl font-bold text-gray-900 dark:text-white mb-6">
-              Nowoczesne Fakturowanie i Księgowość w <span className="bg-clip-text text-transparent bg-gradient-to-r from-blue-600 to-purple-600 dark:from-blue-400 dark:to-purple-400">Jednym Miejscu</span>
+            <h1 className="text-5xl md:text-7xl font-bold text-white mb-6 leading-tight">
+              Nie myśl o księgowości.
             </h1>
-            <p className="text-xl text-gray-700 dark:text-gray-300 mb-8 max-w-2xl mx-auto">
-              Profesjonalne narzędzie dla przedsiębiorców i księgowych. Zarządzaj fakturami, wydatkami i księgowością w jednym, intuicyjnym interfejsie.
+            <p className="text-2xl md:text-3xl text-gray-300 mb-6 font-medium leading-relaxed">
+              KsięgaI dopilnuje faktur, podatków i porządku w firmie <span className="text-blue-400">za Ciebie</span>.
             </p>
-            <div className="flex flex-col sm:flex-row gap-4 justify-center">
+            <p className="text-lg md:text-xl text-gray-400 mb-8 max-w-3xl mx-auto">
+              Wystawiasz faktury.<br />
+              Resztą zajmuje się system.
+            </p>
+            <div className="flex flex-col sm:flex-row gap-4 justify-center mb-8">
               <Link to="/auth/register" className="block">
                 <Button
                   size="lg"
-                  className="bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-white text-lg px-8 shadow-md hover:shadow-lg transition-all"
+                  className="bg-blue-600 hover:bg-blue-700 text-white text-lg px-10 py-6 h-auto shadow-xl hover:shadow-2xl transition-all"
                 >
-                  Rozpocznij za darmo
+                  Zobacz, jak działa księgowość bez myślenia — zacznij za darmo
                 </Button>
               </Link>
+            </div>
+            <div className="flex flex-col items-center gap-3">
+              <p className="text-sm text-gray-400 font-medium">Zgodne z polskimi przepisami • KSeF • JPK • realia polskich firm — także w UE</p>
+              <div className="flex items-center justify-center gap-4 md:gap-6 flex-wrap text-sm">
+                <span className="flex items-center gap-2 text-gray-300">
+                  <span className="text-base">🇵🇱</span>
+                  <span>Polski język i wsparcie</span>
+                </span>
+                <span className="flex items-center gap-2 text-gray-300">
+                  <span className="text-base">🇵🇱</span>
+                  <span>Polskie przepisy i KSeF</span>
+                </span>
+                <span className="flex items-center gap-2 text-gray-300">
+                  <span className="text-base">🇵🇱</span>
+                  <span>Dla polskich przedsiębiorców</span>
+                </span>
+              </div>
             </div>
           </div>
         </div>
       </section>
 
-      {/* App Preview Section */}
-      <section className="py-20 relative">
+      {/* WHO IS THIS FOR - Pain-based targeting */}
+      <section className="py-16 bg-gray-50 dark:bg-gray-900">
+        <div className="container mx-auto px-6 md:px-4">
+          <div className="max-w-4xl mx-auto text-center">
+            <h2 className="text-3xl md:text-4xl font-bold text-gray-900 dark:text-white mb-8">
+              Jeśli prowadzisz firmę i nie chcesz myśleć o księgowości — to jest dla Ciebie.
+            </h2>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mt-8 text-left">
+              <div className="bg-white dark:bg-gray-800 p-6 rounded-xl border border-gray-200 dark:border-gray-700">
+                <div className="flex items-start gap-4">
+                  <div className="w-10 h-10 rounded-full bg-red-100 dark:bg-red-900/30 flex items-center justify-center flex-shrink-0 mt-1">
+                    <span className="text-red-600 dark:text-red-400 text-xl">✗</span>
+                  </div>
+                  <p className="text-gray-700 dark:text-gray-300 text-lg">
+                    Masz dość pilnowania faktur, terminów i dokumentów
+                  </p>
+                </div>
+              </div>
+              <div className="bg-white dark:bg-gray-800 p-6 rounded-xl border border-gray-200 dark:border-gray-700">
+                <div className="flex items-start gap-4">
+                  <div className="w-10 h-10 rounded-full bg-red-100 dark:bg-red-900/30 flex items-center justify-center flex-shrink-0 mt-1">
+                    <span className="text-red-600 dark:text-red-400 text-xl">✗</span>
+                  </div>
+                  <p className="text-gray-700 dark:text-gray-300 text-lg">
+                    Nie wiesz, czy wszystko jest zgodne z przepisami
+                  </p>
+                </div>
+              </div>
+              <div className="bg-white dark:bg-gray-800 p-6 rounded-xl border border-gray-200 dark:border-gray-700">
+                <div className="flex items-start gap-4">
+                  <div className="w-10 h-10 rounded-full bg-red-100 dark:bg-red-900/30 flex items-center justify-center flex-shrink-0 mt-1">
+                    <span className="text-red-600 dark:text-red-400 text-xl">✗</span>
+                  </div>
+                  <p className="text-gray-700 dark:text-gray-300 text-lg">
+                    Boisz się błędów, które mogą kosztować czas lub pieniądze
+                  </p>
+                </div>
+              </div>
+              <div className="bg-white dark:bg-gray-800 p-6 rounded-xl border border-gray-200 dark:border-gray-700">
+                <div className="flex items-start gap-4">
+                  <div className="w-10 h-10 rounded-full bg-red-100 dark:bg-red-900/30 flex items-center justify-center flex-shrink-0 mt-1">
+                    <span className="text-red-600 dark:text-red-400 text-xl">✗</span>
+                  </div>
+                  <p className="text-gray-700 dark:text-gray-300 text-lg">
+                    Chcesz mieć porządek, ale bez uczenia się księgowości
+                  </p>
+                </div>
+              </div>
+            </div>
+            <p className="text-xl text-gray-600 dark:text-gray-400 mt-8 font-medium">
+              KsięgaI zostało stworzone po to, żebyś nie musiał się na tym znać.
+            </p>
+            <div className="mt-10 p-6 bg-white dark:bg-gray-800 rounded-xl border-2 border-blue-200 dark:border-blue-800">
+              <p className="text-lg text-gray-700 dark:text-gray-300 font-medium leading-relaxed">
+                KsięgaI powstało, aby dać polskim firmom przewagę — w kraju i za granicą.
+              </p>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* SPEED & CERTAINTY */}
+      <section className="py-16 bg-white dark:bg-gray-950">
+        <div className="container mx-auto px-6 md:px-4">
+          <div className="max-w-4xl mx-auto text-center">
+            <h2 className="text-3xl md:text-4xl font-bold text-gray-900 dark:text-white mb-8">
+              Porządek w finansach w jeden wieczór
+            </h2>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-8 mt-10">
+              <div className="text-center">
+                <div className="w-16 h-16 rounded-full bg-blue-100 dark:bg-blue-900/30 flex items-center justify-center mx-auto mb-4">
+                  <Zap className="h-8 w-8 text-blue-600 dark:text-blue-400" />
+                </div>
+                <h3 className="text-xl font-bold text-gray-900 dark:text-white mb-2">
+                  Pierwsza faktura w mniej niż 5 minut
+                </h3>
+                <p className="text-gray-600 dark:text-gray-400">
+                  Bez szkoleń, bez komplikacji
+                </p>
+              </div>
+              <div className="text-center">
+                <div className="w-16 h-16 rounded-full bg-green-100 dark:bg-green-900/30 flex items-center justify-center mx-auto mb-4">
+                  <CheckCircle2 className="h-8 w-8 text-green-600 dark:text-green-400" />
+                </div>
+                <h3 className="text-xl font-bold text-gray-900 dark:text-white mb-2">
+                  Wydatki pod kontrolą bez Excela
+                </h3>
+                <p className="text-gray-600 dark:text-gray-400">
+                  Wszystko w jednym miejscu
+                </p>
+              </div>
+              <div className="text-center">
+                <div className="w-16 h-16 rounded-full bg-purple-100 dark:bg-purple-900/30 flex items-center justify-center mx-auto mb-4">
+                  <Shield className="h-8 w-8 text-purple-600 dark:text-purple-400" />
+                </div>
+                <h3 className="text-xl font-bold text-gray-900 dark:text-white mb-2">
+                  Zawsze gotowe do sprawdzenia
+                </h3>
+                <p className="text-gray-600 dark:text-gray-400">
+                  Żadnych niespodzianek
+                </p>
+              </div>
+            </div>
+            <p className="text-lg text-gray-600 dark:text-gray-400 mt-10">
+              Używane przez przedsiębiorców, którzy chcą spokoju, nie skomplikowanych systemów.
+            </p>
+          </div>
+        </div>
+      </section>
+
+      {/* FEATURES → RELIEF (What stops being your problem) */}
+      <section className="py-16 bg-gray-50 dark:bg-gray-900">
+        <div className="container mx-auto px-6 md:px-4">
+          <div className="max-w-4xl mx-auto">
+            <h2 className="text-3xl md:text-4xl font-bold text-gray-900 dark:text-white mb-8 text-center">
+              Co dokładnie przestaje być Twoim problemem?
+            </h2>
+            <div className="grid grid-cols-1 gap-6 mt-10">
+              <div className="bg-white dark:bg-gray-800 p-8 rounded-xl border border-gray-200 dark:border-gray-700">
+                <div className="flex items-start gap-4">
+                  <div className="w-12 h-12 rounded-full bg-blue-100 dark:bg-blue-900/30 flex items-center justify-center flex-shrink-0">
+                    <FileText className="h-6 w-6 text-blue-600 dark:text-blue-400" />
+                  </div>
+                  <div>
+                    <h3 className="text-2xl font-bold text-gray-900 dark:text-white mb-2">Faktury</h3>
+                    <p className="text-lg text-gray-600 dark:text-gray-400">
+                      Wystawiasz, wysyłasz, zapominasz. System pilnuje reszty.
+                    </p>
+                  </div>
+                </div>
+              </div>
+              <div className="bg-white dark:bg-gray-800 p-8 rounded-xl border border-gray-200 dark:border-gray-700">
+                <div className="flex items-start gap-4">
+                  <div className="w-12 h-12 rounded-full bg-green-100 dark:bg-green-900/30 flex items-center justify-center flex-shrink-0">
+                    <Receipt className="h-6 w-6 text-green-600 dark:text-green-400" />
+                  </div>
+                  <div>
+                    <h3 className="text-2xl font-bold text-gray-900 dark:text-white mb-2">Wydatki</h3>
+                    <p className="text-lg text-gray-600 dark:text-gray-400">
+                      Wszystkie koszty w jednym miejscu, bez szukania i zgadywania.
+                    </p>
+                  </div>
+                </div>
+              </div>
+              <div className="bg-white dark:bg-gray-800 p-8 rounded-xl border border-gray-200 dark:border-gray-700">
+                <div className="flex items-start gap-4">
+                  <div className="w-12 h-12 rounded-full bg-purple-100 dark:bg-purple-900/30 flex items-center justify-center flex-shrink-0">
+                    <Users className="h-6 w-6 text-purple-600 dark:text-purple-400" />
+                  </div>
+                  <div>
+                    <h3 className="text-2xl font-bold text-gray-900 dark:text-white mb-2">Klienci</h3>
+                    <p className="text-lg text-gray-600 dark:text-gray-400">
+                      Zawsze wiesz, kto zapłacił, a kto nie — bez ręcznego sprawdzania.
+                    </p>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* App Preview Section - Simplified */}
+      <section className="py-16 relative bg-white dark:bg-gray-950">
         <div className="absolute inset-0 bg-[radial-gradient(circle_at_bottom_left,_var(--tw-gradient-stops))] from-blue-500/5 via-purple-500/5 to-transparent pointer-events-none" />
         <div className="container mx-auto px-2 md:px-4">
           <div className="w-full md:max-w-6xl mx-0 md:mx-auto">
+            <p className="text-center text-lg text-gray-600 dark:text-gray-400 mb-6 font-medium">
+              To, co widzisz poniżej, to efekt działania systemu — nie coś, czym musisz zarządzać.
+            </p>
             <div
               className="bg-neutral-900 md:bg-neutral-900/50 backdrop-blur-sm border md:border-neutral-800 rounded-2xl p-4 md:p-8 shadow-2xl"
             >
@@ -193,203 +379,194 @@ export default function Home() {
         </div>
       </section>
 
-      {/* Free Trial Section */}
-      <section className="py-20 relative">
-        <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_left,_var(--tw-gradient-stops))] from-blue-500/10 via-purple-500/10 to-transparent pointer-events-none" />
-        <div className="container mx-auto px-4 text-center space-y-6">
-          <h2 className="text-3xl md:text-4xl font-bold text-white">
-            Wypróbuj KsiegaI za darmo przez 7&nbsp;dni
+      {/* FINAL CTA - Hormozi Close */}
+      <section className="py-16 relative bg-gradient-to-br from-gray-900 via-gray-900 to-gray-950">
+        <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_left,_var(--tw-gradient-stops))] from-blue-600/20 via-transparent to-transparent pointer-events-none" />
+        <div className="container mx-auto px-6 md:px-4 text-center">
+          <h2 className="text-3xl md:text-4xl font-bold text-white mb-6">
+            Sprawdź, jak to jest nie myśleć o księgowości
           </h2>
-          <p className="text-lg text-neutral-300 max-w-2xl mx-auto">
-            Zarejestruj się lub zaloguj, aby natychmiast aktywować 7-dniowy okres próbny. <br className="hidden sm:inline" />
-            Nie wymagamy karty kredytowej.
-          </p>
-          <div className="flex flex-col sm:flex-row justify-center gap-4">
-            <Link to="/auth/register" className="block">
-              <Button size="lg" className="bg-gradient-to-r from-emerald-500 to-emerald-600 hover:from-emerald-600 hover:to-emerald-700 text-lg px-8">
-                Rozpocznij darmowy okres próbny
-                <ArrowRight className="ml-2 h-5 w-5" />
-              </Button>
-            </Link>
-            <Link to="/auth/login" className="block">
-              <Button variant="outline" size="lg" className="text-white border-neutral-600 hover:bg-neutral-800/50">
-                Mam już konto
-              </Button>
-            </Link>
-          </div>
-        </div>
-      </section>
-
-      {/* Features Section */}
-      <section id="features" className="py-20 relative">
-        <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_right,_var(--tw-gradient-stops))] from-purple-900/30 via-blue-900/20 to-neutral-950/80 pointer-events-none" />
-        <div className="container mx-auto px-4">
-          <div className="max-w-4xl mx-auto text-center mb-12">
-            <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-gradient-to-r from-blue-600/20 to-purple-600/20 border border-blue-500/30 mb-4">
-              <Star className="h-4 w-4 text-blue-400" />
-              <span className="text-blue-300 text-sm font-semibold">Kluczowe Funkcje</span>
+          <div className="flex flex-col items-center gap-4 mb-8">
+            <div className="flex flex-col sm:flex-row gap-2 text-lg text-gray-300">
+              <span className="flex items-center gap-2">
+                <CheckCircle2 className="h-5 w-5 text-green-400" />
+                7 dni za darmo
+              </span>
+              <span className="flex items-center gap-2">
+                <CheckCircle2 className="h-5 w-5 text-green-400" />
+                Bez karty
+              </span>
+              <span className="flex items-center gap-2">
+                <CheckCircle2 className="h-5 w-5 text-green-400" />
+                Bez zobowiązań
+              </span>
             </div>
-            <h2 className="text-3xl font-bold text-white mb-4 drop-shadow-lg">
-              Wszystko, czego potrzebujesz w jednym miejscu
-            </h2>
-            <p className="text-xl text-white/90 font-medium drop-shadow mb-2">
-              Profesjonalne narzędzia do zarządzania finansami Twojej firmy
+          </div>
+          <Link to="/auth/register" className="inline-block">
+            <Button 
+              size="lg" 
+              className="bg-blue-600 hover:bg-blue-700 text-white text-xl px-12 py-7 h-auto shadow-2xl hover:shadow-3xl transition-all"
+            >
+              Zacznij teraz — ryzyko = 0
+              <ArrowRight className="ml-3 h-6 w-6" />
+            </Button>
+          </Link>
+          <p className="text-sm text-gray-500 mt-6">
+            Gotowe w 5 minut • Działa w Polsce • Zgodne z KSeF
+          </p>
+          <div className="mt-6 p-4 bg-gray-800/50 rounded-lg border border-gray-700 inline-block">
+            <p className="text-sm text-gray-400">
+              Aplikacja w języku polskim.<br />
+              Wsparcie dla polskich przedsiębiorców — w kraju i za granicą.
             </p>
           </div>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-            <div className="bg-white dark:bg-gray-800/90 p-6 rounded-2xl border border-gray-200 dark:border-gray-700 shadow-lg hover:shadow-xl transition-all hover:border-blue-300 dark:hover:border-blue-500/40">
-              <div className="bg-white/90 dark:bg-gray-800/50 backdrop-blur-sm rounded-2xl p-6 border border-gray-200 dark:border-white/10 shadow-sm hover:shadow-md transition-all">
-                <div className="w-12 h-12 rounded-full bg-blue-50 dark:bg-blue-500/10 flex items-center justify-center mb-4 mx-auto">
-                  <FileText className="h-6 w-6 text-blue-600 dark:text-blue-400" />
-                </div>
-                <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-2">Fakturowanie</h3>
-                <p className="text-gray-600 dark:text-gray-300 text-sm">Twórz i wysyłaj profesjonalne faktury w kilka minut</p>
-              </div>
-            </div>
-            <div className="bg-gradient-to-br from-green-700/80 to-emerald-700/80 p-6 rounded-2xl border border-green-500/40 shadow-lg hover:border-green-400/80 transition-colors">
-              <div className="bg-white dark:bg-gray-800/50 backdrop-blur-sm rounded-2xl p-6 border border-gray-200 dark:border-white/10 shadow-sm hover:shadow-md transition-shadow">
-                <div className="w-12 h-12 rounded-full bg-green-100 dark:bg-green-500/10 flex items-center justify-center mb-4 mx-auto">
-                  <Receipt className="h-6 w-6 text-green-600 dark:text-green-400" />
-                </div>
-                <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-2">Wydatki</h3>
-                <p className="text-gray-600 dark:text-gray-300 text-sm">Śledź wszystkie koszty działalności</p>
-              </div>
-            </div>
-            <div className="bg-gradient-to-br from-purple-700/80 to-pink-700/80 p-6 rounded-2xl border border-purple-500/40 shadow-lg hover:border-purple-400/80 transition-colors">
-              <div className="bg-white dark:bg-gray-800/50 backdrop-blur-sm rounded-2xl p-6 border border-gray-200 dark:border-white/10 shadow-sm hover:shadow-md transition-shadow">
-                <div className="w-12 h-12 rounded-full bg-purple-100 dark:bg-purple-500/10 flex items-center justify-center mb-4 mx-auto">
-                  <Users className="h-6 w-6 text-purple-600 dark:text-purple-400" />
-                </div>
-                <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-2">Klienci</h3>
-                <p className="text-gray-600 dark:text-gray-300 text-sm">Zarządzaj bazą klientów</p>
-              </div>
-            </div>
-          </div>
         </div>
       </section>
 
-      {/* Premium Features Section */}
-      <section id="premium" className="py-20 relative">
-        <div className="absolute inset-0 bg-[radial-gradient(circle_at_bottom_right,_var(--tw-gradient-stops))] from-amber-500/5 via-purple-500/5 to-transparent pointer-events-none" />
-        <div className="container mx-auto px-4">
+
+      {/* PREMIUM - Risk Removal Framing */}
+      <section id="premium" className="py-16 bg-gray-50 dark:bg-gray-900">
+        <div className="container mx-auto px-6 md:px-4">
           <div className="max-w-4xl mx-auto">
-            <div className="text-center mb-12">
+            <div className="text-center mb-10">
               <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-gradient-to-r from-amber-500/10 to-orange-500/10 border border-amber-500/20 mb-4">
                 <Crown className="h-4 w-4 text-amber-400" />
-                <span className="text-amber-400 text-sm font-medium">Funkcje Premium</span>
+                <span className="text-amber-400 text-sm font-medium">Premium</span>
               </div>
-              <h2 className="text-3xl font-bold text-white mb-4">
-                Odkryj Możliwości Premium
+              <h2 className="text-3xl md:text-4xl font-bold text-gray-900 dark:text-white mb-4">
+                Dla firm, które nie chcą ryzykować błędów
               </h2>
-              <p className="text-xl text-neutral-300">
-                Rozszerz swoją firmę o zaawansowane funkcje księgowe i automatyzację
+              <p className="text-xl text-gray-600 dark:text-gray-400 mb-6">
+                Zgodność z polskimi przepisami i KSeF — żebyś spał spokojnie, nawet gdy zmieniają się zasady.
+              </p>
+              <p className="text-base text-gray-500 dark:text-gray-500 italic">
+                Zbudowane w oparciu o polskie prawo podatkowe i realne procesy księgowe — nie marketingowe założenia.
               </p>
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-              <div className="bg-gradient-to-br from-amber-500/10 to-orange-500/10 p-6 rounded-xl border border-amber-500/20 hover:border-amber-500/40 transition-colors">
-                <div className="p-6 rounded-xl bg-white/90 dark:bg-gray-800/80 border border-gray-200 dark:border-white/10 hover:shadow-md transition-all backdrop-blur-sm">
-                  <div className="w-10 h-10 rounded-full bg-blue-50 dark:bg-blue-500/10 flex items-center justify-center mb-4">
-                    <Building className="h-5 w-5 text-blue-600 dark:text-blue-400" />
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <div className="bg-white dark:bg-gray-800 p-8 rounded-xl border border-gray-200 dark:border-gray-700">
+                <div className="flex items-start gap-4 mb-4">
+                  <div className="w-12 h-12 rounded-full bg-blue-100 dark:bg-blue-900/30 flex items-center justify-center flex-shrink-0">
+                    <Building className="h-6 w-6 text-blue-600 dark:text-blue-400" />
                   </div>
-                  <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-2">Integracja z KSeF</h3>
-                  <ul className="space-y-3">
-                    <li className="flex items-center gap-2 text-neutral-300">
-                      <CheckCircle2 className="h-5 w-5 text-amber-500" />
-                      Automatyczne wysyłanie faktur do KSeF
-                    </li>
-                    <li className="flex items-center gap-2 text-neutral-300">
-                      <CheckCircle2 className="h-5 w-5 text-amber-500" />
-                      Generowanie JPK-V7M
-                    </li>
-                    <li className="flex items-center gap-2 text-neutral-300">
-                      <CheckCircle2 className="h-5 w-5 text-amber-500" />
-                      Synchronizacja z systemem podatkowym
-                    </li>
-                  </ul>
+                  <div>
+                    <h3 className="text-xl font-bold text-gray-900 dark:text-white mb-2">KSeF & podatki</h3>
+                    <p className="text-gray-600 dark:text-gray-400 mb-4">
+                      Nie martwisz się, czy coś jest źle wysłane lub źle policzone.
+                    </p>
+                  </div>
                 </div>
+                <ul className="space-y-2 text-gray-600 dark:text-gray-400">
+                  <li className="flex items-start gap-2">
+                    <CheckCircle2 className="h-5 w-5 text-green-500 flex-shrink-0 mt-0.5" />
+                    <span>Automatyczne wysyłanie do KSeF</span>
+                  </li>
+                  <li className="flex items-start gap-2">
+                    <CheckCircle2 className="h-5 w-5 text-green-500 flex-shrink-0 mt-0.5" />
+                    <span>Generowanie JPK-V7M</span>
+                  </li>
+                  <li className="flex items-start gap-2">
+                    <CheckCircle2 className="h-5 w-5 text-green-500 flex-shrink-0 mt-0.5" />
+                    <span>Synchronizacja z US</span>
+                  </li>
+                </ul>
               </div>
 
-              <div className="bg-gradient-to-br from-amber-500/10 to-orange-500/10 p-6 rounded-xl border border-amber-500/20 hover:border-amber-500/40 transition-colors">
-                <div className="p-6 rounded-xl bg-white/90 dark:bg-gray-800/80 border border-gray-200 dark:border-white/10 hover:shadow-md transition-all backdrop-blur-sm">
-                  <div className="w-10 h-10 rounded-full bg-green-100 dark:bg-green-500/10 flex items-center justify-center mb-4">
-                    <Calculator className="h-5 w-5 text-green-600 dark:text-green-400" />
+              <div className="bg-white dark:bg-gray-800 p-8 rounded-xl border border-gray-200 dark:border-gray-700">
+                <div className="flex items-start gap-4 mb-4">
+                  <div className="w-12 h-12 rounded-full bg-green-100 dark:bg-green-900/30 flex items-center justify-center flex-shrink-0">
+                    <Calculator className="h-6 w-6 text-green-600 dark:text-green-400" />
                   </div>
-                  <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-2">Zaawansowana Księgowość</h3>
-                  <ul className="space-y-3">
-                    <li className="flex items-center gap-2 text-neutral-300">
-                      <CheckCircle2 className="h-5 w-5 text-amber-500" />
-                      Automatyczne rozliczenia podatkowe
-                    </li>
-                    <li className="flex items-center gap-2 text-neutral-300">
-                      <CheckCircle2 className="h-5 w-5 text-amber-500" />
-                      Generowanie deklaracji PIT
-                    </li>
-                    <li className="flex items-center gap-2 text-neutral-300">
-                      <CheckCircle2 className="h-5 w-5 text-amber-500" />
-                      Profesjonalne raporty księgowe
-                    </li>
-                  </ul>
+                  <div>
+                    <h3 className="text-xl font-bold text-gray-900 dark:text-white mb-2">Zaawansowana księgowość</h3>
+                    <p className="text-gray-600 dark:text-gray-400 mb-4">
+                      Gotowe dane, kiedy ich potrzebujesz — bez paniki przed terminami.
+                    </p>
+                  </div>
                 </div>
+                <ul className="space-y-2 text-gray-600 dark:text-gray-400">
+                  <li className="flex items-start gap-2">
+                    <CheckCircle2 className="h-5 w-5 text-green-500 flex-shrink-0 mt-0.5" />
+                    <span>Automatyczne rozliczenia</span>
+                  </li>
+                  <li className="flex items-start gap-2">
+                    <CheckCircle2 className="h-5 w-5 text-green-500 flex-shrink-0 mt-0.5" />
+                    <span>Deklaracje PIT/CIT</span>
+                  </li>
+                  <li className="flex items-start gap-2">
+                    <CheckCircle2 className="h-5 w-5 text-green-500 flex-shrink-0 mt-0.5" />
+                    <span>Raporty zawsze gotowe</span>
+                  </li>
+                </ul>
               </div>
 
-              <div className="bg-gradient-to-br from-amber-500/10 to-orange-500/10 p-6 rounded-xl border border-amber-500/20 hover:border-amber-500/40 transition-colors">
-                <div className="p-6 rounded-xl bg-white/90 dark:bg-gray-800/80 border border-gray-200 dark:border-white/10 hover:shadow-md transition-all backdrop-blur-sm">
-                  <div className="w-10 h-10 rounded-full bg-purple-100 dark:bg-purple-500/10 flex items-center justify-center mb-4">
-                    <Zap className="h-5 w-5 text-purple-600 dark:text-purple-400" />
+              <div className="bg-white dark:bg-gray-800 p-8 rounded-xl border border-gray-200 dark:border-gray-700">
+                <div className="flex items-start gap-4 mb-4">
+                  <div className="w-12 h-12 rounded-full bg-purple-100 dark:bg-purple-900/30 flex items-center justify-center flex-shrink-0">
+                    <Zap className="h-6 w-6 text-purple-600 dark:text-purple-400" />
                   </div>
-                  <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-2">AI i Automatyzacja</h3>
-                  <ul className="space-y-3">
-                    <li className="flex items-center gap-2 text-neutral-300">
-                      <CheckCircle2 className="h-5 w-5 text-amber-500" />
-                      Automatyczne rozpoznawanie dokumentów
-                    </li>
-                    <li className="flex items-center gap-2 text-neutral-300">
-                      <CheckCircle2 className="h-5 w-5 text-amber-500" />
-                      Inteligentne kategoryzowanie transakcji
-                    </li>
-                    <li className="flex items-center gap-2 text-gray-700 dark:text-gray-300">
-                      <CheckCircle2 className="h-5 w-5 text-amber-500" />
-                      Asystent księgowy oparty na AI
-                    </li>
-                  </ul>
+                  <div>
+                    <h3 className="text-xl font-bold text-gray-900 dark:text-white mb-2">AI</h3>
+                    <p className="text-gray-600 dark:text-gray-400 mb-4">
+                      Dokumenty same się ogarniają. Ty tylko zatwierdzasz.
+                    </p>
+                  </div>
                 </div>
+                <ul className="space-y-2 text-gray-600 dark:text-gray-400">
+                  <li className="flex items-start gap-2">
+                    <CheckCircle2 className="h-5 w-5 text-green-500 flex-shrink-0 mt-0.5" />
+                    <span>Rozpoznawanie dokumentów</span>
+                  </li>
+                  <li className="flex items-start gap-2">
+                    <CheckCircle2 className="h-5 w-5 text-green-500 flex-shrink-0 mt-0.5" />
+                    <span>Kategoryzacja transakcji</span>
+                  </li>
+                  <li className="flex items-start gap-2">
+                    <CheckCircle2 className="h-5 w-5 text-green-500 flex-shrink-0 mt-0.5" />
+                    <span>Asystent księgowy</span>
+                  </li>
+                </ul>
               </div>
 
-              <div className="bg-gradient-to-br from-amber-500/10 to-orange-500/10 p-6 rounded-xl border border-amber-500/20 hover:border-amber-500/40 transition-colors">
-                <div className="p-6 rounded-xl bg-white/90 dark:bg-gray-800/80 border border-gray-200 dark:border-white/10 hover:shadow-md transition-all backdrop-blur-sm">
-                  <div className="w-10 h-10 rounded-full bg-blue-50 dark:bg-blue-500/10 flex items-center justify-center mb-4">
-                    <Shield className="h-5 w-5 text-blue-600 dark:text-blue-400" />
+              <div className="bg-white dark:bg-gray-800 p-8 rounded-xl border border-gray-200 dark:border-gray-700">
+                <div className="flex items-start gap-4 mb-4">
+                  <div className="w-12 h-12 rounded-full bg-blue-100 dark:bg-blue-900/30 flex items-center justify-center flex-shrink-0">
+                    <CreditCard className="h-6 w-6 text-blue-600 dark:text-blue-400" />
                   </div>
-                  <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-2">Integracja Bankowa</h3>
-                  <ul className="space-y-3">
-                    <li className="flex items-center gap-2 text-gray-700 dark:text-gray-300">
-                      <CheckCircle2 className="h-5 w-5 text-amber-500" />
-                      Monitorowanie transakcji w czasie rzeczywistym
-                    </li>
-                    <li className="flex items-center gap-2 text-gray-700 dark:text-gray-300">
-                      <CheckCircle2 className="h-5 w-5 text-amber-500" />
-                      Automatyczne dopasowywanie płatności
-                    </li>
-                    <li className="flex items-center gap-2 text-gray-700 dark:text-gray-300">
-                      <CheckCircle2 className="h-5 w-5 text-amber-500" />
-                      Alerty o nowych transakcjach
-                    </li>
-                  </ul>
+                  <div>
+                    <h3 className="text-xl font-bold text-gray-900 dark:text-white mb-2">Bank</h3>
+                    <p className="text-gray-600 dark:text-gray-400 mb-4">
+                      Widzisz pieniądze w czasie rzeczywistym. Bez ręcznego dopasowywania.
+                    </p>
+                  </div>
                 </div>
+                <ul className="space-y-2 text-gray-600 dark:text-gray-400">
+                  <li className="flex items-start gap-2">
+                    <CheckCircle2 className="h-5 w-5 text-green-500 flex-shrink-0 mt-0.5" />
+                    <span>Transakcje na żywo</span>
+                  </li>
+                  <li className="flex items-start gap-2">
+                    <CheckCircle2 className="h-5 w-5 text-green-500 flex-shrink-0 mt-0.5" />
+                    <span>Auto-dopasowanie płatności</span>
+                  </li>
+                  <li className="flex items-start gap-2">
+                    <CheckCircle2 className="h-5 w-5 text-green-500 flex-shrink-0 mt-0.5" />
+                    <span>Alerty o wpłatach</span>
+                  </li>
+                </ul>
               </div>
             </div>
 
             <div className="text-center mt-12">
-              <Button
-                size="lg"
-                className="bg-gradient-to-r from-amber-500 to-orange-600 hover:from-amber-600 hover:to-orange-700 text-lg px-8"
-                onClick={() => navigate("/auth/register")}
-              >
-                <Crown className="mr-2 h-5 w-5" />
-                Rozpocznij z Premium
-                <ArrowRight className="ml-2 h-5 w-5" />
-              </Button>
+                <Button
+                  size="lg"
+                  className="bg-blue-600 hover:bg-blue-700 text-white text-lg px-10 py-6 h-auto"
+                  onClick={() => navigate("/auth/register")}
+                >
+                  Aktywuj Premium i miej pewność, że wszystko jest OK
+                  <ArrowRight className="ml-2 h-5 w-5" />
+                </Button>
             </div>
           </div>
         </div>

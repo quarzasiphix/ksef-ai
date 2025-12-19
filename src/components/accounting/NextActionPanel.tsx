@@ -16,7 +16,7 @@ interface NextAction {
 }
 
 interface NextActionPanelProps {
-  actions: NextAction[];
+  actions: (NextAction | null | undefined)[];
   onDismiss?: (actionId: string) => void;
   className?: string;
 }
@@ -29,7 +29,12 @@ export const NextActionPanel: React.FC<NextActionPanelProps> = ({
   const navigate = useNavigate();
   const [dismissed, setDismissed] = useState<Set<string>>(new Set());
 
-  const visibleActions = actions.filter(action => !dismissed.has(action.id));
+  const normalizedActions = React.useMemo(
+    () => (actions ?? []).filter((action): action is NextAction => Boolean(action)),
+    [actions]
+  );
+
+  const visibleActions = normalizedActions.filter(action => !dismissed.has(action.id));
 
   if (visibleActions.length === 0) return null;
 

@@ -23,7 +23,9 @@ import {
   DollarSign,
   Scale,
   Briefcase,
-  Wallet
+  Wallet,
+  Inbox,
+  Landmark
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import {
@@ -99,6 +101,7 @@ const AppSidebar = () => {
     items: [
       { title: "Faktury", path: "/income", icon: FileText, className: "lg:hidden" },
       { title: "Wydatki", path: "/expense", icon: CreditCard, className: "lg:hidden" },
+      { title: "Skrzynka", path: "/inbox", icon: Inbox },
       { title: "Bankowość", path: bankPath, icon: Banknote },
       { title: "Kasa", path: "/accounting/kasa", icon: Wallet },
       { title: "Analizy", path: "/analytics", icon: TrendingUp },
@@ -139,6 +142,7 @@ const AppSidebar = () => {
     items: [
       { title: "Decyzje", path: "/decisions", icon: Shield },
       { title: "Dokumenty", path: "/contracts", icon: Signature },
+      { title: "Majątek", path: "/assets", icon: Landmark },
       { title: "Rejestr spółki", path: "/accounting/company-registry", icon: Building },
     ],
   };
@@ -385,7 +389,7 @@ const AppSidebar = () => {
                 {premiumFeatures.map((feature) => (
                   <SidebarMenuItem key={feature.path}>
                     <SidebarMenuButton
-                      onClick={openPremiumDialog}
+                      onClick={() => openPremiumDialog()}
                       tooltip={isCollapsed ? `${feature.title} (Premium)` : undefined}
                     >
                       <div
