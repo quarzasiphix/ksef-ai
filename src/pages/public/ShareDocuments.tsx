@@ -73,6 +73,7 @@ const ShareDocuments: React.FC = () => {
   });
   
   const { user } = useAuth();
+  const [isViewerOpen, setIsViewerOpen] = useState(false);
   
   // Check for payment status in URL
   const paymentStatus = searchParams.get('payment');
@@ -110,7 +111,7 @@ const ShareDocuments: React.FC = () => {
   const fetchInvoice = async (invoiceId: string) => {
     try {
       // First, fetch the invoice with all necessary relations
-      const { data: invoiceData } = await supabase
+      const { data } = await (supabase as any)
         .from("invoices")
         .select(
           `*,
@@ -120,6 +121,8 @@ const ShareDocuments: React.FC = () => {
         )
         .eq("id", invoiceId)
         .single();
+
+      const invoiceData: any = data;
 
       if (!invoiceData) {
         updateState({ invoice: null, loading: false });
@@ -159,7 +162,7 @@ const ShareDocuments: React.FC = () => {
       }));
 
       const updatedInvoice = {
-        ...invoiceData,
+        ...(invoiceData as any),
         invoice_items: items,
         issueDate: invoiceData.issue_date,
         dueDate: invoiceData.due_date,
@@ -669,7 +672,15 @@ return (
               <CardTitle className="text-lg sm:text-xl">Pozycje dokumentu</CardTitle>
             </CardHeader>
             <CardContent className="p-0">
-              <InvoiceItemsCard invoice={{ ...state.invoice, invoice_items: processedItems }} hideActions />
+              <InvoiceItemsCard
+                items={processedItems}
+                totalNetValue={totals.net}
+                totalVatValue={totals.vat}
+                totalGrossValue={totals.gross}
+                type={(state.invoice?.type as InvoiceType) || InvoiceType.SALES}
+                currency={state.invoice?.currency || "PLN"}
+                fakturaBezVAT={Boolean(state.invoice?.fakturaBezVAT || state.invoice?.vat === false)}
+              />
             </CardContent>
           </Card>
 
@@ -698,14 +709,12 @@ return (
             </Card>
 
             <InvoicePaymentCard
-              invoice={{
-                issueDate: state.invoice?.issue_date,
-                dueDate: state.invoice?.due_date,
-                sellDate: state.invoice?.sell_date,
-                paymentMethod: state.invoice?.payment_method,
-                isPaid: state.invoice?.is_paid,
-                currency: state.invoice?.currency || "PLN",
-              }}
+              paymentMethod={state.invoice?.payment_method || "transfer"}
+              totalNetValue={totals.net}
+              totalVatValue={totals.vat}
+              totalGrossValue={totals.gross}
+              type={(state.invoice?.type as InvoiceType) || InvoiceType.SALES}
+              currency={state.invoice?.currency || "PLN"}
             />
           </div>
 

@@ -13,14 +13,15 @@ const isLocalhost = Boolean(
   /^(localhost|127(\.\d+){0,2}|0\.0\.0\.0|\[::1])$/i.test(window.location.hostname)
 );
 
+const posthogApiKey = import.meta.env.VITE_PUBLIC_POSTHOG_KEY;
+const shouldUsePosthog = !isLocalhost && Boolean(posthogApiKey);
+
 root.render(
   <React.StrictMode>
     <HelmetProvider>
-      {isLocalhost ? (
-        <App />
-      ) : (
+      {shouldUsePosthog ? (
         <PostHogProvider
-          apiKey={import.meta.env.VITE_PUBLIC_POSTHOG_KEY}
+          apiKey={posthogApiKey}
           options={{
             api_host: import.meta.env.VITE_PUBLIC_POSTHOG_HOST,
             capture_exceptions: true,
@@ -29,6 +30,8 @@ root.render(
         >
           <App />
         </PostHogProvider>
+      ) : (
+        <App />
       )}
     </HelmetProvider>
   </React.StrictMode>

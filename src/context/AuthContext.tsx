@@ -17,7 +17,7 @@ export interface AuthContextType {
   logout: () => Promise<void>;
   isPremium: boolean;
   setIsPremium: (value: boolean) => void;
-  openPremiumDialog: () => void;
+  openPremiumDialog: (initialPlanId?: string) => void;
   supabase: typeof supabase;
   signInWithGoogle: () => Promise<void>;
   isModalOpen: boolean;
@@ -38,9 +38,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [loading, setLoading] = useState(true);
   const [isPremium, setIsPremium] = useState(false);
   const [showPremiumModal, setShowPremiumModal] = useState(false);
+  const [premiumDialogInitialPlanId, setPremiumDialogInitialPlanId] = useState<string | null>(null);
   const queryClient = useQueryClient();
 
-  const openPremiumDialog = () => {
+  const openPremiumDialog = (initialPlanId?: string) => {
+    setPremiumDialogInitialPlanId(initialPlanId ?? null);
     setShowPremiumModal(true);
   };
 
@@ -148,7 +150,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         <React.Suspense fallback={null}>
           <PremiumCheckoutModalLazy
             isOpen={showPremiumModal}
-            onClose={() => setShowPremiumModal(false)}
+            onClose={() => {
+              setShowPremiumModal(false);
+              setPremiumDialogInitialPlanId(null);
+            }}
+            initialPlanId={premiumDialogInitialPlanId ?? undefined}
           />
         </React.Suspense>
       )}

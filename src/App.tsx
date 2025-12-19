@@ -46,6 +46,7 @@ import BalanceSheet from '@/pages/accounting/BalanceSheet';
 import Shareholders from '@/pages/accounting/Shareholders';
 import Welcome from '@/components/welcome/Welcome';
 import Premium from '@/pages/Premium';
+import PremiumPlanDetails from '@/pages/PremiumPlanDetails';
 import ShareDocuments from '@/pages/public/ShareDocuments';
 import DocumentsHub from '@/pages/contracts/DocumentsHub';
 import ContractNew from '@/pages/contracts/ContractNew';
@@ -175,14 +176,31 @@ const PremiumRoute = () => {
   );
 };
 
+const PremiumPlanRoute = () => {
+  const { user, isLoading } = useAuth();
+  if (isLoading) return <AppLoadingScreen />;
+  if (user) {
+    return (
+      <ProtectedRoute>
+        <PremiumPlanDetails />
+      </ProtectedRoute>
+    );
+  }
+  return (
+    <PublicLayout>
+      <PremiumPlanDetails />
+    </PublicLayout>
+  );
+};
+
 const App = () => {
   return (
     <ThemeProvider defaultTheme="dark">
       <QueryClientProvider client={queryClient}>
         <TooltipProvider>
           <Toaster />
-          <AuthProvider>
-            <Router>
+          <Router>
+            <AuthProvider>
               <Routes>
                 {/* Public routes */}
                 <Route path="/" element={
@@ -203,6 +221,7 @@ const App = () => {
 
                 {/* Premium marketing / upgrade page */}
                 <Route path="/premium" element={<PremiumRoute />} />
+                <Route path="/premium/plan/:planId" element={<PremiumPlanRoute />} />
 
                 {/* Protected routes */}
                 <Route path="/dashboard" element={
@@ -452,8 +471,8 @@ const App = () => {
                   </ProtectedRoute>
                 } />
               </Routes>
-            </Router>
-          </AuthProvider>
+            </AuthProvider>
+          </Router>
         </TooltipProvider>
       </QueryClientProvider>
     </ThemeProvider>

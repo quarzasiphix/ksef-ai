@@ -1,8 +1,9 @@
-import { useState } from "react";
 import { useAuth } from "@/hooks/useAuth";
 import { Button } from "@/components/ui/button";
-import { Star, Check, Crown, Sparkles, ArrowRight } from "lucide-react";
+import { Check, Crown, Sparkles, ArrowRight } from "lucide-react";
 import { Link } from "react-router-dom";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
 
 const features: string[] = [
   "Nieograniczone profile firmowe",
@@ -15,16 +16,34 @@ const features: string[] = [
   "Automatyczne wysyłanie faktur e-mailem",
 ];
 
+const plans = [
+  {
+    id: "monthly",
+    name: "Miesięczny",
+    price: "19 zł",
+    interval: "miesiąc",
+    tagline: "Pełny dostęp bez zobowiązań długoterminowych.",
+  },
+  {
+    id: "annual",
+    name: "Roczny",
+    price: "150 zł",
+    interval: "rok",
+    tagline: "Najlepsza cena w przeliczeniu na miesiąc.",
+    badge: "Najpopularniejszy",
+  },
+  {
+    id: "lifetime",
+    name: "Dożywotni",
+    price: "",
+    interval: "",
+    tagline: "Dostęp offline, wdrożenie i oferta dopasowana do Twojej firmy.",
+    badge: "Oferta indywidualna",
+  },
+] as const;
+
 const Premium = () => {
   const { user, openPremiumDialog } = useAuth();
-  const [showingDialog, setShowingDialog] = useState(false);
-
-  const handleGetPremium = () => {
-    if (user) {
-      openPremiumDialog();
-      setShowingDialog(true);
-    }
-  };
 
   return (
     <div className="relative py-20 bg-gradient-to-b from-neutral-950 via-purple-950/20 to-neutral-950 text-white overflow-hidden">
@@ -42,19 +61,99 @@ const Premium = () => {
           </p>
         </header>
 
-        {/* Features grid */}
-        <section className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3 max-w-5xl mx-auto mb-20">
-          {features.map((feature) => (
-            <div
-              key={feature}
-              className="flex items-start gap-3 bg-neutral-900/60 border border-neutral-800 rounded-lg p-5 backdrop-blur-sm"
-            >
-              <div className="flex-shrink-0 bg-emerald-600/20 rounded-full p-1.5">
-                <Check className="h-4 w-4 text-emerald-400" />
-              </div>
-              <p className="text-sm leading-relaxed text-neutral-200">{feature}</p>
-            </div>
-          ))}
+        {/* Plans */}
+        <section className="max-w-6xl mx-auto mb-16">
+          <div className="grid gap-6 md:grid-cols-3">
+            {plans.map((plan) => (
+              <Card
+                key={plan.id}
+                className={
+                  plan.id === 'annual'
+                    ? 'bg-neutral-900/70 border-amber-500/60 text-white shadow-lg'
+                    : 'bg-neutral-900/60 border-neutral-800 text-white'
+                }
+              >
+                <CardHeader className="space-y-2">
+                  <div className="flex items-center justify-between">
+                    <CardTitle className="text-lg">{plan.name}</CardTitle>
+                    {plan.badge ? (
+                      <Badge className="bg-amber-500 text-white border-amber-400">{plan.badge}</Badge>
+                    ) : null}
+                  </div>
+                  {plan.id === 'lifetime' ? (
+                    <div className="text-3xl font-extrabold">Oferta indywidualna</div>
+                  ) : (
+                    <div className="text-3xl font-extrabold">
+                      {plan.price}
+                      <span className="text-sm font-medium text-neutral-300">/{plan.interval}</span>
+                    </div>
+                  )}
+                  <p className="text-sm text-neutral-300">{plan.tagline}</p>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  <div className="space-y-2">
+                    {features.slice(0, 5).map((feature) => (
+                      <div key={feature} className="flex items-start gap-3">
+                        <div className="flex-shrink-0 bg-emerald-600/20 rounded-full p-1.5 mt-0.5">
+                          <Check className="h-4 w-4 text-emerald-400" />
+                        </div>
+                        <p className="text-sm text-neutral-200">{feature}</p>
+                      </div>
+                    ))}
+                  </div>
+
+                  <div className="grid gap-2">
+                    <Link to={`/premium/plan/${plan.id}`}>
+                      <Button
+                        className={
+                          plan.id === 'annual'
+                            ? 'w-full bg-gradient-to-r from-amber-500 to-yellow-600 hover:from-amber-600 hover:to-yellow-700'
+                            : 'w-full'
+                        }
+                      >
+                        Wybierz plan
+                      </Button>
+                    </Link>
+
+                    {plan.id === 'lifetime' ? (
+                      <Button asChild variant="outline" className="w-full border-neutral-700 text-neutral-100 hover:bg-neutral-800">
+                        <a href="mailto:kontakt@ksiegai.pl?subject=Plan%20Do%C5%BCywotni%20%E2%80%94%20oferta%20indywidualna">
+                          Skontaktuj się
+                        </a>
+                      </Button>
+                    ) : user ? (
+                      <Button
+                        variant="outline"
+                        className="w-full border-neutral-700 text-neutral-100 hover:bg-neutral-800"
+                        onClick={() => openPremiumDialog(plan.id)}
+                      >
+                        Kup teraz
+                      </Button>
+                    ) : null}
+                  </div>
+                </CardContent>
+              </Card>
+            ))}
+          </div>
+        </section>
+
+        {/* Full feature list */}
+        <section className="max-w-5xl mx-auto mb-16">
+          <Card className="bg-neutral-900/60 border-neutral-800 text-white">
+            <CardHeader>
+              <CardTitle className="text-xl">Wszystkie funkcje Premium</CardTitle>
+            </CardHeader>
+            <CardContent className="grid gap-3 sm:grid-cols-2">
+              {features.map((feature) => (
+                <div key={feature} className="flex items-start gap-3">
+                  <div className="flex-shrink-0 bg-emerald-600/20 rounded-full p-1.5 mt-0.5">
+                    <Check className="h-4 w-4 text-emerald-400" />
+                  </div>
+                  <p className="text-sm leading-relaxed text-neutral-200">{feature}</p>
+                </div>
+              ))}
+            </CardContent>
+          </Card>
         </section>
 
         {/* CTA */}
@@ -63,7 +162,7 @@ const Premium = () => {
             <Button
               size="lg"
               className="bg-gradient-to-r from-emerald-500 to-emerald-600 hover:from-emerald-600 hover:to-emerald-700 px-8 text-lg"
-              onClick={handleGetPremium}
+              onClick={() => openPremiumDialog('annual')}
             >
               Rozpocznij 7-dniowy darmowy okres próbny
               <Sparkles className="h-5 w-5 ml-2" />
