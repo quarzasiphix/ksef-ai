@@ -241,8 +241,14 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const logout = async () => {
     try {
-      cleanupAuthState();
+      console.log("[AuthContext] Logging out - clearing all auth state");
+      
+      // Clear cross-domain token FIRST to prevent Next.js from auto-restoring
       clearCrossDomainAuthToken();
+      
+      // Clean up local auth state
+      cleanupAuthState();
+      
       // Attempt global sign out, but don't fail if it doesn't work.
       // The cleanup and page reload will handle the client state.
       await supabase.auth.signOut({ scope: 'global' }).catch(console.error);
@@ -251,6 +257,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       setIsPremium(false);
       queryClient.clear();
 
+      console.log("[AuthContext] Logout complete, redirecting to parent domain");
+      
       // Redirect to parent domain after logout
       window.location.href = getParentDomain();
     } catch (err) {
