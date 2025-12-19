@@ -19,7 +19,6 @@ import PublicLayout from '@/components/public/PublicLayout';
 
 // Page components
 import Dashboard from '@/pages/Dashboard';
-import Home from '@/pages/public/Home';
 import IncomeList from '@/pages/income/IncomeList';
 import ExpenseList from '@/pages/expense/ExpenseList';
 import CustomerList from '@/pages/customers/CustomerList';
@@ -73,6 +72,7 @@ import TransactionalContracts from '@/pages/accounting/TransactionalContracts';
 import { queryClient } from '@/lib/queryClient';
 import { useAuth } from '@/hooks/useAuth';
 import { TransactionType } from '@/types/common';
+import { getParentDomain } from '@/config/domains';
 import SettingsMenu from './pages/settings/SettingsMenu';
 import ProfileSettings from './pages/settings/ProfileSettings';
 import TeamManagement from './pages/settings/TeamManagement';
@@ -89,14 +89,21 @@ const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
   const isAuthenticated = !!user;
   const location = useLocation();
 
+  console.log('[ProtectedRoute] Checking auth:', { isLoading, isAuthenticated, user: user?.id });
+
   if (isLoading) {
+    console.log('[ProtectedRoute] Still loading, showing loading screen');
     return <AppLoadingScreen />;
   }
 
   if (!isAuthenticated) {
-    return <Navigate to="/auth/login" replace state={{ from: location }} />;
+    console.log('[ProtectedRoute] Not authenticated, redirecting to parent domain');
+    // Redirect to parent domain if not authenticated
+    window.location.href = getParentDomain();
+    return <AppLoadingScreen />;
   }
 
+  console.log('[ProtectedRoute] Authenticated, rendering protected content');
   return (
     <SidebarProvider>
       <BusinessProfileProvider>
@@ -121,11 +128,7 @@ const PublicRoute = ({ children }: { children: React.ReactNode }) => {
     return <Navigate to="/dashboard" replace state={{ from: location }} />;
   }
 
-  return (
-    <PublicLayout>
-      {children}
-    </PublicLayout>
-  );
+  return <>{children}</>;
 };
 
 // Premium guard component
@@ -196,6 +199,27 @@ const PremiumPlanRoute = () => {
   );
 };
 
+const RootRedirect = () => {
+  const { user, isLoading } = useAuth();
+  
+  console.log('[RootRedirect] Checking auth:', { isLoading, user: user?.id });
+  
+  if (isLoading) {
+    console.log('[RootRedirect] Still loading, showing loading screen');
+    return <AppLoadingScreen />;
+  }
+  
+  if (user) {
+    console.log('[RootRedirect] User authenticated, navigating to dashboard');
+    return <Navigate to="/dashboard" replace />;
+  }
+  
+  console.log('[RootRedirect] No user, redirecting to parent domain');
+  // Redirect unauthenticated users to parent domain
+  window.location.href = getParentDomain();
+  return <AppLoadingScreen />;
+};
+
 const App = () => {
   return (
     <ThemeProvider defaultTheme="dark">
@@ -205,12 +229,10 @@ const App = () => {
           <Router>
             <AuthProvider>
               <Routes>
-                {/* Public routes */}
-                <Route path="/" element={
-                  <PublicRoute>
-                    <Home />
-                  </PublicRoute>
-                } />
+                {/* Root redirects to parent domain for unauthenticated, dashboard for authenticated */}
+                <Route path="/" element={<RootRedirect />} />
+                
+                {/* Auth routes - accessible but minimal */}
                 <Route path="/auth/login" element={
                   <PublicRoute>
                     <Login />

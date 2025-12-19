@@ -17,22 +17,20 @@ const posthogApiKey = import.meta.env.VITE_PUBLIC_POSTHOG_KEY;
 const shouldUsePosthog = !isLocalhost && Boolean(posthogApiKey);
 
 root.render(
-  <React.StrictMode>
-    <HelmetProvider>
-      {shouldUsePosthog ? (
-        <PostHogProvider
-          apiKey={posthogApiKey}
-          options={{
-            api_host: import.meta.env.VITE_PUBLIC_POSTHOG_HOST,
-            capture_exceptions: true,
-            debug: import.meta.env.MODE === 'development',
-          }}
-        >
-          <App />
-        </PostHogProvider>
-      ) : (
+  <HelmetProvider>
+    {shouldUsePosthog ? (
+      <PostHogProvider
+        apiKey={posthogApiKey}
+        options={{
+          api_host: import.meta.env.VITE_PUBLIC_POSTHOG_HOST,
+          capture_exceptions: true,
+          debug: import.meta.env.MODE === 'development',
+        }}
+      >
         <App />
-      )}
-    </HelmetProvider>
-  </React.StrictMode>
+      </PostHogProvider>
+    ) : (
+      <App />
+    )}
+  </HelmetProvider>
 );

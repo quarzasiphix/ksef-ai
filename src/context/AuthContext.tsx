@@ -5,6 +5,8 @@ import { useQueryClient } from "@tanstack/react-query";
 import { User, Session } from "@supabase/supabase-js";
 import { checkPremiumStatus } from "@/integrations/supabase/repositories/PremiumRepository";
 import { cleanupAuthState } from "@/lib/auth-utils";
+import { getParentDomain } from "@/config/domains";
+import { clearCrossDomainAuthToken, getCrossDomainAuthToken } from "@/lib/crossDomainAuth";
 
 const PremiumCheckoutModalLazy = React.lazy(() => import("@/components/premium/PremiumCheckoutModal"));
 
@@ -39,6 +41,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [isPremium, setIsPremium] = useState(false);
   const [showPremiumModal, setShowPremiumModal] = useState(false);
   const [premiumDialogInitialPlanId, setPremiumDialogInitialPlanId] = useState<string | null>(null);
+  const [bootstrapComplete, setBootstrapComplete] = useState(false);
   const queryClient = useQueryClient();
 
   const openPremiumDialog = (initialPlanId?: string) => {
@@ -67,37 +70,152 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   useEffect(() => {
     let checkedInitial = false;
+    let mounted = true;
 
     const checkAndSetPremium = async (session: Session | null) => {
+      if (!mounted) return;
+      
       if (session && session.user) {
+        // Set user FIRST before checking premium to avoid race condition
         setUser(session.user);
+        
         const premium = await checkPremiumStatus(session.user.id);
-        setIsPremium(premium);
+        if (mounted) {
+          setIsPremium(premium);
+          setLoading(false);
+        }
       } else {
         setUser(null);
         setIsPremium(false);
+        if (mounted) {
+          setLoading(false);
+        }
       }
-      setLoading(false);
     };
 
-    // 1. Initial check
-    supabase.auth.getSession().then(({ data: { session } }) => {
+    const restoreCrossDomainSession = async (): Promise<Session | null> => {
+      const token = getCrossDomainAuthToken();
+      console.log("[AuthContext] Cross-domain token:", token ? "found" : "not found", token);
+      
+      if (!token) {
+        console.log("[AuthContext] No cross-domain token available");
+        return null;
+      }
+
+      if (token.expires_at && Date.now() >= token.expires_at * 1000) {
+        console.log("[AuthContext] Token expired, clearing");
+        clearCrossDomainAuthToken();
+        return null;
+      }
+
+      console.log("[AuthContext] Attempting to restore session with token");
+      
+      try {
+        const { data, error } = await supabase.auth.setSession({
+          access_token: token.access_token,
+          refresh_token: token.refresh_token,
+        });
+
+        if (error) {
+          console.error("[AuthContext] Failed to restore cross-domain session:", error);
+          clearCrossDomainAuthToken();
+          return null;
+        }
+
+        console.log("[AuthContext] Session restored successfully:", data.session?.user?.id);
+        
+        // CRITICAL: Clear the cross-domain token after successful restoration
+        // This prevents the token from being used again and ensures we rely on Supabase's session management
+        clearCrossDomainAuthToken();
+        
+        return data.session ?? null;
+      } catch (err) {
+        console.error("[AuthContext] Network error during session restoration:", err);
+        console.log("[AuthContext] Will retry setSession after a brief delay...");
+        
+        // Retry once after a short delay in case of transient network issue
+        await new Promise(resolve => setTimeout(resolve, 1000));
+        
+        try {
+          const { data, error } = await supabase.auth.setSession({
+            access_token: token.access_token,
+            refresh_token: token.refresh_token,
+          });
+
+          if (error) {
+            console.error("[AuthContext] Retry failed:", error);
+            clearCrossDomainAuthToken();
+            return null;
+          }
+
+          console.log("[AuthContext] Session restored successfully on retry:", data.session?.user?.id);
+          clearCrossDomainAuthToken();
+          return data.session ?? null;
+        } catch (retryErr) {
+          console.error("[AuthContext] Retry also failed with network error:", retryErr);
+          clearCrossDomainAuthToken();
+          return null;
+        }
+      }
+    };
+
+    const bootstrap = async () => {
+      if (!mounted) return;
+      
+      console.log("[AuthContext] Bootstrap starting...");
+      const { data: { session } } = await supabase.auth.getSession();
+      console.log("[AuthContext] Initial session from Supabase:", session ? "found" : "not found", session?.user?.id);
+      
+      const activeSession = session || (await restoreCrossDomainSession());
+      console.log("[AuthContext] Active session after restoration:", activeSession ? "found" : "not found", activeSession?.user?.id);
+      
+      if (!mounted) return;
+      
       checkedInitial = true;
-      checkAndSetPremium(session);
-    });
+      
+      // Set user and loading state together to prevent intermediate renders
+      if (activeSession && activeSession.user) {
+        setUser(activeSession.user);
+        const premium = await checkPremiumStatus(activeSession.user.id);
+        if (mounted) {
+          setIsPremium(premium);
+          setLoading(false);
+          setBootstrapComplete(true);
+        }
+      } else {
+        setUser(null);
+        setIsPremium(false);
+        if (mounted) {
+          setLoading(false);
+          setBootstrapComplete(true);
+        }
+      }
+      
+      console.log("[AuthContext] Bootstrap complete, user set:", activeSession?.user?.id);
+    };
+
+    bootstrap();
 
     // 2. Listen for session restoration or login
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
-      // Only show global loading overlay while app is boot-strapping or right after an explicit SIGNED_IN event (fresh login).
+      if (!mounted) return;
+      
+      // CRITICAL: Don't process auth state changes until bootstrap completes
+      // This prevents onAuthStateChange from setting loading=false while bootstrap is still running
       if (!checkedInitial) {
-        setLoading(true);
+        console.log("[AuthContext] Ignoring auth state change during bootstrap:", event);
+        return;
       }
 
-      // Always update user/premium status in background, but avoid toggling the loading flag after bootstrap.
+      console.log("[AuthContext] Processing auth state change after bootstrap:", event);
+      // Always update user/premium status in background after bootstrap completes
       checkAndSetPremium(session);
     });
 
-    return () => subscription.unsubscribe();
+    return () => {
+      mounted = false;
+      subscription.unsubscribe();
+    };
   }, []);
 
   const login = async (email: string, password: string) => {
@@ -116,7 +234,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     await supabase.auth.signInWithOAuth({
       provider: 'google',
       options: {
-        redirectTo: window.location.origin,
+        redirectTo: `${window.location.origin}/auth/callback`,
       },
     });
   };
@@ -124,6 +242,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const logout = async () => {
     try {
       cleanupAuthState();
+      clearCrossDomainAuthToken();
       // Attempt global sign out, but don't fail if it doesn't work.
       // The cleanup and page reload will handle the client state.
       await supabase.auth.signOut({ scope: 'global' }).catch(console.error);
@@ -132,14 +251,13 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       setIsPremium(false);
       queryClient.clear();
 
-      // Force a full page reload to go to login and clear all state.
-      window.location.href = '/auth/login';
+      // Redirect to parent domain after logout
+      window.location.href = getParentDomain();
     } catch (err) {
       console.error("Logout failed unexpectedly:", err);
-      // As a fallback, still try to redirect.
-      if (!window.location.pathname.includes('/auth/login')) {
-         window.location.href = '/auth/login';
-      }
+      // As a fallback, still redirect to parent domain
+      clearCrossDomainAuthToken();
+      window.location.href = getParentDomain();
     }
   };
 
