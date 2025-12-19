@@ -7,8 +7,9 @@ import { UseFormReturn } from "react-hook-form";
 import { PaymentMethod, VatExemptionReason } from "@/types";
 import { Checkbox } from "@/components/ui/checkbox";
 import { BankAccountSelector } from "@/components/invoices/selectors/BankAccountSelector";
-import { Info } from 'lucide-react';
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
+import { AlertCircle, Info } from "lucide-react";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
+import { Button } from "@/components/ui/button";
 import { BankAccount } from "@/types/bank";
 import { InvoiceItem } from "@/types";
 
@@ -39,8 +40,8 @@ export const InvoiceBasicInfoForm: React.FC<InvoiceBasicInfoFormProps> = ({
   onAddVatAccount,
   onNumberChange
 }) => {
-    const currency = form.watch('currency') || 'PLN';
-  
+  const currency = form.watch('currency') || 'PLN';
+
   return (
     <Card className="md:col-span-1">
       <CardHeader className="py-4">
@@ -67,7 +68,7 @@ export const InvoiceBasicInfoForm: React.FC<InvoiceBasicInfoFormProps> = ({
             </FormItem>
           )}
         />
-        
+
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           <FormField
             control={form.control}
@@ -82,7 +83,7 @@ export const InvoiceBasicInfoForm: React.FC<InvoiceBasicInfoFormProps> = ({
               </FormItem>
             )}
           />
-          
+
           <FormField
             control={form.control}
             name="sellDate"
@@ -96,7 +97,7 @@ export const InvoiceBasicInfoForm: React.FC<InvoiceBasicInfoFormProps> = ({
               </FormItem>
             )}
           />
-          
+
           <FormField
             control={form.control}
             name="dueDate"
@@ -111,7 +112,7 @@ export const InvoiceBasicInfoForm: React.FC<InvoiceBasicInfoFormProps> = ({
             )}
           />
         </div>
-        
+
         <FormField
           control={form.control}
           name="paymentMethod"
@@ -136,7 +137,7 @@ export const InvoiceBasicInfoForm: React.FC<InvoiceBasicInfoFormProps> = ({
             </FormItem>
           )}
         />
-        
+
         {form.watch("paymentMethod") === PaymentMethod.TRANSFER && (
           <FormField
             control={form.control}
@@ -153,11 +154,31 @@ export const InvoiceBasicInfoForm: React.FC<InvoiceBasicInfoFormProps> = ({
                   showVatRecommendation={true}
                 />
                 <FormMessage />
+                {bankAccounts && bankAccounts.length === 0 && (
+                  <div className="mt-3 p-3 border border-amber-200 bg-amber-50 rounded-lg text-sm text-amber-800 dark:bg-amber-900/20 dark:border-amber-800 dark:text-amber-100">
+                    <div className="flex items-start gap-3">
+                      <AlertCircle className="h-4 w-4 mt-0.5" />
+                      <div className="space-y-2">
+                        <div>
+                          Nie masz jeszcze podłączonego konta bankowego. Metoda płatności została automatycznie ustawiona na <span className="font-semibold">gotówkę</span>.
+                        </div>
+                        <Button
+                          type="button"
+                          size="sm"
+                          variant="outline"
+                          onClick={onAddVatAccount}
+                        >
+                          Dodaj konto bankowe
+                        </Button>
+                      </div>
+                    </div>
+                  </div>
+                )}
               </FormItem>
             )}
           />
         )}
-        
+
         <FormField
           control={form.control}
           name="currency"

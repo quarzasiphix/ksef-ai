@@ -1,6 +1,8 @@
 
 import React, { useState } from "react";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Button } from "@/components/ui/button";
+import { Plus } from "lucide-react";
 import { Product, InvoiceType, TransactionType } from "@/types";
 import { ProductEditDialog } from "../ProductEditDialog";
 
@@ -49,7 +51,7 @@ export const ProductSelector: React.FC<ProductSelectorProps> = ({
           onValueChange={handleProductChange}
         >
           <SelectTrigger>
-            <SelectValue placeholder="Wybierz produkt" />
+            <SelectValue placeholder="Wybierz produkt z katalogu" />
           </SelectTrigger>
           <SelectContent>
             {products.length > 0 ? (
@@ -60,7 +62,7 @@ export const ProductSelector: React.FC<ProductSelectorProps> = ({
               ))
             ) : (
               <SelectItem value="none" disabled>
-                Brak produktów
+                Brak produktów w katalogu
               </SelectItem>
             )}
           </SelectContent>
@@ -74,6 +76,12 @@ export const ProductSelector: React.FC<ProductSelectorProps> = ({
         onProductSavedAndSync={onProductSavedAndSync as any}
         refetchProducts={refetchProducts}
         userId={userId}
+        trigger={
+          <Button type="button" variant="outline" size="sm" className="whitespace-nowrap">
+            <Plus className="h-4 w-4 mr-1" />
+            Dodaj do katalogu
+          </Button>
+        }
       />
     </div>
   );

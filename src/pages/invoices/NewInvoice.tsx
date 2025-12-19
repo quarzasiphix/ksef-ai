@@ -453,7 +453,13 @@ const NewInvoice = React.forwardRef<{
       const businessProfileId = form.watch('businessProfileId');
       if (businessProfileId) {
         getBankAccountsForProfile(businessProfileId)
-          .then(setBankAccounts)
+          .then((accounts) => {
+            setBankAccounts(accounts);
+            // Auto-select "gotówka" (cash) if no bank accounts exist
+            if (accounts.length === 0 && !form.watch('paymentMethod')) {
+              form.setValue('paymentMethod', PaymentMethod.CASH, { shouldValidate: true });
+            }
+          })
           .catch(console.error);
       } else {
         setBankAccounts([]);
@@ -1009,8 +1015,60 @@ const handleFormSubmit = form.handleSubmit(async (formData) => {
             </div>
             )}
 
+            {/* Step-by-step workflow with progress indicators */}
+            <div className="mb-6">
+              <div className="flex items-center justify-between mb-4">
+                <div className="flex items-center gap-2">
+                  <div className={cn(
+                    "w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold",
+                    invoiceNumber ? "bg-green-500 text-white" : "bg-blue-500 text-white"
+                  )}>
+                    {invoiceNumber ? "✓" : "1"}
+                  </div>
+                  <span className="font-semibold">Numer faktury</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <div className={cn(
+                    "w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold",
+                    customerId ? "bg-green-500 text-white" : "bg-gray-300 text-gray-600"
+                  )}>
+                    {customerId ? "✓" : "2"}
+                  </div>
+                  <span className={cn("font-semibold", !customerId && "text-gray-500")}>Kontrahent</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <div className={cn(
+                    "w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold",
+                    items.length > 0 ? "bg-green-500 text-white" : "bg-gray-300 text-gray-600"
+                  )}>
+                    {items.length > 0 ? "✓" : "3"}
+                  </div>
+                  <span className={cn("font-semibold", items.length === 0 && "text-gray-500")}>Pozycje</span>
+                </div>
+              </div>
+              <div className="h-2 bg-gray-200 rounded-full overflow-hidden">
+                <div 
+                  className="h-full bg-blue-500 transition-all duration-300"
+                  style={{ 
+                    width: `${((invoiceNumber ? 33 : 0) + (customerId ? 33 : 0) + (items.length > 0 ? 34 : 0))}%` 
+                  }}
+                />
+              </div>
+            </div>
+
             {/* Form sections - Wrapped in a flex-1, overflow-y-auto div */}
             <div className="flex-1 overflow-y-auto space-y-6">
+              {/* Step 1: Invoice Number - Highlighted */}
+              <div className={cn(
+                "p-4 rounded-lg border-2 transition-all",
+                !invoiceNumber ? "border-blue-500 bg-blue-50 dark:bg-blue-950" : "border-gray-200"
+              )}>
+                {!invoiceNumber && (
+                  <div className="mb-3 flex items-center gap-2 text-blue-700 dark:text-blue-300">
+                    <div className="w-6 h-6 rounded-full bg-blue-500 text-white flex items-center justify-center text-sm font-bold">1</div>
+                    <span className="font-semibold">Krok 1: Ustaw prefiks i numer faktury</span>
+                  </div>
+                )}
               <InvoiceBasicInfoForm 
                 form={form}
                 documentTitle={documentTitle}
@@ -1031,7 +1089,20 @@ const handleFormSubmit = form.handleSubmit(async (formData) => {
                   setHasManualNumber(value.trim().length > 0);
                 }}
               />
+              </div>
 
+              {/* Step 2: Customer Selection - Highlighted when step 1 is done */}
+              <div className={cn(
+                "p-4 rounded-lg border-2 transition-all",
+                invoiceNumber && !customerId ? "border-blue-500 bg-blue-50 dark:bg-blue-950" : "border-gray-200",
+                !invoiceNumber && "opacity-60"
+              )}>
+                {invoiceNumber && !customerId && (
+                  <div className="mb-3 flex items-center gap-2 text-blue-700 dark:text-blue-300">
+                    <div className="w-6 h-6 rounded-full bg-blue-500 text-white flex items-center justify-center text-sm font-bold">2</div>
+                    <span className="font-semibold">Krok 2: Wybierz kontrahenta</span>
+                  </div>
+                )}
               <InvoicePartiesForm 
                 transactionType={transactionType}
                 businessProfileId={businessProfileId}
@@ -1039,8 +1110,20 @@ const handleFormSubmit = form.handleSubmit(async (formData) => {
                 onBusinessProfileChange={handleBusinessProfileChange}
                 onCustomerChange={handleCustomerChange}
               />
+              </div>
 
               {isSpoolka && businessProfileId && (
+                <div className={cn(
+                  "p-4 rounded-lg border-2 transition-all",
+                  customerId && !decisionId ? "border-purple-500 bg-purple-50 dark:bg-purple-950" : "border-gray-200",
+                  !customerId && "opacity-60"
+                )}>
+                  {customerId && !decisionId && (
+                    <div className="mb-3 flex items-center gap-2 text-purple-700 dark:text-purple-300">
+                      <div className="w-6 h-6 rounded-full bg-purple-500 text-white flex items-center justify-center text-sm font-bold">!</div>
+                      <span className="font-semibold">Wybierz decyzję autoryzującą (wymagane dla spółek)</span>
+                    </div>
+                  )}
                 <div className="space-y-2">
                   <DecisionPicker
                     businessProfileId={businessProfileId}
@@ -1057,8 +1140,21 @@ const handleFormSubmit = form.handleSubmit(async (formData) => {
                     required
                   />
                 </div>
+                </div>
               )}
               
+              {/* Step 3: Add Items - Highlighted when step 2 is done */}
+              <div className={cn(
+                "p-4 rounded-lg border-2 transition-all",
+                customerId && items.length === 0 ? "border-green-500 bg-green-50 dark:bg-green-950" : "border-gray-200",
+                !customerId && "opacity-60"
+              )}>
+                {customerId && items.length === 0 && (
+                  <div className="mb-3 flex items-center gap-2 text-green-700 dark:text-green-300">
+                    <div className="w-6 h-6 rounded-full bg-green-500 text-white flex items-center justify-center text-sm font-bold">3</div>
+                    <span className="font-semibold">Krok 3: Dodaj pozycje faktury (kliknij przycisk + w tabeli poniżej)</span>
+                  </div>
+                )}
               <div>
                 <InvoiceItemsForm 
                   items={items}
@@ -1070,6 +1166,7 @@ const handleFormSubmit = form.handleSubmit(async (formData) => {
                   vatExemptionReason={form.watch('vatExemptionReason')}
                   currency={form.watch('currency') || 'PLN'}
                 />
+              </div>
               </div>
 
               {/* Contracts linking section (only on create) */}

@@ -3,7 +3,8 @@ import { useQuery } from '@tanstack/react-query';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
-import { AlertCircle, CheckCircle2, Users, Briefcase } from 'lucide-react';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
+import { AlertCircle, CheckCircle2, Users, Briefcase, Info } from 'lucide-react';
 import { getDecisions } from '@/integrations/supabase/repositories/decisionsRepository';
 import { DECISION_CATEGORY_LABELS, DECISION_TYPE_LABELS } from '@/types/decisions';
 import type { DecisionCategory } from '@/types/decisions';
@@ -39,12 +40,49 @@ const DecisionPicker: React.FC<DecisionPickerProps> = ({
     enabled: !!businessProfileId,
   });
 
+  // Auto-select the only existing decision if there's exactly one and no value is set
+  React.useEffect(() => {
+    if (!value && decisions.length === 1 && !isLoading) {
+      onValueChange(decisions[0].id);
+    }
+  }, [decisions, value, isLoading, onValueChange]);
+
+  // Find the selected decision for showing default label
+  const selectedDecision = decisions.find(d => d.id === value);
+  const isAutoSelected = decisions.length === 1 && value === decisions[0]?.id;
+
   return (
     <div className="space-y-2">
-      <Label htmlFor="decision-picker">
-        {label}
-        {required && <span className="text-red-600 ml-1">*</span>}
-      </Label>
+      <div className="flex items-center gap-2">
+        <Label htmlFor="decision-picker">
+          {label}
+          {required && <span className="text-red-600 ml-1">*</span>}
+        </Label>
+        <TooltipProvider>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Info className="h-4 w-4 text-muted-foreground cursor-help" />
+            </TooltipTrigger>
+            <TooltipContent>
+              <p className="max-w-xs">Każda operacja musi być przypisana do decyzji (audyt). System automatycznie wybiera domyślną decyzję, jeśli dostępna jest tylko jedna.</p>
+            </TooltipContent>
+          </Tooltip>
+        </TooltipProvider>
+      </div>
+      
+      {isAutoSelected && selectedDecision && (
+        <div className="p-2 bg-green-50 dark:bg-green-950 border border-green-200 dark:border-green-800 rounded text-sm">
+          <div className="flex items-center gap-2 text-green-800 dark:text-green-100">
+            <CheckCircle2 className="h-4 w-4" />
+            <span className="font-medium">Wybrano domyślnie:</span>
+          </div>
+          <div className="ml-6 text-green-700 dark:text-green-200 mt-1">
+            {selectedDecision.decision_number && `${selectedDecision.decision_number} `}
+            {selectedDecision.title}
+          </div>
+        </div>
+      )}
+      
       <Select
         value={value}
         onValueChange={onValueChange}
@@ -85,7 +123,7 @@ const DecisionPicker: React.FC<DecisionPickerProps> = ({
           ))}
         </SelectContent>
       </Select>
-      {required && (
+      {required && !isAutoSelected && (
         <p className="text-xs text-muted-foreground">
           Każda operacja musi być powiązana z decyzją autoryzującą
         </p>

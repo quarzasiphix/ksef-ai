@@ -213,6 +213,12 @@ export const SpoolkaWizard: React.FC<SpoolkaWizardProps> = ({ onComplete, onCanc
       // Map company type to entity type (currently only sp_zoo and sa are supported in DB)
       const entityType = wizardData.companyType === 'sa' ? 'sa' : 'sp_zoo';
       
+      if (!user?.id) {
+        toast.error("Brak informacji o użytkowniku. Zaloguj się ponownie.");
+        setLoading(false);
+        return;
+      }
+      
       const profile: Partial<BusinessProfile> = {
         name: wizardData.name,
         taxId: wizardData.taxId,
@@ -224,6 +230,7 @@ export const SpoolkaWizard: React.FC<SpoolkaWizardProps> = ({ onComplete, onCanc
         share_capital: parseFloat(wizardData.shareCapital) || 0,
         establishment_date: wizardData.establishmentDate,
         pkd_main: wizardData.pkdMain,
+        user_id: user.id, // CRITICAL: Add user_id for RLS policy
       };
 
       const savedProfile = await saveBusinessProfile(profile as BusinessProfile);

@@ -152,18 +152,37 @@ export const EditableInvoiceItemsTable: React.FC<EditableInvoiceItemsTableProps>
 
   return (
     <div className="space-y-6">
-      {/* Product Selector */}
-      <ProductSelector
-        products={filteredProducts}
-        documentType={documentType}
-        onProductSelected={handleProductSelected}
-        onNewProductAdded={handleNewProductAdded}
-        refetchProducts={refetchProducts}
-        userId={userId}
-      />
+      {/* Product Catalog Section */}
+      <div className="bg-blue-50 dark:bg-blue-950 border border-blue-200 dark:border-blue-800 rounded-lg p-4">
+        <div className="mb-3">
+          <div className="flex items-center gap-2 mb-1">
+            <div className="w-6 h-6 rounded-full bg-blue-500 text-white flex items-center justify-center text-xs font-bold">📦</div>
+            <span className="text-base font-bold text-blue-900 dark:text-blue-100">Z katalogu produktów (szybko)</span>
+          </div>
+          <p className="text-xs text-blue-700 dark:text-blue-300 ml-8">Wybierz zapisany produkt lub dodaj nowy do katalogu na przyszłość</p>
+        </div>
+        <ProductSelector
+          products={filteredProducts}
+          documentType={documentType}
+          onProductSelected={handleProductSelected}
+          onNewProductAdded={handleNewProductAdded}
+          refetchProducts={refetchProducts}
+          userId={userId}
+        />
+      </div>
 
-      {/* Mobile View */}
-      <div className="block md:hidden space-y-4">
+      {/* One-off Items Section */}
+      <div className="bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-lg p-4">
+        <div className="mb-3">
+          <div className="flex items-center gap-2 mb-1">
+            <div className="w-6 h-6 rounded-full bg-gray-500 text-white flex items-center justify-center text-xs font-bold">✏️</div>
+            <span className="text-base font-bold text-gray-900 dark:text-gray-100">Jednorazowa pozycja na fakturze</span>
+          </div>
+          <p className="text-xs text-gray-600 dark:text-gray-400 ml-8">Dodaj pozycję ręcznie (nie zapisze się w katalogu)</p>
+        </div>
+
+        {/* Mobile View */}
+        <div className="block md:hidden space-y-4">
         {items.map((item, index) => (
           <InvoiceItemMobileCard
             key={item.id}
@@ -179,8 +198,8 @@ export const EditableInvoiceItemsTable: React.FC<EditableInvoiceItemsTableProps>
         ))}
       </div>
 
-      {/* Desktop Table */}
-      <div className="hidden md:block">
+        {/* Desktop Table */}
+        <div className="hidden md:block">
         <div className="overflow-x-auto">
           <table className="w-full border-collapse bg-[#181C27] text-white">
             <thead>
@@ -189,14 +208,10 @@ export const EditableInvoiceItemsTable: React.FC<EditableInvoiceItemsTableProps>
                 <th className="text-left p-2 font-medium">Ilość</th>
                 <th className="text-left p-2 font-medium">Jedn.</th>
                 <th className="px-2 py-2 text-left text-xs font-medium">Cena netto</th>
-                <th className="px-2 py-2 text-left text-xs font-medium">Wartość netto</th>
               {documentType !== InvoiceType.RECEIPT && !fakturaBezVAT && (
-                <>
-                  <th className="px-2 py-2 text-left text-xs font-medium">VAT</th>
-                  <th className="px-2 py-2 text-left text-xs font-medium">Kwota VAT</th>
-                </>
+                <th className="px-2 py-2 text-left text-xs font-medium">VAT %</th>
               )}
-              <th className="px-2 py-2 text-left text-xs font-medium">Wartość brutto</th>
+                <th className="px-2 py-2 text-left text-xs font-medium">Wartość brutto</th>
                 <th className="text-left p-2 font-medium">Akcje</th>
               </tr>
             </thead>
@@ -238,9 +253,7 @@ export const EditableInvoiceItemsTable: React.FC<EditableInvoiceItemsTableProps>
                       step="0.01"
                     />
                   </td>
-                  <td className="p-2 text-right">{formatCurrency(item.totalNetValue || 0, currency)}</td>
                 {documentType !== InvoiceType.RECEIPT && !fakturaBezVAT && (
-                  <>
                     <td className="p-2">
                       <Select
                         value={item.vatRate?.toString()}
@@ -258,10 +271,8 @@ export const EditableInvoiceItemsTable: React.FC<EditableInvoiceItemsTableProps>
                         </SelectContent>
                       </Select>
                     </td>
-                    <td className="p-2 text-right">{formatCurrency(item.totalVatValue || 0, currency)}</td>
-                  </>
                 )}
-                <td className="p-2 text-right">{formatCurrency(item.totalGrossValue || 0, currency)}</td>
+                <td className="p-2 text-right font-semibold">{formatCurrency(item.totalGrossValue || 0, currency)}</td>
                   <td className="p-2">
                     <Button
                       variant="ghost"
@@ -276,10 +287,10 @@ export const EditableInvoiceItemsTable: React.FC<EditableInvoiceItemsTableProps>
               ))}
 
               {/* Add new item row */}
-              <tr className="border-b border-gray-700 bg-[#23283A]">
+              <tr className="border-b border-gray-700 bg-[#2A3142]">
                 <td className="p-2">
                   <Input
-                    placeholder="Nazwa produktu"
+                    placeholder="Jednorazowa pozycja (nie zapisze się w katalogu)"
                     value={newItem.name || ""}
                     onChange={(e) => setNewItem({ ...newItem, name: e.target.value })}
                     className="min-w-[150px] bg-[#23283A] text-white border-gray-700"
@@ -311,30 +322,20 @@ export const EditableInvoiceItemsTable: React.FC<EditableInvoiceItemsTableProps>
                     step="0.01"
                     value={newItem.unitPrice}
                     onChange={(e) => setNewItem({...newItem, unitPrice: Number(e.target.value)})}
-                    className="h-7 w-24"
-                  />
-                </td>
-                <td className="px-2 py-2">
-                  <Input
-                    type="number"
-                    min="0"
-                    step="0.01"
-                    value={newItem.totalNetValue || ''}
-                    onChange={(e) => setNewItem({...newItem, totalNetValue: Number(e.target.value)})}
-                    className="h-7 w-24"
+                    className="h-7 w-24 bg-[#23283A] text-white border-gray-700"
+                    placeholder="0.00"
                   />
                 </td>
               {documentType !== InvoiceType.RECEIPT && !fakturaBezVAT && (
-                <>
                   <td className="px-2 py-2">
                     <Select
                       value={newItem.vatRate?.toString() || '23'}
                       onValueChange={(value) => setNewItem({...newItem, vatRate: Number(value)})}
                     >
-                      <SelectTrigger className="h-7 w-20">
+                      <SelectTrigger className="h-7 w-20 bg-[#23283A] text-white border-gray-700">
                         <SelectValue />
                       </SelectTrigger>
-                      <SelectContent>
+                      <SelectContent className="bg-[#23283A] text-white">
                         <SelectItem value="23">23%</SelectItem>
                         <SelectItem value="8">8%</SelectItem>
                         <SelectItem value="5">5%</SelectItem>
@@ -343,41 +344,39 @@ export const EditableInvoiceItemsTable: React.FC<EditableInvoiceItemsTableProps>
                       </SelectContent>
                     </Select>
                   </td>
-                  <td className="px-2 py-2">
-                    <Input
-                      type="number"
-                      min="0"
-                      step="0.01"
-                      value={newItem.totalVatValue || ''}
-                      onChange={(e) => setNewItem({...newItem, totalVatValue: Number(e.target.value)})}
-                      className="h-7 w-24"
-                    />
-                  </td>
-                </>
               )}
-                <td className="px-2 py-2">
-                  <Input
-                    type="number"
-                    min="0"
-                    step="0.01"
-                    value={newItem.totalGrossValue || ''}
-                    onChange={(e) => setNewItem({...newItem, totalGrossValue: Number(e.target.value)})}
-                    className="h-7 w-24"
-                  />
+                <td className="px-2 py-2 text-right text-gray-400">
+                  {newItem.quantity && newItem.unitPrice ? 
+                    formatCurrency(
+                      (Number(newItem.quantity) * Number(newItem.unitPrice)) * 
+                      (1 + (documentType === InvoiceType.RECEIPT || fakturaBezVAT ? 0 : (Number(newItem.vatRate || 23) / 100))),
+                      currency
+                    ) : '—'
+                  }
                 </td>
                 <td className="p-2">
                   <Button
-                    variant="ghost"
+                    variant="default"
                     size="sm"
                     onClick={handleAddManualItem}
                     disabled={!newItem.name || !newItem.quantity || !newItem.unitPrice}
+                    className="whitespace-nowrap"
                   >
-                    <Plus className="h-4 w-4" />
+                    <Plus className="h-4 w-4 mr-1" />
+                    Dodaj
                   </Button>
+                  {(!newItem.name || !newItem.quantity || !newItem.unitPrice) && (
+                    <div className="text-xs text-gray-400 mt-1">Podaj nazwę i cenę</div>
+                  )}
                 </td>
               </tr>
             </tbody>
           </table>
+        </div>
+        </div>
+        
+        <div className="text-xs text-gray-500 dark:text-gray-400 mt-2 italic">
+          💡 Jeśli chcesz zapisać ten produkt na przyszłość → użyj "Dodaj do katalogu" powyżej
         </div>
       </div>
 
