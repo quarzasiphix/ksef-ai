@@ -2,12 +2,15 @@ import React, { useState, useEffect } from "react";
 import { useNavigate, Link } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from '@/hooks/useAuth';
+import { useABTest } from '@/hooks/useABTest';
+import { useFunnelTracking } from '@/hooks/useFunnelTracking';
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Mail, ArrowRight, Lock, ChevronDown } from "lucide-react";
 import { getBusinessProfiles } from '@/integrations/supabase/repositories/businessProfileRepository';
+import { FunnelEvents } from '@/lib/analytics/funnelTracker';
 
 // Helper to get email provider link
 const getEmailProviderLink = (email: string) => {
@@ -43,6 +46,15 @@ const Register = () => {
   const [resendCooldown, setResendCooldown] = useState(0);
   const navigate = useNavigate();
   const { login, signInWithGoogle } = useAuth();
+  
+  // A/B Testing
+  const headlineVariant = useABTest({
+    testId: 'registration_headline',
+    variants: ['control', 'variant_a'],
+  });
+  
+  // Funnel Tracking
+  const { track } = useFunnelTracking('/auth/register');
 
   // Handle auth state changes (magic link callback)
   useEffect(() => {
@@ -73,6 +85,7 @@ const Register = () => {
   // Magic link registration
   const handleMagicLink = async (e: React.FormEvent) => {
     e.preventDefault();
+    track(FunnelEvents.CLICKED_CONTINUE_BUTTON);
     setError(null);
 
     if (!email) {
@@ -91,9 +104,11 @@ const Register = () => {
 
     if (error) {
       setError("Nie udało się wysłać linku. Spróbuj ponownie lub ustaw hasło.");
+      track(FunnelEvents.ERROR_SENDING_MAGIC_LINK, { error: error.message });
     } else {
       setMagicLinkSent(true);
       setResendCooldown(60);
+      track(FunnelEvents.MAGIC_LINK_SENT, { email });
     }
   };
 
@@ -133,6 +148,7 @@ const Register = () => {
   const handleResend = async () => {
     if (resendCooldown > 0) return;
     
+    track(FunnelEvents.CLICKED_RESEND_LINK);
     setError(null);
     setLoading(true);
     const { error } = await supabase.auth.signInWithOtp({
@@ -145,18 +161,22 @@ const Register = () => {
 
     if (error) {
       setError("Nie udało się wysłać linku. Spróbuj ponownie.");
+      track(FunnelEvents.ERROR_SENDING_MAGIC_LINK, { error: error.message, resend: true });
     } else {
       setResendCooldown(60);
+      track(FunnelEvents.MAGIC_LINK_SENT, { email, resend: true });
     }
   };
 
   const handleGoogleSignIn = async () => {
+    track(FunnelEvents.CLICKED_GOOGLE_BUTTON);
     setError(null);
     setLoading(true);
     try {
       await signInWithGoogle();
     } catch (err) {
       setError("Nie udało się zalogować przez Google. Spróbuj ponownie.");
+      track(FunnelEvents.ERROR_GOOGLE_SIGNIN, { error: String(err) });
     }
     setLoading(false);
   };
@@ -253,8 +273,13 @@ const Register = () => {
           <>
             <div className="text-center mb-8 animate-fade-in">
               <h1 className="text-3xl md:text-4xl font-bold tracking-tight">
-                Jeszcze chwila i masz to z głowy.
+                {headlineVariant === 'variant_a'
+                  ? 'Jeszcze chwila — i księgowość masz z głowy.'
+                  : 'Jeszcze chwila i masz to z głowy.'}
               </h1>
+              <p className="mt-2 text-xs text-muted-foreground">
+                🇵🇱 Dla polskich przedsiębiorców • zgodne z KSeF
+              </p>
               <p className="mt-4 text-lg text-muted-foreground max-w-xl mx-auto">
                 Załóż konto, a KsięgaI zajmie się resztą.
               </p>
@@ -275,7 +300,10 @@ const Register = () => {
                   <Button
                     variant="ghost"
                     className="w-full text-sm text-muted-foreground hover:text-foreground"
-                    onClick={() => setShowPasswordForm(true)}
+                    onClick={() => {
+                      setShowPasswordForm(true);
+                      track(FunnelEvents.EXPANDED_EMAIL_FORM);
+                    }}
                   >
                     Użyj adresu e-mail
                     <ChevronDown className="ml-2 h-4 w-4" />
@@ -291,7 +319,8 @@ const Register = () => {
                             id="email" 
                             type="email" 
                             value={email} 
-                            onChange={(e) => setEmail(e.target.value)} 
+                            onChange={(e) => setEmail(e.target.value)}
+                            onFocus={() => track(FunnelEvents.FOCUSED_EMAIL_FIELD)}
                             required 
                             placeholder="twoj@email.pl" 
                             className="pl-10" 

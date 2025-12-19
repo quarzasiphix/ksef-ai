@@ -42,14 +42,14 @@ export default function PublicLayout({ children }: PublicLayoutProps) {
 
         {/* Main Content */}
         <main className="container mx-auto px-4 py-8">
-          <Breadcrumbs />
+          {!location.pathname.startsWith('/auth') && <Breadcrumbs />}
           <div className="bg-white/80 dark:bg-gray-900/50 backdrop-blur-sm rounded-xl p-6 border border-border/50 shadow-sm">
             {children}
           </div>
         </main>
 
         {/* Footer */}
-        <footer className="border-t border-gray-200 dark:border-neutral-800 bg-white/80 dark:bg-gray-900/50 backdrop-blur-sm">
+        <footer className={`border-t border-gray-200 dark:border-neutral-800 bg-white/80 dark:bg-gray-900/50 backdrop-blur-sm ${location.pathname.startsWith('/auth') ? 'opacity-40' : ''}`}>
           <div className="container mx-auto px-4 py-12">
             <div className="grid grid-cols-1 md:grid-cols-4 gap-8">
               {/* Company Info */}
