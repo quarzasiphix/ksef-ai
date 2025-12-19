@@ -55,7 +55,7 @@ const DecisionPicker: React.FC<DecisionPickerProps> = ({
     <div className="space-y-2">
       <div className="flex items-center gap-2">
         <Label htmlFor="decision-picker">
-          {label}
+          Zgoda organizacyjna (wymagana prawnie)
           {required && <span className="text-red-600 ml-1">*</span>}
         </Label>
         <TooltipProvider>
@@ -64,7 +64,7 @@ const DecisionPicker: React.FC<DecisionPickerProps> = ({
               <Info className="h-4 w-4 text-muted-foreground cursor-help" />
             </TooltipTrigger>
             <TooltipContent>
-              <p className="max-w-xs">Każda operacja musi być przypisana do decyzji (audyt). System automatycznie wybiera domyślną decyzję, jeśli dostępna jest tylko jedna.</p>
+              <p className="max-w-xs">Każda operacja wymaga zgody organizacyjnej (audyt). System automatycznie wybiera domyślną, jeśli dostępna jest tylko jedna.</p>
             </TooltipContent>
           </Tooltip>
         </TooltipProvider>

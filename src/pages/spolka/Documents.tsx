@@ -11,7 +11,8 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } f
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { 
   ArrowLeft, Upload, Download, Trash2, FileText, FolderOpen, 
-  Car, Building, Briefcase, FileCheck, AlertCircle, Calendar
+  Car, Building, Briefcase, FileCheck, AlertCircle, Calendar,
+  CheckCircle, XCircle, AlertTriangle, Sparkles, Paperclip, Brain
 } from 'lucide-react';
 import { format } from 'date-fns';
 import { pl } from 'date-fns/locale';
@@ -193,6 +194,32 @@ const Documents = () => {
 
   const categories = Object.keys(DOCUMENT_CATEGORY_LABELS) as DocumentCategory[];
 
+  // Calculate folder status
+  const getFolderStatus = (category: DocumentCategory): 'complete' | 'missing' | 'required' => {
+    const docs = documents[category];
+    if (docs.length === 0) {
+      // Mark certain categories as required
+      if (['resolutions', 'licenses'].includes(category)) return 'required';
+      return 'missing';
+    }
+    return 'complete';
+  };
+
+  const getStatusBadge = (status: 'complete' | 'missing' | 'required') => {
+    switch (status) {
+      case 'complete':
+        return <Badge variant="outline" className="bg-green-50 text-green-700 border-green-200"><CheckCircle className="h-3 w-3 mr-1" />Kompletne</Badge>;
+      case 'missing':
+        return <Badge variant="outline" className="bg-amber-50 text-amber-700 border-amber-200"><AlertTriangle className="h-3 w-3 mr-1" />Brak dokumentów</Badge>;
+      case 'required':
+        return <Badge variant="outline" className="bg-red-50 text-red-700 border-red-200"><XCircle className="h-3 w-3 mr-1" />Wymagane prawnie</Badge>;
+    }
+  };
+
+  // Find next required document
+  const missingRequiredCategories = categories.filter(cat => getFolderStatus(cat) === 'required');
+  const nextRequiredCategory = missingRequiredCategories[0];
+
   return (
     <div className="space-y-6 pb-20 px-4 md:px-6">
         {/* Header */}
@@ -220,6 +247,40 @@ const Documents = () => {
           </Button>
         </div>
       </div>
+
+      {/* Next Required Document Banner */}
+      {nextRequiredCategory && (
+        <Card className="border-red-200 bg-red-50 dark:bg-red-950 dark:border-red-800">
+          <CardHeader className="pb-3">
+            <CardTitle className="text-red-900 dark:text-red-100 flex items-center gap-2">
+              <AlertCircle className="h-5 w-5" />
+              Brakuje wymaganego dokumentu
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="font-medium text-red-800 dark:text-red-200">
+                  {DOCUMENT_CATEGORY_LABELS[nextRequiredCategory]}
+                </p>
+                <p className="text-sm text-red-700 dark:text-red-300 mt-1">
+                  Ta kategoria jest wymagana prawnie dla spółek
+                </p>
+              </div>
+              <Button
+                onClick={() => {
+                  setUploadData(prev => ({ ...prev, category: nextRequiredCategory }));
+                  fileInputRef.current?.click();
+                }}
+                className="bg-red-600 hover:bg-red-700 text-white"
+              >
+                <Upload className="h-4 w-4 mr-2" />
+                Dodaj dokument
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+      )}
 
       {/* Expiring Documents Alert */}
       {expiringDocs.length > 0 && (
@@ -298,13 +359,18 @@ const Documents = () => {
           <TabsContent key={cat} value={cat} className="mt-4">
             <Card>
               <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  {CATEGORY_ICONS[cat]}
-                  {DOCUMENT_CATEGORY_LABELS[cat]}
-                </CardTitle>
-                <CardDescription>
-                  {documents[cat].length} dokumentów
-                </CardDescription>
+                <div className="flex items-center justify-between">
+                  <div>
+                    <CardTitle className="flex items-center gap-2">
+                      {CATEGORY_ICONS[cat]}
+                      {DOCUMENT_CATEGORY_LABELS[cat]}
+                    </CardTitle>
+                    <CardDescription>
+                      {documents[cat].length} dokumentów
+                    </CardDescription>
+                  </div>
+                  {getStatusBadge(getFolderStatus(cat))}
+                </div>
               </CardHeader>
               <CardContent>
                 {loading ? (
@@ -326,14 +392,33 @@ const Documents = () => {
                     </Button>
                   </div>
                 ) : (
-                  <div className="space-y-2">
+                  <div className="space-y-4">
+                    {/* Document Type Legend */}
+                    <div className="flex flex-wrap gap-3 p-3 bg-muted/50 rounded-lg text-xs">
+                      <div className="flex items-center gap-1.5">
+                        <Paperclip className="h-3.5 w-3.5 text-blue-600" />
+                        <span className="text-muted-foreground">Przesłane dokumenty</span>
+                      </div>
+                      <div className="flex items-center gap-1.5">
+                        <Sparkles className="h-3.5 w-3.5 text-purple-600" />
+                        <span className="text-muted-foreground">Wygenerowane przez system</span>
+                      </div>
+                      <div className="flex items-center gap-1.5">
+                        <Brain className="h-3.5 w-3.5 text-green-600" />
+                        <span className="text-muted-foreground">Powiązane z decyzjami</span>
+                      </div>
+                    </div>
+                    
                     {documents[cat].map(doc => (
                       <div
                         key={doc.id}
                         className="flex items-center justify-between p-3 border rounded-lg hover:bg-accent transition-colors"
                       >
                         <div className="flex items-center gap-3 flex-1 min-w-0">
-                          <FileText className="h-8 w-8 text-muted-foreground flex-shrink-0" />
+                          <div className="relative">
+                            <FileText className="h-8 w-8 text-muted-foreground flex-shrink-0" />
+                            <Paperclip className="h-4 w-4 text-blue-600 absolute -bottom-1 -right-1 bg-white rounded-full" />
+                          </div>
                           <div className="min-w-0">
                             <p className="font-medium truncate">{doc.title}</p>
                             <div className="flex items-center gap-2 text-sm text-muted-foreground">
