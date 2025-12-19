@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { useNavigate, Link } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from '@/hooks/useAuth';
@@ -6,8 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
-import { Checkbox } from "@/components/ui/checkbox";
-import { Mail, ArrowRight, Lock } from "lucide-react";
+import { Mail, ArrowRight, Lock, ChevronDown } from "lucide-react";
 import { getBusinessProfiles } from '@/integrations/supabase/repositories/businessProfileRepository';
 
 // Helper to get email provider link
@@ -39,18 +38,67 @@ const Register = () => {
   const [repeatPassword, setRepeatPassword] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [acceptTerms, setAcceptTerms] = useState(false);
-  const [registered, setRegistered] = useState(false);
+  const [magicLinkSent, setMagicLinkSent] = useState(false);
+  const [showPasswordForm, setShowPasswordForm] = useState(false);
+  const [resendCooldown, setResendCooldown] = useState(0);
   const navigate = useNavigate();
   const { login, signInWithGoogle } = useAuth();
 
-  // Store credentials in sessionStorage after registration
-  const storeCredentials = (email: string, password: string) => {
-    sessionStorage.setItem("pendingEmail", email);
-    sessionStorage.setItem("pendingPassword", password);
+  // Handle auth state changes (magic link callback)
+  useEffect(() => {
+    const { data: authListener } = supabase.auth.onAuthStateChange(async (event, session) => {
+      if (event === 'SIGNED_IN' && session) {
+        const profiles = await getBusinessProfiles(session.user.id);
+        if (profiles.length === 0) {
+          navigate('/welcome');
+        } else {
+          navigate('/dashboard');
+        }
+      }
+    });
+
+    return () => {
+      authListener.subscription.unsubscribe();
+    };
+  }, [navigate]);
+
+  // Resend cooldown timer
+  useEffect(() => {
+    if (resendCooldown > 0) {
+      const timer = setTimeout(() => setResendCooldown(resendCooldown - 1), 1000);
+      return () => clearTimeout(timer);
+    }
+  }, [resendCooldown]);
+
+  // Magic link registration
+  const handleMagicLink = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setError(null);
+
+    if (!email) {
+      setError("Podaj adres e-mail");
+      return;
+    }
+
+    setLoading(true);
+    const { error } = await supabase.auth.signInWithOtp({
+      email: email,
+      options: {
+        emailRedirectTo: `${window.location.origin}/auth/callback`,
+      },
+    });
+    setLoading(false);
+
+    if (error) {
+      setError("Nie udało się wysłać linku. Spróbuj ponownie lub ustaw hasło.");
+    } else {
+      setMagicLinkSent(true);
+      setResendCooldown(60);
+    }
   };
 
-  const handleRegister = async (e: React.FormEvent) => {
+  // Password registration (fallback)
+  const handlePasswordRegister = async (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
     
@@ -59,177 +107,247 @@ const Register = () => {
       return;
     }
 
-    if (!acceptTerms) {
-      setError("Musisz zaakceptować regulamin i politykę prywatności.");
+    if (password.length < 6) {
+      setError("Hasło musi mieć co najmniej 6 znaków.");
       return;
     }
 
     setLoading(true);
-    const { error } = await supabase.auth.signUp({ email, password });
+    const { error } = await supabase.auth.signUp({ 
+      email, 
+      password,
+      options: {
+        emailRedirectTo: `${window.location.origin}/auth/callback`,
+      }
+    });
     setLoading(false);
+    
     if (error) {
       setError(error.message);
     } else {
-      storeCredentials(email, password);
-      setRegistered(true);
+      setMagicLinkSent(true);
+    }
+  };
+
+  // Resend magic link
+  const handleResend = async () => {
+    if (resendCooldown > 0) return;
+    
+    setError(null);
+    setLoading(true);
+    const { error } = await supabase.auth.signInWithOtp({
+      email: email,
+      options: {
+        emailRedirectTo: `${window.location.origin}/auth/callback`,
+      },
+    });
+    setLoading(false);
+
+    if (error) {
+      setError("Nie udało się wysłać linku. Spróbuj ponownie.");
+    } else {
+      setResendCooldown(60);
     }
   };
 
   const handleGoogleSignIn = async () => {
     setError(null);
     setLoading(true);
-    await signInWithGoogle();
+    try {
+      await signInWithGoogle();
+    } catch (err) {
+      setError("Nie udało się zalogować przez Google. Spróbuj ponownie.");
+    }
     setLoading(false);
   };
 
-  // Handler for 'Proceed, email verified' button
-  const handleProceed = async () => {
-    setError(null);
-    const pendingEmail = sessionStorage.getItem("pendingEmail") || email;
-    const pendingPassword = sessionStorage.getItem("pendingPassword") || password;
-    try {
-      setLoading(true);
-      const { user } = await login(pendingEmail, pendingPassword);
-      
-      if (user) {
-        const profiles = await getBusinessProfiles(user.id);
-        if (profiles.length === 0) {
-          navigate("/welcome");
-        } else {
-          navigate("/dashboard");
-        }
-      } else {
-        setError("Nie udało się zalogować. Spróbuj ponownie.");
-      }
-
-      sessionStorage.removeItem("pendingEmail");
-      sessionStorage.removeItem("pendingPassword");
-    } catch (err: any) {
-      setError("Nie udało się zalogować. Upewnij się, że zweryfikowałeś adres e-mail i spróbuj ponownie.");
-    } finally {
-      setLoading(false);
-    }
-  };
 
   return (
     <div className="flex flex-col items-center justify-center w-full">
       <div className="w-full max-w-lg">
-        {registered ? (
-          <div className="p-px bg-gradient-to-br from-primary via-emerald-500 to-primary rounded-lg shadow-lg animate-fade-in">
-            <Card className="w-full border-0">
-              <CardHeader className="text-center">
-                <Mail className="mx-auto h-12 w-12 text-primary" />
-                <CardTitle className="mt-4 text-2xl">Potwierdź swój adres e-mail</CardTitle>
-                <CardDescription>
-                  Na podany adres <span className="font-semibold text-foreground">{email}</span> wysłaliśmy link aktywacyjny.
-                </CardDescription>
-              </CardHeader>
-              <CardContent className="text-center">
-                <p className="text-muted-foreground">
-                  Kliknij w link, aby aktywować konto i móc się zalogować.
-                </p>
-                <Button asChild className="w-full mt-6">
-                  <a
-                    href={getEmailProviderLink(email)}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                  >
-                    Otwórz skrzynkę pocztową
-                  </a>
-                </Button>
-                <Button
-                  variant="secondary"
-                  className="w-full mt-2"
-                  onClick={handleProceed}
-                  disabled={loading}
+        {magicLinkSent ? (
+          <Card className="w-full animate-fade-in">
+            <CardHeader className="text-center">
+              <Mail className="mx-auto h-12 w-12 text-blue-600" />
+              <CardTitle className="mt-4 text-2xl">Sprawdź swoją skrzynkę</CardTitle>
+              <CardDescription className="text-base">
+                Wysłaliśmy link na adres <span className="font-semibold text-foreground">{email}</span>.<br />
+                Kliknij w link, aby kontynuować — zajmie to sekundę.
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <Button asChild className="w-full" size="lg">
+                <a
+                  href={getEmailProviderLink(email)}
+                  target="_blank"
+                  rel="noopener noreferrer"
                 >
-                  {loading ? "Logowanie..." : "Kontynuuj, e-mail zweryfikowany"}
+                  Otwórz skrzynkę pocztową
+                </a>
+              </Button>
+              <Button
+                variant="outline"
+                className="w-full"
+                onClick={handleResend}
+                disabled={resendCooldown > 0 || loading}
+                size="lg"
+              >
+                {resendCooldown > 0 
+                  ? `Wyślij ponownie (${resendCooldown}s)` 
+                  : "E-mail nie dotarł? Wyślij ponownie"}
+              </Button>
+              
+              {!showPasswordForm ? (
+                <Button
+                  variant="ghost"
+                  className="w-full text-muted-foreground"
+                  onClick={() => setShowPasswordForm(true)}
+                >
+                  Lub ustaw hasło i zaloguj się standardowo
+                  <ChevronDown className="ml-2 h-4 w-4" />
                 </Button>
-              </CardContent>
-            </Card>
-          </div>
-        ) : (
-          <>
-            <div className="text-center mb-8 animate-fade-in">
-              <h1 className="text-3xl md:text-4xl font-bold tracking-tight bg-clip-text text-transparent bg-gradient-to-r from-amber-400 via-red-500 to-pink-500">
-                Najlepszy system fakturowy dla małych firm
-              </h1>
-              <p className="mt-4 text-lg text-muted-foreground max-w-xl mx-auto">
-                Stwórz darmowe konto i dołącz do tysięcy przedsiębiorców, którzy rozwijają swój biznes z Ai Faktura.
-              </p>
-            </div>
-            <div className="p-px bg-gradient-to-br from-border to-transparent rounded-lg animate-fade-in">
-              <Card className="w-full border-0">
-                <CardHeader>
-                  <CardTitle>Załóż darmowe konto</CardTitle>
-                  <CardDescription>To zajmie tylko chwilę.</CardDescription>
-                </CardHeader>
-                <CardContent className="pt-4 pb-4">
-                  <Button variant="outline" className="w-full" onClick={handleGoogleSignIn} disabled={loading}>
-                    <GoogleIcon className="mr-2 h-4 w-4" />
-                    Zarejestruj się z Google
-                  </Button>
-                </CardContent>
-                <div className="relative my-0 px-6">
-                  <div className="absolute inset-0 flex items-center">
-                    <span className="w-full border-t" />
-                  </div>
-                  <div className="relative flex justify-center text-xs uppercase">
-                    <span className="bg-card px-2 text-muted-foreground">LUB UŻYJ ADRESU E-MAIL</span>
-                  </div>
-                </div>
-                <CardContent>
-                  <form onSubmit={handleRegister} className="space-y-4">
+              ) : (
+                <div className="pt-4 border-t space-y-4">
+                  <p className="text-sm text-muted-foreground text-center">Ustaw hasło, aby zalogować się bez linku</p>
+                  <form onSubmit={handlePasswordRegister} className="space-y-4">
                     <div className="grid gap-2">
-                      <Label htmlFor="email">Email</Label>
+                      <Label htmlFor="password-fallback">Hasło</Label>
                       <div className="relative">
-                        <Mail className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                        <Input id="email" type="email" value={email} onChange={(e) => setEmail(e.target.value)} required placeholder="email@przyklad.com" className="pl-10" />
+                        <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                        <Input 
+                          id="password-fallback" 
+                          type="password" 
+                          value={password} 
+                          onChange={(e) => setPassword(e.target.value)} 
+                          required 
+                          placeholder="••••••••" 
+                          className="pl-10" 
+                        />
                       </div>
                     </div>
                     <div className="grid gap-2">
-                      <Label htmlFor="password">Hasło</Label>
+                      <Label htmlFor="repeat-password-fallback">Powtórz hasło</Label>
                       <div className="relative">
                         <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                        <Input id="password" type="password" value={password} onChange={(e) => setPassword(e.target.value)} required placeholder="••••••••" className="pl-10" />
-                      </div>
-                    </div>
-                    <div className="grid gap-2">
-                      <Label htmlFor="repeat-password">Powtórz hasło</Label>
-                       <div className="relative">
-                        <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                        <Input id="repeat-password" type="password" value={repeatPassword} onChange={(e) => setRepeatPassword(e.target.value)} required placeholder="••••••••" className="pl-10" />
+                        <Input 
+                          id="repeat-password-fallback" 
+                          type="password" 
+                          value={repeatPassword} 
+                          onChange={(e) => setRepeatPassword(e.target.value)} 
+                          required 
+                          placeholder="••••••••" 
+                          className="pl-10" 
+                        />
                       </div>
                     </div>
                     {error && <div className="text-red-500 text-sm font-medium">{error}</div>}
-                    <div className="space-y-3 pt-2">
-                      <div className="flex items-start space-x-2.5">
-                        <Checkbox id="terms" checked={acceptTerms} onCheckedChange={(checked) => setAcceptTerms(!!checked)} className="mt-0.5" required />
-                        <Label htmlFor="terms" className="text-sm font-normal text-muted-foreground">
-                          Akceptuję <Link to="/policies/tos" target="_blank" className="underline hover:text-primary">Regulamin</Link> oraz <Link to="/policies/privacy" target="_blank" className="underline hover:text-primary">Politykę prywatności</Link>
-                        </Label>
-                      </div>
-                    </div>
                     <Button type="submit" className="w-full" disabled={loading}>
-                      {loading ? "Tworzenie konta..." : "Załóż konto i przejdź dalej"}
-                      {!loading && <ArrowRight className="ml-2 h-4 w-4" />}
+                      {loading ? "Rejestracja..." : "Zarejestruj się z hasłem"}
                     </Button>
                   </form>
-                </CardContent>
-                <CardFooter className="text-center text-sm pt-0">
-                  <p className="text-muted-foreground w-full">
-                    Masz już konto?{' '}
-                    <Link to="/auth/login" className="underline hover:text-primary font-medium text-primary">
-                      Zaloguj się
-                    </Link>
-                  </p>
-                </CardFooter>
-              </Card>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        ) : (
+          <>
+            <div className="text-center mb-8 animate-fade-in">
+              <h1 className="text-3xl md:text-4xl font-bold tracking-tight">
+                Jeszcze chwila i masz to z głowy.
+              </h1>
+              <p className="mt-4 text-lg text-muted-foreground max-w-xl mx-auto">
+                Załóż konto, a KsięgaI zajmie się resztą.
+              </p>
             </div>
-             <div className="mt-8 text-center text-muted-foreground text-sm animate-fade-in">
-                <p>Zaufaj liderom w branży i zacznij oszczędzać czas już dziś.</p>
-                <p className="font-medium text-foreground mt-1">Twój sukces to nasz priorytet.</p>
-            </div>
+            <Card className="w-full animate-fade-in">
+              <CardContent className="pt-6 pb-4 space-y-4">
+                <Button 
+                  className="w-full bg-blue-600 hover:bg-blue-700" 
+                  onClick={handleGoogleSignIn} 
+                  disabled={loading}
+                  size="lg"
+                >
+                  <GoogleIcon className="mr-2 h-5 w-5" />
+                  Kontynuuj przez Google
+                </Button>
+                
+                {!showPasswordForm ? (
+                  <Button
+                    variant="ghost"
+                    className="w-full text-sm text-muted-foreground hover:text-foreground"
+                    onClick={() => setShowPasswordForm(true)}
+                  >
+                    Użyj adresu e-mail
+                    <ChevronDown className="ml-2 h-4 w-4" />
+                  </Button>
+                ) : (
+                  <div className="pt-4 border-t">
+                    <form onSubmit={handleMagicLink} className="space-y-4">
+                      <div className="grid gap-2">
+                        <Label htmlFor="email">Adres e-mail</Label>
+                        <div className="relative">
+                          <Mail className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                          <Input 
+                            id="email" 
+                            type="email" 
+                            value={email} 
+                            onChange={(e) => setEmail(e.target.value)} 
+                            required 
+                            placeholder="twoj@email.pl" 
+                            className="pl-10" 
+                          />
+                        </div>
+                        <p className="text-xs text-muted-foreground">
+                          Wyślemy Ci bezpieczny link do logowania.
+                        </p>
+                      </div>
+                      {error && <div className="text-red-500 text-sm font-medium">{error}</div>}
+                      <Button type="submit" className="w-full" disabled={loading} size="lg">
+                        {loading ? "Wysyłanie..." : "Kontynuuj"}
+                        {!loading && <ArrowRight className="ml-2 h-4 w-4" />}
+                      </Button>
+                      <p className="text-xs text-center text-muted-foreground">
+                        Kontynuując, akceptujesz{' '}
+                        <Link to="/policies/tos" target="_blank" className="underline hover:text-primary">
+                          Regulamin
+                        </Link>
+                        {' '}i{' '}
+                        <Link to="/policies/privacy" target="_blank" className="underline hover:text-primary">
+                          Politykę prywatności
+                        </Link>
+                      </p>
+                    </form>
+                  </div>
+                )}
+              </CardContent>
+              <CardContent className="pt-0">
+                <p className="text-sm text-center text-muted-foreground">
+                  Po rejestracji możesz od razu wystawić pierwszą fakturę.
+                </p>
+              </CardContent>
+              <CardFooter className="flex-col space-y-4 pt-4 border-t">
+                <p className="text-sm text-muted-foreground text-center w-full">
+                  Masz już konto?{' '}
+                  <Link to="/auth/login" className="underline hover:text-primary font-medium text-primary">
+                    Zaloguj się
+                  </Link>
+                </p>
+                <div className="flex items-center justify-center gap-4 text-xs text-muted-foreground flex-wrap">
+                  <span className="flex items-center gap-1">
+                    <span>🇵🇱</span>
+                    <span>Aplikacja w języku polskim</span>
+                  </span>
+                  <span className="flex items-center gap-1">
+                    <span>🇵🇱</span>
+                    <span>Zgodna z KSeF</span>
+                  </span>
+                  <span className="flex items-center gap-1">
+                    <span>🇵🇱</span>
+                    <span>Dla polskich przedsiębiorców</span>
+                  </span>
+                </div>
+              </CardFooter>
+            </Card>
           </>
         )}
       </div>

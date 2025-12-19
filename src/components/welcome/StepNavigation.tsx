@@ -6,7 +6,7 @@ import { ArrowLeft, ArrowRight, SkipForward } from "lucide-react";
 interface StepNavigationProps {
   canGoBack: boolean;
   nextDisabled?: boolean;
-  onBack: () => void;
+  onBack?: () => void;
   onNext: () => void;
   onSkip?: () => void;
   nextLabel?: string;
@@ -20,7 +20,7 @@ const StepNavigation: React.FC<StepNavigationProps> = ({
   onNext,
   onSkip,
   nextLabel = "Dalej",
-  skipLabel = "Pomiń",
+  skipLabel = "Zrobię to później",
 }) => {
   return (
     <div className="w-full flex gap-2 justify-between items-center">

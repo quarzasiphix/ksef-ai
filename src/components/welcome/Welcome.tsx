@@ -189,12 +189,12 @@ const Welcome = () => {
         return (
           <div className="flex flex-col items-center text-center">
             <Star className="h-12 w-12 text-amber-400 mb-4" />
-            <h1 className="text-3xl font-bold tracking-tight mb-2">Witamy w KsięgaI!</h1>
+            <h1 className="text-3xl font-bold tracking-tight mb-2">Nie myśl o księgowości.</h1>
             <p className="mb-8 text-lg text-muted-foreground max-w-md">
-              Przeprowadzimy Cię przez kilka szybkich kroków, aby skonfigurować Twoje konto i przygotować do wystawiania faktur.
+              Za chwilę zobaczysz, jak system działa za Ciebie. Wystarczy podać podstawowe dane firmy — resztą zajmiemy się my.
             </p>
             <Button size="lg" onClick={() => setMode('choose-type')}>
-              Rozpocznij konfigurację
+              Zobacz, jak to działa
               <ArrowRight className="ml-2 h-5 w-5" />
             </Button>
           </div>
@@ -272,9 +272,9 @@ const Welcome = () => {
                 <div className="inline-flex items-center justify-center w-16 h-16 rounded-2xl bg-primary/10 mb-4">
                   <Sparkles className="h-8 w-8 text-primary" />
                 </div>
-                <h1 className="text-4xl md:text-5xl font-bold tracking-tight">Dodaj firmę</h1>
+                <h1 className="text-4xl md:text-5xl font-bold tracking-tight">Jaki typ firmy prowadzisz?</h1>
                 <p className="text-lg text-muted-foreground max-w-2xl mx-auto">
-                  Wybierz typ działalności, a my dopasujemy kreator do Twoich potrzeb
+                  Dopasujemy system do polskich przepisów dla Twojej formy działalności.
                 </p>
               </motion.div>
 
@@ -414,9 +414,9 @@ const Welcome = () => {
         return (
           <div className="flex flex-col items-center text-center w-full">
             <Users className="h-10 w-10 text-sky-500 mb-4" />
-            <h1 className="text-3xl font-bold tracking-tight mb-2">Uzupełnij swój profil</h1>
+            <h1 className="text-3xl font-bold tracking-tight mb-2">Kto będzie wystawiał faktury?</h1>
             <p className="mb-6 text-muted-foreground max-w-md">
-              Podaj swoje dane, abyśmy mogli spersonalizować Twoje doświadczenie w aplikacji.
+              Twoje dane pojawią się na fakturach jako osoba kontaktowa. Możesz to zmienić później.
             </p>
             <OnboardingProfileForm
               ref={profileFormRef}
@@ -438,9 +438,9 @@ const Welcome = () => {
         return (
           <div className="flex flex-col items-center text-center w-full">
             <Building2 className="h-10 w-10 text-blue-600 mb-4" />
-            <h1 className="text-3xl font-bold tracking-tight mb-2">Dodaj konta bankowe</h1>
+            <h1 className="text-3xl font-bold tracking-tight mb-2">Na jakie konto klienci mają płacić?</h1>
             <p className="mb-6 text-muted-foreground max-w-md">
-              Dodaj konta bankowe swojej firmy. {isVatExempt === false ? 'Jeśli jesteś VAT-owcem, zalecamy dodanie konta VAT.' : ''}
+              Podaj numer konta, który pojawi się na fakturach. Możesz dodać więcej kont później.
             </p>
             <div className="flex flex-col gap-2 items-center w-full max-w-md">
               {bankStepAccounts.map((acc: any) => (
@@ -467,8 +467,8 @@ const Welcome = () => {
                 />
               )}
               {isVatExempt === false && !bankStepAccounts.some((a: any) => a.type === 'vat') && (
-                <div className="mt-4 p-3 bg-yellow-50 border border-yellow-200 rounded text-sm text-yellow-800 text-left">
-                  <b>Rekomendacja:</b> Dodaj konto VAT, aby korzystać z podzielonej płatności (split payment).
+                <div className="mt-4 p-3 bg-blue-50 dark:bg-blue-950/30 border border-blue-200 dark:border-blue-800 rounded text-sm text-blue-800 dark:text-blue-300 text-left">
+                  💡 <b>Jeśli jesteś VAT-owcem,</b> możesz dodać osobne konto VAT (split payment) — ale nie musisz tego robić teraz.
                 </div>
               )}
             </div>
@@ -489,9 +489,9 @@ const Welcome = () => {
         return (
           <div className="flex flex-col items-center text-center w-full">
             <UserPlus className="h-10 w-10 text-green-600 mb-4" />
-            <h1 className="text-3xl font-bold tracking-tight mb-2">Dodaj pierwszego klienta</h1>
+            <h1 className="text-3xl font-bold tracking-tight mb-2">Komu chcesz wystawić pierwszą fakturę?</h1>
             <p className="mb-6 text-muted-foreground max-w-md">
-              Dodaj kontrahenta, aby móc szybko wystawiać mu faktury.
+              Podaj dane klienta — zapisze się w systemie i będziesz mógł wystawiać mu faktury jednym kliknięciem.
             </p>
             <OnboardingCustomerForm
               ref={customerFormRef}
@@ -514,9 +514,9 @@ const Welcome = () => {
         return (
           <div className="flex flex-col items-center text-center w-full">
             <Package className="h-10 w-10 text-purple-600 mb-4" />
-            <h1 className="text-3xl font-bold tracking-tight mb-2">Dodaj produkt lub usługę</h1>
+            <h1 className="text-3xl font-bold tracking-tight mb-2">Co sprzedajesz?</h1>
             <p className="mb-6 text-muted-foreground max-w-md">
-              Stwórz pozycje, które będą pojawiać się na Twoich fakturach.
+              Zapisz swoją usługę lub produkt — następnym razem wystawisz fakturę w 30 sekund.
             </p>
             <OnboardingProductForm
               ref={productFormRef}
@@ -539,21 +539,18 @@ const Welcome = () => {
         return (
           <div className="flex flex-col items-center text-center">
             <CheckCircle2 className="h-12 w-12 text-green-500 mb-4" />
-            <h1 className="text-3xl font-bold tracking-tight mb-2">Konto gotowe!</h1>
+            <h1 className="text-3xl font-bold tracking-tight mb-2">System gotowy. Księgowość ogarnie się sama.</h1>
             <p className="mb-8 text-lg text-muted-foreground max-w-md">
-              Gratulacje! Twoje konto jest gotowe do pracy. Możesz już w pełni korzystać z KsięgaI.
+              Wystawiasz faktury — resztą zajmie się KsięgaI.<br />
+              Podatki, terminy, porządek — wszystko pod kontrolą.
             </p>
-            <div className="flex flex-wrap items-center justify-center gap-4">
-              <Button size="lg" className="bg-gradient-to-r from-emerald-500 to-emerald-600 hover:from-emerald-600 hover:to-emerald-700 text-white" onClick={() => navigate('/premium')}>
-                Wypróbuj 7-dniowy trial
-                <Star className="ml-2 h-5 w-5" />
-              </Button>
-              <Button size="lg" variant="outline" onClick={() => navigate('/income/new')}>
-                Wystaw pierwszą fakturę
-              </Button>
-              <Button size="lg" onClick={() => navigate('/dashboard')}>
-                Przejdź do pulpitu
+            <div className="flex flex-col items-center gap-4">
+              <Button size="lg" className="bg-blue-600 hover:bg-blue-700 text-white" onClick={() => navigate('/income/new')}>
+                Wystaw pierwszą fakturę — 30 sekund
                 <ArrowRight className="ml-2 h-5 w-5" />
+              </Button>
+              <Button size="lg" variant="ghost" onClick={() => navigate('/dashboard')}>
+                Lub przejdź do pulpitu i zobacz, co system już przygotował
               </Button>
             </div>
           </div>
@@ -591,10 +588,10 @@ const Welcome = () => {
           <div className="mb-8 px-4">
             <div className="flex justify-between items-center mb-2">
               <span className="text-sm font-medium text-primary">
-                Konfiguracja konta
+                Przygotowujemy system
               </span>
               <Button variant="ghost" size="sm" onClick={() => navigate('/dashboard')}>
-                Pomiń konfigurację
+                Przejdź do pulpitu
               </Button>
             </div>
             <div className="w-full bg-gray-200 dark:bg-neutral-800 rounded-full h-2">
@@ -611,7 +608,7 @@ const Welcome = () => {
         </div>
 
         <div className="mt-8 text-center text-muted-foreground text-sm">
-          <p>Dołącz do tysięcy przedsiębiorców, którzy zaufali KsięgaI.</p>
+          <p>Zbudowane dla polskich przedsiębiorców — w kraju i za granicą.</p>
         </div>
       </div>
     </div>

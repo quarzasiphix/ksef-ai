@@ -9,6 +9,7 @@ import { TooltipProvider } from '@/components/ui/tooltip';
 // Auth components
 import Login from '@/pages/auth/Login';
 import Register from '@/pages/auth/Register';
+import AuthCallback from '@/pages/auth/AuthCallback';
 import { AuthProvider } from '@/context/AuthContext';
 import { BusinessProfileProvider } from '@/context/BusinessProfileContext';
 
@@ -220,6 +221,7 @@ const App = () => {
                     <Register />
                   </PublicRoute>
                 } />
+                <Route path="/auth/callback" element={<AuthCallback />} />
 
                 {/* Premium marketing / upgrade page */}
                 <Route path="/premium" element={<PremiumRoute />} />
