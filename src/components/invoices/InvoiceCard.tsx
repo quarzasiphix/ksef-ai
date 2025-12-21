@@ -3,7 +3,9 @@ import { Link } from "react-router-dom";
 import { formatCurrency } from "@/lib/invoice-utils";
 import { Invoice, InvoiceType } from "@/types";
 import { Badge } from "@/components/ui/badge";
-import { Calendar, FileText, User, CreditCard, Share2 } from "lucide-react";
+import { Calendar, FileText, User, CreditCard, Share2, MessageSquare } from "lucide-react";
+import { useQuery } from "@tanstack/react-query";
+import { supabase } from "@/integrations/supabase/client";
 
 type InvoiceCardProps = {
   invoice: Invoice;
@@ -11,6 +13,26 @@ type InvoiceCardProps = {
 };
 
 const InvoiceCard: React.FC<InvoiceCardProps> = ({ invoice, currency = invoice.currency || 'PLN' }) => {
+  // Check if invoice has discussion threads
+  const { data: hasDiscussion } = useQuery({
+    queryKey: ["invoice-discussion", invoice.id],
+    queryFn: async () => {
+      const { count, error } = await supabase
+        .from("discussion_threads")
+        .select("*", { count: "exact", head: true })
+        .eq("invoice_id", invoice.id);
+      
+      if (error) {
+        console.error("Error checking discussion:", error);
+        return false;
+      }
+      
+      return (count || 0) > 0;
+    },
+    staleTime: 30000, // Cache for 30 seconds
+    enabled: !!invoice.id, // Only run if invoice ID exists
+  });
+
   // Helper function to determine status badge color
   const getStatusBadge = () => {
     if (invoice.paid || invoice.isPaid) {
@@ -81,7 +103,15 @@ const InvoiceCard: React.FC<InvoiceCardProps> = ({ invoice, currency = invoice.c
     <Link to={getInvoiceRoute()} className="block no-underline">
       <div className={`${getCardColorClass()} text-white rounded-lg p-3 shadow-md hover:shadow-lg transition-all h-full`}>
         <div className="flex justify-between items-center mb-2">
-          <h3 className="font-bold text-sm">{invoice.number}</h3>
+          <div className="flex items-center gap-2">
+            <h3 className="font-bold text-sm">{invoice.number}</h3>
+            {hasDiscussion && (
+              <Badge variant="secondary" className="text-xs px-1.5 py-0.5 bg-blue-500/20 text-blue-300 border-blue-500/30">
+                <MessageSquare className="h-3 w-3 mr-1" />
+                Dyskusja
+              </Badge>
+            )}
+          </div>
           <div className="flex items-center gap-1">
             <button 
               onClick={handleShareClick}

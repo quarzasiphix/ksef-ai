@@ -504,6 +504,11 @@ const App = () => {
                     <BusinessInbox />
                   </ProtectedRoute>
                 } />
+                <Route path="/inbox/discussions" element={
+                  <ProtectedRoute>
+                    <DiscussionsPage />
+                  </ProtectedRoute>
+                } />
                 <Route path="/inbox/invoice/:id" element={
                   <ProtectedRoute>
                     <ReceivedInvoiceDetail />

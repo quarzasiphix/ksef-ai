@@ -5,6 +5,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   ArrowLeft,
   Download,
@@ -15,6 +16,8 @@ import {
   FileText,
   CheckCircle2,
   Clock,
+  Info,
+  MessagesSquare,
 } from "lucide-react";
 import { format } from "date-fns";
 import { pl } from "date-fns/locale";
@@ -28,7 +31,7 @@ export const ReceivedInvoiceDetail = () => {
   const navigate = useNavigate();
   const location = useLocation();
   const { user } = useAuth();
-  const discussionRef = useRef<HTMLDivElement>(null);
+  const [activeTab, setActiveTab] = useState("details");
 
   const { data: invoiceData, isLoading } = useQuery({
     queryKey: ["received-invoice-detail", id],
@@ -39,13 +42,11 @@ export const ReceivedInvoiceDetail = () => {
     enabled: !!id && !!user,
   });
 
-  // Auto-scroll to discussion if requested
+  // Auto-switch to discussion tab if requested
   useEffect(() => {
     const params = new URLSearchParams(location.search);
-    if (params.get('section') === 'discussion' && discussionRef.current && !isLoading) {
-      setTimeout(() => {
-        discussionRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
-      }, 300);
+    if (params.get('section') === 'discussion' && !isLoading) {
+      setActiveTab('discussion');
     }
   }, [location.search, isLoading]);
 
@@ -95,48 +96,58 @@ export const ReceivedInvoiceDetail = () => {
           Powrót do skrzynki
         </Button>
 
-        <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+        <div className="flex flex-col md:flex-row md:items-start md:justify-between gap-4 mb-6">
           <div>
             <div className="flex items-center gap-3 mb-2">
               <h1 className="text-3xl font-bold">{invoiceData.invoice_number}</h1>
-              <Badge variant="secondary">Otrzymana</Badge>
-              <Badge variant={invoiceData.is_paid ? "default" : "outline"}>
+              <Badge variant="secondary" className="text-base px-3 py-1">Otrzymana</Badge>
+            </div>
+            <p className="text-lg text-muted-foreground mb-3">
+              Otrzymano: {format(new Date(invoiceData.issue_date), "dd MMMM yyyy", { locale: pl })}
+            </p>
+            <div className="flex items-center gap-2">
+              <Badge variant={invoiceData.is_paid ? "default" : "outline"} className="text-base px-3 py-1">
                 {invoiceData.is_paid ? (
                   <>
-                    <CheckCircle2 className="h-3 w-3 mr-1" />
+                    <CheckCircle2 className="h-4 w-4 mr-1" />
                     Opłacona
                   </>
                 ) : (
                   <>
-                    <Clock className="h-3 w-3 mr-1" />
+                    <Clock className="h-4 w-4 mr-1" />
                     Do zapłaty
                   </>
                 )}
               </Badge>
+              <span className="text-2xl font-bold text-primary">
+                {formatCurrency(invoiceData.total_gross_value, invoiceData.currency)}
+              </span>
             </div>
-            <p className="text-muted-foreground">
-              Otrzymano: {format(new Date(invoiceData.issue_date), "dd MMMM yyyy", { locale: pl })}
-            </p>
           </div>
 
-          <div className="flex gap-2">
-            <Button variant="outline" onClick={handleDownloadPdf}>
-              <Download className="h-4 w-4 mr-2" />
-              Pobierz PDF
-            </Button>
-            <Button
-              onClick={() => {
-                discussionRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
-              }}
-            >
-              <MessageSquare className="h-4 w-4 mr-2" />
-              Dyskusja
-            </Button>
-          </div>
+          <Button size="lg" variant="outline" onClick={handleDownloadPdf}>
+            <Download className="h-5 w-5 mr-2" />
+            Pobierz PDF
+          </Button>
         </div>
-      </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        {/* Prominent Tab Navigation */}
+        <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
+          <TabsList className="grid w-full grid-cols-2 h-14 mb-6">
+            <TabsTrigger value="details" className="text-lg gap-2">
+              <Info className="h-5 w-5" />
+              Szczegóły faktury
+            </TabsTrigger>
+            <TabsTrigger value="discussion" className="text-lg gap-2 relative">
+              <MessagesSquare className="h-5 w-5" />
+              Dyskusja i negocjacje
+              <Badge variant="secondary" className="ml-2">Nowe!</Badge>
+            </TabsTrigger>
+          </TabsList>
+
+          {/* Details Tab */}
+          <TabsContent value="details" className="mt-0">
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Main Content - Left Side */}
         <div className="lg:col-span-2 space-y-6">
           {/* Sender Information */}
@@ -320,15 +331,35 @@ export const ReceivedInvoiceDetail = () => {
               </div>
             </CardContent>
           </Card>
-        </div>
-      </div>
+            </div>
+          </div>
+          </TabsContent>
 
-      {/* Discussion Section */}
-      <div ref={discussionRef} className="mt-8 scroll-mt-24">
-        <DiscussionPanel
-          invoiceId={invoiceData.invoice_id}
-          invoiceNumber={invoiceData.invoice_number}
-        />
+          {/* Discussion Tab */}
+          <TabsContent value="discussion" className="mt-0">
+            <Card className="border-2 border-primary/20">
+              <CardHeader className="bg-primary/5">
+                <div className="flex items-center gap-3">
+                  <div className="p-2 bg-primary/10 rounded-lg">
+                    <MessagesSquare className="h-6 w-6 text-primary" />
+                  </div>
+                  <div>
+                    <CardTitle className="text-2xl">Dyskusja z wystawcą</CardTitle>
+                    <p className="text-muted-foreground text-base mt-1">
+                      Negocjuj warunki przed zatwierdzeniem faktury
+                    </p>
+                  </div>
+                </div>
+              </CardHeader>
+              <CardContent className="pt-6">
+                <DiscussionPanel
+                  invoiceId={invoiceData.invoice_id}
+                  invoiceNumber={invoiceData.invoice_number}
+                />
+              </CardContent>
+            </Card>
+          </TabsContent>
+        </Tabs>
       </div>
     </div>
   );
