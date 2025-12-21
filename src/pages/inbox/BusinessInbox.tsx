@@ -22,7 +22,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { useBusinessProfile } from "@/context/BusinessProfileContext";
 import { formatCurrency } from "@/lib/utils";
-import { getInvoices } from "@/integrations/supabase/repositories/invoiceRepository";
+import { getReceivedInvoicesWithSenders } from "@/integrations/supabase/repositories/receivedInvoicesRepository";
 import { Invoice, InvoiceType, TransactionType, InvoiceStatus } from "@/types";
 import { format } from "date-fns";
 import { pl } from "date-fns/locale";
@@ -42,46 +42,42 @@ export const BusinessInbox = () => {
 
   const currentBusinessProfile = profiles.find(p => p.id === selectedProfileId);
 
-  // Fetch received invoices (invoices sent TO this business)
-  const { data: allInvoices = [], isLoading } = useQuery({
-    queryKey: ["received-invoices", selectedProfileId, user?.id],
+  // Fetch received invoices with sender info efficiently using RPC
+  const { data: receivedInvoicesData = [], isLoading } = useQuery({
+    queryKey: ["received-invoices-with-senders", user?.id],
     queryFn: async () => {
-      if (!user?.id || !currentBusinessProfile) return [];
+      if (!user?.id) return [];
       
-      console.log('[BusinessInbox] Fetching received invoices for:', currentBusinessProfile.name, 'tax_id:', currentBusinessProfile.taxId);
+      console.log('[BusinessInbox] Fetching received invoices with sender info via RPC');
       
-      // Get all invoices accessible to this user via RLS
-      const allInvoices = await getInvoices(user.id);
+      const invoices = await getReceivedInvoicesWithSenders();
       
-      console.log('[BusinessInbox] Total accessible invoices:', allInvoices.length);
+      console.log('[BusinessInbox] Received', invoices.length, 'invoices with sender data');
       
-      // Filter client-side to find invoices sent TO the current business profile
-      // Match by: customer tax_id = current business tax_id AND not created by current business
-      const receivedInvoices = allInvoices.filter(invoice => {
-        // Skip invoices created by current business
-        if (invoice.businessProfileId === currentBusinessProfile.id) {
-          return false;
-        }
-
-        // Check if invoice buyer's tax_id matches current business tax_id
-        // invoice.buyer is populated by getInvoices()
-        // If buyer is missing (which shouldn't happen if RLS works), we can't verify ownership
-        const buyerTaxId = invoice.buyer?.taxId;
-        
-        if (buyerTaxId === currentBusinessProfile.taxId) {
-          console.log('[BusinessInbox] ✓ Received invoice:', invoice.number, 'from:', invoice.businessName);
-          return true;
-        }
-        
-        return false;
-      });
-
-      console.log('[BusinessInbox] Found', receivedInvoices.length, 'received invoices for', currentBusinessProfile.name);
-      
-      return receivedInvoices;
+      return invoices;
     },
-    enabled: !!currentBusinessProfile && !!user?.id,
+    enabled: !!user?.id,
   });
+
+  // Filter by current business profile
+  const allInvoices = receivedInvoicesData.map(inv => ({
+    id: inv.invoice_id,
+    number: inv.invoice_number,
+    issueDate: inv.issue_date,
+    dueDate: inv.due_date,
+    totalGrossValue: inv.total_gross_value,
+    isPaid: inv.is_paid,
+    businessName: inv.sender_name,
+    businessProfileId: inv.sender_id,
+    seller: {
+      id: inv.sender_id,
+      name: inv.sender_name,
+      taxId: inv.sender_tax_id,
+      address: inv.sender_address,
+      city: inv.sender_city,
+      postalCode: inv.sender_postal_code,
+    },
+  }));
 
   // Calculate stats
   const stats: InboxStats = {
@@ -246,7 +242,7 @@ export const BusinessInbox = () => {
                           size="sm"
                           onClick={(e) => {
                             e.stopPropagation();
-                            window.location.href = `/invoices/${invoice.id}`;
+                            window.location.href = `/inbox/invoice/${invoice.id}`;
                           }}
                         >
                           <Eye className="h-4 w-4 mr-2" />
@@ -257,7 +253,7 @@ export const BusinessInbox = () => {
                           size="sm"
                           onClick={(e) => {
                             e.stopPropagation();
-                            window.location.href = `/invoices/${invoice.id}?section=discussion`;
+                            window.location.href = `/inbox/invoice/${invoice.id}?section=discussion`;
                           }}
                         >
                           <MessageSquare className="h-4 w-4 mr-2" />

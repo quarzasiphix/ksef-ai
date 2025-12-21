@@ -228,6 +228,12 @@ const CustomerForm = ({
                       style={{ minWidth: 60, padding: '0 10px' }}
                       disabled={isSearching}
                       onClick={async () => {
+                        // Prevent multiple simultaneous searches
+                        if (isSearching) {
+                          console.log('Search already in progress, ignoring click');
+                          return;
+                        }
+                        
                         const nip = form.getValues("taxId");
                         
                         // Validate NIP format

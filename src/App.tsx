@@ -58,6 +58,7 @@ import Analytics from '@/pages/Analytics';
 import BankAccounts from "@/pages/bank/BankAccounts";
 import CapitalCommitments from '@/pages/assets/CapitalCommitments';
 import BusinessInbox from '@/pages/inbox/BusinessInbox';
+import ReceivedInvoiceDetail from '@/pages/inbox/ReceivedInvoiceDetail';
 import Index from "./pages/Index";
 import SharedLinksPage from "./pages/SharedLinks";
 import CompanyRegistry from '@/pages/spolka/CompanyRegistry';
@@ -501,6 +502,11 @@ const App = () => {
                 <Route path="/inbox" element={
                   <ProtectedRoute>
                     <BusinessInbox />
+                  </ProtectedRoute>
+                } />
+                <Route path="/inbox/invoice/:id" element={
+                  <ProtectedRoute>
+                    <ReceivedInvoiceDetail />
                   </ProtectedRoute>
                 } />
 

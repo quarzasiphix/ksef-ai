@@ -67,14 +67,72 @@ const InvoiceDetail: React.FC<InvoiceDetailProps> = ({ type }) => {
     queryKey: ["invoice", id],
     queryFn: async () => {
       if (!id) return null;
-      const fetchedInvoice = await getInvoiceById(id);
-      console.log('Fetched invoice from database:', fetchedInvoice);
-      return fetchedInvoice;
+      
+      // Try to fetch as regular invoice first (owner/team access)
+      try {
+        const fetchedInvoice = await getInvoiceById(id);
+        if (fetchedInvoice) {
+          console.log('Fetched invoice from database:', fetchedInvoice);
+          return fetchedInvoice;
+        }
+      } catch (error) {
+        // If RLS blocks access or not found, try as received invoice
+        console.log('Invoice not found via standard access, trying as received invoice...');
+      }
+
+      // If regular fetch fails (e.g. RLS) or returns null, try fetching as received invoice
+      const receivedInvoiceData = await getReceivedInvoiceWithSender(id);
+      
+      if (receivedInvoiceData) {
+        console.log('Fetched received invoice:', receivedInvoiceData);
+        // Map to Invoice type - we only have partial data but enough for display
+        return {
+          id: receivedInvoiceData.invoice_id,
+          number: receivedInvoiceData.invoice_number,
+          issueDate: receivedInvoiceData.issue_date,
+          dueDate: receivedInvoiceData.due_date,
+          sellDate: receivedInvoiceData.issue_date, // Fallback
+          isPaid: receivedInvoiceData.is_paid,
+          totalGrossValue: receivedInvoiceData.total_gross_value,
+          // Partial data for display
+          type: 'sales' as InvoiceType, // Assumed
+          transactionType: TransactionType.EXPENSE, // It's an expense for the receiver
+          user_id: '', // Unknown/Hidden
+          businessProfileId: receivedInvoiceData.sender_id,
+          customerId: '', // Current user's company
+          items: [], // Details might not be fully available in summary view
+          paymentMethod: 'transfer',
+          paid: receivedInvoiceData.is_paid,
+          status: 'issued' as InvoiceStatus,
+          comments: '',
+          totalNetValue: 0, // Not exposed in summary RPC
+          totalVatValue: 0, // Not exposed in summary RPC
+          totalAmount: receivedInvoiceData.total_gross_value,
+          ksef: { status: 'none', referenceNumber: null },
+          seller: {
+            id: receivedInvoiceData.sender_id,
+            name: receivedInvoiceData.sender_name,
+            taxId: receivedInvoiceData.sender_tax_id,
+            address: receivedInvoiceData.sender_address,
+            city: receivedInvoiceData.sender_city,
+            postalCode: receivedInvoiceData.sender_postal_code,
+          },
+          buyer: { id: '', name: 'Ty (Nabywca)', taxId: '', address: '', city: '', postalCode: '' }, // Placeholder
+          businessName: receivedInvoiceData.sender_name,
+          customerName: 'Ty',
+          created_at: new Date().toISOString(),
+          updated_at: new Date().toISOString(),
+          vat: true,
+          currency: 'PLN',
+        } as Invoice;
+      }
+
+      return null;
     },
     enabled: !!id,
     initialData: baseInvoice,
-    staleTime: 0, // Always fetch fresh data for invoice details
-    refetchOnMount: true, // Refetch when component mounts
+    staleTime: 0,
+    refetchOnMount: true,
   });
 
   // Auto-scroll to discussion if requested via query param
