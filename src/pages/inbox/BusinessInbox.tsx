@@ -15,107 +15,92 @@ import {
   TrendingUp,
   FileText,
   ExternalLink,
+  ArrowDownCircle,
+  ArrowUpCircle,
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
+import { useBusinessProfile } from "@/context/BusinessProfileContext";
 import { formatCurrency } from "@/lib/utils";
-import {
-  DeliveryStatus,
-  DeliveryWithContext,
-  DELIVERY_STATUS_LABELS,
-  DELIVERY_STATUS_COLORS,
-  getDeliveryStatusBadgeVariant,
-  requiresRecipientAction,
-  formatDeliveryDate,
-} from "@/types/delivery";
-import { InboxItemActions } from "./InboxItemActions";
-import { InboxItemDetails } from "./InboxItemDetails";
+import { getInvoices } from "@/integrations/supabase/repositories/invoiceRepository";
+import { Invoice, InvoiceType, TransactionType, InvoiceStatus } from "@/types";
+import { format } from "date-fns";
+import { pl } from "date-fns/locale";
 
 interface InboxStats {
+  received_count: number;
   pending_count: number;
-  disputed_count: number;
-  requires_action_count: number;
   total_value_pending: number;
 }
 
 export const BusinessInbox = () => {
-  const { currentBusinessProfile } = useAuth();
+  const { user } = useAuth();
+  const { selectedProfileId, profiles } = useBusinessProfile();
   const queryClient = useQueryClient();
-  const [selectedDelivery, setSelectedDelivery] = useState<string | null>(null);
-  const [activeTab, setActiveTab] = useState<"all" | "pending" | "disputed">("all");
+  const [selectedInvoice, setSelectedInvoice] = useState<string | null>(null);
+  const [activeTab, setActiveTab] = useState<"all" | "pending">("all");
 
-  // Fetch inbox stats
-  const { data: stats } = useQuery({
-    queryKey: ["inbox-stats", currentBusinessProfile?.id],
+  const currentBusinessProfile = profiles.find(p => p.id === selectedProfileId);
+
+  // Fetch received invoices (invoices sent TO this business)
+  const { data: allInvoices = [], isLoading } = useQuery({
+    queryKey: ["received-invoices", selectedProfileId, user?.id],
     queryFn: async () => {
-      if (!currentBusinessProfile?.id) return null;
+      if (!user?.id || !currentBusinessProfile) return [];
+      
+      console.log('[BusinessInbox] Fetching received invoices for:', currentBusinessProfile.name, 'tax_id:', currentBusinessProfile.taxId);
+      
+      // Get all invoices accessible to this user via RLS
+      const allInvoices = await getInvoices(user.id);
+      
+      console.log('[BusinessInbox] Total accessible invoices:', allInvoices.length);
+      
+      // Filter client-side to find invoices sent TO the current business profile
+      // Match by: customer tax_id = current business tax_id AND not created by current business
+      const receivedInvoices = allInvoices.filter(invoice => {
+        // Skip invoices created by current business
+        if (invoice.businessProfileId === currentBusinessProfile.id) {
+          return false;
+        }
 
-      const { data, error } = await supabase.rpc("get_inbox_count", {
-        profile_id: currentBusinessProfile.id,
+        // Check if invoice buyer's tax_id matches current business tax_id
+        // invoice.buyer is populated by getInvoices()
+        // If buyer is missing (which shouldn't happen if RLS works), we can't verify ownership
+        const buyerTaxId = invoice.buyer?.taxId;
+        
+        if (buyerTaxId === currentBusinessProfile.taxId) {
+          console.log('[BusinessInbox] ✓ Received invoice:', invoice.number, 'from:', invoice.businessName);
+          return true;
+        }
+        
+        return false;
       });
 
-      if (error) throw error;
-      return data as InboxStats;
+      console.log('[BusinessInbox] Found', receivedInvoices.length, 'received invoices for', currentBusinessProfile.name);
+      
+      return receivedInvoices;
     },
-    enabled: !!currentBusinessProfile?.id,
+    enabled: !!currentBusinessProfile && !!user?.id,
   });
 
-  // Fetch inbox items
-  const { data: deliveries, isLoading } = useQuery({
-    queryKey: ["business-inbox", currentBusinessProfile?.id, activeTab],
-    queryFn: async () => {
-      if (!currentBusinessProfile?.id) return [];
-
-      let query = supabase
-        .from("document_deliveries")
-        .select(
-          `
-          *,
-          sender:sender_business_profile_id(id, name, tax_id),
-          dispute:document_disputes(*)
-        `
-        )
-        .eq("recipient_business_profile_id", currentBusinessProfile.id)
-        .order("sent_at", { ascending: false });
-
-      // Filter by tab
-      if (activeTab === "pending") {
-        query = query.in("delivery_status", ["sent", "viewed"]);
-      } else if (activeTab === "disputed") {
-        query = query.eq("delivery_status", "disputed");
-      }
-
-      const { data, error } = await query;
-
-      if (error) throw error;
-      return data as DeliveryWithContext[];
-    },
-    enabled: !!currentBusinessProfile?.id,
-  });
-
-  const getStatusIcon = (status: DeliveryStatus) => {
-    switch (status) {
-      case "accepted":
-        return <CheckCircle2 className="h-4 w-4 text-green-500" />;
-      case "disputed":
-        return <AlertCircle className="h-4 w-4 text-orange-500" />;
-      case "rejected":
-        return <XCircle className="h-4 w-4 text-red-500" />;
-      case "viewed":
-        return <Eye className="h-4 w-4 text-blue-500" />;
-      default:
-        return <Clock className="h-4 w-4 text-gray-500" />;
-    }
+  // Calculate stats
+  const stats: InboxStats = {
+    received_count: allInvoices.length,
+    pending_count: allInvoices.filter(inv => !inv.isPaid).length,
+    total_value_pending: allInvoices
+      .filter(inv => !inv.isPaid)
+      .reduce((sum, inv) => sum + (inv.totalGrossValue || 0), 0),
   };
 
-  const getDocumentTypeLabel = (type: string) => {
-    const labels: Record<string, string> = {
-      invoice: "Faktura",
-      contract: "Umowa",
-      offer: "Oferta",
-      receipt: "Paragon",
-    };
-    return labels[type] || type;
+  // Filter invoices by tab
+  const filteredInvoices = activeTab === "pending" 
+    ? allInvoices.filter(inv => !inv.isPaid)
+    : allInvoices;
+
+  const getPaymentStatusIcon = (isPaid: boolean) => {
+    return isPaid 
+      ? <CheckCircle2 className="h-4 w-4 text-green-500" />
+      : <Clock className="h-4 w-4 text-amber-500" />;
   };
 
   return (
@@ -128,7 +113,7 @@ export const BusinessInbox = () => {
             Skrzynka Biznesowa
           </h1>
           <p className="text-muted-foreground mt-1">
-            Dokumenty wysłane do Twojej firmy przez kontrahentów
+            Faktury otrzymane od kontrahentów - negocjuj przed wysłaniem do KSeF
           </p>
         </div>
       </div>
@@ -137,47 +122,47 @@ export const BusinessInbox = () => {
       <div className="grid gap-4 md:grid-cols-4">
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Wymaga akcji</CardTitle>
-            <Clock className="h-4 w-4 text-muted-foreground" />
+            <CardTitle className="text-sm font-medium">Otrzymane faktury</CardTitle>
+            <ArrowDownCircle className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{stats?.requires_action_count || 0}</div>
-            <p className="text-xs text-muted-foreground">dokumentów do zaakceptowania</p>
+            <div className="text-2xl font-bold">{stats?.received_count || 0}</div>
+            <p className="text-xs text-muted-foreground">faktur otrzymanych</p>
           </CardContent>
         </Card>
 
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Oczekujące</CardTitle>
+            <CardTitle className="text-sm font-medium">Do zapłaty</CardTitle>
             <FileText className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">{stats?.pending_count || 0}</div>
-            <p className="text-xs text-muted-foreground">nowych dokumentów</p>
+            <p className="text-xs text-muted-foreground">niezapłaconych</p>
           </CardContent>
         </Card>
 
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Zakwestionowane</CardTitle>
-            <AlertCircle className="h-4 w-4 text-muted-foreground" />
+            <CardTitle className="text-sm font-medium">Dyskusje</CardTitle>
+            <MessageSquare className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{stats?.disputed_count || 0}</div>
-            <p className="text-xs text-muted-foreground">sporów do rozwiązania</p>
+            <div className="text-2xl font-bold">0</div>
+            <p className="text-xs text-muted-foreground">aktywnych dyskusji</p>
           </CardContent>
         </Card>
 
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Wartość oczekująca</CardTitle>
+            <CardTitle className="text-sm font-medium">Wartość do zapłaty</CardTitle>
             <TrendingUp className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">
               {formatCurrency(stats?.total_value_pending || 0)}
             </div>
-            <p className="text-xs text-muted-foreground">do zaakceptowania</p>
+            <p className="text-xs text-muted-foreground">PLN do zapłaty</p>
           </CardContent>
         </Card>
       </div>
@@ -187,19 +172,11 @@ export const BusinessInbox = () => {
         <TabsList>
           <TabsTrigger value="all">
             Wszystkie
-            {deliveries && <Badge className="ml-2">{deliveries.length}</Badge>}
+            <Badge className="ml-2">{allInvoices.length}</Badge>
           </TabsTrigger>
           <TabsTrigger value="pending">
-            Oczekujące
-            {stats && <Badge className="ml-2">{stats.pending_count}</Badge>}
-          </TabsTrigger>
-          <TabsTrigger value="disputed">
-            Zakwestionowane
-            {stats && stats.disputed_count > 0 && (
-              <Badge variant="destructive" className="ml-2">
-                {stats.disputed_count}
-              </Badge>
-            )}
+            Do zapłaty
+            <Badge className="ml-2">{stats.pending_count}</Badge>
           </TabsTrigger>
         </TabsList>
 
@@ -210,49 +187,39 @@ export const BusinessInbox = () => {
                 Ładowanie...
               </CardContent>
             </Card>
-          ) : deliveries && deliveries.length > 0 ? (
+          ) : filteredInvoices.length > 0 ? (
             <div className="space-y-3">
-              {deliveries.map((delivery) => (
+              {filteredInvoices.map((invoice) => (
                 <Card
-                  key={delivery.id}
+                  key={invoice.id}
                   className={`transition-all hover:shadow-md cursor-pointer ${
-                    selectedDelivery === delivery.id ? "ring-2 ring-primary" : ""
+                    selectedInvoice === invoice.id ? "ring-2 ring-primary" : ""
                   } ${
-                    requiresRecipientAction(delivery.delivery_status)
-                      ? "border-l-4 border-l-amber-500"
-                      : ""
+                    !invoice.isPaid ? "border-l-4 border-l-amber-500" : ""
                   }`}
-                  onClick={() => setSelectedDelivery(delivery.id)}
+                  onClick={() => setSelectedInvoice(invoice.id)}
                 >
                   <CardContent className="p-6">
                     <div className="flex items-start justify-between gap-4">
-                      {/* Left: Document info */}
+                      {/* Left: Invoice info */}
                       <div className="flex-1 space-y-3">
                         <div className="flex items-center gap-3">
-                          {getStatusIcon(delivery.delivery_status)}
+                          {getPaymentStatusIcon(invoice.isPaid)}
                           <div>
                             <div className="flex items-center gap-2">
                               <span className="font-semibold text-lg">
-                                {getDocumentTypeLabel(delivery.document_type)}
+                                Faktura {invoice.number}
                               </span>
-                              <Badge
-                                variant={getDeliveryStatusBadgeVariant(
-                                  delivery.delivery_status
-                                )}
-                              >
-                                {DELIVERY_STATUS_LABELS[delivery.delivery_status]}
+                              <Badge variant={invoice.isPaid ? "outline" : "default"}>
+                                {invoice.isPaid ? "Zapłacona" : "Do zapłaty"}
                               </Badge>
-                              {requiresRecipientAction(delivery.delivery_status) && (
-                                <Badge variant="outline" className="bg-amber-50 text-amber-700">
-                                  Wymaga akcji
-                                </Badge>
-                              )}
+                              <Badge variant="secondary">
+                                <ArrowDownCircle className="h-3 w-3 mr-1" />
+                                Otrzymana
+                              </Badge>
                             </div>
                             <p className="text-sm text-muted-foreground mt-1">
-                              od: <span className="font-medium">{delivery.sender?.name}</span>
-                              {delivery.sender?.tax_id && (
-                                <span className="ml-2">NIP: {delivery.sender.tax_id}</span>
-                              )}
+                              od: <span className="font-medium">{invoice.businessName}</span>
                             </p>
                           </div>
                         </div>
@@ -260,50 +227,41 @@ export const BusinessInbox = () => {
                         <div className="flex items-center gap-6 text-sm text-muted-foreground">
                           <div className="flex items-center gap-1">
                             <Clock className="h-3 w-3" />
-                            {formatDeliveryDate(delivery.sent_at)}
+                            {format(new Date(invoice.issueDate), 'dd MMM yyyy', { locale: pl })}
                           </div>
-                          {delivery.view_count > 0 && (
-                            <div className="flex items-center gap-1">
-                              <Eye className="h-3 w-3" />
-                              Wyświetlono {delivery.view_count}x
-                            </div>
-                          )}
-                          {delivery.dispute && (
-                            <div className="flex items-center gap-1 text-orange-600">
-                              <AlertCircle className="h-3 w-3" />
-                              Spór otwarty
-                            </div>
-                          )}
+                          <div className="flex items-center gap-1">
+                            <FileText className="h-3 w-3" />
+                            Termin: {format(new Date(invoice.dueDate), 'dd MMM yyyy', { locale: pl })}
+                          </div>
+                          <div className="font-semibold text-foreground">
+                            {formatCurrency(invoice.totalGrossValue)} PLN
+                          </div>
                         </div>
-
-                        {/* Quick preview of document details would go here */}
                       </div>
 
                       {/* Right: Actions */}
                       <div className="flex flex-col gap-2">
-                        {requiresRecipientAction(delivery.delivery_status) && (
-                          <InboxItemActions
-                            deliveryId={delivery.id}
-                            onActionComplete={() => {
-                              queryClient.invalidateQueries({
-                                queryKey: ["business-inbox"],
-                              });
-                              queryClient.invalidateQueries({
-                                queryKey: ["inbox-stats"],
-                              });
-                            }}
-                          />
-                        )}
                         <Button
                           variant="outline"
                           size="sm"
                           onClick={(e) => {
                             e.stopPropagation();
-                            setSelectedDelivery(delivery.id);
+                            window.location.href = `/invoices/${invoice.id}`;
                           }}
                         >
                           <Eye className="h-4 w-4 mr-2" />
                           Szczegóły
+                        </Button>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            window.location.href = `/invoices/${invoice.id}?section=discussion`;
+                          }}
+                        >
+                          <MessageSquare className="h-4 w-4 mr-2" />
+                          Dyskusja
                         </Button>
                       </div>
                     </div>
@@ -318,10 +276,8 @@ export const BusinessInbox = () => {
                 <h3 className="text-lg font-semibold mb-2">Brak dokumentów</h3>
                 <p className="text-muted-foreground">
                   {activeTab === "pending"
-                    ? "Nie masz oczekujących dokumentów do zaakceptowania"
-                    : activeTab === "disputed"
-                    ? "Nie masz zakwestionowanych dokumentów"
-                    : "Twoja skrzynka biznesowa jest pusta"}
+                    ? "Wszystkie faktury zostały zapłacone"
+                    : "Nie otrzymałeś jeszcze żadnych faktur"}
                 </p>
               </CardContent>
             </Card>
@@ -329,13 +285,7 @@ export const BusinessInbox = () => {
         </TabsContent>
       </Tabs>
 
-      {/* Details Panel */}
-      {selectedDelivery && (
-        <InboxItemDetails
-          deliveryId={selectedDelivery}
-          onClose={() => setSelectedDelivery(null)}
-        />
-      )}
+      {/* Details Panel - TODO: Add invoice details modal */}
     </div>
   );
 };

@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { useParams, Link, useNavigate } from "react-router-dom";
+import { useParams, Link, useNavigate, useLocation } from "react-router-dom";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -15,7 +15,8 @@ import {
   CheckCircle,
   Share2,
   DollarSign,
-  FilePlus
+  FilePlus,
+  ArrowDownCircle
 } from "lucide-react";
 import { useGlobalData } from "@/hooks/use-global-data";
 import { TransactionType } from "@/types/common";
@@ -34,8 +35,9 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { getLinksForInvoice } from "@/integrations/supabase/repositories/contractInvoiceLinkRepository";
 import { getContract } from "@/integrations/supabase/repositories/contractRepository";
 import { getBankAccountsForProfile } from '@/integrations/supabase/repositories/bankAccountRepository';
-import { useEffect } from 'react';
+import { useEffect, useRef } from 'react';
 import { BankAccount } from '@/types/bank';
+import { DiscussionPanel } from "@/components/invoices/discussion/DiscussionPanel";
 
 interface InvoiceDetailProps {
   type: "income" | "expense";
@@ -44,6 +46,7 @@ interface InvoiceDetailProps {
 const InvoiceDetail: React.FC<InvoiceDetailProps> = ({ type }) => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
+  const location = useLocation();
   const { user } = useAuth();
   const { invoices: { data: invoices, isLoading }, refreshAllData } = useGlobalData();
   const [showPDF, setShowPDF] = useState(false);
@@ -52,6 +55,7 @@ const InvoiceDetail: React.FC<InvoiceDetailProps> = ({ type }) => {
   const [selectedBankAccount, setSelectedBankAccount] = useState<any>(null);
   const [bankAccounts, setBankAccounts] = useState<BankAccount[]>([]);
   const queryClient = useQueryClient();
+  const discussionRef = useRef<HTMLDivElement>(null);
 
   const baseInvoice = invoices.find(inv => inv.id === id) || null;
 
@@ -72,6 +76,16 @@ const InvoiceDetail: React.FC<InvoiceDetailProps> = ({ type }) => {
     staleTime: 0, // Always fetch fresh data for invoice details
     refetchOnMount: true, // Refetch when component mounts
   });
+
+  // Auto-scroll to discussion if requested via query param
+  useEffect(() => {
+    const params = new URLSearchParams(location.search);
+    if (params.get('section') === 'discussion' && discussionRef.current && !isLoadingInvoice) {
+      setTimeout(() => {
+        discussionRef.current?.scrollIntoView({ behavior: 'smooth' });
+      }, 500);
+    }
+  }, [location.search, isLoadingInvoice]);
 
   useEffect(() => {
     if (invoice?.bankAccountId && invoice.businessProfileId) {
@@ -107,13 +121,14 @@ const InvoiceDetail: React.FC<InvoiceDetailProps> = ({ type }) => {
   // Fetch full contractor info if available
   const { businessProfiles: { data: profiles }, customers: { data: customersList } } = useGlobalData();
 
-  const sellerProfile: BusinessProfile | undefined = profiles.find(p => p.id === invoice?.businessProfileId);
-  const buyerCustomer: Customer | undefined = customersList.find(c => c.id === invoice?.customerId);
-
+  // Determine if current user is the owner of this invoice
+  const isOwner = invoice?.user_id === user?.id;
   const isIncomeDocument = invoice?.transactionType === TransactionType.INCOME;
 
-  const sellerData = isIncomeDocument ? sellerProfile : buyerCustomer;
-  const buyerData = isIncomeDocument ? buyerCustomer : sellerProfile;
+  // Use invoice embedded data as primary source
+  // For received invoices, invoice.seller/buyer are the only source of truth
+  const sellerData = invoice?.seller;
+  const buyerData = invoice?.buyer;
 
   // Fetch linked contracts
   const { data: contractLinks = [] } = useQuery({
@@ -154,8 +169,8 @@ const InvoiceDetail: React.FC<InvoiceDetailProps> = ({ type }) => {
 
     await generateInvoicePdf({
       invoice: recalculatedInvoice,
-      businessProfile: sellerProfile,
-      customer: buyerCustomer,
+      businessProfile: sellerData as any,
+      customer: buyerData as any,
       filename: getInvoiceFileName(recalculatedInvoice),
       bankAccounts,
     });
@@ -170,7 +185,7 @@ const InvoiceDetail: React.FC<InvoiceDetailProps> = ({ type }) => {
         .from('invoices')
         .update({ is_paid: !invoice.isPaid })
         .eq('id', invoice.id)
-        .eq('user_id', user.id);
+        .eq('user_id', user.id); // Security check: must match user_id
 
       if (error) throw error;
 
@@ -204,7 +219,7 @@ const InvoiceDetail: React.FC<InvoiceDetailProps> = ({ type }) => {
         .from('invoices')
         .delete()
         .eq('id', invoice.id)
-        .eq('user_id', user.id);
+        .eq('user_id', user.id); // Security check
 
       if (error) throw error;
 
@@ -245,7 +260,15 @@ const InvoiceDetail: React.FC<InvoiceDetailProps> = ({ type }) => {
             </Link>
           </Button>
           <div>
-            <h1 className="text-3xl font-bold">{invoice.number}</h1>
+            <div className="flex items-center gap-3">
+              <h1 className="text-3xl font-bold">{invoice.number}</h1>
+              {!isOwner && (
+                <Badge variant="secondary" className="text-sm">
+                  <ArrowDownCircle className="h-3 w-3 mr-1" />
+                  Otrzymana
+                </Badge>
+              )}
+            </div>
             <p className="text-muted-foreground">
               {getInvoiceTypeLabel(invoice.type)} • {format(new Date(invoice.issueDate), "dd.MM.yyyy", { locale: pl })}
             </p>
@@ -260,12 +283,14 @@ const InvoiceDetail: React.FC<InvoiceDetailProps> = ({ type }) => {
             <Eye className="h-4 w-4 mr-2" />
             <span>Podgląd</span>
           </Button>
-          <Button asChild>
-            <Link to={editPath}>
-              <Edit className="h-4 w-4 mr-2" />
-              <span>Edytuj</span>
-            </Link>
-          </Button>
+          {isOwner && (
+            <Button asChild>
+              <Link to={editPath}>
+                <Edit className="h-4 w-4 mr-2" />
+                <span>Edytuj</span>
+              </Link>
+            </Button>
+          )}
         </div>
       </div>
 
@@ -273,7 +298,7 @@ const InvoiceDetail: React.FC<InvoiceDetailProps> = ({ type }) => {
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 flex-wrap">
         {/* Actions */}
         <div className="flex flex-wrap gap-2 order-1">
-          {isIncome && (
+          {isIncome && isOwner && (
             <Button
               variant="outline"
               size="sm"
@@ -291,34 +316,40 @@ const InvoiceDetail: React.FC<InvoiceDetailProps> = ({ type }) => {
             <Download className="h-4 w-4 mr-2" />
             <span>PDF</span>
           </Button>
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => {
-              const base = isIncome ? "/income/new" : "/expense/new";
-              navigate(`${base}?duplicateId=${invoice.id}`);
-            }}
-          >
-            <FilePlus className="h-4 w-4 mr-2" />
-            <span>Duplikuj</span>
-          </Button>
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={handleTogglePaid}
-            disabled={isUpdatingPaid}
-          >
-            <DollarSign className="h-4 w-4 mr-2" />
-            <span>{invoice.isPaid ? "Nieopłacona" : "Opłacona"}</span>
-          </Button>
-          <Button
-            variant="destructive"
-            size="sm"
-            onClick={handleDelete}
-          >
-            <Trash2 className="h-4 w-4 mr-2" />
-            <span>Usuń</span>
-          </Button>
+          {isOwner && (
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => {
+                const base = isIncome ? "/income/new" : "/expense/new";
+                navigate(`${base}?duplicateId=${invoice.id}`);
+              }}
+            >
+              <FilePlus className="h-4 w-4 mr-2" />
+              <span>Duplikuj</span>
+            </Button>
+          )}
+          {isOwner && (
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={handleTogglePaid}
+              disabled={isUpdatingPaid}
+            >
+              <DollarSign className="h-4 w-4 mr-2" />
+              <span>{invoice.isPaid ? "Nieopłacona" : "Opłacona"}</span>
+            </Button>
+          )}
+          {isOwner && (
+            <Button
+              variant="destructive"
+              size="sm"
+              onClick={handleDelete}
+            >
+              <Trash2 className="h-4 w-4 mr-2" />
+              <span>Usuń</span>
+            </Button>
+          )}
         </div>
 
         {/* Status badges */}
@@ -489,12 +520,20 @@ const InvoiceDetail: React.FC<InvoiceDetailProps> = ({ type }) => {
         </Card>
       )}
 
+      {/* Discussion Panel */}
+      <div ref={discussionRef} className="scroll-mt-24">
+        <DiscussionPanel 
+          invoiceId={invoice.id} 
+          invoiceNumber={invoice.number} 
+        />
+      </div>
+
       {/* PDF Viewer Dialog */}
       {showPDF && (
         <InvoicePDFViewer 
           invoice={invoice}
-          businessProfile={sellerProfile as any}
-          customer={buyerCustomer as any}
+          businessProfile={sellerData as any}
+          customer={buyerData as any}
           bankAccounts={bankAccounts}
           isOpen={showPDF}
           onClose={() => setShowPDF(false)} 
@@ -508,12 +547,13 @@ const InvoiceDetail: React.FC<InvoiceDetailProps> = ({ type }) => {
           onClose={() => setShowShareDialog(false)}
           invoiceId={invoice.id}
           invoiceNumber={invoice.number}
-          defaultReceiverTaxId={buyerCustomer?.taxId}
-          defaultCustomerId={buyerCustomer?.id}
+          defaultReceiverTaxId={buyerData?.taxId}
+          defaultCustomerId={buyerData?.id}
         />
       )}
     </div>
   );
 };
+
 
 export default InvoiceDetail;

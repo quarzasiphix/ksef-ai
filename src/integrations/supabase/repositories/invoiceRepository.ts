@@ -650,6 +650,11 @@ export async function getInvoices(userId: string, businessProfileId?: string, pe
     return [];
   }
 
+  // Build base query - RLS will handle access control
+  // This now includes:
+  // 1. Invoices created by user's business (sent invoices)
+  // 2. Invoices where user is a team member (team access)
+  // 3. Invoices sent TO user's business (received invoices - matched by tax_id)
   let query = supabase
     .from("invoices")
     .select(
@@ -671,8 +676,11 @@ export async function getInvoices(userId: string, businessProfileId?: string, pe
         vat_exempt
       )
     `
-    )
-    .eq("user_id", userId);
+    );
+
+  // Note: Removed .eq("user_id", userId) filter
+  // RLS policies now handle all access control automatically
+  // This allows fetching both sent AND received invoices
 
   if (businessProfileId) {
     query = query.eq("business_profile_id", businessProfileId);

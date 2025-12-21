@@ -346,6 +346,11 @@ const App = () => {
                     <InvoiceDetail type="expense" />
                   </ProtectedRoute>
                 } />
+                <Route path="/invoices/:id" element={
+                  <ProtectedRoute>
+                    <InvoiceDetail type="income" />
+                  </ProtectedRoute>
+                } />
                 <Route path="/settings/business-profiles" element={
                   <ProtectedRoute>
                     <BusinessProfiles />
