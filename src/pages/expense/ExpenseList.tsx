@@ -112,7 +112,10 @@ export default function ExpenseList() {
                 issueDate: exp.issueDate,
                 amount: exp.amount || exp.totalGrossValue || 0,
                 description: exp.description,
-                customerName: exp.customerName || (exp as any).buyer?.name
+                customerName: exp.customerName || (exp as any).buyer?.name,
+                transactionType: exp.transactionType as InvoiceType | any, // use stored TransactionType
+                linkedInvoiceId: (exp as any).linkedInvoiceId,
+                isShared: (exp as any).isShared,
               }}
             />
           ))}

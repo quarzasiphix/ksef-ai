@@ -313,6 +313,9 @@ export interface Expense {
   date: string; // Alias for compatibility
   items?: InvoiceItem[];
   customerId?: string;
+  linkedInvoiceId?: string | null; // References original invoice when expense is derived from received share
+  isShared?: boolean;
+  shareId?: string | null;
 }
 
 // Contract entity used for contract management

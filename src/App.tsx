@@ -36,6 +36,7 @@ import BusinessProfiles from '@/pages/settings/BusinessProfiles';
 import NewBusinessProfile from '@/pages/settings/NewBusinessProfile';
 import EditBusinessProfile from '@/pages/settings/EditBusinessProfile';
 import DocumentSettings from '@/pages/settings/DocumentSettings';
+import ERPIntegrations from '@/pages/settings/ERPIntegrations';
 import EmployeesList from '@/pages/employees/EmployeesList';
 import NewEmployee from '@/pages/employees/NewEmployee';
 import LabourHoursPage from '@/pages/employees/LabourHoursPage';
@@ -348,6 +349,11 @@ const App = () => {
                     <InvoiceDetail type="expense" />
                   </ProtectedRoute>
                 } />
+                <Route path="/expense/share/:id" element={
+                  <ProtectedRoute>
+                    <ReceivedInvoiceDetail />
+                  </ProtectedRoute>
+                } />
                 <Route path="/invoices/:id" element={
                   <ProtectedRoute>
                     <InvoiceDetail type="income" />
@@ -381,6 +387,11 @@ const App = () => {
                 <Route path="/settings/documents" element={
                   <ProtectedRoute>
                     <DocumentSettings />
+                  </ProtectedRoute>
+                } />
+                <Route path="/settings/erp" element={
+                  <ProtectedRoute>
+                    <ERPIntegrations />
                   </ProtectedRoute>
                 } />
                 <Route path="/settings/team" element={

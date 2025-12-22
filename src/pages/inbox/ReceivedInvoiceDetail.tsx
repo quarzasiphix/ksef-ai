@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect } from "react";
 import { useParams, Link, useNavigate, useLocation } from "react-router-dom";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -25,12 +25,18 @@ import { useAuth } from "@/hooks/useAuth";
 import { formatCurrency } from "@/lib/utils";
 import { getReceivedInvoiceWithSender } from "@/integrations/supabase/repositories/receivedInvoicesRepository";
 import { DiscussionPanel } from "@/components/invoices/discussion/DiscussionPanel";
+import { AgreementStatusBadge } from "@/components/invoices/AgreementStatusBadge";
+import { AgreementActionButtons } from "@/components/invoices/AgreementActionButtons";
+import { AgreementHistory } from "@/components/invoices/AgreementHistory";
+import { updateInvoiceAgreementStatus } from "@/integrations/supabase/repositories/agreementRepository";
+import { toast } from "sonner";
 
 export const ReceivedInvoiceDetail = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const location = useLocation();
   const { user } = useAuth();
+  const queryClient = useQueryClient();
   const [activeTab, setActiveTab] = useState("details");
 
   const { data: invoiceData, isLoading } = useQuery({
@@ -100,7 +106,10 @@ export const ReceivedInvoiceDetail = () => {
           <div>
             <div className="flex items-center gap-3 mb-2">
               <h1 className="text-3xl font-bold">{invoiceData.invoice_number}</h1>
-              <Badge variant="secondary" className="text-base px-3 py-1">Otrzymana</Badge>
+              <AgreementStatusBadge 
+                status={invoiceData.agreement_status || 'received'} 
+                size="lg" 
+              />
             </div>
             <p className="text-lg text-muted-foreground mb-3">
               Otrzymano: {format(new Date(invoiceData.issue_date), "dd MMMM yyyy", { locale: pl })}
@@ -140,13 +149,31 @@ export const ReceivedInvoiceDetail = () => {
             </TabsTrigger>
             <TabsTrigger value="discussion" className="text-lg gap-2 relative">
               <MessagesSquare className="h-5 w-5" />
-              Dyskusja i negocjacje
-              <Badge variant="secondary" className="ml-2">Nowe!</Badge>
+              Historia uzgodnienia dokumentu
             </TabsTrigger>
           </TabsList>
 
           {/* Details Tab */}
           <TabsContent value="details" className="mt-0">
+            {/* Agreement Action Buttons */}
+            <div className="mb-6">
+              <AgreementActionButtons
+                invoiceId={invoiceData.invoice_id}
+                currentStatus={invoiceData.agreement_status || 'received'}
+                onStatusChange={async (newStatus, action, comment) => {
+                  if (!user) throw new Error('User not authenticated');
+                  await updateInvoiceAgreementStatus(
+                    invoiceData.invoice_id,
+                    newStatus as any,
+                    user.id,
+                    action,
+                    comment
+                  );
+                  queryClient.invalidateQueries({ queryKey: ['received-invoice-detail', id] });
+                }}
+              />
+            </div>
+
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Main Content - Left Side */}
         <div className="lg:col-span-2 space-y-6">

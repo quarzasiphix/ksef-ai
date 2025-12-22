@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Outlet, useSearchParams, useLocation, useNavigate } from 'react-router-dom';
-import { Settings, Building2, Star, User, CreditCard, FileText, Crown, Plus, Edit2, ArrowLeft, AlertCircle, Users } from "lucide-react";
+import { Settings, Building2, Star, User, CreditCard, FileText, Crown, Plus, Edit2, ArrowLeft, AlertCircle, Users, Network } from "lucide-react";
 import { useAuth } from "@/context/AuthContext";
 import { toast } from "sonner";
 import { motion } from "framer-motion";
@@ -343,6 +343,26 @@ const SettingsMenu = () => {
               className="w-full"
             >
               Zarządzaj zespołem
+            </Button>
+          </CardContent>
+        </Card>
+
+        {/* ERP Integrations */}
+        <Card className="hover:shadow-lg transition-shadow border-2 border-blue-200">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Network className="h-5 w-5 text-blue-500" />
+              Integracje ERP
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <p className="text-muted-foreground mb-4">Połącz z Comarch, enova365, Symfonia, InsERT. Automatyczna synchronizacja po uzgodnieniu faktury.</p>
+            <Button 
+              variant="outline" 
+              onClick={() => navigate('/settings/erp')}
+              className="w-full border-blue-200 hover:bg-blue-50"
+            >
+              Konfiguruj integracje
             </Button>
           </CardContent>
         </Card>

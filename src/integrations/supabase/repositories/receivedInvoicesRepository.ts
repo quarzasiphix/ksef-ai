@@ -27,6 +27,7 @@ export interface ReceivedInvoiceWithSender {
   buyer_address: string;
   buyer_city: string;
   buyer_postal_code: string;
+  agreement_status?: 'draft' | 'sent' | 'received' | 'under_discussion' | 'correction_needed' | 'approved' | 'ready_for_ksef' | 'rejected' | 'cancelled';
 }
 
 /**

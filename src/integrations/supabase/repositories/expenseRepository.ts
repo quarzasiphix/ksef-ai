@@ -99,16 +99,19 @@ export const getExpenses = async (userId: string, businessProfileId?: string, pe
     const inv = share.invoices;
     if (!inv) return null;
     return {
-      id: `share-${share.id}`,
+      id: share.id,
       userId,
-      businessProfileId: inv.business_profiles?.id || undefined,
+      businessProfileId: share.receiver_business_profile_id || inv.business_profiles?.id || '',
       issueDate: inv.issue_date,
       amount: Number(inv.total_gross_value) || 0,
-      currency: 'PLN',
+      currency: inv.currency || 'PLN',
       description: `Faktura od ${inv.business_profiles?.name || 'kontrahenta'} (${inv.number})`,
       createdAt: share.shared_at,
       transactionType: TransactionType.EXPENSE,
       date: inv.issue_date,
+      linkedInvoiceId: share.invoice_id,
+      isShared: true,
+      shareId: share.id,
     } as Expense;
   }).filter(Boolean) as Expense[];
 
@@ -128,6 +131,8 @@ export const getExpenses = async (userId: string, businessProfileId?: string, pe
     // You might need to adjust this mapping based on your actual Expense type definition.
     transactionType: TransactionType.EXPENSE, // Assuming all fetched here are expenses
     date: dbExpense.issue_date, // Alias for compatibility if needed
+    linkedInvoiceId: null,
+    isShared: false,
   }));
 
   // Combine real expenses with shared ones
