@@ -16,7 +16,18 @@ import {
   Trash2,
   ExternalLink,
   ArrowRight,
-  Shield
+  Shield,
+  FileCheck,
+  BookOpen,
+  Zap,
+  MessageSquare,
+  Edit,
+  FileText,
+  Lock,
+  Database,
+  Send,
+  ChevronDown,
+  ChevronUp
 } from "lucide-react";
 import { ERPProvider, ERPConnectionStatus, ERP_PROVIDERS, ERPConnection } from "@/types/erp";
 import { getERPConnections, deleteERPConnection, testERPConnection } from "@/integrations/supabase/repositories/erpRepository";
@@ -26,6 +37,7 @@ export default function ERPIntegrations() {
   const { selectedProfileId } = useBusinessProfile();
   const queryClient = useQueryClient();
   const [selectedProvider, setSelectedProvider] = useState<ERPProvider | null>(null);
+  const [expandedScenario, setExpandedScenario] = useState<string | null>(null);
 
   // Fetch ERP connections for current business profile
   const { data: connections = [], isLoading } = useQuery<ERPConnection[]>({
@@ -146,9 +158,298 @@ export default function ERPIntegrations() {
         </CardContent>
       </Card>
 
+      {/* Responsibility Flow Section */}
+      <Card className="border-2">
+        <CardHeader>
+          <CardTitle className="text-xl">Podział odpowiedzialności po integracji ERP</CardTitle>
+          <p className="text-sm text-muted-foreground mt-2">
+            KsięgaI nie zastępuje Twojego ERP — uzupełnia go warstwą kontroli i uzgodnień przed księgowaniem
+          </p>
+        </CardHeader>
+        <CardContent>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+            {/* KsięgaI Column */}
+            <div className="space-y-4">
+              <div className="flex items-center gap-2 mb-4">
+                <div className="h-10 w-10 rounded-lg bg-blue-100 dark:bg-blue-900/30 flex items-center justify-center">
+                  <FileCheck className="h-5 w-5 text-blue-600 dark:text-blue-400" />
+                </div>
+                <h3 className="font-semibold text-lg">KsięgaI</h3>
+              </div>
+              <div className="space-y-3">
+                <div className="flex items-start gap-2">
+                  <MessageSquare className="h-4 w-4 text-muted-foreground mt-0.5 flex-shrink-0" />
+                  <div>
+                    <p className="text-sm font-medium">Uzgodnienia</p>
+                    <p className="text-xs text-muted-foreground">Negocjacje między stronami</p>
+                  </div>
+                </div>
+                <div className="flex items-start gap-2">
+                  <Edit className="h-4 w-4 text-muted-foreground mt-0.5 flex-shrink-0" />
+                  <div>
+                    <p className="text-sm font-medium">Korekty</p>
+                    <p className="text-xs text-muted-foreground">Zmiany przed akceptacją</p>
+                  </div>
+                </div>
+                <div className="flex items-start gap-2">
+                  <Lock className="h-4 w-4 text-muted-foreground mt-0.5 flex-shrink-0" />
+                  <div>
+                    <p className="text-sm font-medium">Decyzje</p>
+                    <p className="text-xs text-muted-foreground">Zatwierdzenie dokumentu</p>
+                  </div>
+                </div>
+                <div className="flex items-start gap-2">
+                  <FileText className="h-4 w-4 text-muted-foreground mt-0.5 flex-shrink-0" />
+                  <div>
+                    <p className="text-sm font-medium">Ślad audytu</p>
+                    <p className="text-xs text-muted-foreground">Pełna historia zmian</p>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* ERP Column */}
+            <div className="space-y-4">
+              <div className="flex items-center gap-2 mb-4">
+                <div className="h-10 w-10 rounded-lg bg-green-100 dark:bg-green-900/30 flex items-center justify-center">
+                  <Database className="h-5 w-5 text-green-600 dark:text-green-400" />
+                </div>
+                <h3 className="font-semibold text-lg">ERP</h3>
+              </div>
+              <div className="space-y-3">
+                <div className="flex items-start gap-2">
+                  <BookOpen className="h-4 w-4 text-muted-foreground mt-0.5 flex-shrink-0" />
+                  <div>
+                    <p className="text-sm font-medium">Księgowanie</p>
+                    <p className="text-xs text-muted-foreground">Zapisy w księgach rachunkowych</p>
+                  </div>
+                </div>
+                <div className="flex items-start gap-2">
+                  <Database className="h-4 w-4 text-muted-foreground mt-0.5 flex-shrink-0" />
+                  <div>
+                    <p className="text-sm font-medium">Rejestry</p>
+                    <p className="text-xs text-muted-foreground">Ewidencja VAT, JPK</p>
+                  </div>
+                </div>
+                <div className="flex items-start gap-2">
+                  <FileText className="h-4 w-4 text-muted-foreground mt-0.5 flex-shrink-0" />
+                  <div>
+                    <p className="text-sm font-medium">Deklaracje</p>
+                    <p className="text-xs text-muted-foreground">VAT, CIT, PIT</p>
+                  </div>
+                </div>
+                <div className="flex items-start gap-2">
+                  <Send className="h-4 w-4 text-muted-foreground mt-0.5 flex-shrink-0" />
+                  <div>
+                    <p className="text-sm font-medium">KSeF</p>
+                    <p className="text-xs text-muted-foreground">Wysyłka do systemu</p>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Automatycznie Column */}
+            <div className="space-y-4">
+              <div className="flex items-center gap-2 mb-4">
+                <div className="h-10 w-10 rounded-lg bg-purple-100 dark:bg-purple-900/30 flex items-center justify-center">
+                  <Zap className="h-5 w-5 text-purple-600 dark:text-purple-400" />
+                </div>
+                <h3 className="font-semibold text-lg">Automatycznie</h3>
+              </div>
+              <div className="space-y-3">
+                <div className="flex items-start gap-2">
+                  <CheckCircle2 className="h-4 w-4 text-muted-foreground mt-0.5 flex-shrink-0" />
+                  <div>
+                    <p className="text-sm font-medium">Statusy</p>
+                    <p className="text-xs text-muted-foreground">Synchronizacja dwukierunkowa</p>
+                  </div>
+                </div>
+                <div className="flex items-start gap-2">
+                  <RefreshCw className="h-4 w-4 text-muted-foreground mt-0.5 flex-shrink-0" />
+                  <div>
+                    <p className="text-sm font-medium">Synchronizacja</p>
+                    <p className="text-xs text-muted-foreground">Po uzgodnieniu dokumentu</p>
+                  </div>
+                </div>
+                <div className="flex items-start gap-2">
+                  <ArrowRight className="h-4 w-4 text-muted-foreground mt-0.5 flex-shrink-0" />
+                  <div>
+                    <p className="text-sm font-medium">Dowiązanie</p>
+                    <p className="text-xs text-muted-foreground">Link do pełnej historii</p>
+                  </div>
+                </div>
+                <div className="flex items-start gap-2">
+                  <Shield className="h-4 w-4 text-muted-foreground mt-0.5 flex-shrink-0" />
+                  <div>
+                    <p className="text-sm font-medium">Płatności</p>
+                    <p className="text-xs text-muted-foreground">Status z ERP do KsięgaI</p>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div className="mt-6 p-4 bg-gray-50 dark:bg-gray-900 rounded-lg border border-gray-200 dark:border-gray-700">
+            <p className="text-sm text-muted-foreground">
+              <strong className="text-foreground">Kluczowa zasada:</strong> KsięgaI jest źródłem prawdy dla uzgodnień, 
+              ERP jest źródłem prawdy dla księgowości. Każdy system robi to, co robi najlepiej.
+            </p>
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* What Happens When Scenarios */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-xl">Co się dzieje, gdy...</CardTitle>
+          <p className="text-sm text-muted-foreground mt-2">
+            Praktyczne scenariusze pokazujące przepływ odpowiedzialności
+          </p>
+        </CardHeader>
+        <CardContent className="space-y-3">
+          {/* Scenario 1 */}
+          <div className="border rounded-lg">
+            <button
+              onClick={() => setExpandedScenario(expandedScenario === '1' ? null : '1')}
+              className="w-full p-4 flex items-center justify-between hover:bg-gray-50 dark:hover:bg-gray-900 transition-colors"
+            >
+              <div className="flex items-center gap-3">
+                <CheckCircle2 className="h-5 w-5 text-green-600" />
+                <span className="font-medium text-left">Kontrahent akceptuje fakturę</span>
+              </div>
+              {expandedScenario === '1' ? <ChevronUp className="h-5 w-5" /> : <ChevronDown className="h-5 w-5" />}
+            </button>
+            {expandedScenario === '1' && (
+              <div className="p-4 pt-0 space-y-3">
+                <div className="flex items-start gap-3">
+                  <div className="h-6 w-6 rounded-full bg-blue-100 dark:bg-blue-900/30 flex items-center justify-center flex-shrink-0 mt-0.5">
+                    <span className="text-xs font-bold text-blue-600 dark:text-blue-400">1</span>
+                  </div>
+                  <div>
+                    <p className="text-sm font-medium">Faktura zostaje zablokowana</p>
+                    <p className="text-xs text-muted-foreground">Dokument jest niezmienialny, gotowy do księgowania</p>
+                  </div>
+                </div>
+                <div className="flex items-start gap-3">
+                  <div className="h-6 w-6 rounded-full bg-green-100 dark:bg-green-900/30 flex items-center justify-center flex-shrink-0 mt-0.5">
+                    <span className="text-xs font-bold text-green-600 dark:text-green-400">2</span>
+                  </div>
+                  <div>
+                    <p className="text-sm font-medium">Automatycznie trafia do ERP</p>
+                    <p className="text-xs text-muted-foreground">System księgowy otrzymuje dokument z pełnym kontekstem</p>
+                  </div>
+                </div>
+                <div className="flex items-start gap-3">
+                  <div className="h-6 w-6 rounded-full bg-purple-100 dark:bg-purple-900/30 flex items-center justify-center flex-shrink-0 mt-0.5">
+                    <span className="text-xs font-bold text-purple-600 dark:text-purple-400">3</span>
+                  </div>
+                  <div>
+                    <p className="text-sm font-medium">Status wraca do KsięgaI</p>
+                    <p className="text-xs text-muted-foreground">Księgowanie, płatności — wszystko widoczne w jednym miejscu</p>
+                  </div>
+                </div>
+              </div>
+            )}
+          </div>
+
+          {/* Scenario 2 */}
+          <div className="border rounded-lg">
+            <button
+              onClick={() => setExpandedScenario(expandedScenario === '2' ? null : '2')}
+              className="w-full p-4 flex items-center justify-between hover:bg-gray-50 dark:hover:bg-gray-900 transition-colors"
+            >
+              <div className="flex items-center gap-3">
+                <Edit className="h-5 w-5 text-orange-600" />
+                <span className="font-medium text-left">Kontrahent zgłasza potrzebę korekty</span>
+              </div>
+              {expandedScenario === '2' ? <ChevronUp className="h-5 w-5" /> : <ChevronDown className="h-5 w-5" />}
+            </button>
+            {expandedScenario === '2' && (
+              <div className="p-4 pt-0 space-y-3">
+                <div className="flex items-start gap-3">
+                  <div className="h-6 w-6 rounded-full bg-gray-100 dark:bg-gray-800 flex items-center justify-center flex-shrink-0 mt-0.5">
+                    <XCircle className="h-4 w-4 text-gray-600 dark:text-gray-400" />
+                  </div>
+                  <div>
+                    <p className="text-sm font-medium">ERP nic nie widzi</p>
+                    <p className="text-xs text-muted-foreground">Dokument nie trafia do księgowości, dopóki nie jest uzgodniony</p>
+                  </div>
+                </div>
+                <div className="flex items-start gap-3">
+                  <div className="h-6 w-6 rounded-full bg-blue-100 dark:bg-blue-900/30 flex items-center justify-center flex-shrink-0 mt-0.5">
+                    <MessageSquare className="h-4 w-4 text-blue-600 dark:text-blue-400" />
+                  </div>
+                  <div>
+                    <p className="text-sm font-medium">Zmiany są negocjowane w KsięgaI</p>
+                    <p className="text-xs text-muted-foreground">Dyskusja, korekty, ponowna weryfikacja</p>
+                  </div>
+                </div>
+                <div className="flex items-start gap-3">
+                  <div className="h-6 w-6 rounded-full bg-purple-100 dark:bg-purple-900/30 flex items-center justify-center flex-shrink-0 mt-0.5">
+                    <FileText className="h-4 w-4 text-purple-600 dark:text-purple-400" />
+                  </div>
+                  <div>
+                    <p className="text-sm font-medium">Pełny ślad audytu</p>
+                    <p className="text-xs text-muted-foreground">Każda zmiana, każdy komentarz — wszystko zapisane</p>
+                  </div>
+                </div>
+              </div>
+            )}
+          </div>
+
+          {/* Scenario 3 */}
+          <div className="border rounded-lg">
+            <button
+              onClick={() => setExpandedScenario(expandedScenario === '3' ? null : '3')}
+              className="w-full p-4 flex items-center justify-between hover:bg-gray-50 dark:hover:bg-gray-900 transition-colors"
+            >
+              <div className="flex items-center gap-3">
+                <Shield className="h-5 w-5 text-blue-600" />
+                <span className="font-medium text-left">Kontrola skarbowa lub audyt</span>
+              </div>
+              {expandedScenario === '3' ? <ChevronUp className="h-5 w-5" /> : <ChevronDown className="h-5 w-5" />}
+            </button>
+            {expandedScenario === '3' && (
+              <div className="p-4 pt-0 space-y-3">
+                <div className="flex items-start gap-3">
+                  <div className="h-6 w-6 rounded-full bg-green-100 dark:bg-green-900/30 flex items-center justify-center flex-shrink-0 mt-0.5">
+                    <CheckCircle2 className="h-4 w-4 text-green-600 dark:text-green-400" />
+                  </div>
+                  <div>
+                    <p className="text-sm font-medium">Jedno źródło prawdy</p>
+                    <p className="text-xs text-muted-foreground">Wszystkie dokumenty, uzgodnienia i decyzje w jednym miejscu</p>
+                  </div>
+                </div>
+                <div className="flex items-start gap-3">
+                  <div className="h-6 w-6 rounded-full bg-blue-100 dark:bg-blue-900/30 flex items-center justify-center flex-shrink-0 mt-0.5">
+                    <FileText className="h-4 w-4 text-blue-600 dark:text-blue-400" />
+                  </div>
+                  <div>
+                    <p className="text-sm font-medium">Historia decyzji</p>
+                    <p className="text-xs text-muted-foreground">Kto, kiedy i dlaczego zatwierdził dokument</p>
+                  </div>
+                </div>
+                <div className="flex items-start gap-3">
+                  <div className="h-6 w-6 rounded-full bg-purple-100 dark:bg-purple-900/30 flex items-center justify-center flex-shrink-0 mt-0.5">
+                    <XCircle className="h-4 w-4 text-purple-600 dark:text-purple-400" />
+                  </div>
+                  <div>
+                    <p className="text-sm font-medium">Brak maili, brak chaosu</p>
+                    <p className="text-xs text-muted-foreground">Nie trzeba szukać wiadomości email z uzgodnieniami</p>
+                  </div>
+                </div>
+              </div>
+            )}
+          </div>
+        </CardContent>
+      </Card>
+
       {/* Available Providers */}
       <div>
         <h2 className="text-xl font-semibold mb-4">Dostępne systemy ERP</h2>
+        <p className="text-sm text-muted-foreground mb-4">
+          Wybierz system księgowy, z którym chcesz połączyć KsięgaI. Po uzgodnieniu dokumenty będą automatycznie przekazywane do księgowania.
+        </p>
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
           {Object.values(ERP_PROVIDERS).map((provider) => {
             const existingConnection = connections.find(

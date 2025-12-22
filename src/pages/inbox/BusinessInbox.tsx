@@ -244,7 +244,7 @@ export const BusinessInbox = () => {
                           size="sm"
                           onClick={(e) => {
                             e.stopPropagation();
-                            window.location.href = `/inbox/invoice/${invoice.id}`;
+                            window.location.href = `/inbox/invoice/${invoice.id}?section=details`;
                           }}
                         >
                           <Eye className="h-4 w-4 mr-2" />
@@ -260,6 +260,17 @@ export const BusinessInbox = () => {
                         >
                           <MessageSquare className="h-4 w-4 mr-2" />
                           Dyskusja
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            window.location.href = `/inbox/invoice/${invoice.id}?section=history`;
+                          }}
+                        >
+                          <Clock className="h-4 w-4 mr-2" />
+                          Historia
                         </Button>
                       </div>
                     </div>

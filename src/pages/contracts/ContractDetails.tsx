@@ -6,8 +6,9 @@ import { getLinksForContract } from "@/integrations/supabase/repositories/contra
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { useGlobalData } from "@/hooks/use-global-data";
-import { Calendar, User, ArrowLeft, Edit } from "lucide-react";
+import { Calendar, User, ArrowLeft, Edit, Send } from "lucide-react";
 import ShareContractDialog from "@/components/contracts/ShareContractDialog";
+import { SendContractDialog } from "@/components/contracts/SendContractDialog";
 
 const ContractDetails: React.FC = () => {
   const { id } = useParams<{ id: string }>();
@@ -32,6 +33,7 @@ const ContractDetails: React.FC = () => {
   const linkedInvoices = links.map((l) => invoices.data.find((inv) => inv.id === l.invoiceId)).filter(Boolean) as any[];
 
   const [shareOpen, setShareOpen] = React.useState(false);
+  const [sendOpen, setSendOpen] = React.useState(false);
 
   if (isLoading) return <div className="text-center py-8">Ładowanie...</div>;
   if (error || !contract) return <div className="text-center py-8">Nie znaleziono umowy</div>;
@@ -43,9 +45,15 @@ const ContractDetails: React.FC = () => {
           <ArrowLeft className="h-4 w-4" />
         </Button>
         <h1 className="text-2xl font-bold truncate flex-1">{contract.number}</h1>
-        <Button variant="outline" size="sm" onClick={() => setShareOpen(true)}>
-          Udostępnij
-        </Button>
+        <div className="flex gap-2">
+          <Button variant="default" size="sm" onClick={() => setSendOpen(true)}>
+            <Send className="h-4 w-4 mr-2" />
+            Wyślij umowę
+          </Button>
+          <Button variant="outline" size="sm" onClick={() => setShareOpen(true)}>
+            Udostępnij
+          </Button>
+        </div>
       </div>
 
       <Card>
@@ -124,6 +132,16 @@ const ContractDetails: React.FC = () => {
         onClose={() => setShareOpen(false)}
         contractId={contract.id}
         contractNumber={contract.number}
+      />
+      
+      <SendContractDialog
+        isOpen={sendOpen}
+        onClose={() => setSendOpen(false)}
+        contractId={contract.id}
+        contractNumber={contract.number}
+        onSuccess={() => {
+          // Optionally refresh contract data or navigate
+        }}
       />
     </div>
   );

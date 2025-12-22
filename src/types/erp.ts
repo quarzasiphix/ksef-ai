@@ -28,6 +28,12 @@ export enum ERPSyncDirection {
   BIDIRECTIONAL = 'bidirectional'
 }
 
+export enum ERPConnectionMode {
+  OBSERVER = 'observer',                 // ERP only receives final docs, no control
+  ACCOUNTANT_LED = 'accountant-led',     // Accountant manually controls push
+  AUTO_AFTER_AGREEMENT = 'auto-after-agreement'  // Default: auto-push after both parties agree
+}
+
 export interface ERPConnection {
   id: string;
   user_id: string;
@@ -43,6 +49,7 @@ export interface ERPConnection {
   
   // Configuration
   sync_direction: ERPSyncDirection;
+  connection_mode: ERPConnectionMode;   // Who controls the push: observer, accountant, or auto
   auto_push_after_agreement: boolean;  // Push to ERP after both parties agree
   auto_pull_status: boolean;            // Pull payment/accounting status from ERP
   

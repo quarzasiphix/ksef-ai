@@ -18,6 +18,10 @@ import {
   Clock,
   Info,
   MessagesSquare,
+  Lock,
+  AlertCircle,
+  XCircle,
+  History,
 } from "lucide-react";
 import { format } from "date-fns";
 import { pl } from "date-fns/locale";
@@ -29,7 +33,15 @@ import { AgreementStatusBadge } from "@/components/invoices/AgreementStatusBadge
 import { AgreementActionButtons } from "@/components/invoices/AgreementActionButtons";
 import { AgreementHistory } from "@/components/invoices/AgreementHistory";
 import { updateInvoiceAgreementStatus } from "@/integrations/supabase/repositories/agreementRepository";
+import { InvoiceStateBanner } from "@/components/invoices/InvoiceStateBanner";
+import { RequestCorrectionModal, type CorrectionReason } from "@/components/invoices/RequestCorrectionModal";
+import { RejectInvoiceModal, type RejectReason } from "@/components/invoices/RejectInvoiceModal";
+import { DeliveryIdentityBlock } from "@/components/invoices/DeliveryIdentityBlock";
+import { InvoiceQualityIndicators } from "@/components/invoices/InvoiceQualityIndicators";
+import { ERPSyncWidget, type ERPSyncStatus } from "@/components/invoices/ERPSyncWidget";
 import { toast } from "sonner";
+
+type InvoiceTab = "details" | "discussion" | "history";
 
 export const ReceivedInvoiceDetail = () => {
   const { id } = useParams<{ id: string }>();
@@ -37,7 +49,9 @@ export const ReceivedInvoiceDetail = () => {
   const location = useLocation();
   const { user } = useAuth();
   const queryClient = useQueryClient();
-  const [activeTab, setActiveTab] = useState("details");
+  const [activeTab, setActiveTab] = useState<InvoiceTab>("details");
+  const [showCorrectionModal, setShowCorrectionModal] = useState(false);
+  const [showRejectModal, setShowRejectModal] = useState(false);
 
   const { data: invoiceData, isLoading } = useQuery({
     queryKey: ["received-invoice-detail", id],
@@ -48,11 +62,16 @@ export const ReceivedInvoiceDetail = () => {
     enabled: !!id && !!user,
   });
 
-  // Auto-switch to discussion tab if requested
+  // Sync tab with router query params, defaulting to details
   useEffect(() => {
     const params = new URLSearchParams(location.search);
-    if (params.get('section') === 'discussion' && !isLoading) {
-      setActiveTab('discussion');
+    if (isLoading) return;
+
+    const section = params.get('section') as InvoiceTab | null;
+    if (section && ['details', 'discussion', 'history'].includes(section)) {
+      setActiveTab(section);
+    } else {
+      setActiveTab('details');
     }
   }, [location.search, isLoading]);
 
@@ -88,6 +107,69 @@ export const ReceivedInvoiceDetail = () => {
     console.log('Download PDF for received invoice:', invoiceData.invoice_id);
   };
 
+  const handleRequestCorrection = async (reasons: CorrectionReason[], comment: string) => {
+    if (!user) throw new Error('User not authenticated');
+    const reasonsText = reasons.join(', ');
+    const fullComment = `Wymagane poprawki: ${reasonsText}\n\n${comment}`;
+    await updateInvoiceAgreementStatus(
+      invoiceData.invoice_id,
+      'correction_needed',
+      user.id,
+      'corrected',
+      fullComment
+    );
+    queryClient.invalidateQueries({ queryKey: ['received-invoice-detail', id] });
+    toast.success('Wysłano prośbę o korektę');
+  };
+
+  const handleReject = async (reason: RejectReason, comment: string, notifyCounterparty: boolean) => {
+    if (!user) throw new Error('User not authenticated');
+    const fullComment = `Powód: ${reason}\n\n${comment}${notifyCounterparty ? '\n\n[Kontrahent powiadomiony]' : ''}`;
+    await updateInvoiceAgreementStatus(
+      invoiceData.invoice_id,
+      'rejected',
+      user.id,
+      'rejected',
+      fullComment
+    );
+    queryClient.invalidateQueries({ queryKey: ['received-invoice-detail', id] });
+    toast.success('Dokument odrzucony');
+  };
+
+  const handleApprove = async (comment?: string) => {
+    if (!user) throw new Error('User not authenticated');
+    await updateInvoiceAgreementStatus(
+      invoiceData.invoice_id,
+      'approved',
+      user.id,
+      'approved',
+      comment
+    );
+    queryClient.invalidateQueries({ queryKey: ['received-invoice-detail', id] });
+    toast.success('Dokument zatwierdzony i zablokowany');
+  };
+
+  // Mock data quality checks - in production, these would come from backend
+  const dataQualityCheck = {
+    status: invoiceData?.sender_address && invoiceData?.sender_tax_id ? 'ok' as const : 'warning' as const,
+    label: 'Zgodność danych',
+    message: invoiceData?.sender_address && invoiceData?.sender_tax_id 
+      ? 'Wszystkie wymagane dane kontrahenta są kompletne'
+      : 'Brakuje niektórych danych kontrahenta (adres, NIP)'
+  };
+
+  const duplicateCheck = {
+    status: 'ok' as const,
+    label: 'Sprawdzenie duplikatów',
+    message: 'Nie znaleziono duplikatów w systemie'
+  };
+
+  // Mock ERP sync status
+  const erpSyncStatus: ERPSyncStatus = 
+    invoiceData?.agreement_status === 'approved' || invoiceData?.agreement_status === 'ready_for_ksef'
+      ? 'not_configured'
+      : 'pending';
+
   return (
     <div className="container mx-auto py-6 px-4 max-w-7xl">
       {/* Header */}
@@ -102,7 +184,7 @@ export const ReceivedInvoiceDetail = () => {
           Powrót do skrzynki
         </Button>
 
-        <div className="flex flex-col md:flex-row md:items-start md:justify-between gap-4 mb-6">
+        <div className="flex flex-col md:flex-row md:items-start md:justify-between gap-4 mb-4">
           <div>
             <div className="flex items-center gap-3 mb-2">
               <h1 className="text-3xl font-bold">{invoiceData.invoice_number}</h1>
@@ -114,7 +196,7 @@ export const ReceivedInvoiceDetail = () => {
             <p className="text-lg text-muted-foreground mb-3">
               Otrzymano: {format(new Date(invoiceData.issue_date), "dd MMMM yyyy", { locale: pl })}
             </p>
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-3 flex-wrap">
               <Badge variant={invoiceData.is_paid ? "default" : "outline"} className="text-base px-3 py-1">
                 {invoiceData.is_paid ? (
                   <>
@@ -128,9 +210,9 @@ export const ReceivedInvoiceDetail = () => {
                   </>
                 )}
               </Badge>
-              <span className="text-2xl font-bold text-primary">
-                {formatCurrency(invoiceData.total_gross_value, invoiceData.currency)}
-              </span>
+              <Badge variant="secondary" className="text-base px-3 py-1 font-bold">
+                Do zapłaty: {formatCurrency(invoiceData.total_gross_value, { currency: invoiceData.currency })}
+              </Badge>
             </div>
           </div>
 
@@ -140,39 +222,106 @@ export const ReceivedInvoiceDetail = () => {
           </Button>
         </div>
 
+        {/* State Banner */}
+        <div className="mb-6">
+          <InvoiceStateBanner
+            status={invoiceData.agreement_status || 'received'}
+            senderName={invoiceData.sender_name}
+            receivedDate={invoiceData.issue_date}
+            discussionCount={0}
+          />
+        </div>
+
         {/* Prominent Tab Navigation */}
-        <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-          <TabsList className="grid w-full grid-cols-2 h-14 mb-6">
-            <TabsTrigger value="details" className="text-lg gap-2">
-              <Info className="h-5 w-5" />
-              Szczegóły faktury
-            </TabsTrigger>
+        <Tabs
+          value={activeTab}
+          onValueChange={(value) => setActiveTab(value as InvoiceTab)}
+          className="w-full"
+        >
+          <TabsList className="grid w-full grid-cols-3 h-14 mb-6">
             <TabsTrigger value="discussion" className="text-lg gap-2 relative">
               <MessagesSquare className="h-5 w-5" />
-              Historia uzgodnienia dokumentu
+              Dyskusja
+              {/* TODO: Add unread dot when messages exist */}
+            </TabsTrigger>
+            <TabsTrigger value="details" className="text-lg gap-2">
+              <Info className="h-5 w-5" />
+              Szczegóły
+            </TabsTrigger>
+            <TabsTrigger value="history" className="text-lg gap-2">
+              <History className="h-5 w-5" />
+              Historia uzgodnień
             </TabsTrigger>
           </TabsList>
 
+          {/* Discussion Tab - Now Primary */}
+          <TabsContent value="discussion" className="mt-0">
+            {/* Action Buttons at Top of Discussion */}
+            {['received', 'under_discussion', 'correction_needed'].includes(invoiceData.agreement_status || 'received') && (
+              <div className="mb-6">
+                <div className="flex flex-col sm:flex-row gap-3">
+                  <Button
+                    onClick={() => {
+                      // Open approve dialog from AgreementActionButtons
+                      const event = new CustomEvent('open-approve-dialog');
+                      window.dispatchEvent(event);
+                    }}
+                    className="flex-1 bg-green-600 hover:bg-green-700 text-white font-semibold"
+                    size="lg"
+                  >
+                    <Lock className="h-4 w-4 mr-2" />
+                    Zatwierdź i zablokuj dokument
+                  </Button>
+                  <Button
+                    onClick={() => setShowCorrectionModal(true)}
+                    variant="outline"
+                    className="flex-1 border-orange-300 text-orange-700 hover:bg-orange-50"
+                    size="lg"
+                  >
+                    <AlertCircle className="h-4 w-4 mr-2" />
+                    Wymagana korekta
+                  </Button>
+                  <Button
+                    onClick={() => setShowRejectModal(true)}
+                    variant="outline"
+                    className="border-red-300 text-red-700 hover:bg-red-50"
+                    size="lg"
+                  >
+                    <XCircle className="h-4 w-4 mr-2" />
+                    Odrzuć
+                  </Button>
+                </div>
+                <p className="text-sm text-muted-foreground mt-2 text-center">
+                  Po zatwierdzeniu dokument staje się nieedytowalny i trafia do ERP / kolejki księgowania
+                </p>
+              </div>
+            )}
+
+            <Card className="border-2 border-primary/20">
+              <CardHeader className="bg-primary/5">
+                <div className="flex items-center gap-3">
+                  <div className="p-2 bg-primary/10 rounded-lg">
+                    <MessagesSquare className="h-6 w-6 text-primary" />
+                  </div>
+                  <div>
+                    <CardTitle className="text-2xl">Dyskusja z wystawcą</CardTitle>
+                    <p className="text-muted-foreground text-base mt-1">
+                      Negocjuj warunki przed zatwierdzeniem faktury
+                    </p>
+                  </div>
+                </div>
+              </CardHeader>
+              <CardContent className="pt-6">
+                <DiscussionPanel
+                  invoiceId={invoiceData.invoice_id}
+                  invoiceNumber={invoiceData.invoice_number}
+                />
+              </CardContent>
+            </Card>
+          </TabsContent>
+
           {/* Details Tab */}
           <TabsContent value="details" className="mt-0">
-            {/* Agreement Action Buttons */}
-            <div className="mb-6">
-              <AgreementActionButtons
-                invoiceId={invoiceData.invoice_id}
-                currentStatus={invoiceData.agreement_status || 'received'}
-                onStatusChange={async (newStatus, action, comment) => {
-                  if (!user) throw new Error('User not authenticated');
-                  await updateInvoiceAgreementStatus(
-                    invoiceData.invoice_id,
-                    newStatus as any,
-                    user.id,
-                    action,
-                    comment
-                  );
-                  queryClient.invalidateQueries({ queryKey: ['received-invoice-detail', id] });
-                }}
-              />
-            </div>
 
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Main Content - Left Side */}
@@ -256,8 +405,25 @@ export const ReceivedInvoiceDetail = () => {
           )}
         </div>
 
-        {/* Sidebar - Right Side */}
+        {/* Sidebar - Right Side - Enhanced with Quality Indicators */}
         <div className="space-y-6">
+          {/* Delivery & Identity Verification */}
+          <DeliveryIdentityBlock
+            isVerified={true}
+            isNativeDelivery={true}
+            counterpartyName={invoiceData.sender_name}
+            counterpartyTaxId={invoiceData.sender_tax_id}
+            onInviteToNetwork={() => {
+              toast.info('Funkcja zaproszenia będzie dostępna wkrótce');
+            }}
+          />
+
+          {/* Quality Indicators */}
+          <InvoiceQualityIndicators
+            dataCompleteness={dataQualityCheck}
+            duplicateCheck={duplicateCheck}
+            relatedDocuments={[]}
+          />
           {/* Financial Summary */}
           <Card className="border-2">
             <CardHeader>
@@ -271,20 +437,20 @@ export const ReceivedInvoiceDetail = () => {
                 <div className="flex justify-between text-sm">
                   <span className="text-muted-foreground">Wartość netto:</span>
                   <span className="font-medium">
-                    {formatCurrency(invoiceData.total_net_value, invoiceData.currency)}
+                    {formatCurrency(invoiceData.total_net_value, { currency: invoiceData.currency })}
                   </span>
                 </div>
                 <div className="flex justify-between text-sm">
                   <span className="text-muted-foreground">VAT:</span>
                   <span className="font-medium">
-                    {formatCurrency(invoiceData.total_vat_value, invoiceData.currency)}
+                    {formatCurrency(invoiceData.total_vat_value, { currency: invoiceData.currency })}
                   </span>
                 </div>
                 <Separator />
                 <div className="flex justify-between">
                   <span className="font-semibold">Do zapłaty:</span>
                   <span className="text-2xl font-bold text-primary">
-                    {formatCurrency(invoiceData.total_gross_value, invoiceData.currency)}
+                    {formatCurrency(invoiceData.total_gross_value, { currency: invoiceData.currency })}
                   </span>
                 </div>
               </div>
@@ -358,35 +524,70 @@ export const ReceivedInvoiceDetail = () => {
               </div>
             </CardContent>
           </Card>
+
+          {/* ERP Sync Widget - Only show when approved/locked */}
+          {(invoiceData.agreement_status === 'approved' || invoiceData.agreement_status === 'ready_for_ksef') && (
+            <ERPSyncWidget
+              status={erpSyncStatus}
+              provider="Comarch Optima"
+              onExport={() => {
+                toast.info('Funkcja eksportu będzie dostępna wkrótce');
+              }}
+            />
+          )}
             </div>
           </div>
           </TabsContent>
 
-          {/* Discussion Tab */}
-          <TabsContent value="discussion" className="mt-0">
-            <Card className="border-2 border-primary/20">
-              <CardHeader className="bg-primary/5">
-                <div className="flex items-center gap-3">
-                  <div className="p-2 bg-primary/10 rounded-lg">
-                    <MessagesSquare className="h-6 w-6 text-primary" />
-                  </div>
-                  <div>
-                    <CardTitle className="text-2xl">Dyskusja z wystawcą</CardTitle>
-                    <p className="text-muted-foreground text-base mt-1">
-                      Negocjuj warunki przed zatwierdzeniem faktury
-                    </p>
-                  </div>
-                </div>
+          {/* History Tab */}
+          <TabsContent value="history" className="mt-0">
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <History className="h-5 w-5" />
+                  Historia uzgodnień
+                </CardTitle>
+                <p className="text-sm text-muted-foreground mt-1">
+                  Pełna ścieżka audytowa wszystkich zmian statusu i akcji
+                </p>
               </CardHeader>
-              <CardContent className="pt-6">
-                <DiscussionPanel
-                  invoiceId={invoiceData.invoice_id}
-                  invoiceNumber={invoiceData.invoice_number}
-                />
+              <CardContent>
+                <AgreementHistory invoiceId={invoiceData.invoice_id} />
               </CardContent>
             </Card>
           </TabsContent>
         </Tabs>
+      </div>
+
+      {/* Modals */}
+      <RequestCorrectionModal
+        open={showCorrectionModal}
+        onOpenChange={setShowCorrectionModal}
+        onSubmit={handleRequestCorrection}
+      />
+      <RejectInvoiceModal
+        open={showRejectModal}
+        onOpenChange={setShowRejectModal}
+        onSubmit={handleReject}
+      />
+
+      {/* Hidden AgreementActionButtons for approve dialog */}
+      <div className="hidden">
+        <AgreementActionButtons
+          invoiceId={invoiceData.invoice_id}
+          currentStatus={invoiceData.agreement_status || 'received'}
+          onStatusChange={async (newStatus, action, comment) => {
+            if (!user) throw new Error('User not authenticated');
+            await updateInvoiceAgreementStatus(
+              invoiceData.invoice_id,
+              newStatus as any,
+              user.id,
+              action,
+              comment
+            );
+            queryClient.invalidateQueries({ queryKey: ['received-invoice-detail', id] });
+          }}
+        />
       </div>
     </div>
   );
