@@ -58,6 +58,7 @@ import Analytics from '@/pages/Analytics';
 import BankAccounts from "@/pages/bank/BankAccounts";
 import CapitalCommitments from '@/pages/assets/CapitalCommitments';
 import BusinessInbox from '@/pages/inbox/BusinessInbox';
+import DiscussionsPage from '@/pages/inbox/DiscussionsPage';
 import ReceivedInvoiceDetail from '@/pages/inbox/ReceivedInvoiceDetail';
 import Index from "./pages/Index";
 import SharedLinksPage from "./pages/SharedLinks";
