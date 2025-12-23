@@ -30,6 +30,7 @@ import type { FolderTreeNode } from "@/types/documents";
 import { CONTRACT_TYPE_LABELS } from "@/types/documents";
 import { useBusinessProfile } from "@/context/BusinessProfileContext";
 import DecisionPicker from "@/components/decisions/DecisionPicker";
+import { logCreationEvent, shouldLogEvents } from "@/utils/eventLogging";
 
 const formSchema = z.object({
   number: z.string().min(1, "Numer jest wymagany"),
@@ -213,7 +214,24 @@ const ContractNew: React.FC = () => {
       }
       return saved;
     },
-    onSuccess: (saved) => {
+    onSuccess: async (saved) => {
+      // Log event for Spółki (only for new contracts)
+      if (!contractId && shouldLogEvents(selectedProfile?.entityType)) {
+        await logCreationEvent({
+          businessProfileId: saved.businessProfileId,
+          eventType: 'contract_created',
+          entityType: 'contract',
+          entityId: saved.id,
+          entityReference: saved.number,
+          actionSummary: `Utworzono umowę ${saved.number}`,
+          decisionId: saved.decision_id,
+          changes: {
+            subject: saved.subject,
+            contract_type: saved.contract_type,
+          },
+        });
+      }
+      
       toast.success("Umowa została zapisana");
       queryClient.invalidateQueries({ queryKey: ["contracts"] });
       if (contractId) {

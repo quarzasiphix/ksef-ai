@@ -6,16 +6,37 @@ import EmployeeForm from "@/components/employees/EmployeeForm";
 import { createEmployee } from "@/integrations/supabase/repositories/employeeRepository";
 import { useToast } from "@/hooks/use-toast";
 import type { CreateEmployeeData } from "@/types/employee";
+import { useBusinessProfile } from "@/context/BusinessProfileContext";
+import { logCreationEvent, shouldLogEvents } from "@/utils/eventLogging";
 
 const NewEmployee: React.FC = () => {
   const navigate = useNavigate();
   const { toast } = useToast();
   const queryClient = useQueryClient();
+  const { selectedProfileId, profiles } = useBusinessProfile();
+  const selectedProfile = profiles.find(p => p.id === selectedProfileId);
 
   const mutation = useMutation({
     mutationFn: createEmployee,
-    onSuccess: () => {
+    onSuccess: async (employee) => {
       queryClient.invalidateQueries({ queryKey: ["employees"] });
+      
+      // Log event for Spółki
+      if (shouldLogEvents(selectedProfile?.entityType)) {
+        await logCreationEvent({
+          businessProfileId: selectedProfileId!,
+          eventType: 'employee_hired',
+          entityType: 'employee',
+          entityId: employee.id,
+          entityReference: `${employee.first_name} ${employee.last_name}`,
+          actionSummary: `Zatrudniono pracownika: ${employee.first_name} ${employee.last_name}`,
+          changes: {
+            position: employee.position,
+            start_date: employee.start_date,
+          },
+        });
+      }
+      
       toast({ title: "Sukces", description: "Pracownik został dodany." });
       navigate("/employees");
     },

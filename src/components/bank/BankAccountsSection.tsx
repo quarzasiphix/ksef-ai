@@ -10,6 +10,7 @@ import BankAnalyticsDashboard from "./BankAnalyticsDashboard";
 import { getBankAccountsForProfile, addBankAccount, deleteBankAccount } from '@/integrations/supabase/repositories/bankAccountRepository';
 import { saveBankTransactions, getBankTransactions, deleteBankTransactions } from '@/integrations/supabase/repositories/bankTransactionRepository';
 import { useBusinessProfile } from '@/context/BusinessProfileContext';
+import { logCreationEvent, shouldLogEvents } from '@/utils/eventLogging';
 import { BankAccountEditDialog } from './BankAccountEditDialog';
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from '@/components/ui/select';
 import { Label } from '@/components/ui/label';
@@ -64,6 +65,24 @@ const BankAccountsSection: React.FC = () => {
         businessProfileId: selectedProfileId,
         connectedAt: new Date().toISOString(),
       });
+      
+      // Log event for Spółki
+      const selectedProfile = profiles.find(p => p.id === selectedProfileId);
+      if (shouldLogEvents(selectedProfile?.entityType)) {
+        await logCreationEvent({
+          businessProfileId: selectedProfileId,
+          eventType: 'bank_account_added',
+          entityType: 'bank_account',
+          entityId: acc.id,
+          entityReference: acc.accountNumber || acc.bankName || 'Konto bankowe',
+          actionSummary: `Dodano konto bankowe: ${acc.accountNumber || acc.bankName}`,
+          changes: {
+            bank_name: acc.bankName,
+            account_number: acc.accountNumber,
+          },
+        });
+      }
+      
       setAccounts(prev => [...prev, acc]);
       toast.success('Dodano konto bankowe');
     } catch (e) {

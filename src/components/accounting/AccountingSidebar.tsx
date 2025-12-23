@@ -16,6 +16,7 @@ import {
   Wallet,
   PanelLeftClose,
   PanelLeftOpen,
+  Shield,
 } from 'lucide-react';
 
 interface NavItem {
@@ -91,6 +92,13 @@ const spolkaNavSections: NavSection[] = [
         icon: <Building2 className="h-4 w-4" />,
         description: 'NIP-8, KRS, VAT-R',
         color: 'text-amber-600',
+      },
+      {
+        label: 'Dziennik zdarzeń',
+        href: '/accounting/event-log',
+        icon: <Shield className="h-4 w-4" />,
+        description: 'Historia wszystkich działań',
+        color: 'text-blue-600',
       },
     ],
   },

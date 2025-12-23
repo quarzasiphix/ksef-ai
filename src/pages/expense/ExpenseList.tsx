@@ -1,15 +1,17 @@
 import { useState, useMemo } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { Invoice, InvoiceType } from '@/types';
-import { format } from 'date-fns';
+import { format, differenceInDays, addDays, isAfter, isBefore } from 'date-fns';
 import { pl } from 'date-fns/locale';
 import { Badge } from '@/components/ui/badge';
-import { Plus, FileText } from 'lucide-react';
-import { Card, CardContent } from '@/components/ui/card';
+import { Plus, FileText, AlertCircle, Clock, CheckCircle2, MessageSquare, ArrowDownCircle, TrendingUp, Calendar, Bell } from 'lucide-react';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { useGlobalData } from '@/hooks/use-global-data';
 import { useBusinessProfile } from "@/context/BusinessProfileContext";
 import { Button } from "@/components/ui/button";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import ExpenseCard from '@/components/expenses/ExpenseCard';
+import { formatCurrency } from '@/lib/utils';
 
 const ZUS_NIP = "5220005994";
 const ZUS_NAME = "ZAKŁAD UBEZPIECZEŃ SPOŁECZNYCH";
@@ -17,6 +19,7 @@ const ZUS_NAME = "ZAKŁAD UBEZPIECZEŃ SPOŁECZNYCH";
 // ExpenseList component for displaying a list of expenses
 export default function ExpenseList() {
   const [searchTerm, setSearchTerm] = useState("");
+  const [activeTab, setActiveTab] = useState<"all" | "pending" | "upcoming">("all");
 
   const { expenses: { data: allExpenses = [], isLoading: isLoadingExpenses } } = useGlobalData();
   const { selectedProfileId } = useBusinessProfile();
@@ -41,6 +44,56 @@ export default function ExpenseList() {
     return list;
   }, [allExpenses, selectedProfileId]);
 
+  // Categorize expenses
+  const categorizedExpenses = useMemo(() => {
+    const today = new Date();
+    const urgent: typeof filteredExpenses = [];
+    const needsReview: typeof filteredExpenses = [];
+    const upcoming: typeof filteredExpenses = [];
+    const paid: typeof filteredExpenses = [];
+    const overdue: typeof filteredExpenses = [];
+
+    filteredExpenses.forEach(expense => {
+      const dueDate = expense.dueDate ? new Date(expense.dueDate) : null;
+      const isPaid = (expense as any).isPaid || (expense as any).status === 'paid';
+      const isReceived = typeof expense.id === 'string' && expense.id.startsWith('share-');
+      
+      if (isPaid) {
+        paid.push(expense);
+      } else if (dueDate) {
+        const daysUntilDue = differenceInDays(dueDate, today);
+        
+        if (daysUntilDue < 0) {
+          overdue.push(expense);
+        } else if (daysUntilDue <= 7) {
+          urgent.push(expense);
+        } else if (daysUntilDue <= 30) {
+          upcoming.push(expense);
+        }
+      }
+      
+      if (isReceived && !isPaid) {
+        needsReview.push(expense);
+      }
+    });
+
+    return { urgent, needsReview, upcoming, paid, overdue, all: filteredExpenses };
+  }, [filteredExpenses]);
+
+  // Calculate stats
+  const stats = useMemo(() => {
+    const unpaid = filteredExpenses.filter(e => !(e as any).isPaid);
+    const totalPending = unpaid.reduce((sum, e) => sum + (e.amount || e.totalGrossValue || 0), 0);
+    
+    return {
+      total: filteredExpenses.length,
+      pending: unpaid.length,
+      urgent: categorizedExpenses.urgent.length + categorizedExpenses.overdue.length,
+      needsReview: categorizedExpenses.needsReview.length,
+      totalPending,
+    };
+  }, [filteredExpenses, categorizedExpenses]);
+
   const isLoading = isLoadingExpenses;
 
   const handleAddZus = () => {
@@ -61,21 +114,22 @@ export default function ExpenseList() {
   }
 
   return (
-    <div className="p-4 pb-20 md:pb-6">
-      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6">
+    <div className="container mx-auto py-6 space-y-6">
+      {/* Header */}
+      <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold">Wydatki</h1>
-          <p className="text-muted-foreground">
-            Zarządzaj fakturami i rachunkami kosztowymi
+          <h1 className="text-3xl font-bold flex items-center gap-3">
+            <ArrowDownCircle className="h-8 w-8 text-red-500" />
+            Wydatki
+          </h1>
+          <p className="text-muted-foreground mt-1">
+            Zarządzaj fakturami kosztowymi i płatnościami
           </p>
         </div>
         <div className="flex gap-2">
           <Button asChild>
-            <Link
-              to="/expense/new"
-              className="bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded transition-colors flex items-center gap-2"
-            >
-              <Plus className="h-4 w-4" />
+            <Link to="/expense/new">
+              <Plus className="h-4 w-4 mr-2" />
               Nowy wydatek
             </Link>
           </Button>
@@ -85,42 +139,235 @@ export default function ExpenseList() {
         </div>
       </div>
 
-      {filteredExpenses.length === 0 ? (
+      {/* Stats Cards */}
+      <div className="grid gap-4 md:grid-cols-4">
         <Card>
-          <CardContent className="py-12 text-center">
-            <FileText className="h-12 w-12 mx-auto text-gray-400 mb-4" />
-            <h3 className="text-lg font-medium mb-2">Brak zarejestrowanych wydatków</h3>
-            <p className="text-muted-foreground mb-4">
-              {searchTerm ? 'Brak wyników wyszukiwania' : 'Dodaj swój pierwszy wydatek'}
-            </p>
-            <Link
-              to="/expense/new"
-              className="inline-flex items-center justify-center rounded-md bg-blue-500 px-4 py-2 text-sm font-medium text-white hover:bg-blue-600 transition-colors"
-            >
-              <Plus className="mr-2 h-4 w-4" />
-              Nowy wydatek
-            </Link>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Wszystkie wydatki</CardTitle>
+            <FileText className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">{stats.total}</div>
+            <p className="text-xs text-muted-foreground">faktur kosztowych</p>
           </CardContent>
         </Card>
-      ) : (
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
-          {filteredExpenses.map(exp => (
-            <ExpenseCard
-              key={exp.id}
-              expense={{
-                id: exp.id,
-                issueDate: exp.issueDate,
-                amount: exp.amount || exp.totalGrossValue || 0,
-                description: exp.description,
-                customerName: exp.customerName || (exp as any).buyer?.name,
-                transactionType: exp.transactionType as InvoiceType | any, // use stored TransactionType
-                linkedInvoiceId: (exp as any).linkedInvoiceId,
-                isShared: (exp as any).isShared,
-              }}
-            />
-          ))}
-        </div>
-      )}
+
+        <Card className="border-l-4 border-l-amber-500">
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Do zapłaty</CardTitle>
+            <Clock className="h-4 w-4 text-amber-500" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold text-amber-600">{stats.pending}</div>
+            <p className="text-xs text-muted-foreground">niezapłaconych</p>
+          </CardContent>
+        </Card>
+
+        <Card className="border-l-4 border-l-red-500">
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Pilne</CardTitle>
+            <AlertCircle className="h-4 w-4 text-red-500" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold text-red-600">{stats.urgent}</div>
+            <p className="text-xs text-muted-foreground">wymaga uwagi</p>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Wartość do zapłaty</CardTitle>
+            <TrendingUp className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">
+              {formatCurrency(stats.totalPending)}
+            </div>
+            <p className="text-xs text-muted-foreground">PLN do zapłaty</p>
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* Tabs */}
+      <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as any)}>
+        <TabsList>
+          <TabsTrigger value="all">
+            Wszystkie
+            <Badge className="ml-2">{stats.total}</Badge>
+          </TabsTrigger>
+          <TabsTrigger value="pending">
+            Do zapłaty
+            <Badge className="ml-2 bg-amber-500">{stats.pending}</Badge>
+          </TabsTrigger>
+          <TabsTrigger value="upcoming">
+            Nadchodzące
+            <Badge className="ml-2 bg-blue-500">{categorizedExpenses.upcoming.length}</Badge>
+          </TabsTrigger>
+        </TabsList>
+
+        <TabsContent value={activeTab} className="space-y-4 mt-6">
+          {/* Urgent/Overdue Section - Always visible if there are urgent items */}
+          {(categorizedExpenses.urgent.length > 0 || categorizedExpenses.overdue.length > 0) && (
+            <Card className="border-2 border-red-500 bg-red-50 dark:bg-red-950/20">
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2 text-red-700 dark:text-red-400">
+                  <AlertCircle className="h-5 w-5" />
+                  Pilne - Wymaga natychmiastowej uwagi!
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-3">
+                {[...categorizedExpenses.overdue, ...categorizedExpenses.urgent].map((expense) => {
+                  const dueDate = expense.dueDate ? new Date(expense.dueDate) : null;
+                  const daysUntilDue = dueDate ? differenceInDays(dueDate, new Date()) : null;
+                  const isOverdue = daysUntilDue !== null && daysUntilDue < 0;
+                  
+                  return (
+                    <Card
+                      key={expense.id}
+                      className="cursor-pointer hover:shadow-md transition-all border-l-4 border-l-red-600"
+                      onClick={() => navigate(`/expense/${expense.id}`)}
+                    >
+                      <CardContent className="p-4">
+                        <div className="flex items-start justify-between gap-4">
+                          <div className="flex-1 space-y-2">
+                            <div className="flex items-center gap-2">
+                              <AlertCircle className="h-5 w-5 text-red-600" />
+                              <span className="font-semibold text-lg">
+                                {expense.description || 'Wydatek'}
+                              </span>
+                              {isOverdue ? (
+                                <Badge className="bg-red-600 text-white">
+                                  Przeterminowane {Math.abs(daysUntilDue!)} dni
+                                </Badge>
+                              ) : (
+                                <Badge className="bg-orange-500 text-white">
+                                  Termin za {daysUntilDue} dni
+                                </Badge>
+                              )}
+                            </div>
+                            <p className="text-sm text-muted-foreground">
+                              {expense.customerName || 'Brak kontrahenta'}
+                            </p>
+                            <div className="flex items-center gap-4 text-sm">
+                              <span className="font-bold text-lg text-red-600">
+                                {formatCurrency(expense.amount || expense.totalGrossValue || 0)}
+                              </span>
+                              {dueDate && (
+                                <span className="text-muted-foreground">
+                                  Termin: {format(dueDate, 'dd MMM yyyy', { locale: pl })}
+                                </span>
+                              )}
+                            </div>
+                          </div>
+                          <Button size="sm" className="bg-red-600 hover:bg-red-700">
+                            Zapłać teraz
+                          </Button>
+                        </div>
+                      </CardContent>
+                    </Card>
+                  );
+                })}
+              </CardContent>
+            </Card>
+          )}
+
+          {/* Needs Review Section - Incoming invoices */}
+          {categorizedExpenses.needsReview.length > 0 && (
+            <Card className="border-2 border-blue-500 bg-blue-50 dark:bg-blue-950/20">
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2 text-blue-700 dark:text-blue-400">
+                  <MessageSquare className="h-5 w-5" />
+                  Nowe faktury otrzymane - Wymaga przeglądu
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-3">
+                {categorizedExpenses.needsReview.map((expense) => (
+                  <Card
+                    key={expense.id}
+                    className="cursor-pointer hover:shadow-md transition-all border-l-4 border-l-blue-600"
+                    onClick={() => navigate(`/expense/${expense.id}`)}
+                  >
+                    <CardContent className="p-4">
+                      <div className="flex items-start justify-between gap-4">
+                        <div className="flex-1 space-y-2">
+                          <div className="flex items-center gap-2">
+                            <ArrowDownCircle className="h-5 w-5 text-blue-600" />
+                            <span className="font-semibold text-lg">
+                              {expense.description || 'Wydatek'}
+                            </span>
+                            <Badge className="bg-blue-600 text-white">
+                              Nowa faktura
+                            </Badge>
+                          </div>
+                          <p className="text-sm text-muted-foreground">
+                            od: {expense.customerName || 'Brak kontrahenta'}
+                          </p>
+                          <div className="flex items-center gap-4 text-sm">
+                            <span className="font-bold text-lg">
+                              {formatCurrency(expense.amount || expense.totalGrossValue || 0)}
+                            </span>
+                            <span className="text-muted-foreground">
+                              {format(new Date(expense.issueDate), 'dd MMM yyyy', { locale: pl })}
+                            </span>
+                          </div>
+                        </div>
+                        <div className="flex flex-col gap-2">
+                          <Button size="sm" className="bg-green-600 hover:bg-green-700">
+                            Zatwierdź
+                          </Button>
+                          <Button size="sm" variant="outline">
+                            Dyskusja
+                          </Button>
+                        </div>
+                      </div>
+                    </CardContent>
+                  </Card>
+                ))}
+              </CardContent>
+            </Card>
+          )}
+
+          {/* Main expense list */}
+          {filteredExpenses.length === 0 ? (
+            <Card>
+              <CardContent className="py-12 text-center">
+                <FileText className="h-12 w-12 mx-auto text-gray-400 mb-4" />
+                <h3 className="text-lg font-medium mb-2">Brak zarejestrowanych wydatków</h3>
+                <p className="text-muted-foreground mb-4">
+                  Dodaj swój pierwszy wydatek
+                </p>
+                <Link
+                  to="/expense/new"
+                  className="inline-flex items-center justify-center rounded-md bg-blue-500 px-4 py-2 text-sm font-medium text-white hover:bg-blue-600 transition-colors"
+                >
+                  <Plus className="mr-2 h-4 w-4" />
+                  Nowy wydatek
+                </Link>
+              </CardContent>
+            </Card>
+          ) : (
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+              {(activeTab === 'all' ? filteredExpenses : 
+                activeTab === 'pending' ? filteredExpenses.filter(e => !(e as any).isPaid) :
+                categorizedExpenses.upcoming).map(exp => (
+                <ExpenseCard
+                  key={exp.id}
+                  expense={{
+                    id: exp.id,
+                    issueDate: exp.issueDate,
+                    amount: exp.amount || exp.totalGrossValue || 0,
+                    description: exp.description,
+                    customerName: exp.customerName || (exp as any).buyer?.name,
+                    transactionType: exp.transactionType as InvoiceType | any,
+                    linkedInvoiceId: (exp as any).linkedInvoiceId,
+                    isShared: (exp as any).isShared,
+                  }}
+                />
+              ))}
+            </div>
+          )}
+        </TabsContent>
+      </Tabs>
     </div>
   );
 }

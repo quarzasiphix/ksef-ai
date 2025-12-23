@@ -7,16 +7,35 @@ import { ArrowLeft } from 'lucide-react';
 import CustomerForm from '@/components/customers/CustomerForm';
 import { Customer } from '@/types';
 import { toast } from 'sonner';
+import { useBusinessProfile } from '@/context/BusinessProfileContext';
+import { logCreationEvent, shouldLogEvents } from '@/utils/eventLogging';
 
 const NewCustomer = () => {
   const navigate = useNavigate();
   const [isOpen, setIsOpen] = useState(true);
+  const { selectedProfileId, profiles } = useBusinessProfile();
+  const selectedProfile = profiles.find(p => p.id === selectedProfileId);
   
   const handleClose = () => {
     navigate('/customers');
   };
   
   const handleSuccess = async (customer: Customer) => {
+    // Log event for Spółki
+    if (shouldLogEvents(selectedProfile?.entityType)) {
+      await logCreationEvent({
+        businessProfileId: selectedProfileId!,
+        eventType: 'document_uploaded',
+        entityType: 'customer',
+        entityId: customer.id,
+        entityReference: customer.name,
+        actionSummary: `Dodano kontrahenta: ${customer.name}`,
+        changes: {
+          name: customer.name,
+        },
+      });
+    }
+    
     toast.success('Klient został utworzony');
     if (window.triggerCustomersRefresh) {
       try {
