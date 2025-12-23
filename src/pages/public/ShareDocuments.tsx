@@ -11,7 +11,7 @@ import { Button } from "@/shared/ui/button";
 import { Badge } from "@/shared/ui/badge";
 import { Download, Moon, Sun, CreditCard, CheckCircle2, XCircle } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
-import { getPublicShare, markShareViewed } from "@/integrations/supabase/repositories/publicShareRepository";
+import { getPublicShare, markShareViewed } from "@/modules/invoices/data/publicShareRepository";
 import {
   calculateItemValues,
   formatCurrency,

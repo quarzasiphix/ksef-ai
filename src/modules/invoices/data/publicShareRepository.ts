@@ -1,4 +1,4 @@
-import { supabase } from "../client";
+import { supabase } from "@/integrations/supabase/client";
 
 export type ShareType = "invoice" | "contract" | "combo";
 

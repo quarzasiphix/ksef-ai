@@ -9,7 +9,7 @@ import { shareInvoiceWithUser } from "@/modules/invoices/data/invoiceShareReposi
 import { useAuth } from "@/shared/hooks/useAuth";
 import { CustomerSelector } from "@/modules/invoices/components/selectors/CustomerSelector";
 import { useGlobalData } from "@/shared/hooks/use-global-data";
-import { createPublicShareLink, getExistingInvoiceShare, listShares, deleteShare, PublicShare } from "@/integrations/supabase/repositories/publicShareRepository";
+import { createPublicShareLink, getExistingInvoiceShare, listShares, deleteShare, PublicShare } from "@/modules/invoices/data/publicShareRepository";
 import { getLinksForInvoice } from "@/modules/contracts/data/contractInvoiceLinkRepository";
 import { Switch } from "@/shared/ui/switch";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/shared/ui/tabs";

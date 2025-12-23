@@ -5,7 +5,7 @@ import { Label } from "@/shared/ui/label";
 import { Switch } from "@/shared/ui/switch";
 import { Copy } from "lucide-react";
 import { toast } from "sonner";
-import { createPublicShareLink, getExistingContractShare, listShares, deleteShare, PublicShare } from "@/integrations/supabase/repositories/publicShareRepository";
+import { createPublicShareLink, getExistingContractShare, listShares, deleteShare, PublicShare } from "@/modules/invoices/data/publicShareRepository";
 import { getLinksForContract } from "@/modules/contracts/data/contractInvoiceLinkRepository";
 import { useAuth } from "@/shared/hooks/useAuth";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
