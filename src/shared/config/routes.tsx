@@ -3,7 +3,7 @@ import { TransactionType } from '@/shared/types/common';
 
 // Lazy load pages for better performance
 const Dashboard = React.lazy(() => import('@/pages/Dashboard'));
-const IncomeList = React.lazy(() => import('@/modules/invoices/screens/income/IncomeList.tsx'));
+const IncomeList = React.lazy(() => import('@/modules/invoices/screens/income/IncomeList'));
 const ExpenseList = React.lazy(() => import('@/modules/invoices/screens/expense/ExpenseList'));
 const CustomerList = React.lazy(() => import('@/modules/customers/screens/CustomerList'));
 const NewCustomer = React.lazy(() => import('@/modules/customers/screens/NewCustomer'));
