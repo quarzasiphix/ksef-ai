@@ -173,7 +173,14 @@ const EventChainViewer: React.FC<EventChainViewerProps> = ({
                         </div>
                         <div className="flex items-center gap-1">
                           <Calendar className="h-3 w-3" />
-                          <span>{new Date(event.occurred_at).toLocaleString('pl-PL')}</span>
+                          <span>{new Date(event.occurred_at).toLocaleString('pl-PL', {
+                            year: 'numeric',
+                            month: '2-digit',
+                            day: '2-digit',
+                            hour: '2-digit',
+                            minute: '2-digit',
+                            second: '2-digit',
+                          })}</span>
                         </div>
                       </div>
 

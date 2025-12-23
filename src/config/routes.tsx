@@ -168,6 +168,12 @@ export const routes: RouteConfig[] = [
     guard: 'protected',
     hideInNav: true,
   },
+  {
+    path: '/expense/share/:id',
+    element: <InvoiceDetail type="expense" />,
+    guard: 'protected',
+    hideInNav: true,
+  },
 
   // Customers
   {

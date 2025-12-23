@@ -61,6 +61,8 @@ import { toast } from 'sonner';
 import { format } from 'date-fns';
 import { pl } from 'date-fns/locale';
 import { Breadcrumbs } from "@/components/seo/Breadcrumbs";
+import DecisionPicker from '@/components/decisions/DecisionPicker';
+import { logEvent } from '@/integrations/supabase/repositories/eventsRepository';
 import {
   getCashAccounts,
   createCashAccount,
@@ -123,6 +125,7 @@ const Kasa = () => {
     name: '',
     opening_balance: 0,
     responsible_person: '',
+    decision_id: '',
   });
 
   const [transactionForm, setTransactionForm] = useState({
@@ -226,6 +229,14 @@ const Kasa = () => {
 
   const handleCreateAccount = async () => {
     if (!selectedProfileId) return;
+    
+    // Require decision for spółki
+    const isSpoolka = selectedProfile?.entityType === 'sp_zoo' || selectedProfile?.entityType === 'sa';
+    if (isSpoolka && !accountForm.decision_id) {
+      toast.error('Wybierz decyzję autoryzującą utworzenie kasy');
+      return;
+    }
+    
     try {
       const input: CreateCashAccountInput = {
         business_profile_id: selectedProfileId,
@@ -233,10 +244,29 @@ const Kasa = () => {
         opening_balance: accountForm.opening_balance,
         responsible_person: accountForm.responsible_person || null,
       };
-      await createCashAccount(input);
+      const newAccount = await createCashAccount(input);
+      
+      // Log event for cash register creation
+      await logEvent(
+        selectedProfileId,
+        'bank_account_created',
+        'cash_account',
+        newAccount.id,
+        `Utworzono kasę: ${accountForm.name}`,
+        {
+          decisionId: accountForm.decision_id || undefined,
+          entityReference: accountForm.name,
+          changes: {
+            name: accountForm.name,
+            opening_balance: accountForm.opening_balance,
+            responsible_person: accountForm.responsible_person,
+          },
+        }
+      );
+      
       toast.success('Kasa utworzona');
       setAccountDialogOpen(false);
-      setAccountForm({ name: '', opening_balance: 0, responsible_person: '' });
+      setAccountForm({ name: '', opening_balance: 0, responsible_person: '', decision_id: '' });
       loadData();
     } catch (error) {
       console.error('Error creating account:', error);
@@ -254,7 +284,7 @@ const Kasa = () => {
       toast.success('Kasa zaktualizowana');
       setAccountDialogOpen(false);
       setEditingAccount(null);
-      setAccountForm({ name: '', opening_balance: 0, responsible_person: '' });
+      setAccountForm({ name: '', opening_balance: 0, responsible_person: '', decision_id: '' });
       loadData();
     } catch (error) {
       console.error('Error updating account:', error);
@@ -875,6 +905,20 @@ const Kasa = () => {
                 placeholder="np. Jan Kowalski"
               />
             </div>
+            {!editingAccount && (selectedProfile?.entityType === 'sp_zoo' || selectedProfile?.entityType === 'sa') && (
+              <div>
+                <Label>Decyzja autoryzująca *</Label>
+                <DecisionPicker
+                  businessProfileId={selectedProfileId || ''}
+                  value={accountForm.decision_id}
+                  onChange={(id) => setAccountForm(prev => ({ ...prev, decision_id: id }))}
+                  placeholder="Wybierz decyzję"
+                />
+                <p className="text-xs text-muted-foreground mt-1">
+                  Utworzenie kasy wymaga decyzji zarządu/wspólników
+                </p>
+              </div>
+            )}
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setAccountDialogOpen(false)}>

@@ -7,11 +7,13 @@ import { UseFormReturn } from "react-hook-form";
 import { PaymentMethod, VatExemptionReason } from "@/types";
 import { Checkbox } from "@/components/ui/checkbox";
 import { BankAccountSelector } from "@/components/invoices/selectors/BankAccountSelector";
+import { CashAccountSelector } from "@/components/invoices/selectors/CashAccountSelector";
 import { AlertCircle, Info } from "lucide-react";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { Button } from "@/components/ui/button";
 import { BankAccount } from "@/types/bank";
 import { InvoiceItem } from "@/types";
+import type { CashAccount } from "@/types/kasa";
 
 interface InvoiceBasicInfoFormProps {
   form: UseFormReturn<any, any>;
@@ -23,6 +25,8 @@ interface InvoiceBasicInfoFormProps {
   onExchangeRateChange?: (rate: number) => void;
   items?: InvoiceItem[];
   bankAccounts?: BankAccount[];
+  cashAccounts?: CashAccount[];
+  isSpoolka?: boolean;
   onAddVatAccount?: () => void;
   onNumberChange?: (value: string) => void;
 }
@@ -37,10 +41,13 @@ export const InvoiceBasicInfoForm: React.FC<InvoiceBasicInfoFormProps> = ({
   onExchangeRateChange,
   items = [],
   bankAccounts = [],
+  cashAccounts = [],
+  isSpoolka = false,
   onAddVatAccount,
   onNumberChange
 }) => {
   const currency = form.watch('currency') || 'PLN';
+  const paymentMethod = form.watch('paymentMethod');
 
   return (
     <Card className="md:col-span-1">
@@ -170,6 +177,40 @@ export const InvoiceBasicInfoForm: React.FC<InvoiceBasicInfoFormProps> = ({
                         >
                           Dodaj konto bankowe
                         </Button>
+                      </div>
+                    </div>
+                  </div>
+                )}
+              </FormItem>
+            )}
+          />
+        )}
+
+        {paymentMethod === PaymentMethod.CASH && isSpoolka && (
+          <FormField
+            control={form.control}
+            name="cashAccountId"
+            rules={{ required: 'Kasa fiskalna jest wymagana dla płatności gotówką' }}
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel className="text-red-600">Kasa fiskalna *</FormLabel>
+                <CashAccountSelector
+                  value={field.value}
+                  onChange={field.onChange}
+                  cashAccounts={cashAccounts}
+                />
+                <FormMessage />
+                {!field.value && (
+                  <p className="text-sm text-red-600 mt-1">
+                    Musisz wybrać kasę fiskalną dla płatności gotówką
+                  </p>
+                )}
+                {cashAccounts && cashAccounts.length === 0 && (
+                  <div className="mt-3 p-3 border border-red-200 bg-red-50 rounded-lg text-sm text-red-800 dark:bg-red-900/20 dark:border-red-800 dark:text-red-100">
+                    <div className="flex items-start gap-3">
+                      <AlertCircle className="h-4 w-4 mt-0.5" />
+                      <div>
+                        <strong>Brak aktywnych kas!</strong> Nie możesz utworzyć faktury gotówkowej bez kasy. Przejdź do sekcji Księgowość → Kasa, aby utworzyć kasę.
                       </div>
                     </div>
                   </div>

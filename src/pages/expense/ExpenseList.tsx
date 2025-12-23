@@ -11,7 +11,13 @@ import { useBusinessProfile } from "@/context/BusinessProfileContext";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import ExpenseCard from '@/components/expenses/ExpenseCard';
+import ExpenseListView from '@/components/expenses/ExpenseListView';
 import { formatCurrency } from '@/lib/utils';
+import { Checkbox } from '@/components/ui/checkbox';
+import { LayoutGrid, List as ListIcon } from 'lucide-react';
+import { saveInvoice } from '@/integrations/supabase/repositories/invoiceRepository';
+import { toast } from 'sonner';
+import { useQueryClient } from '@tanstack/react-query';
 
 const ZUS_NIP = "5220005994";
 const ZUS_NAME = "ZAKŁAD UBEZPIECZEŃ SPOŁECZNYCH";
@@ -20,10 +26,14 @@ const ZUS_NAME = "ZAKŁAD UBEZPIECZEŃ SPOŁECZNYCH";
 export default function ExpenseList() {
   const [searchTerm, setSearchTerm] = useState("");
   const [activeTab, setActiveTab] = useState<"all" | "pending" | "upcoming">("all");
+  const [viewMode, setViewMode] = useState<'grid' | 'list'>('list');
+  const [selectedExpenses, setSelectedExpenses] = useState<Set<string>>(new Set());
+  const [isMultiSelectMode, setIsMultiSelectMode] = useState(false);
 
   const { expenses: { data: allExpenses = [], isLoading: isLoadingExpenses } } = useGlobalData();
   const { selectedProfileId } = useBusinessProfile();
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
 
   const filteredExpenses = useMemo(() => {
     if (!allExpenses) return [];
@@ -103,6 +113,45 @@ export default function ExpenseList() {
     const desc = `ZUS składka ${month}/${year}`;
     const date = today.toISOString().slice(0, 10);
     navigate(`/expense/new?zus=1&desc=${encodeURIComponent(desc)}&date=${date}`);
+  };
+
+  const toggleExpenseSelection = (expenseId: string, event?: React.MouseEvent) => {
+    if (event) {
+      event.stopPropagation();
+      event.preventDefault();
+    }
+    
+    setSelectedExpenses(prev => {
+      const newSet = new Set(prev);
+      if (newSet.has(expenseId)) {
+        newSet.delete(expenseId);
+      } else {
+        newSet.add(expenseId);
+      }
+      return newSet;
+    });
+  };
+
+  const handleMarkAsPaid = async (id: string, expense: Invoice) => {
+    try {
+      await saveInvoice({ ...expense, isPaid: true });
+      await queryClient.invalidateQueries({ queryKey: ['expenses'] });
+      toast.success('Oznaczono jako zapłacone');
+    } catch (error) {
+      console.error('Error marking as paid:', error);
+      toast.error('Błąd podczas oznaczania jako zapłacone');
+    }
+  };
+
+  const handleMarkAsUnpaid = async (id: string, expense: Invoice) => {
+    try {
+      await saveInvoice({ ...expense, isPaid: false });
+      await queryClient.invalidateQueries({ queryKey: ['expenses'] });
+      toast.success('Oznaczono jako niezapłacone');
+    } catch (error) {
+      console.error('Error marking as unpaid:', error);
+      toast.error('Błąd podczas oznaczania jako niezapłacone');
+    }
   };
 
   if (isLoading) {
@@ -188,22 +237,49 @@ export default function ExpenseList() {
         </Card>
       </div>
 
-      {/* Tabs */}
+      {/* Tabs and View Toggle */}
+      <div className="flex items-center justify-between gap-4 flex-wrap">
+        <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as any)} className="flex-1">
+          <TabsList>
+            <TabsTrigger value="all">
+              Wszystkie
+              <Badge className="ml-2">{stats.total}</Badge>
+            </TabsTrigger>
+            <TabsTrigger value="pending">
+              Do zapłaty
+              <Badge className="ml-2 bg-amber-500">{stats.pending}</Badge>
+            </TabsTrigger>
+            <TabsTrigger value="upcoming">
+              Nadchodzące
+              <Badge className="ml-2 bg-blue-500">{categorizedExpenses.upcoming.length}</Badge>
+            </TabsTrigger>
+          </TabsList>
+        </Tabs>
+        
+        {/* View Mode Toggle */}
+        <div className="flex rounded-md border overflow-hidden">
+          <button
+            type="button"
+            className={`px-3 py-2 text-sm flex items-center gap-2 ${viewMode === 'grid' ? 'bg-accent text-accent-foreground' : 'bg-background text-muted-foreground hover:bg-muted'}`}
+            onClick={() => setViewMode('grid')}
+            aria-label="Widok siatki"
+          >
+            <LayoutGrid className="h-4 w-4" />
+            <span className="hidden sm:inline">Siatka</span>
+          </button>
+          <button
+            type="button"
+            className={`px-3 py-2 text-sm flex items-center gap-2 border-l ${viewMode === 'list' ? 'bg-accent text-accent-foreground' : 'bg-background text-muted-foreground hover:bg-muted'}`}
+            onClick={() => setViewMode('list')}
+            aria-label="Widok listy"
+          >
+            <ListIcon className="h-4 w-4" />
+            <span className="hidden sm:inline">Lista</span>
+          </button>
+        </div>
+      </div>
+      
       <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as any)}>
-        <TabsList>
-          <TabsTrigger value="all">
-            Wszystkie
-            <Badge className="ml-2">{stats.total}</Badge>
-          </TabsTrigger>
-          <TabsTrigger value="pending">
-            Do zapłaty
-            <Badge className="ml-2 bg-amber-500">{stats.pending}</Badge>
-          </TabsTrigger>
-          <TabsTrigger value="upcoming">
-            Nadchodzące
-            <Badge className="ml-2 bg-blue-500">{categorizedExpenses.upcoming.length}</Badge>
-          </TabsTrigger>
-        </TabsList>
 
         <TabsContent value={activeTab} className="space-y-4 mt-6">
           {/* Urgent/Overdue Section - Always visible if there are urgent items */}
@@ -345,6 +421,17 @@ export default function ExpenseList() {
                 </Link>
               </CardContent>
             </Card>
+          ) : viewMode === 'list' ? (
+            <ExpenseListView
+              expenses={activeTab === 'all' ? filteredExpenses : 
+                activeTab === 'pending' ? filteredExpenses.filter(e => !(e as any).isPaid) :
+                categorizedExpenses.upcoming}
+              selectedExpenses={selectedExpenses}
+              isMultiSelectMode={isMultiSelectMode}
+              onToggleSelection={toggleExpenseSelection}
+              onMarkAsPaid={handleMarkAsPaid}
+              onMarkAsUnpaid={handleMarkAsUnpaid}
+            />
           ) : (
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
               {(activeTab === 'all' ? filteredExpenses : 

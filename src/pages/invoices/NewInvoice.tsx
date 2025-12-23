@@ -48,6 +48,8 @@ import { saveInvoice, getInvoice } from "@/integrations/supabase/repositories/in
 import { saveExpense } from "@/integrations/supabase/repositories/expenseRepository";
 import { addLink as addContractLink } from "@/integrations/supabase/repositories/contractInvoiceLinkRepository";
 import { getBankAccountsForProfile, addBankAccount } from "@/integrations/supabase/repositories/bankAccountRepository";
+import { getCashAccounts, createCashTransaction } from "@/integrations/supabase/repositories/kasaRepository";
+import type { CashAccount } from "@/types/kasa";
 
 // UI Components
 import { Form } from "@/components/ui/form";
@@ -88,6 +90,7 @@ const invoiceFormSchema = z.object({
   exchangeRateDate: z.string().default(() => new Date().toISOString().split('T')[0]),
   exchangeRateSource: z.enum(['NBP', 'manual']).default('NBP'),
   bankAccountId: z.string().optional(),
+  cashAccountId: z.string().optional(),
   
   // Calculated fields (will be set programmatically)
   totalNetValue: z.number().default(0),
@@ -98,6 +101,13 @@ const invoiceFormSchema = z.object({
   ,
 
   decisionId: z.string().optional()
+}).refine((data) => {
+  // For spółki with cash payment, cashAccountId is required
+  // We can't check isSpoolka here, so we'll rely on the runtime validation in onSubmit
+  return true;
+}, {
+  message: 'Kasa fiskalna jest wymagana dla płatności gotówką',
+  path: ['cashAccountId']
 });
 
 type InvoiceFormValues = z.infer<typeof invoiceFormSchema>;
@@ -378,6 +388,7 @@ const NewInvoice = React.forwardRef<{
     const [contractsToLink, setContractsToLink] = useState<string[]>([]);
     const [exchangeRate, setExchangeRate] = useState<number>(initialData?.exchangeRate || 1);
     const [bankAccounts, setBankAccounts] = useState<BankAccount[]>(propsBankAccounts || []);
+    const [cashAccounts, setCashAccounts] = useState<CashAccount[]>([]);
     const [showVatAccountDialog, setShowVatAccountDialog] = useState(false);
 
     const handleAddContract = (id: string) => {
@@ -450,7 +461,7 @@ const NewInvoice = React.forwardRef<{
         return;
       }
       
-      const businessProfileId = form.watch('businessProfileId');
+      // Fetch bank accounts for the selected business profile
       if (businessProfileId) {
         getBankAccountsForProfile(businessProfileId)
           .then((accounts) => {
@@ -461,10 +472,20 @@ const NewInvoice = React.forwardRef<{
             }
           })
           .catch(console.error);
+          
+        // Fetch cash accounts for spółki
+        if (isSpoolka) {
+          getCashAccounts(businessProfileId)
+            .then((accounts) => {
+              setCashAccounts(accounts.filter(acc => acc.status === 'active'));
+            })
+            .catch(console.error);
+        }
       } else {
         setBankAccounts([]);
+        setCashAccounts([]);
       }
-    }, [form.watch('businessProfileId'), propsBankAccounts]);
+    }, [form.watch('businessProfileId'), propsBankAccounts, isSpoolka]);
     
     console.log('NewInvoice - Initial Data VAT:', (initialData as any)?.vat);
     console.log('NewInvoice - Initial Data VAT Exemption Reason:', initialData?.vatExemptionReason);
@@ -503,6 +524,15 @@ const NewInvoice = React.forwardRef<{
     // Get form values
     const customerId = form.watch("customerId");
     const bankAccountId = form.watch('bankAccountId');
+    const cashAccountId = form.watch('cashAccountId');
+    const paymentMethod = form.watch('paymentMethod');
+    
+    // Check if step 1 is complete (includes cash register for spółki with cash payment)
+    const isStep1Complete = invoiceNumber && (
+      !isSpoolka || 
+      paymentMethod !== PaymentMethod.CASH || 
+      (paymentMethod === PaymentMethod.CASH && cashAccountId)
+    );
 
     // Update all items to 'zw' when fakturaBezVAT is checked
     useEffect(() => {
@@ -705,6 +735,33 @@ const NewInvoice = React.forwardRef<{
         // Calculate totals
         const totals = calculateInvoiceTotals(processedItems);
 
+        // Ensure cash account has sufficient balance for EXPENSE invoices (KW - withdrawals)
+        // Income invoices (KP - deposits) add money to the register, so no balance check needed
+        if (
+          isSpoolka &&
+          formValues.paymentMethod === PaymentMethod.CASH &&
+          formValues.cashAccountId &&
+          effectiveTransactionType === TransactionType.EXPENSE
+        ) {
+          const selectedCashAccount = cashAccounts.find(
+            (account) => account.id === formValues.cashAccountId
+          );
+          if (
+            selectedCashAccount &&
+            totals.totalGrossValue > selectedCashAccount.current_balance
+          ) {
+            toast.error(
+              `Niewystarczające środki! Kasa "${selectedCashAccount.name}" ma tylko ${formatCurrency(
+                selectedCashAccount.current_balance,
+                selectedCashAccount.currency
+              )}, a faktura wymaga ${formatCurrency(totals.totalGrossValue, selectedCashAccount.currency)}. Przenieś środki między kasami w sekcji Księgowość → Kasa.`,
+              { duration: 8000 }
+            );
+            setIsLoading(false);
+            return;
+          }
+        }
+
         // Prepare invoice data - using camelCase to match the expected type
         const invoiceData = {
           // Basic info
@@ -791,10 +848,35 @@ const NewInvoice = React.forwardRef<{
           } else {
             // Create new invoice
             savedInvoice = await saveInvoice(invoiceData);
+            
+            // If cash payment and cash account selected, create cash transaction
+            if (formValues.paymentMethod === PaymentMethod.CASH && formValues.cashAccountId && savedInvoice?.id) {
+              try {
+                await createCashTransaction({
+                  business_profile_id: formValues.businessProfileId,
+                  cash_account_id: formValues.cashAccountId,
+                  type: effectiveTransactionType === TransactionType.INCOME ? 'KP' : 'KW',
+                  amount: totals.totalGrossValue,
+                  date: formValues.issueDate,
+                  description: `Faktura ${formValues.number} - ${customerName || 'Kontrahent'}`,
+                  counterparty_name: customerName || undefined,
+                  category: effectiveTransactionType === TransactionType.INCOME ? 'sales_revenue' : 'purchase',
+                  linked_document_type: 'invoice',
+                  linked_document_id: savedInvoice.id,
+                  is_tax_deductible: true,
+                });
+                console.log('Cash transaction created for invoice:', savedInvoice.id);
+              } catch (error) {
+                console.error('Error creating cash transaction:', error);
+                toast.error('Faktura utworzona, ale wystąpił błąd podczas rejestracji w kasie');
+              }
+            }
+            
             toast.success('Faktura została utworzona');
             
             // Invalidate queries to refresh the data
             await queryClient.invalidateQueries({ queryKey: ["invoices"] });
+            await queryClient.invalidateQueries({ queryKey: ["cash-transactions"] });
             
             // If we have the saved invoice, also set it in the cache for immediate access
             if (savedInvoice?.id) {
@@ -839,6 +921,12 @@ const handleFormSubmit = form.handleSubmit(async (formData) => {
 
     if (isSpoolka && !formValues.decisionId) {
       toast.error('Wybierz decyzję autoryzującą (Decyzja/Mandat)');
+      return;
+    }
+    
+    // Require cash account selection for cash payments in spółki
+    if (isSpoolka && formValues.paymentMethod === PaymentMethod.CASH && !formValues.cashAccountId) {
+      toast.error('Wybierz kasę fiskalną dla płatności gotówką');
       return;
     }
     // Ensure we have items
@@ -1021,11 +1109,11 @@ const handleFormSubmit = form.handleSubmit(async (formData) => {
                 <div className="flex items-center gap-2">
                   <div className={cn(
                     "w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold",
-                    invoiceNumber ? "bg-green-500 text-white" : "bg-blue-500 text-white"
+                    isStep1Complete ? "bg-green-500 text-white" : "bg-blue-500 text-white"
                   )}>
-                    {invoiceNumber ? "✓" : "1"}
+                    {isStep1Complete ? "✓" : "1"}
                   </div>
-                  <span className="font-semibold">Numer faktury</span>
+                  <span className="font-semibold">Dane podstawowe</span>
                 </div>
                 <div className="flex items-center gap-2">
                   <div className={cn(
@@ -1050,7 +1138,7 @@ const handleFormSubmit = form.handleSubmit(async (formData) => {
                 <div 
                   className="h-full bg-blue-500 transition-all duration-300"
                   style={{ 
-                    width: `${((invoiceNumber ? 33 : 0) + (customerId ? 33 : 0) + (items.length > 0 ? 34 : 0))}%` 
+                    width: `${((isStep1Complete ? 33 : 0) + (customerId ? 33 : 0) + (items.length > 0 ? 34 : 0))}%` 
                   }}
                 />
               </div>
@@ -1061,12 +1149,12 @@ const handleFormSubmit = form.handleSubmit(async (formData) => {
               {/* Step 1: Invoice Number - Highlighted */}
               <div className={cn(
                 "p-4 rounded-lg border-2 transition-all",
-                !invoiceNumber ? "border-blue-500 bg-blue-50 dark:bg-blue-950" : "border-gray-200"
+                !isStep1Complete ? "border-blue-500 bg-blue-50 dark:bg-blue-950" : "border-gray-200"
               )}>
-                {!invoiceNumber && (
+                {!isStep1Complete && (
                   <div className="mb-3 flex items-center gap-2 text-blue-700 dark:text-blue-300">
                     <div className="w-6 h-6 rounded-full bg-blue-500 text-white flex items-center justify-center text-sm font-bold">1</div>
-                    <span className="font-semibold">Krok 1: Ustaw prefiks i numer faktury</span>
+                    <span className="font-semibold">Krok 1: Ustaw dane podstawowe faktury{isSpoolka && paymentMethod === PaymentMethod.CASH && ' (wybierz kasę!)'}</span>
                   </div>
                 )}
               <InvoiceBasicInfoForm 
@@ -1083,6 +1171,8 @@ const handleFormSubmit = form.handleSubmit(async (formData) => {
                 }}
                 items={items}
                 bankAccounts={bankAccounts}
+                cashAccounts={cashAccounts}
+                isSpoolka={isSpoolka}
                 onAddVatAccount={handleAddVatAccount}
                 onNumberChange={(value) => {
                   setInvoiceNumber(value);
@@ -1094,10 +1184,10 @@ const handleFormSubmit = form.handleSubmit(async (formData) => {
               {/* Step 2: Customer Selection - Highlighted when step 1 is done */}
               <div className={cn(
                 "p-4 rounded-lg border-2 transition-all",
-                invoiceNumber && !customerId ? "border-blue-500 bg-blue-50 dark:bg-blue-950" : "border-gray-200",
-                !invoiceNumber && "opacity-60"
+                isStep1Complete && !customerId ? "border-blue-500 bg-blue-50 dark:bg-blue-950" : "border-gray-200",
+                !isStep1Complete && "opacity-60"
               )}>
-                {invoiceNumber && !customerId && (
+                {isStep1Complete && !customerId && (
                   <div className="mb-3 flex items-center gap-2 text-blue-700 dark:text-blue-300">
                     <div className="w-6 h-6 rounded-full bg-blue-500 text-white flex items-center justify-center text-sm font-bold">2</div>
                     <span className="font-semibold">Krok 2: Wybierz kontrahenta</span>
