@@ -5,7 +5,7 @@ import { Button } from "@/shared/ui/button";
 import { toast } from "sonner";
 import { TransactionType, InvoiceType } from "@/shared/types";
 import { InvoiceItem } from "@/shared/types";
-import { saveExpense } from "@/integrations/supabase/repositories/expenseRepository";
+import { saveExpense } from "@/modules/invoices/data/expenseRepository";
 import { InvoiceItemsForm } from "@/modules/invoices/components/forms/InvoiceItemsForm";
 import { CustomerSelector } from "@/modules/invoices/components/selectors/CustomerSelector";
 import { useGlobalData } from "@/shared/hooks/use-global-data";

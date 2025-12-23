@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from "react";
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from "@/shared/ui/select";
 import { BankAccount } from "@/modules/banking/bank";
-import { getBankAccountsForProfile } from "@/integrations/supabase/repositories/bankAccountRepository";
+import { getBankAccountsForProfile } from "@/modules/banking/data/bankAccountRepository";
 import { Button } from "@/shared/ui/button";
 import { Plus } from "lucide-react";
 

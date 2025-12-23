@@ -29,12 +29,12 @@ import { calculateItemValues, getInvoiceValueInPLN, calculateInvoiceTotals } fro
 import ContractorCard from "@/modules/invoices/components/detail/ContractorCard";
 import { BusinessProfile, Customer, Invoice } from "@/shared/types";
 import { generateInvoicePdf, getInvoiceFileName } from "@/shared/lib/pdf-utils";
-import { getInvoiceById } from "@/integrations/supabase/repositories/invoiceRepository";
+import { getInvoiceById } from "@/modules/invoices/data/invoiceRepository";
 import InvoiceItemsCard from "@/modules/invoices/components/detail/InvoiceItemsCard";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { getLinksForInvoice } from "@/integrations/supabase/repositories/contractInvoiceLinkRepository";
-import { getContract } from "@/integrations/supabase/repositories/contractRepository";
-import { getBankAccountsForProfile } from '@/integrations/supabase/repositories/bankAccountRepository';
+import { getLinksForInvoice } from "@/modules/contracts/data/contractInvoiceLinkRepository";
+import { getContract } from "@/modules/contracts/data/contractRepository";
+import { getBankAccountsForProfile } from '@/modules/banking/data/bankAccountRepository';
 import { useEffect, useRef } from 'react';
 import { BankAccount } from '@/modules/banking/bank';
 import { DiscussionPanel } from "@/modules/invoices/components/discussion/DiscussionPanel";

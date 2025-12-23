@@ -11,7 +11,7 @@ import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { useBusinessProfile } from "@/shared/context/BusinessProfileContext";
 import { useQuery } from "@tanstack/react-query";
-import { getInvoices } from "@/integrations/supabase/repositories/invoiceRepository";
+import { getInvoices } from "@/modules/invoices/data/invoiceRepository";
 import { useAuth } from "@/shared/hooks/useAuth";
 
 interface SendContractDialogProps {

@@ -14,11 +14,11 @@ import {
   ArrowRight, ArrowLeft, FileText, Shield, DollarSign, Plus, Trash2
 } from 'lucide-react';
 import { toast } from 'sonner';
-import { saveBusinessProfile } from '@/integrations/supabase/repositories/businessProfileRepository';
-import { createFolder, initializeDefaultFolders } from '@/integrations/supabase/repositories/documentsRepository';
-import { initializeFoundationalDecisions } from '@/integrations/supabase/repositories/decisionsRepository';
-import { getRecommendedTemplates } from '@/integrations/supabase/repositories/decisionTemplatesRepository';
-import type { DecisionTemplate } from '@/integrations/supabase/repositories/decisionTemplatesRepository';
+import { saveBusinessProfile } from '@/modules/settings/data/businessProfileRepository';
+import { createFolder, initializeDefaultFolders } from '@/modules/contracts/data/documentsRepository';
+import { initializeFoundationalDecisions } from '@/modules/spolka/data/decisionsRepository';
+import { getRecommendedTemplates } from '@/modules/spolka/data/decisionTemplatesRepository';
+import type { DecisionTemplate } from '@/modules/spolka/data/decisionTemplatesRepository';
 import type { BusinessProfile } from '@/shared/types';
 import { useAuth } from '@/shared/hooks/useAuth';
 import { useQuery } from '@tanstack/react-query';
@@ -257,7 +257,7 @@ export const SpoolkaWizard: React.FC<SpoolkaWizardProps> = ({ onComplete, onCanc
 
         // Initialize selected decisions from templates
         if (wizardData.selectedTemplateIds.length > 0 || wizardData.customDecisions.length > 0) {
-          const { createDecisionFromTemplate } = await import('@/integrations/supabase/repositories/decisionTemplatesRepository');
+          const { createDecisionFromTemplate } = await import('@/modules/spolka/data/decisionTemplatesRepository');
           
           // Create decisions from selected templates
           for (const templateId of wizardData.selectedTemplateIds) {
@@ -271,7 +271,7 @@ export const SpoolkaWizard: React.FC<SpoolkaWizardProps> = ({ onComplete, onCanc
           // Create custom decisions
           for (const customDecision of wizardData.customDecisions) {
             try {
-              const { createDecision } = await import('@/integrations/supabase/repositories/decisionsRepository');
+              const { createDecision } = await import('@/modules/spolka/data/decisionsRepository');
               await createDecision({
                 business_profile_id: savedProfile.id,
                 title: customDecision.title,

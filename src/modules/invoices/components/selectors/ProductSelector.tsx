@@ -12,7 +12,7 @@ import { useNavigate } from "react-router-dom";
 import { Plus } from "lucide-react";
 import { Product, InvoiceItem, InvoiceType } from "@/shared/types";
 import { useAuth } from "@/shared/context/AuthContext";
-import { getProducts } from "@/integrations/supabase/repositories/productRepository";
+import { getProducts } from "@/modules/products/data/productRepository";
 
 interface ProductSelectorProps {
   onAddProduct: (product: InvoiceItem) => void;

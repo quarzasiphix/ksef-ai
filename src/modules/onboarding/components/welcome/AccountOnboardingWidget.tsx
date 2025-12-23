@@ -4,8 +4,8 @@ import { Building2, FileText, CheckCircle2, Circle, X } from 'lucide-react';
 import { Button } from '@/shared/ui/button';
 import { useAuth } from '@/shared/hooks/useAuth';
 import { useQuery } from '@tanstack/react-query';
-import { getBusinessProfiles } from '@/integrations/supabase/repositories/businessProfileRepository';
-import { getInvoices } from '@/integrations/supabase/repositories/invoiceRepository';
+import { getBusinessProfiles } from '@/modules/settings/data/businessProfileRepository';
+import { getInvoices } from '@/modules/invoices/data/invoiceRepository';
 
 const steps = [
   {

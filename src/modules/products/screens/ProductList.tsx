@@ -8,7 +8,7 @@ import { Product } from "@/shared/types";
 import { Plus, Search, Package, CircleDollarSign, Percent, ShoppingCart, Receipt } from "lucide-react";
 import { formatCurrency } from "@/shared/lib/invoice-utils";
 import { Badge } from "@/shared/ui/badge";
-import { getProducts, deleteProduct } from "@/integrations/supabase/repositories/productRepository";
+import { getProducts, deleteProduct } from "@/modules/products/data/productRepository";
 import { useAuth } from "@/shared/context/AuthContext";
 import { toast } from "sonner";
 import ProductForm from "@/modules/products/components/ProductForm";

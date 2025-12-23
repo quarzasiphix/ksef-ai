@@ -6,7 +6,7 @@ import { toast } from "sonner";
 import { parseBankCsv } from "@/shared/utils/parseBankCsv";
 import { parseBankXml } from "@/shared/utils/parseBankXml";
 import { BankTransaction } from "@/modules/banking/bank";
-import { uploadBankLog } from "@/integrations/supabase/repositories/bankLogRepository";
+import { uploadBankLog } from "@/modules/banking/data/bankLogRepository";
 import { useAuth } from "@/shared/hooks/useAuth";
 
 interface Props {

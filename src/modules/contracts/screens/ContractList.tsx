@@ -2,7 +2,7 @@
 import React from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Link } from "react-router-dom";
-import { getContracts } from "@/integrations/supabase/repositories/contractRepository";
+import { getContracts } from "@/modules/contracts/data/contractRepository";
 import { useAuth } from "@/shared/hooks/useAuth";
 import { useGlobalData } from "@/shared/hooks/use-global-data";
 import { Contract } from "@/shared/types";

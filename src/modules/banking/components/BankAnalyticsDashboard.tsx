@@ -23,12 +23,12 @@ import { Badge } from "@/shared/ui/badge";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/shared/ui/collapsible";
 import { useState } from "react";
 import { useAuth } from "@/shared/hooks/useAuth";
-import { uploadBankLog, listBankLogs, deleteBankLog, getBankLogSignedUrl } from "@/integrations/supabase/repositories/bankLogRepository";
+import { uploadBankLog, listBankLogs, deleteBankLog, getBankLogSignedUrl } from "@/modules/banking/data/bankLogRepository";
 import { toast } from "sonner";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/shared/ui/dialog";
 import { parseBankCsv } from "@/shared/utils/parseBankCsv";
 import { parseBankXml } from "@/shared/utils/parseBankXml";
-import { saveBankTransactions } from "@/integrations/supabase/repositories/bankTransactionRepository";
+import { saveBankTransactions } from "@/modules/banking/data/bankTransactionRepository";
 
 const COLORS = ["#8884d8", "#82ca9d", "#ffc658", "#ff8042", "#0088FE", "#00C49F", "#FFBB28", "#FF8042"];
 

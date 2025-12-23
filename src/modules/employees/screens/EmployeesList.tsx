@@ -6,7 +6,7 @@ import { Badge } from '@/shared/ui/badge';
 import { Input } from '@/shared/ui/input';
 import { Plus, Search, User, Calendar, DollarSign } from 'lucide-react';
 import { Employee } from '@/shared/types';
-import { getEmployees } from '@/integrations/supabase/repositories/employeeRepository';
+import { getEmployees } from '@/modules/employees/data/employeeRepository';
 import { useAuth } from '@/shared/context/AuthContext';
 import { format } from 'date-fns';
 import { pl } from 'date-fns/locale';

@@ -1,5 +1,5 @@
 import ZusPaymentDialog from "@/modules/accounting/components/ZusPaymentDialog";
-import { getZusPayments, updateZusPayment, addZusPayment } from "@/integrations/supabase/repositories/zusRepository";
+import { getZusPayments, updateZusPayment, addZusPayment } from "@/modules/accounting/data/zusRepository";
 import type { ZusPayment, ZusType } from "@/shared/types/zus";
 import { useAuth } from "@/shared/hooks/useAuth";
 import { useEffect, useState } from "react";

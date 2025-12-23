@@ -4,7 +4,7 @@ import { toast } from "sonner";
 import { ArrowLeft, Trash2 } from "lucide-react";
 import { Button } from "@/shared/ui/button";
 import type { Invoice, Company, InvoiceItem, PaymentMethod } from "@/shared/types";
-import { getInvoice, deleteInvoice, saveInvoice } from "@/integrations/supabase/repositories/invoiceRepository";
+import { getInvoice, deleteInvoice, saveInvoice } from "@/modules/invoices/data/invoiceRepository";
 import NewInvoice from "./NewInvoice";
 import { useQueryClient } from "@tanstack/react-query";
 import {
@@ -26,7 +26,7 @@ import { Switch } from '@/shared/ui/switch';
 import { calculateItemValues, toPaymentMethodDb } from "@/shared/lib/invoice-utils";
 import { PaymentMethodDb } from "@/shared/types/common";
 import ContractsForInvoice from "@/modules/invoices/components/ContractsForInvoice";
-import { getBankAccountsForProfile } from "@/integrations/supabase/repositories/bankAccountRepository";
+import { getBankAccountsForProfile } from "@/modules/banking/data/bankAccountRepository";
 import { BankAccount } from "@/modules/banking/bank";
 import { transformInvoiceForForm } from "@/shared/lib/invoice-transform";
 

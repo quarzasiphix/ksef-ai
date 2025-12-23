@@ -7,7 +7,7 @@ import { Button } from '@/shared/ui/button';
 import { Plus, FileText, CheckCircle, Clock, Menu, FileCheck, ChevronLeft } from 'lucide-react';
 import { format } from 'date-fns';
 import { pl } from 'date-fns/locale';
-import { getResolutions, saveResolution, updateResolution } from '@/integrations/supabase/repositories/spolkaRepository';
+import { getResolutions, saveResolution, updateResolution } from '@/modules/spolka/data/spolkaRepository';
 import type { Resolution, ResolutionType, ResolutionStatus } from '@/modules/spolka/spolka';
 import { getResolutionTypeLabel } from '@/modules/spolka/spolka';
 import { Badge } from '@/shared/ui/badge';

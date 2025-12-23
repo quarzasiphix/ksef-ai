@@ -6,7 +6,7 @@ import { Button } from '@/shared/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/shared/ui/card';
 import { Badge } from '@/shared/ui/badge';
 import { useToast } from '@/shared/hooks/use-toast';
-import { getEmployees, getLabourHours, createLabourHours, getEmployeeSalaryStats } from '@/integrations/supabase/repositories/employeeRepository';
+import { getEmployees, getLabourHours, createLabourHours, getEmployeeSalaryStats } from '@/modules/employees/data/employeeRepository';
 import { Employee, LabourHours, CreateLabourHoursData } from '@/modules/employees/employee';
 import { formatCurrency } from '@/shared/lib/invoice-utils';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/shared/ui/dialog';

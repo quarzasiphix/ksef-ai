@@ -14,7 +14,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Switch } from '@/shared/ui/switch';
 import { Product } from '@/shared/types/index';
 import { useAuth } from '@/shared/context/AuthContext';
-import { saveProduct } from '@/integrations/supabase/repositories/productRepository';
+import { saveProduct } from '@/modules/products/data/productRepository';
 import { toast } from 'sonner';
 
 interface ProductFormProps {

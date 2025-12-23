@@ -1,6 +1,6 @@
 import React, { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { getLinksForContract, addLink, removeLink } from "@/integrations/supabase/repositories/contractInvoiceLinkRepository";
+import { getLinksForContract, addLink, removeLink } from "@/modules/contracts/data/contractInvoiceLinkRepository";
 import { useAuth } from "@/shared/hooks/useAuth";
 import { useGlobalData } from "@/shared/hooks/use-global-data";
 import { Card, CardHeader, CardTitle, CardContent } from "@/shared/ui/card";

@@ -15,7 +15,7 @@ import ExpenseListView from '@/modules/invoices/components/expenses/ExpenseListV
 import { formatCurrency } from '@/shared/lib/utils';
 import { Checkbox } from '@/shared/ui/checkbox';
 import { LayoutGrid, List as ListIcon } from 'lucide-react';
-import { saveInvoice } from '@/integrations/supabase/repositories/invoiceRepository';
+import { saveInvoice } from '@/modules/invoices/data/invoiceRepository';
 import { toast } from 'sonner';
 import { useQueryClient } from '@tanstack/react-query';
 

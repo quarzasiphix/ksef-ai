@@ -7,7 +7,7 @@ import { pl } from "date-fns/locale";
 import { toast } from "sonner";
 import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuItem } from "@/shared/ui/dropdown-menu";
 import type { ZusPayment, ZusType } from "@/shared/types/zus";
-import type { FiledTaxForm } from "@/integrations/supabase/repositories/filedTaxFormsRepository";
+import type { FiledTaxForm } from "@/modules/accounting/data/filedTaxFormsRepository";
 import TaxReportDialog from "./TaxReportDialog";
 
 export interface TaxReport {

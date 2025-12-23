@@ -10,7 +10,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { RadioGroup, RadioGroupItem } from "@/shared/ui/radio-group";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/shared/ui/form";
 import { Product } from "@/shared/types";
-import { saveProduct } from "@/integrations/supabase/repositories/productRepository";
+import { saveProduct } from "@/modules/products/data/productRepository";
 import { toast } from "sonner";
 import { useAuth } from "@/shared/context/AuthContext";
 

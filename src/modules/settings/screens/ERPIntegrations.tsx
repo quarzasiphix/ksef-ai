@@ -30,7 +30,7 @@ import {
   ChevronUp
 } from "lucide-react";
 import { ERPProvider, ERPConnectionStatus, ERP_PROVIDERS, ERPConnection } from "@/shared/types/erp";
-import { getERPConnections, deleteERPConnection, testERPConnection } from "@/integrations/supabase/repositories/erpRepository";
+import { getERPConnections, deleteERPConnection, testERPConnection } from "@/modules/spolka/data/erpRepository";
 
 export default function ERPIntegrations() {
   const { user } = useAuth();

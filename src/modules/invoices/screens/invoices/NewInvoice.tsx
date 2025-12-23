@@ -42,13 +42,13 @@ import {
 import { cn } from "@/shared/lib/utils";
 
 // Supabase Repositories
-import { getInvoiceNumberingSettings } from "@/integrations/supabase/repositories/invoiceNumberingSettingsRepository";
+import { getInvoiceNumberingSettings } from "@/modules/invoices/data/invoiceNumberingSettingsRepository";
 const invoiceRepository = { save: saveInvoice, get: getInvoice };
-import { saveInvoice, getInvoice } from "@/integrations/supabase/repositories/invoiceRepository";
-import { saveExpense } from "@/integrations/supabase/repositories/expenseRepository";
-import { addLink as addContractLink } from "@/integrations/supabase/repositories/contractInvoiceLinkRepository";
-import { getBankAccountsForProfile, addBankAccount } from "@/integrations/supabase/repositories/bankAccountRepository";
-import { getCashAccounts, createCashTransaction } from "@/integrations/supabase/repositories/kasaRepository";
+import { saveInvoice, getInvoice } from "@/modules/invoices/data/invoiceRepository";
+import { saveExpense } from "@/modules/invoices/data/expenseRepository";
+import { addLink as addContractLink } from "@/modules/contracts/data/contractInvoiceLinkRepository";
+import { getBankAccountsForProfile, addBankAccount } from "@/modules/banking/data/bankAccountRepository";
+import { getCashAccounts, createCashTransaction } from "@/modules/accounting/data/kasaRepository";
 import type { CashAccount } from "@/modules/accounting/kasa";
 
 // UI Components
@@ -616,7 +616,7 @@ const NewInvoice = React.forwardRef<{
       }
       // Prefill product (fetch product and add as item)
       if (urlProductId && items.length === 0 && user?.id) {
-        import('@/integrations/supabase/repositories/productRepository').then(async mod => {
+        import('@/modules/products/data/productRepository').then(async mod => {
           const allProducts = await mod.getProducts(user.id);
           const found = allProducts.find(p => p.id === urlProductId);
           if (found) {

@@ -6,7 +6,7 @@ import { Textarea } from "@/shared/ui/textarea";
 import { Label } from "@/shared/ui/label";
 import { Product, InvoiceType, VatType, TransactionType } from "@/shared/types";
 import { Edit, Plus } from "lucide-react";
-import { saveProduct } from "@/integrations/supabase/repositories/productRepository";
+import { saveProduct } from "@/modules/products/data/productRepository";
 import { toast } from "sonner";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/shared/ui/select";
 import { useAuth } from "@/shared/context/AuthContext";

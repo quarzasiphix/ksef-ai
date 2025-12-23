@@ -3,7 +3,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/shared/ui/di
 import { Button } from "@/shared/ui/button";
 import { toast } from "sonner";
 import SignatureCanvas from "react-signature-canvas";
-import { signContract } from "@/integrations/supabase/repositories/contractSignatureRepository";
+import { signContract } from "@/modules/contracts/data/contractSignatureRepository";
 
 interface SignaturePadModalProps {
   open: boolean;

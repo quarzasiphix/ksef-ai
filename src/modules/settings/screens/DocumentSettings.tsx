@@ -5,7 +5,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/shared/ui/card';
 import { ArrowLeft, FileText, Share2, Loader2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { generateInvoiceNumber } from '@/shared/lib/invoice-utils';
-import { getInvoiceNumberingSettings, upsertInvoiceNumberingSettings } from '@/integrations/supabase/repositories/invoiceNumberingSettingsRepository';
+import { getInvoiceNumberingSettings, upsertInvoiceNumberingSettings } from '@/modules/invoices/data/invoiceNumberingSettingsRepository';
 import { supabase } from '@/integrations/supabase/client';
 
 const DocumentSettings = () => {

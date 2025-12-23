@@ -14,7 +14,7 @@ import {
   FormMessage,
 } from "@/shared/ui/form";
 import { Customer } from "@/shared/types";
-import { saveCustomer } from "@/integrations/supabase/repositories/customerRepository";
+import { saveCustomer } from "@/modules/customers/data/customerRepository";
 import { useAuth } from "@/shared/context/AuthContext";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/shared/ui/dialog";
 import {

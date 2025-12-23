@@ -3,7 +3,7 @@ import { ArrowLeft } from 'lucide-react';
 import { Button } from '@/shared/ui/button';
 import { Link, useParams } from 'react-router-dom';
 import BusinessProfileForm from './BusinessProfileForm';
-import { getBusinessProfileById } from '@/integrations/supabase/repositories/businessProfileRepository';
+import { getBusinessProfileById } from '@/modules/settings/data/businessProfileRepository';
 import { BusinessProfile } from '@/shared/types';
 import { useAuth } from '@/shared/hooks/useAuth';
 

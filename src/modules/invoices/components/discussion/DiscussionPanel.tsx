@@ -19,7 +19,7 @@ import {
   subscribeToThreadMessages,
   DiscussionMessage,
   DiscussionThread
-} from '@/integrations/supabase/repositories/discussionRepository';
+} from '@/modules/invoices/data/discussionRepository';
 import { toast } from 'sonner';
 
 interface DiscussionPanelProps {

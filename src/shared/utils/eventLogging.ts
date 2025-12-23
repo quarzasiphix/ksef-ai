@@ -7,7 +7,7 @@
  * ONLY FOR SPÓŁKI (sp. z o.o. and S.A.)
  */
 
-import { logEvent } from '@/integrations/supabase/repositories/eventsRepository';
+import { logEvent } from '@/modules/accounting/data/eventsRepository';
 import type { EventType } from '@/shared/types/events';
 
 interface LogEventParams {

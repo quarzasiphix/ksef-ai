@@ -24,13 +24,13 @@ import ZusPaymentDialog from "@/modules/accounting/components/ZusPaymentDialog";
 import { VatThresholdTracker } from "@/modules/accounting/components/VatThresholdTracker";
 import CapitalContributionDialog from "@/modules/accounting/components/CapitalContributionDialog";
 import NextActionPanel from "@/modules/accounting/components/NextActionPanel";
-import { getZusPayments, addZusPayment, updateZusPayment } from "@/integrations/supabase/repositories/zusRepository";
-import { getEquityTransactions } from "@/integrations/supabase/repositories/accountingRepository";
+import { getZusPayments, addZusPayment, updateZusPayment } from "@/modules/accounting/data/zusRepository";
+import { getEquityTransactions } from "@/modules/accounting/data/accountingRepository";
 import type { ZusPayment, ZusType } from "@/shared/types/zus";
 import type { EquityTransaction } from "@/modules/accounting/accounting";
 import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuItem } from "@/shared/ui/dropdown-menu";
-import { uploadTaxForm, saveFiledTaxForm } from "@/integrations/supabase/repositories/taxFormRepository";
-import { listFiledTaxForms, FiledTaxForm, updateFiledTaxFormStatus } from "@/integrations/supabase/repositories/filedTaxFormsRepository";
+import { uploadTaxForm, saveFiledTaxForm } from "@/modules/accounting/data/taxFormRepository";
+import { listFiledTaxForms, FiledTaxForm, updateFiledTaxFormStatus } from "@/modules/accounting/data/filedTaxFormsRepository";
 import { getInvoiceValueInPLN } from '@/shared/lib/invoice-utils';
 
 const ZUS_TYPES: ZusType[] = ["społeczne", "zdrowotne", "FP", "FGŚP", "inne"];

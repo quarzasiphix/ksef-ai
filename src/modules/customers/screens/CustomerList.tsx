@@ -15,7 +15,7 @@ import { Badge } from "@/shared/ui/badge";
 import { useGlobalData } from "@/shared/hooks/use-global-data";
 import { Loader2 } from "lucide-react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/shared/ui/tabs";
-import { deleteCustomer } from '@/integrations/supabase/repositories/customerRepository';
+import { deleteCustomer } from '@/modules/customers/data/customerRepository';
 import {
   AlertDialog,
   AlertDialogContent,

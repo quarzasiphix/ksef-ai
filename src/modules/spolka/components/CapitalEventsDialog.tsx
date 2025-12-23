@@ -6,7 +6,7 @@ import { Label } from '@/shared/ui/label';
 import { Textarea } from '@/shared/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/shared/ui/select';
 import { toast } from 'sonner';
-import { saveCapitalEvent } from '@/integrations/supabase/repositories/spolkaRepository';
+import { saveCapitalEvent } from '@/modules/spolka/data/spolkaRepository';
 import type { CapitalEventType } from '@/modules/spolka/spolka';
 import { getCapitalEventTypeLabel } from '@/modules/spolka/spolka';
 

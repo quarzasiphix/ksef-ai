@@ -5,7 +5,7 @@ import { Label } from '@/shared/ui/label';
 import { Badge } from '@/shared/ui/badge';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/shared/ui/tooltip';
 import { AlertCircle, CheckCircle2, Users, Briefcase, Info } from 'lucide-react';
-import { getDecisions } from '@/integrations/supabase/repositories/decisionsRepository';
+import { getDecisions } from '@/modules/spolka/data/decisionsRepository';
 import { DECISION_CATEGORY_LABELS, DECISION_TYPE_LABELS } from '@/modules/decisions/decisions';
 import type { DecisionCategory } from '@/modules/decisions/decisions';
 

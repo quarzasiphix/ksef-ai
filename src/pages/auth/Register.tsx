@@ -9,7 +9,7 @@ import { Input } from "@/shared/ui/input";
 import { Label } from "@/shared/ui/label";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/shared/ui/card";
 import { Mail, ArrowRight, Lock, ChevronDown } from "lucide-react";
-import { getBusinessProfiles } from '@/integrations/supabase/repositories/businessProfileRepository';
+import { getBusinessProfiles } from '@/modules/settings/data/businessProfileRepository';
 import { FunnelEvents } from '@/shared/lib/analytics/funnelTracker';
 
 // Helper to get email provider link

@@ -3,7 +3,7 @@ import React, { createContext, useState, useEffect, useContext } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useQueryClient } from "@tanstack/react-query";
 import { User, Session } from "@supabase/supabase-js";
-import { checkPremiumStatus } from "@/integrations/supabase/repositories/PremiumRepository";
+import { checkPremiumStatus } from "@/modules/premium/data/PremiumRepository";
 import { cleanupAuthState } from "@/shared/lib/auth-utils";
 import { getParentDomain } from "@/shared/config/domains";
 import { clearCrossDomainAuthToken, getCrossDomainAuthToken } from "@/shared/lib/crossDomainAuth";

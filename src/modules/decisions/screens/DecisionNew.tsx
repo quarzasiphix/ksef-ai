@@ -14,10 +14,10 @@ import { Label } from '@/shared/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/shared/ui/select';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/shared/ui/tabs';
 import { Shield, Sparkles, FileText } from 'lucide-react';
-import { createDecision, getDecisions } from '@/integrations/supabase/repositories/decisionsRepository';
+import { createDecision, getDecisions } from '@/modules/spolka/data/decisionsRepository';
 import { DecisionTemplateSelector } from '@/modules/decisions/components/DecisionTemplateSelector';
-import { createDecisionFromTemplate } from '@/integrations/supabase/repositories/decisionTemplatesRepository';
-import type { DecisionTemplate } from '@/integrations/supabase/repositories/decisionTemplatesRepository';
+import { createDecisionFromTemplate } from '@/modules/spolka/data/decisionTemplatesRepository';
+import type { DecisionTemplate } from '@/modules/spolka/data/decisionTemplatesRepository';
 import {
   DECISION_CATEGORY_LABELS,
   DECISION_STATUS_LABELS,

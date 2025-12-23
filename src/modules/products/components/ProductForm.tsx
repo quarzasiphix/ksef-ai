@@ -11,7 +11,7 @@ import { RadioGroup, RadioGroupItem } from "@/shared/ui/radio-group";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/shared/ui/dialog";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/shared/ui/form";
 import { Product } from "@/shared/types";
-import { saveProduct } from "@/integrations/supabase/repositories/productRepository";
+import { saveProduct } from "@/modules/products/data/productRepository";
 import { toast } from "sonner";
 import { useAuth } from "@/shared/context/AuthContext";
 

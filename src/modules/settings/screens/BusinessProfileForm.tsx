@@ -18,8 +18,8 @@ import {
   FormMessage,
 } from "@/shared/ui/form";
 import { BusinessProfile } from "@/shared/types";
-import { saveBusinessProfile, getBusinessProfiles, checkTaxIdExists } from "@/integrations/supabase/repositories/businessProfileRepository";
-import { initializeFoundationalDecisions } from '@/integrations/supabase/repositories/decisionsRepository';
+import { saveBusinessProfile, getBusinessProfiles, checkTaxIdExists } from "@/modules/settings/data/businessProfileRepository";
+import { initializeFoundationalDecisions } from '@/modules/spolka/data/decisionsRepository';
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/shared/hooks/useAuth";
 import { useIsMobile } from "@/shared/hooks/use-mobile";

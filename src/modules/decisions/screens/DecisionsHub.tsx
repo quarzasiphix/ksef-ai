@@ -11,7 +11,7 @@ import {
   Plus, Eye, Edit, AlertCircle, CheckCircle2, Clock,
   ArrowUpCircle, ArrowDownCircle, FileCheck, Receipt, ChevronRight
 } from 'lucide-react';
-import { getDecisions, getDecisionWithUsage } from '@/integrations/supabase/repositories/decisionsRepository';
+import { getDecisions, getDecisionWithUsage } from '@/modules/spolka/data/decisionsRepository';
 import type { Decision } from '@/modules/decisions/decisions';
 import { DECISION_TYPE_LABELS, DECISION_CATEGORY_LABELS, DECISION_STATUS_LABELS } from '@/modules/decisions/decisions';
 

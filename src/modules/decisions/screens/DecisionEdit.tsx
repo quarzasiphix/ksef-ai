@@ -13,7 +13,7 @@ import { Textarea } from '@/shared/ui/textarea';
 import { Label } from '@/shared/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/shared/ui/select';
 import { Shield } from 'lucide-react';
-import { getDecision, getDecisions, updateDecision } from '@/integrations/supabase/repositories/decisionsRepository';
+import { getDecision, getDecisions, updateDecision } from '@/modules/spolka/data/decisionsRepository';
 import {
   DECISION_CATEGORY_LABELS,
   DECISION_STATUS_LABELS,

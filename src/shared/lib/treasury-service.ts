@@ -14,7 +14,7 @@ import {
   createAdjustment,
   reverseMovement,
   getAccountMovements,
-} from '@/integrations/supabase/repositories/treasuryRepository';
+} from '@/modules/accounting/data/treasuryRepository';
 
 import type {
   PaymentAccount,

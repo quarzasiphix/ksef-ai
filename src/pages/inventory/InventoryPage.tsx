@@ -1,7 +1,7 @@
 import React, { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { getProducts } from "@/integrations/supabase/repositories/productRepository";
-import { createInventoryMovement } from "@/integrations/supabase/repositories/inventoryRepository";
+import { getProducts } from "@/modules/products/data/productRepository";
+import { createInventoryMovement } from "@/modules/accounting/data/inventoryRepository";
 import { useAuth } from "@/shared/context/AuthContext";
 import { Button } from "@/shared/ui/button";
 import { Input } from "@/shared/ui/input";

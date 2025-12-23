@@ -1,6 +1,6 @@
 import React, { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { getLinksForInvoice, addLink, removeLink } from "@/integrations/supabase/repositories/contractInvoiceLinkRepository";
+import { getLinksForInvoice, addLink, removeLink } from "@/modules/contracts/data/contractInvoiceLinkRepository";
 import { useAuth } from "@/shared/hooks/useAuth";
 import { Card, CardHeader, CardTitle, CardContent } from "@/shared/ui/card";
 import { Button } from "@/shared/ui/button";
@@ -27,7 +27,7 @@ const ContractsForInvoice: React.FC<Props> = ({ invoiceId }) => {
     queryKey: ["allContracts", user?.id],
     queryFn: async () => {
       if (!user?.id) return [];
-      const { getContracts } = await import("@/integrations/supabase/repositories/contractRepository");
+      const { getContracts } = await import("@/modules/contracts/data/contractRepository");
       return getContracts(user.id);
     },
     enabled: !!user?.id,

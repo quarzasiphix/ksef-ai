@@ -26,7 +26,7 @@ import {
   type CITAdvance,
   type CITAnnualDeclaration,
   type CITAdvanceStatus,
-} from '@/integrations/supabase/repositories/citRepository';
+} from '@/modules/accounting/data/citRepository';
 
 const CITDashboard = () => {
   const navigate = useNavigate();

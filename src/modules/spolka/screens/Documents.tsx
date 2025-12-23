@@ -26,7 +26,7 @@ import {
   type CompanyDocument,
   type DocumentCategory,
   DOCUMENT_CATEGORY_LABELS,
-} from '@/integrations/supabase/repositories/documentsRepository';
+} from '@/modules/contracts/data/documentsRepository';
 
 const CATEGORY_ICONS: Record<DocumentCategory, React.ReactNode> = {
   contracts_vehicles: <Car className="h-5 w-5" />,

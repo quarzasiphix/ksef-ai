@@ -4,7 +4,7 @@ import { EditableInvoiceItemsTable } from "@/modules/invoices/components/Editabl
 import { calculateItemValues } from "@/shared/lib/invoice-utils";
 import { InvoiceItem, InvoiceType, Product, VatExemptionReason } from "@/shared/types";
 import { TransactionType } from "@/shared/types/common";
-import { getProducts } from "@/integrations/supabase/repositories/productRepository";
+import { getProducts } from "@/modules/products/data/productRepository";
 import { toast } from "sonner";
 
 interface InvoiceItemsFormProps {

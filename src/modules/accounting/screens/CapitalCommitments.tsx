@@ -13,7 +13,7 @@ import {
   Plus, Eye, ArrowRight, Building, Coins, AlertCircle,
   CheckCircle2, Clock, ChevronRight, Info
 } from 'lucide-react';
-import { getCapitalCommitmentsByBusinessProfile } from '@/integrations/supabase/repositories/assetsRepository';
+import { getCapitalCommitmentsByBusinessProfile } from '@/modules/accounting/data/assetsRepository';
 import { ASSET_CLASS_LABELS, ASSET_STATUS_LABELS } from '@/shared/types/assets';
 import { formatCurrency } from '@/shared/lib/invoice-utils';
 

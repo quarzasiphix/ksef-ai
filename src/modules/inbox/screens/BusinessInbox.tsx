@@ -23,7 +23,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/shared/hooks/useAuth";
 import { useBusinessProfile } from "@/shared/context/BusinessProfileContext";
 import { formatCurrency } from "@/shared/lib/utils";
-import { getReceivedInvoicesWithSenders } from "@/integrations/supabase/repositories/receivedInvoicesRepository";
+import { getReceivedInvoicesWithSenders } from "@/modules/invoices/data/receivedInvoicesRepository";
 import { Invoice, InvoiceType, TransactionType, InvoiceStatus } from "@/shared/types";
 import { format } from "date-fns";
 import { pl } from "date-fns/locale";

@@ -10,7 +10,7 @@ import {
   DollarSign, Calendar
 } from 'lucide-react';
 import { toast } from 'sonner';
-import { getContractsByBusinessProfile } from '@/integrations/supabase/repositories/contractRepository';
+import { getContractsByBusinessProfile } from '@/modules/contracts/data/contractRepository';
 import type { Contract } from '@/shared/types';
 import { Breadcrumbs } from "@/components/seo/Breadcrumbs";
 import {

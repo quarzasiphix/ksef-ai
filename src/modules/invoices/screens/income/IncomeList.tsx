@@ -32,13 +32,13 @@ import {
 } from "@/shared/ui/dropdown-menu";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/shared/ui/tabs";
 import { toast } from "sonner";
-import { deleteInvoice, saveInvoice } from "@/integrations/supabase/repositories/invoiceRepository";
+import { deleteInvoice, saveInvoice } from "@/modules/invoices/data/invoiceRepository";
 import { useQueryClient } from "@tanstack/react-query";
 import { generateInvoicePdf, getInvoiceFileName } from "@/shared/lib/pdf-utils";
 import { formatCurrency } from "@/shared/lib/invoice-utils";
 import { useQuery } from "@tanstack/react-query";
-import { getBankAccountsForProfile } from "@/integrations/supabase/repositories/bankAccountRepository";
-import { getBusinessProfileById } from "@/integrations/supabase/repositories/businessProfileRepository";
+import { getBankAccountsForProfile } from "@/modules/banking/data/bankAccountRepository";
+import { getBusinessProfileById } from "@/modules/settings/data/businessProfileRepository";
 import { Checkbox } from "@/shared/ui/checkbox";
 import { supabase } from "@/integrations/supabase/client";
 

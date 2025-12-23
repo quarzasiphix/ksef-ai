@@ -39,12 +39,12 @@ import {
   type GeneratedDocument,
   type DocumentTemplate,
   type DocumentCategory,
-} from '@/integrations/supabase/repositories/documentsRepository';
+} from '@/modules/contracts/data/documentsRepository';
 import { cn } from '@/shared/lib/utils';
 import { FOLDER_TYPE_LABELS, type FolderType } from '@/modules/contracts/documents';
-import { getContractsByBusinessProfile } from '@/integrations/supabase/repositories/contractRepository';
+import { getContractsByBusinessProfile } from '@/modules/contracts/data/contractRepository';
 import type { Contract } from '@/shared/types';
-import { getDecisions } from '@/integrations/supabase/repositories/decisionsRepository';
+import { getDecisions } from '@/modules/spolka/data/decisionsRepository';
 import type { Decision } from '@/modules/decisions/decisions';
 import { Breadcrumbs } from '@/components/seo/Breadcrumbs';
 import NextActionPanel from '@/modules/accounting/components/NextActionPanel';

@@ -5,7 +5,7 @@ import { Badge } from "@/shared/ui/badge";
 import { Card, CardContent } from "@/shared/ui/card";
 import { Download, FileText, AlertCircle, CheckCircle, Clock } from "lucide-react";
 import type { TaxReport } from "./TaxReportsCard";
-import type { FiledTaxForm } from "@/integrations/supabase/repositories/filedTaxFormsRepository";
+import type { FiledTaxForm } from "@/modules/accounting/data/filedTaxFormsRepository";
 
 interface TaxReportDialogProps {
   open: boolean;

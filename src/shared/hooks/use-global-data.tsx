@@ -1,9 +1,9 @@
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { getInvoices } from "@/integrations/supabase/repositories/invoiceRepository";
-import { getBusinessProfiles } from "@/integrations/supabase/repositories/businessProfileRepository";
-import { getCustomers } from "@/integrations/supabase/repositories/customerRepository";
-import { getProducts } from "@/integrations/supabase/repositories/productRepository";
-import { getExpenses } from "@/integrations/supabase/repositories/expenseRepository";
+import { getInvoices } from "@/modules/invoices/data/invoiceRepository";
+import { getBusinessProfiles } from "@/modules/settings/data/businessProfileRepository";
+import { getCustomers } from "@/modules/customers/data/customerRepository";
+import { getProducts } from "@/modules/products/data/productRepository";
+import { getExpenses } from "@/modules/invoices/data/expenseRepository";
 import { useAuth } from "@/shared/hooks/useAuth";
 import React, { useEffect, useRef } from "react";
 import { useBusinessProfile } from "@/shared/context/BusinessProfileContext";

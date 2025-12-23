@@ -20,14 +20,14 @@ import {
 } from 'lucide-react';
 import { useAuth } from '@/shared/hooks/useAuth';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { getBusinessProfiles } from '@/integrations/supabase/repositories/businessProfileRepository';
-import { getPendingInvitations, acceptInvitation, declineInvitation, CompanyInvitation } from '@/integrations/supabase/repositories/invitationRepository';
+import { getBusinessProfiles } from '@/modules/settings/data/businessProfileRepository';
+import { getPendingInvitations, acceptInvitation, declineInvitation, CompanyInvitation } from '@/modules/spolka/data/invitationRepository';
 import OnboardingCustomerForm, { OnboardingCustomerFormHandle } from './OnboardingCustomerForm';
 import OnboardingProductForm, { OnboardingProductFormHandle } from './OnboardingProductForm';
 import OnboardingProfileForm, { OnboardingProfileFormHandle } from './OnboardingProfileForm';
 import StepNavigation from './StepNavigation';
 import { BankAccountEditDialog } from '@/modules/banking/components/BankAccountEditDialog';
-import { getBankAccountsForProfile, addBankAccount } from '@/integrations/supabase/repositories/bankAccountRepository';
+import { getBankAccountsForProfile, addBankAccount } from '@/modules/banking/data/bankAccountRepository';
 import { toast } from 'sonner';
 import { useBusinessProfile } from '@/shared/context/BusinessProfileContext';
 import { motion } from 'framer-motion';

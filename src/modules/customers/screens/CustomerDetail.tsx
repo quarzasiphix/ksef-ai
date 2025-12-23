@@ -10,7 +10,7 @@ import { format } from "date-fns";
 import { pl } from "date-fns/locale";
 import { Edit, ArrowLeft, FileText, Plus, MessageCircle, Mail, Phone } from "lucide-react";
 import { useGlobalData } from "@/shared/hooks/use-global-data";
-import { getCustomerWithLinkedProfile } from "@/integrations/supabase/repositories/customerRepository";
+import { getCustomerWithLinkedProfile } from "@/modules/customers/data/customerRepository";
 import InvoiceCard from "@/modules/invoices/components/InvoiceCard";
 import ReceivedInvoicesTab from "@/modules/invoices/components/ReceivedInvoicesTab";
 import { Customer } from "@/shared/types";

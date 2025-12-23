@@ -58,7 +58,7 @@ import {
   removeMember,
   CompanyMember,
   CompanyInvitation,
-} from '@/integrations/supabase/repositories/invitationRepository';
+} from '@/modules/spolka/data/invitationRepository';
 import {
   DropdownMenu,
   DropdownMenuContent,

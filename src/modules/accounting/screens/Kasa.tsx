@@ -62,7 +62,7 @@ import { format } from 'date-fns';
 import { pl } from 'date-fns/locale';
 import { Breadcrumbs } from "@/components/seo/Breadcrumbs";
 import DecisionPicker from '@/modules/decisions/components/DecisionPicker';
-import { logEvent } from '@/integrations/supabase/repositories/eventsRepository';
+import { logEvent } from '@/modules/accounting/data/eventsRepository';
 import {
   getCashAccounts,
   createCashAccount,
@@ -77,8 +77,8 @@ import {
   getLastReconciliation,
   getCashSettings,
   createCashTransfer,
-} from '@/integrations/supabase/repositories/kasaRepository';
-import { getBankAccountsForProfile } from '@/integrations/supabase/repositories/bankAccountRepository';
+} from '@/modules/accounting/data/kasaRepository';
+import { getBankAccountsForProfile } from '@/modules/banking/data/bankAccountRepository';
 import type { BankAccount } from '@/modules/banking/bank';
 import type {
   CashAccount,

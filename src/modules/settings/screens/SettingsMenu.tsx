@@ -14,7 +14,7 @@ import SupportFooter from "@/components/layout/SupportFooter";
 import { useHeartbeat } from "@/shared/hooks/useHeartbeat";
 import AccountOnboardingWidget from '@/modules/onboarding/components/welcome/AccountOnboardingWidget';
 import { useQuery } from "@tanstack/react-query";
-import { getBusinessProfiles } from "@/integrations/supabase/repositories/businessProfileRepository";
+import { getBusinessProfiles } from "@/modules/settings/data/businessProfileRepository";
 
 const SettingsMenu = () => {
   const { isPremium, user, supabase } = useAuth();

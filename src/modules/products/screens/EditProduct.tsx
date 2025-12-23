@@ -4,7 +4,7 @@ import { useParams, useNavigate, Link } from "react-router-dom";
 import { Button } from "@/shared/ui/button";
 import { ArrowLeft } from "lucide-react";
 import { Product } from "@/shared/types/index";
-import { getProducts } from "@/integrations/supabase/repositories/productRepository";
+import { getProducts } from "@/modules/products/data/productRepository";
 import ProductWithInventoryForm from "@/modules/products/components/ProductWithInventoryForm";
 import { toast } from "sonner";
 import { useAuth } from "@/shared/context/AuthContext";

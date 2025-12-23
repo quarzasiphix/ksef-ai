@@ -19,7 +19,7 @@ import {
   ChevronRight,
   AlertCircle
 } from 'lucide-react';
-import { getCompanyEvents, getEventStats } from '@/integrations/supabase/repositories/eventsRepository';
+import { getCompanyEvents, getEventStats } from '@/modules/accounting/data/eventsRepository';
 import { EVENT_TYPE_LABELS, EVENT_TYPE_COLORS, type EventType, type CompanyEvent } from '@/shared/types/events';
 import { formatDistanceToNow } from 'date-fns';
 import { pl } from 'date-fns/locale';

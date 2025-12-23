@@ -6,7 +6,7 @@ import { Button } from '@/shared/ui/button';
 import { Plus, ArrowLeft, TrendingUp, TrendingDown } from 'lucide-react';
 import { format } from 'date-fns';
 import { pl } from 'date-fns/locale';
-import { getCapitalEvents } from '@/integrations/supabase/repositories/spolkaRepository';
+import { getCapitalEvents } from '@/modules/spolka/data/spolkaRepository';
 import { supabase } from '@/integrations/supabase/client';
 import type { CapitalEvent } from '@/modules/spolka/spolka';
 import { getCapitalEventTypeLabel } from '@/modules/spolka/spolka';

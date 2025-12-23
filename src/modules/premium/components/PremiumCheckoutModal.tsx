@@ -10,7 +10,7 @@ import { Badge } from "@/shared/ui/badge";
 import { RadioGroup, RadioGroupItem } from "@/shared/ui/radio-group";
 import { Label } from "@/shared/ui/label";
 import { BlikPaymentModal } from "./BlikPaymentModal";
-import { checkTrialEligibility } from "@/integrations/supabase/repositories/PremiumRepository";
+import { checkTrialEligibility } from "@/modules/premium/data/PremiumRepository";
 
 interface PremiumCheckoutModalProps {
   isOpen: boolean;

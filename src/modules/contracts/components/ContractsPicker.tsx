@@ -20,7 +20,7 @@ const ContractsPicker: React.FC<Props> = ({ selected, onAdd, label = "Dodaj umow
     queryKey: ["allContracts", user?.id],
     queryFn: async () => {
       if (!user?.id) return [] as Contract[];
-      const { getContracts } = await import("@/integrations/supabase/repositories/contractRepository");
+      const { getContracts } = await import("@/modules/contracts/data/contractRepository");
       return getContracts(user.id);
     },
     enabled: !!user?.id,

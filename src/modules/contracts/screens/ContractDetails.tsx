@@ -1,8 +1,8 @@
 import React from "react";
 import { useParams, useNavigate, Link } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
-import { getContract } from "@/integrations/supabase/repositories/contractRepository";
-import { getLinksForContract } from "@/integrations/supabase/repositories/contractInvoiceLinkRepository";
+import { getContract } from "@/modules/contracts/data/contractRepository";
+import { getLinksForContract } from "@/modules/contracts/data/contractInvoiceLinkRepository";
 import { Card, CardHeader, CardTitle, CardContent } from "@/shared/ui/card";
 import { Button } from "@/shared/ui/button";
 import { useGlobalData } from "@/shared/hooks/use-global-data";

@@ -17,15 +17,15 @@ import {
 import { BusinessProfileSelector } from "@/modules/invoices/components/selectors/BusinessProfileSelector";
 import { CustomerSelector } from "@/modules/invoices/components/selectors/CustomerSelector";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { saveContract, getContract } from "@/integrations/supabase/repositories/contractRepository";
-import { getFolderTree } from "@/integrations/supabase/repositories/documentsRepository";
+import { saveContract, getContract } from "@/modules/contracts/data/contractRepository";
+import { getFolderTree } from "@/modules/contracts/data/documentsRepository";
 import { useAuth } from "@/shared/hooks/useAuth";
 import { toast } from "sonner";
 import { useNavigate, useParams } from "react-router-dom";
 import { Contract } from "@/shared/types";
 import InvoicesForContract from "@/modules/contracts/components/InvoicesForContract";
 import InvoicesPicker from "@/modules/contracts/components/InvoicesPicker";
-import { addLink as addContractLink } from "@/integrations/supabase/repositories/contractInvoiceLinkRepository";
+import { addLink as addContractLink } from "@/modules/contracts/data/contractInvoiceLinkRepository";
 import type { FolderTreeNode } from "@/modules/contracts/documents";
 import { CONTRACT_TYPE_LABELS } from "@/modules/contracts/documents";
 import { useBusinessProfile } from "@/shared/context/BusinessProfileContext";

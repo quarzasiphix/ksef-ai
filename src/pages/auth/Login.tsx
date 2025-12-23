@@ -1,7 +1,7 @@
 import React, { useState } from "react";
 import { useNavigate, Link } from "react-router-dom";
 import { useAuth } from "@/shared/hooks/useAuth";
-import { getBusinessProfiles } from '@/integrations/supabase/repositories/businessProfileRepository';
+import { getBusinessProfiles } from '@/modules/settings/data/businessProfileRepository';
 import { Button } from "@/shared/ui/button";
 import { Input } from "@/shared/ui/input";
 import { Label } from "@/shared/ui/label";

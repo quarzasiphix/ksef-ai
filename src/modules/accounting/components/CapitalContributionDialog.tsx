@@ -4,7 +4,7 @@ import { Button } from '@/shared/ui/button';
 import { Input } from '@/shared/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/shared/ui/select';
 import { toast } from 'sonner';
-import { createEquityTransaction } from '@/integrations/supabase/repositories/accountingRepository';
+import { createEquityTransaction } from '@/modules/accounting/data/accountingRepository';
 import type { EquityTransaction } from '@/modules/accounting/accounting';
 import { format } from 'date-fns';
 

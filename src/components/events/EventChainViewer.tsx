@@ -14,7 +14,7 @@ import {
   Filter,
   Download
 } from 'lucide-react';
-import { getCompanyEvents } from '@/integrations/supabase/repositories/eventsRepository';
+import { getCompanyEvents } from '@/modules/accounting/data/eventsRepository';
 import { EVENT_TYPE_LABELS, EVENT_TYPE_COLORS, type EventType } from '@/shared/types/events';
 import { useNavigate } from 'react-router-dom';
 import { formatDistanceToNow } from 'date-fns';

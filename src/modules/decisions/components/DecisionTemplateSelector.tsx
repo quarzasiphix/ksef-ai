@@ -7,8 +7,8 @@ import { Badge } from '@/shared/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/shared/ui/tabs';
 import { ScrollArea } from '@/shared/ui/scroll-area';
 import { Search, Star, Sparkles, TrendingUp, Users, Briefcase, Shield } from 'lucide-react';
-import { getDecisionTemplates } from '@/integrations/supabase/repositories/decisionTemplatesRepository';
-import type { DecisionTemplate } from '@/integrations/supabase/repositories/decisionTemplatesRepository';
+import { getDecisionTemplates } from '@/modules/spolka/data/decisionTemplatesRepository';
+import type { DecisionTemplate } from '@/modules/spolka/data/decisionTemplatesRepository';
 import type { DecisionCategory } from '@/modules/decisions/decisions';
 import { DECISION_CATEGORY_LABELS } from '@/modules/decisions/decisions';
 

@@ -6,7 +6,7 @@ import { Badge } from "@/shared/ui/badge";
 import { formatCurrency } from "@/shared/lib/invoice-utils";
 import { format } from "date-fns";
 import { pl } from "date-fns/locale";
-import { getInvoiceSharesReceived, updateInvoiceShareStatus } from "@/integrations/supabase/repositories/invoiceShareRepository";
+import { getInvoiceSharesReceived, updateInvoiceShareStatus } from "@/modules/invoices/data/invoiceShareRepository";
 import { useAuth } from "@/shared/hooks/useAuth";
 import { toast } from "sonner";
 import { Eye, Check, X, LayoutGrid, List } from "lucide-react";

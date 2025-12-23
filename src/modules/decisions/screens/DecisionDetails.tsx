@@ -20,7 +20,7 @@ import {
   CheckCircle2,
   Clock,
 } from 'lucide-react';
-import { getDecision, getDecisionWithUsage } from '@/integrations/supabase/repositories/decisionsRepository';
+import { getDecision, getDecisionWithUsage } from '@/modules/spolka/data/decisionsRepository';
 import type { DecisionWithUsage } from '@/modules/decisions/decisions';
 import { DECISION_CATEGORY_LABELS, DECISION_STATUS_LABELS, DECISION_TYPE_LABELS } from '@/modules/decisions/decisions';
 

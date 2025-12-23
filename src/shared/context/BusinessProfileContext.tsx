@@ -1,6 +1,6 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import type { BusinessProfile } from '@/shared/types';
-import { getBusinessProfiles } from '@/integrations/supabase/repositories/businessProfileRepository';
+import { getBusinessProfiles } from '@/modules/settings/data/businessProfileRepository';
 import { useQuery } from '@tanstack/react-query';
 import { useAuth } from '@/shared/hooks/useAuth';
 
