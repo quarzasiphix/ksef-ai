@@ -1,18 +1,18 @@
 import React, { Suspense, useEffect } from 'react';
 import { Routes, Route, Navigate } from 'react-router-dom';
-import { SidebarProvider } from '@/components/ui/sidebar';
-import { BusinessProfileProvider } from '@/context/BusinessProfileContext';
+import { SidebarProvider } from '@/shared/ui/sidebar';
+import { BusinessProfileProvider } from '@/shared/context/BusinessProfileContext';
 import Layout from '@/components/layout/Layout';
 import PublicLayout from '@/components/public/PublicLayout';
-import Welcome from '@/components/welcome/Welcome';
+import Welcome from '@/modules/onboarding/components/welcome/Welcome';
 import ShareDocuments from '@/pages/public/ShareDocuments';
 import Login from '@/pages/auth/Login';
 import Register from '@/pages/auth/Register';
 import AuthCallback from '@/pages/auth/AuthCallback';
-import { routes, flattenRoutes, type RouteConfig } from '@/config/routes';
+import { routes, flattenRoutes, type RouteConfig } from '@/shared/config/routes';
 import { AppGate, ProtectedGate, PremiumGate, PublicGate } from './AppGate';
-import { useAuth } from '@/hooks/useAuth';
-import { redirectToLogin } from '@/utils/domainHelpers';
+import { useAuth } from '@/shared/hooks/useAuth';
+import { redirectToLogin } from '@/shared/utils/domainHelpers';
 
 const AppLoadingScreen = () => (
   <div className="flex items-center justify-center h-screen">

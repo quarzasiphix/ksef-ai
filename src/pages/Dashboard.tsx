@@ -1,16 +1,16 @@
 import React, { useState, useEffect } from "react";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { formatCurrency } from "@/lib/invoice-utils";
+import { Card, CardContent, CardHeader, CardTitle } from "@/shared/ui/card";
+import { formatCurrency } from "@/shared/lib/invoice-utils";
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, PieChart, Pie, Cell } from "recharts";
-import { Invoice } from "@/types";
-import InvoiceCard from "@/components/invoices/InvoiceCard";
+import { Invoice } from "@/shared/types";
+import InvoiceCard from "@/modules/invoices/components/InvoiceCard";
 import { Link } from "react-router-dom";
-import { Button } from "@/components/ui/button";
-import { useIsMobile } from "@/hooks/use-mobile";
-import { useGlobalData } from "@/hooks/use-global-data";
-import { useAuth } from "@/hooks/useAuth";
-import { calculateIncomeTax } from "@/lib/tax-utils";
-import { useBusinessProfile } from "@/context/BusinessProfileContext";
+import { Button } from "@/shared/ui/button";
+import { useIsMobile } from "@/shared/hooks/use-mobile";
+import { useGlobalData } from "@/shared/hooks/use-global-data";
+import { useAuth } from "@/shared/hooks/useAuth";
+import { calculateIncomeTax } from "@/shared/lib/tax-utils";
+import { useBusinessProfile } from "@/shared/context/BusinessProfileContext";
 import { 
   FileText, 
   Plus, 
@@ -32,11 +32,11 @@ import {
   Boxes,
   Banknote
 } from "lucide-react";
-import AccountOnboardingWidget from '@/components/welcome/AccountOnboardingWidget';
-import TaxReportsCard, { TaxReport } from '@/components/accounting/TaxReportsCard';
-import { getInvoiceValueInPLN } from "@/lib/invoice-utils";
+import AccountOnboardingWidget from '@/modules/onboarding/components/welcome/AccountOnboardingWidget';
+import TaxReportsCard, { TaxReport } from '@/modules/accounting/components/TaxReportsCard';
+import { getInvoiceValueInPLN } from "@/shared/lib/invoice-utils";
 import { toast } from "sonner";
-import NextActionPanel from "@/components/accounting/NextActionPanel";
+import NextActionPanel from "@/modules/accounting/components/NextActionPanel";
 
 const Dashboard = () => {
   const [monthlySummaries, setMonthlySummaries] = useState<any[]>([]);

@@ -6,32 +6,32 @@ import {
   CardTitle,
   CardContent,
   CardDescription,
-} from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
+} from "@/shared/ui/card";
+import { Button } from "@/shared/ui/button";
+import { Badge } from "@/shared/ui/badge";
 import { Download, Moon, Sun, CreditCard, CheckCircle2, XCircle } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { getPublicShare, markShareViewed } from "@/integrations/supabase/repositories/publicShareRepository";
 import {
   calculateItemValues,
   formatCurrency,
-} from "@/lib/invoice-utils";
+} from "@/shared/lib/invoice-utils";
 import {
   generateInvoicePdf,
   getInvoiceFileName,
-} from "@/lib/pdf-utils";
-import InvoicePDFViewer from "@/components/invoices/InvoicePDFViewer";
-import InvoiceItemsCard from "@/components/invoices/detail/InvoiceItemsCard";
-import ContractorCard from "@/components/invoices/detail/ContractorCard";
-import { InvoicePaymentCard } from "@/components/invoices/detail/InvoicePaymentCard";
+} from "@/shared/lib/pdf-utils";
+import InvoicePDFViewer from "@/modules/invoices/components/InvoicePDFViewer";
+import InvoiceItemsCard from "@/modules/invoices/components/detail/InvoiceItemsCard";
+import ContractorCard from "@/modules/invoices/components/detail/ContractorCard";
+import { InvoicePaymentCard } from "@/modules/invoices/components/detail/InvoicePaymentCard";
 import { format } from "date-fns";
 import { pl } from "date-fns/locale";
-import { InvoiceType } from "@/types";
-import { TransactionType } from "@/types/common";
-import SignaturePadModal from "@/components/contracts/SignaturePadModal";
-import { useAuth } from "@/hooks/useAuth";
+import { InvoiceType } from "@/shared/types";
+import { TransactionType } from "@/shared/types/common";
+import SignaturePadModal from "@/modules/inbox/components/SignaturePadModal";
+import { useAuth } from "@/shared/hooks/useAuth";
 import { toast } from "sonner";
-import { Alert, AlertDescription } from "@/components/ui/alert";
+import { Alert, AlertDescription } from "@/shared/ui/alert";
 
 // Define the signDocument function
 const signDocument = async (contractId: string, signature: string): Promise<string> => {

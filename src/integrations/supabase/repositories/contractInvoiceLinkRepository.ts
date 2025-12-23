@@ -1,5 +1,5 @@
 import { supabase } from "../client";
-import { ContractInvoiceLink } from "@/types";
+import { ContractInvoiceLink } from "@/shared/types";
 
 const TABLE = "invoice_contract_links";
 

@@ -1,6 +1,6 @@
 import { supabase } from "../client";
-import { createTaxDeclarationGenerator, type TaxDeclarationData } from "@/utils/tax/taxDeclarationGenerator";
-import type { Invoice } from "@/types";
+import { createTaxDeclarationGenerator, type TaxDeclarationData } from "@/shared/utils/tax/taxDeclarationGenerator";
+import type { Invoice } from "@/shared/types";
 
 export interface TaxDeclaration {
   id: string;

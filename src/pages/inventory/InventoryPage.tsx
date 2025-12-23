@@ -2,12 +2,12 @@ import React, { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { getProducts } from "@/integrations/supabase/repositories/productRepository";
 import { createInventoryMovement } from "@/integrations/supabase/repositories/inventoryRepository";
-import { useAuth } from "@/context/AuthContext";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
+import { useAuth } from "@/shared/context/AuthContext";
+import { Button } from "@/shared/ui/button";
+import { Input } from "@/shared/ui/input";
 import { toast } from "sonner";
-import { Card, CardTitle } from "@/components/ui/card";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { Card, CardTitle } from "@/shared/ui/card";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/shared/ui/table";
 
 const InventoryPage: React.FC = () => {
   const { user } = useAuth();

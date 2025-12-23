@@ -1,5 +1,5 @@
 import { supabase } from "../client";
-import { BankTransaction } from "@/types/bank";
+import { BankTransaction } from "@/shared/types/bank";
 
 /**
  * Save bank transactions to the database

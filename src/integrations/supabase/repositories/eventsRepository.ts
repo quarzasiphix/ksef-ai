@@ -1,5 +1,5 @@
 import { supabase } from '../client';
-import type { CompanyEvent, CreateEventInput, EnforcementCheck, EventType } from '@/types/events';
+import type { CompanyEvent, CreateEventInput, EnforcementCheck, EventType } from '@/shared/types/events';
 
 // ============================================
 // EVENT CRUD OPERATIONS

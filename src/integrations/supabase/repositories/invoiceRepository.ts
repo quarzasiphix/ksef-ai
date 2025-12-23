@@ -10,12 +10,12 @@ import {
   Company, 
   InvoiceItem as InvoiceItemType,
   PaymentMethod
-} from "@/types";
-import { PaymentMethodDb } from "@/types/common";
-import { toPaymentMethodUi } from "@/lib/invoice-utils";
-import { useAuth } from "@/hooks/useAuth";
+} from "@/shared/types";
+import { PaymentMethodDb } from "@/shared/types/common";
+import { toPaymentMethodUi } from "@/shared/lib/invoice-utils";
+import { useAuth } from "@/shared/hooks/useAuth";
 import { format } from 'date-fns';
-import { getPeriodDates } from '@/lib/date-utils';
+import { getPeriodDates } from '@/shared/lib/date-utils';
 import { shareInvoiceWithUser } from "./invoiceShareRepository";
 import { getCustomers } from "./customerRepository";
 

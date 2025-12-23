@@ -1,6 +1,6 @@
 import { useNavigate } from "react-router-dom";
 import { Seo } from '@/components/seo/Seo';
-import { Button } from "@/components/ui/button";
+import { Button } from "@/shared/ui/button";
 import { Link } from "react-router-dom";
 import {
   FileText,

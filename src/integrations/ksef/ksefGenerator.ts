@@ -1,7 +1,7 @@
 
 // Placeholder file for KSeF generation logic and types
 
-import { Invoice, InvoiceItem, BusinessProfile, Customer } from "@/types";
+import { Invoice, InvoiceItem, BusinessProfile, Customer } from "@/shared/types";
 import { create } from 'xmlbuilder2'; // Import xmlbuilder2
 
 // TODO: Refine KSeF FA_VAT XML structure based on official schema (expected June 2025)

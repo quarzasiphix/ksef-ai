@@ -5,7 +5,7 @@ import type {
   CreateDecisionInput,
   UpdateDecisionInput,
   DecisionStatus,
-} from '@/types/decisions';
+} from '@/shared/types/decisions';
 
 // ============================================
 // DECISION CRUD OPERATIONS
@@ -161,9 +161,54 @@ export async function deleteDecision(id: string): Promise<void> {
 // ============================================
 
 export async function initializeFoundationalDecisions(
-  businessProfileId: string
+  businessProfileId: string,
+  options?: {
+    selectedCategories?: string[];
+    customDecisions?: Array<{
+      title: string;
+      description: string;
+      decision_type: 'strategic_shareholders' | 'operational_board';
+      category: string;
+      scope_description: string;
+    }>;
+  }
 ): Promise<void> {
-  // Call the database function that creates foundational decisions
+  // If custom options provided, create decisions manually
+  if (options?.selectedCategories || options?.customDecisions) {
+    const { FOUNDATIONAL_DECISIONS } = await import('@/shared/types/decisions');
+    
+    // Create selected foundational decisions
+    if (options.selectedCategories && options.selectedCategories.length > 0) {
+      for (const category of options.selectedCategories) {
+        const template = FOUNDATIONAL_DECISIONS.find(d => d.category === category);
+        if (template) {
+          await createDecision({
+            business_profile_id: businessProfileId,
+            ...template,
+          });
+        }
+      }
+    }
+    
+    // Create custom decisions
+    if (options.customDecisions && options.customDecisions.length > 0) {
+      for (const customDecision of options.customDecisions) {
+        await createDecision({
+          business_profile_id: businessProfileId,
+          title: customDecision.title,
+          description: customDecision.description,
+          decision_type: customDecision.decision_type,
+          category: customDecision.category as any,
+          scope_description: customDecision.scope_description,
+          status: 'active',
+        });
+      }
+    }
+    
+    return;
+  }
+  
+  // Default behavior: call the database function that creates all foundational decisions
   const { error } = await supabase.rpc('initialize_foundational_decisions', {
     profile_id: businessProfileId,
   });

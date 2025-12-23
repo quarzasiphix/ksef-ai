@@ -1,7 +1,7 @@
 import React, { useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
-import { useAuth } from '@/hooks/useAuth';
-import { redirectToLogin, redirectToPremium } from '@/utils/domainHelpers';
+import { useAuth } from '@/shared/hooks/useAuth';
+import { redirectToLogin, redirectToPremium } from '@/shared/utils/domainHelpers';
 
 const AppLoadingScreen = () => (
   <div className="flex items-center justify-center h-screen">

@@ -1,13 +1,13 @@
 import React from "react";
 import { Outlet, useLocation } from "react-router-dom";
-import { cn } from "@/lib/utils";
+import { cn } from "@/shared/lib/utils";
 import AppSidebar from "./AppSidebar";
 import Header from "./Header";
 import MobileNavigation from "./MobileNavigation";
-import { useSidebar } from "@/components/ui/sidebar";
+import { useSidebar } from "@/shared/ui/sidebar";
 import Footer from './Footer';
 import { Breadcrumbs } from "@/components/seo/Breadcrumbs";
-import { PageHeaderActionsProvider, usePageHeaderActions } from "@/context/PageHeaderActionsContext";
+import { PageHeaderActionsProvider, usePageHeaderActions } from "@/shared/context/PageHeaderActionsContext";
 
 interface LayoutProps {
   children?: React.ReactNode;

@@ -1,8 +1,8 @@
 import React, { useState } from 'react';
-import { Button } from "@/components/ui/button";
+import { Button } from "@/shared/ui/button";
 import { MessageCircle, HelpCircle, Mail } from "lucide-react";
-import { useSidebar } from "@/components/ui/sidebar";
-import { cn } from "@/lib/utils";
+import { useSidebar } from "@/shared/ui/sidebar";
+import { cn } from "@/shared/lib/utils";
 import { ChatWidget } from "@/components/chat/ChatWidget";
 
 const SupportFooter = () => {

@@ -1,5 +1,5 @@
 import { supabase } from "../client";
-import type { ZusPayment, ZusType } from "@/types/zus";
+import type { ZusPayment, ZusType } from "@/shared/types/zus";
 
 const TABLE = "zus_payments";
 

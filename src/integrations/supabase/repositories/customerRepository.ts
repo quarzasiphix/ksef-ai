@@ -1,5 +1,5 @@
 import { supabase } from "../client";
-import type { Customer } from "@/types";
+import type { Customer } from "@/shared/types";
 
 // Helper to find a business profile by tax ID across all users via RPC (bypasses RLS)
 async function findBusinessProfileByTaxId(taxId: string) {

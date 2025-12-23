@@ -5,7 +5,7 @@ import type {
   ShareholderReimbursement,
   ComplianceDeadline,
   AuditLogEntry 
-} from '@/types/accounting';
+} from '@/shared/types/accounting';
 
 // ============================================================================
 // ACCOUNTING PERIODS (Year-end closing)

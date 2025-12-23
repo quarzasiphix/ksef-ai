@@ -1,9 +1,9 @@
 import React from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
-import { Button } from '@/components/ui/button';
-import { ScrollArea } from '@/components/ui/scroll-area';
+import { Card, CardContent, CardHeader, CardTitle } from '@/shared/ui/card';
+import { Badge } from '@/shared/ui/badge';
+import { Button } from '@/shared/ui/button';
+import { ScrollArea } from '@/shared/ui/scroll-area';
 import { 
   Shield, 
   User, 
@@ -15,7 +15,7 @@ import {
   Download
 } from 'lucide-react';
 import { getCompanyEvents } from '@/integrations/supabase/repositories/eventsRepository';
-import { EVENT_TYPE_LABELS, EVENT_TYPE_COLORS, type EventType } from '@/types/events';
+import { EVENT_TYPE_LABELS, EVENT_TYPE_COLORS, type EventType } from '@/shared/types/events';
 import { useNavigate } from 'react-router-dom';
 import { formatDistanceToNow } from 'date-fns';
 import { pl } from 'date-fns/locale';

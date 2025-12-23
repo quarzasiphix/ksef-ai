@@ -1,9 +1,9 @@
 import React, { useState, useRef, FormEvent } from "react";
-import { Card, CardHeader } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
-import { Switch } from "@/components/ui/switch";
-import { ScrollArea } from "@/components/ui/scroll-area";
-import { Textarea } from "@/components/ui/textarea";
+import { Card, CardHeader } from "@/shared/ui/card";
+import { Button } from "@/shared/ui/button";
+import { Switch } from "@/shared/ui/switch";
+import { ScrollArea } from "@/shared/ui/scroll-area";
+import { Textarea } from "@/shared/ui/textarea";
 import { AlertCircle, Lock } from "lucide-react";
 
 interface Message {

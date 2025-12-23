@@ -1,4 +1,4 @@
-import { Invoice, Expense, BusinessProfile } from "@/types/index";
+import { Invoice, Expense, BusinessProfile } from "@/shared/types/index";
 // Import other necessary types if needed
 
 // Placeholder interfaces for JPK_V7 structure

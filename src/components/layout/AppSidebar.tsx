@@ -27,7 +27,7 @@ import {
   Inbox,
   Landmark
 } from "lucide-react";
-import { cn } from "@/lib/utils";
+import { cn } from "@/shared/lib/utils";
 import {
   Sidebar,
   SidebarContent,
@@ -41,12 +41,12 @@ import {
   SidebarMenuItem,
   SidebarTrigger,
   useSidebar,
-} from "@/components/ui/sidebar";
-import { useAuth } from "@/hooks/useAuth";
-import { Button } from "@/components/ui/button";
+} from "@/shared/ui/sidebar";
+import { useAuth } from "@/shared/hooks/useAuth";
+import { Button } from "@/shared/ui/button";
 import { BusinessProfileSwitcher } from "./BusinessProfileSwitcher";
 import { ThemeToggle } from "@/components/theme/ThemeToggle";
-import { useBusinessProfile } from "@/context/BusinessProfileContext";
+import { useBusinessProfile } from "@/shared/context/BusinessProfileContext";
 
 const AppSidebar = () => {
   const { state } = useSidebar();

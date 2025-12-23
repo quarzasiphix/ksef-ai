@@ -1,5 +1,5 @@
 import { supabase } from "../client";
-import { InventoryMovement, InventoryMovementType } from "@/types/common";
+import { InventoryMovement, InventoryMovementType } from "@/shared/types/common";
 
 export async function getInventoryMovements(userId: string): Promise<InventoryMovement[]> {
   const sb: any = supabase as any;

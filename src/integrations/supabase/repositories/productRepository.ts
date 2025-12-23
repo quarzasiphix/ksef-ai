@@ -1,6 +1,6 @@
 
 import { supabase } from "../client";
-import type { Product } from "@/types/index";
+import type { Product } from "@/shared/types/index";
 
 export async function getProducts(userId: string, productType?: 'income' | 'expense', businessProfileId?: string): Promise<Product[]> {
   let query = supabase

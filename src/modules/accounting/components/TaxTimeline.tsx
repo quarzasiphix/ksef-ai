@@ -1,0 +1,83 @@
+import React from "react";
+import { cn } from "@/shared/lib/utils";
+
+interface TaxTimelineProps {
+  year?: number; // defaults to current year
+  selectedMonth: number; // 0 - 11
+  onMonthSelect: (monthIdx: number) => void;
+}
+
+const monthNames = [
+  "Styczeń",
+  "Luty",
+  "Marzec",
+  "Kwiecień",
+  "Maj",
+  "Czerwiec",
+  "Lipiec",
+  "Sierpień",
+  "Wrzesień",
+  "Paź",
+  "Listopad",
+  "Grudzień",
+];
+
+export const TaxTimeline: React.FC<TaxTimelineProps> = ({ year = new Date().getFullYear(), selectedMonth, onMonthSelect }) => {
+  // Determine current month to style past/future differently
+  const currentMonthIdx = new Date().getMonth();
+
+  return (
+    <div className="w-full select-none">
+      {/* Filter label */}
+      <div className="text-xs text-muted-foreground mb-2">Okres rozliczeniowy</div>
+
+      {/* Timeline - demoted, filter-like */}
+      <div className="flex items-end relative opacity-70 hover:opacity-100 transition-opacity">
+        {monthNames.map((name, idx) => {
+          const isQuarterEnd = (idx + 1) % 3 === 0;
+          const isSelected = idx === selectedMonth;
+          const isPastOrCurrent = idx <= currentMonthIdx;
+
+          return (
+            <div
+              key={name}
+              className={cn(
+                "flex-1 flex flex-col items-center cursor-pointer group",
+                isSelected && "font-bold text-blue-600"
+              )}
+              onClick={() => onMonthSelect(idx)}
+            >
+              {/* Tick - reduced height */}
+              <div
+                className={cn(
+                  "w-0.5",
+                  isQuarterEnd ? "h-5" : "h-3",
+                  isSelected
+                    ? "bg-blue-600 h-6"
+                    : isPastOrCurrent
+                    ? "bg-muted-foreground/40 group-hover:bg-blue-500"
+                    : "bg-muted-foreground/20"
+                )}
+              />
+              {/* Label */}
+              <span
+                className={cn(
+                  "text-[10px] mt-1 whitespace-nowrap",
+                  isSelected
+                    ? "text-blue-600"
+                    : isPastOrCurrent
+                    ? "text-foreground group-hover:text-blue-600"
+                    : "text-muted-foreground"
+                )}
+              >
+                {name.substr(0, 3)}
+              </span>
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+};
+
+export default TaxTimeline; 

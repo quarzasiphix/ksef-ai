@@ -16,7 +16,7 @@ import type {
   CreateTransferInput,
   CreateAdjustmentInput,
   CreateReversalInput,
-} from '@/types/treasury';
+} from '@/shared/types/treasury';
 
 // =============================================================================
 // PAYMENT ACCOUNTS

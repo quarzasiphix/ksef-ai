@@ -1,8 +1,8 @@
 import { useNavigate, useLocation } from "react-router-dom";
-import { useAuth } from "@/hooks/useAuth";
+import { useAuth } from "@/shared/hooks/useAuth";
 import PublicHeader from "./PublicHeader";
 import { Breadcrumbs } from "@/components/seo/Breadcrumbs";
-import { Button } from "@/components/ui/button";
+import { Button } from "@/shared/ui/button";
 import { Link } from "react-router-dom";
 import { 
   FileText, 
@@ -22,7 +22,7 @@ import {
   ArrowUpRight,
   LineChart
 } from "lucide-react";
-import { BusinessProfileProvider } from "@/context/BusinessProfileContext";
+import { BusinessProfileProvider } from "@/shared/context/BusinessProfileContext";
 
 interface PublicLayoutProps {
   children: React.ReactNode;

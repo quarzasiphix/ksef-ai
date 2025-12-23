@@ -1,5 +1,5 @@
 import { supabase } from '../client';
-import type { BoardMember } from '@/types';
+import type { BoardMember } from '@/shared/types';
 
 export async function getBoardMembers(businessProfileId: string): Promise<BoardMember[]> {
   const { data, error } = await supabase

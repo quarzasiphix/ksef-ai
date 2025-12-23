@@ -1,5 +1,5 @@
 
-import { BusinessProfile, Customer, Product, Invoice, InvoiceType, PaymentMethodDb, InvoiceItem, TransactionType } from "@/types/index";
+import { BusinessProfile, Customer, Product, Invoice, InvoiceType, PaymentMethodDb, InvoiceItem, TransactionType } from "@/shared/types/index";
 import { generateKsefXml } from "@/integrations/ksef/ksefGenerator";
 
 // Mock Business Profiles

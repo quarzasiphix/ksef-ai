@@ -1,16 +1,16 @@
 import React, { useState, useEffect } from "react";
 import { useNavigate, Link } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
-import { useAuth } from '@/hooks/useAuth';
-import { useABTest } from '@/hooks/useABTest';
-import { useFunnelTracking } from '@/hooks/useFunnelTracking';
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
+import { useAuth } from '@/shared/hooks/useAuth';
+import { useABTest } from '@/shared/hooks/useABTest';
+import { useFunnelTracking } from '@/shared/hooks/useFunnelTracking';
+import { Button } from "@/shared/ui/button";
+import { Input } from "@/shared/ui/input";
+import { Label } from "@/shared/ui/label";
+import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/shared/ui/card";
 import { Mail, ArrowRight, Lock, ChevronDown } from "lucide-react";
 import { getBusinessProfiles } from '@/integrations/supabase/repositories/businessProfileRepository';
-import { FunnelEvents } from '@/lib/analytics/funnelTracker';
+import { FunnelEvents } from '@/shared/lib/analytics/funnelTracker';
 
 // Helper to get email provider link
 const getEmailProviderLink = (email: string) => {

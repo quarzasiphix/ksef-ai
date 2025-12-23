@@ -9,7 +9,7 @@ import type {
   TaxObligation,
   TaxObligationAttachment,
   PkdCode,
-} from '@/types/spolka';
+} from '@/shared/types/spolka';
 
 // ============================================
 // PKD CODES

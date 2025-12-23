@@ -16,7 +16,7 @@ import type {
   CreateObligationInput,
   AssetStatus,
   CapitalCommitment,
-} from '@/types/assets';
+} from '@/shared/types/assets';
 
 // ============================================================================
 // ASSET CRUD

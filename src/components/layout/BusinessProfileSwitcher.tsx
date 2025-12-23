@@ -6,11 +6,11 @@ import {
   DropdownMenuItem,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
-} from '@/components/ui/dropdown-menu';
-import { Button } from '@/components/ui/button';
-import { useBusinessProfile } from '@/context/BusinessProfileContext';
-import { useAuth } from '@/hooks/useAuth';
-import { cn } from '@/lib/utils';
+} from '@/shared/ui/dropdown-menu';
+import { Button } from '@/shared/ui/button';
+import { useBusinessProfile } from '@/shared/context/BusinessProfileContext';
+import { useAuth } from '@/shared/hooks/useAuth';
+import { cn } from '@/shared/lib/utils';
 
 interface BusinessProfileSwitcherProps {
   isCollapsed?: boolean;

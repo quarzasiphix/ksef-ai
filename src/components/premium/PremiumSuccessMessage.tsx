@@ -1,7 +1,7 @@
 import React from 'react';
 import { Star, Building2, Settings } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Button } from "@/components/ui/button";
+import { Button } from "@/shared/ui/button";
 import { useNavigate } from 'react-router-dom';
 
 interface PremiumSuccessMessageProps {

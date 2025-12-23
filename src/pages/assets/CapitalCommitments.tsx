@@ -3,19 +3,19 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
-import { useBusinessProfile } from '@/context/BusinessProfileContext';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
-import { Badge } from '@/components/ui/badge';
-import { Progress } from '@/components/ui/progress';
+import { useBusinessProfile } from '@/shared/context/BusinessProfileContext';
+import { Card, CardContent, CardHeader, CardTitle } from '@/shared/ui/card';
+import { Button } from '@/shared/ui/button';
+import { Badge } from '@/shared/ui/badge';
+import { Progress } from '@/shared/ui/progress';
 import {
   Shield, Users, Briefcase, TrendingUp, FileText,
   Plus, Eye, ArrowRight, Building, Coins, AlertCircle,
   CheckCircle2, Clock, ChevronRight, Info
 } from 'lucide-react';
 import { getCapitalCommitmentsByBusinessProfile } from '@/integrations/supabase/repositories/assetsRepository';
-import { ASSET_CLASS_LABELS, ASSET_STATUS_LABELS } from '@/types/assets';
-import { formatCurrency } from '@/lib/invoice-utils';
+import { ASSET_CLASS_LABELS, ASSET_STATUS_LABELS } from '@/shared/types/assets';
+import { formatCurrency } from '@/shared/lib/invoice-utils';
 
 const CapitalCommitments = () => {
   const navigate = useNavigate();

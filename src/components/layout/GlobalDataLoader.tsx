@@ -1,6 +1,6 @@
 
 import React, { useEffect, useState } from "react";
-import { useGlobalData } from "@/hooks/use-global-data";
+import { useGlobalData } from "@/shared/hooks/use-global-data";
 import { toast } from "sonner";
 import { Loader } from "lucide-react";
 

@@ -81,7 +81,7 @@ Events are automatically logged via PostgreSQL triggers:
 Use the provided hooks for client-side event logging:
 
 ```typescript
-import { useEventLogging } from '@/hooks/useEventLogging';
+import { useEventLogging } from '@/shared/hooks/useEventLogging';
 
 const { logEvent } = useEventLogging(businessProfileId);
 
@@ -222,7 +222,7 @@ import EventChainViewer from '@/components/events/EventChainViewer';
 
 ```typescript
 // In NewInvoice.tsx
-import { useLogInvoiceEvent } from '@/hooks/useEventLogging';
+import { useLogInvoiceEvent } from '@/shared/hooks/useEventLogging';
 
 const { logInvoiceCreated } = useLogInvoiceEvent(selectedProfileId);
 

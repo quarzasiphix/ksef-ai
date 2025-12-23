@@ -1,8 +1,8 @@
 import { supabase } from '../client';
-import { Expense, TransactionType } from '../../../types';
-import { useAuth } from '@/hooks/useAuth';
+import { Expense, TransactionType } from '../../../shared/types';
+import { useAuth } from '@/shared/hooks/useAuth';
 import { format } from 'date-fns';
-import { InvoiceType } from "@/types";
+import { InvoiceType } from "@/shared/types";
 import { getInvoiceSharesReceived } from './invoiceShareRepository';
 
 // Function to get start and end dates based on selected period - Duplicated from Accounting.tsx for now

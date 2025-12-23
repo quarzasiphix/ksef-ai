@@ -5,7 +5,7 @@ import {
   ERPConnectionStatus, 
   ERPSyncLog,
   ERPSyncDirection
-} from "@/types/erp";
+} from "@/shared/types/erp";
 
 /**
  * ERP Repository

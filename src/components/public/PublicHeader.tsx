@@ -1,7 +1,7 @@
-import { Button } from "@/components/ui/button";
+import { Button } from "@/shared/ui/button";
 import { Link, useNavigate } from "react-router-dom";
-import { useAuth } from "@/hooks/useAuth";
-import { useBusinessProfile } from "@/context/BusinessProfileContext";
+import { useAuth } from "@/shared/hooks/useAuth";
+import { useBusinessProfile } from "@/shared/context/BusinessProfileContext";
 import { BusinessProfileSwitcher } from "@/components/layout/BusinessProfileSwitcher";
 import { User, Crown, LogOut, Sun, Moon } from "lucide-react";
 import { useTheme } from "@/components/theme/ThemeProvider";

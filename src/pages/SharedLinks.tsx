@@ -1,12 +1,12 @@
 import React from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { listShares, deleteShare, PublicShare } from "@/integrations/supabase/repositories/publicShareRepository";
-import { useAuth } from "@/hooks/useAuth";
-import { useGlobalData } from "@/hooks/use-global-data";
+import { useAuth } from "@/shared/hooks/useAuth";
+import { useGlobalData } from "@/shared/hooks/use-global-data";
 import { supabase } from "@/integrations/supabase/client";
-import { Button } from "@/components/ui/button";
-import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
+import { Button } from "@/shared/ui/button";
+import { Card, CardHeader, CardTitle, CardContent } from "@/shared/ui/card";
+import { Badge } from "@/shared/ui/badge";
 import { Copy, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 import { formatDistanceToNow } from "date-fns";

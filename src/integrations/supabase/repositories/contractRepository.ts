@@ -1,5 +1,5 @@
 import { supabase } from "../client";
-import type { Contract } from "@/types";
+import type { Contract } from "@/shared/types";
 
 // Helper to map DB row to Contract interface
 function mapRowToContract(row: any): Contract {

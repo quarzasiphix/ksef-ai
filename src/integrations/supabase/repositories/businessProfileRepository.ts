@@ -1,6 +1,6 @@
 import { supabase } from "../client";
-import type { BusinessProfile } from "../../../types";
-import { queryClient } from "../../../lib/queryClient";
+import type { BusinessProfile } from "../../../shared/types";
+import { queryClient } from "../../../shared/lib/queryClient";
 
 function normalizeEmptyString(value: unknown): string | null {
   if (typeof value !== 'string') return value as any;

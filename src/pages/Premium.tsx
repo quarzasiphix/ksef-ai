@@ -1,9 +1,9 @@
-import { useAuth } from "@/hooks/useAuth";
-import { Button } from "@/components/ui/button";
+import { useAuth } from "@/shared/hooks/useAuth";
+import { Button } from "@/shared/ui/button";
 import { Check, Crown, Sparkles, ArrowRight, FileText, Shield } from "lucide-react";
 import { Link } from "react-router-dom";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
+import { Card, CardContent, CardHeader, CardTitle } from "@/shared/ui/card";
+import { Badge } from "@/shared/ui/badge";
 
 // Entity-based pricing: JDG vs Spółka
 const entityPlans = [

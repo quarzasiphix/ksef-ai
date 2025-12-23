@@ -25,12 +25,12 @@ import {
   Banknote
 } from 'lucide-react';
 import { useTheme } from '@/components/theme/ThemeProvider';
-import { cn } from '@/lib/utils';
-import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle, SheetTrigger } from '@/components/ui/sheet';
-import { Button } from '@/components/ui/button';
-import { useAuth } from '@/hooks/useAuth';
+import { cn } from '@/shared/lib/utils';
+import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle, SheetTrigger } from '@/shared/ui/sheet';
+import { Button } from '@/shared/ui/button';
+import { useAuth } from '@/shared/hooks/useAuth';
 import { BusinessProfileSwitcher } from './BusinessProfileSwitcher';
-import { useBusinessProfile } from '@/context/BusinessProfileContext';
+import { useBusinessProfile } from '@/shared/context/BusinessProfileContext';
 
 const MobileNavigation = () => {
   const { theme, setTheme } = useTheme();
