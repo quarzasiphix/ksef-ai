@@ -24,7 +24,7 @@ import type {
   TreasurySummary,
   DocumentType,
   PaymentDirection,
-} from '@/shared/types/treasury';
+} from '@/modules/accounting/treasury';
 
 // =============================================================================
 // UNIFIED ACCOUNT ACCESS

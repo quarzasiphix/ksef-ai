@@ -18,7 +18,7 @@ import {
   InvoiceType 
 } from "@/shared/types";
 import { TransactionType } from "@/shared/types/common";
-import { BankAccount } from "@/shared/types/bank";
+import { BankAccount } from "@/modules/banking/bank";
 
 // Date & Formatting
 import { format } from "date-fns";
@@ -49,7 +49,7 @@ import { saveExpense } from "@/integrations/supabase/repositories/expenseReposit
 import { addLink as addContractLink } from "@/integrations/supabase/repositories/contractInvoiceLinkRepository";
 import { getBankAccountsForProfile, addBankAccount } from "@/integrations/supabase/repositories/bankAccountRepository";
 import { getCashAccounts, createCashTransaction } from "@/integrations/supabase/repositories/kasaRepository";
-import type { CashAccount } from "@/shared/types/kasa";
+import type { CashAccount } from "@/modules/accounting/kasa";
 
 // UI Components
 import { Form } from "@/shared/ui/form";
@@ -61,7 +61,7 @@ import { InvoiceBasicInfoForm } from "@/modules/invoices/components/forms/Invoic
 import { InvoicePartiesForm } from "@/modules/invoices/components/forms/InvoicePartiesForm";
 import { InvoiceItemsForm } from "@/modules/invoices/components/forms/InvoiceItemsForm";
 import { InvoiceFormActions } from "@/modules/invoices/components/forms/InvoiceFormActions";
-import ContractsPicker from "@/modules/inbox/components/ContractsPicker";
+import ContractsPicker from "@/modules/contracts/components/ContractsPicker";
 import { BankAccountEditDialog } from "@/modules/banking/components/BankAccountEditDialog";
 import DecisionPicker from "@/modules/decisions/components/DecisionPicker";
 

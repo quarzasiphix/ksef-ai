@@ -1,4 +1,4 @@
-import { BankTransaction } from "@/shared/types/bank";
+import { BankTransaction } from "@/modules/banking/bank";
 
 // Enhanced parser for Polish bank XML (MT940 XML or custom XML)
 export function parseBankXml(xml: string, accountId: string): BankTransaction[] {

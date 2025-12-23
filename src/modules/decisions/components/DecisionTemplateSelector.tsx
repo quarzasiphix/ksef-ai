@@ -9,8 +9,8 @@ import { ScrollArea } from '@/shared/ui/scroll-area';
 import { Search, Star, Sparkles, TrendingUp, Users, Briefcase, Shield } from 'lucide-react';
 import { getDecisionTemplates } from '@/integrations/supabase/repositories/decisionTemplatesRepository';
 import type { DecisionTemplate } from '@/integrations/supabase/repositories/decisionTemplatesRepository';
-import type { DecisionCategory } from '@/shared/types/decisions';
-import { DECISION_CATEGORY_LABELS } from '@/shared/types/decisions';
+import type { DecisionCategory } from '@/modules/decisions/decisions';
+import { DECISION_CATEGORY_LABELS } from '@/modules/decisions/decisions';
 
 interface DecisionTemplateSelectorProps {
   entityType?: string;

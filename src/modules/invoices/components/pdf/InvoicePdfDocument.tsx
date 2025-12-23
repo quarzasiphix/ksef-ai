@@ -1,7 +1,7 @@
 import React from 'react';
 import { Document, Page, Text, View, StyleSheet } from '@react-pdf/renderer';
 import { Invoice, BusinessProfile, Customer, InvoiceType } from '@/shared/types';
-import { BankAccount } from '@/shared/types/bank';
+import { BankAccount } from '@/modules/banking/bank';
 import { calculateInvoiceTotals, calculateItemValues, formatCurrency as formatCurrencyUtil, getPolishPaymentMethod, formatPolishDate } from '@/shared/lib/invoice-utils';
 
 interface InvoicePdfDocumentProps {

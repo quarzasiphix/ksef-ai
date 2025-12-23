@@ -9,7 +9,7 @@ import type {
   DepreciationEntry,
   Shareholder,
   BalanceSheetData
-} from '@/shared/types/accounting';
+} from '@/modules/accounting/accounting';
 
 // Chart of Accounts
 export async function getChartOfAccounts(businessProfileId: string): Promise<ChartOfAccount[]> {

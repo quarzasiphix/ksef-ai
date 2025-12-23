@@ -1,6 +1,6 @@
 import { Invoice, InvoiceItem, InvoiceType, PaymentMethod, PaymentMethodDb, VatExemptionReason } from "@/shared/types";
 import { TransactionType } from "@/shared/types/common";
-import { BankAccount } from "@/shared/types/bank";
+import { BankAccount } from "@/modules/banking/bank";
 import * as z from "zod";
 
 // Get document title based on invoice type

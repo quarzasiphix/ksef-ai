@@ -10,7 +10,7 @@ import {
   getAverageIncome,
   getAverageExpense,
 } from "@/shared/utils/analytics/bankAnalytics";
-import { BankTransaction } from "@/shared/types/bank";
+import { BankTransaction } from "@/modules/banking/bank";
 import { Card, CardHeader, CardTitle, CardContent } from "@/shared/ui/card";
 import { Input } from "@/shared/ui/input";
 import { Tabs, TabsList, TabsTrigger } from "@/shared/ui/tabs";

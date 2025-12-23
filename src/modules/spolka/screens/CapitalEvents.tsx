@@ -8,8 +8,8 @@ import { format } from 'date-fns';
 import { pl } from 'date-fns/locale';
 import { getCapitalEvents } from '@/integrations/supabase/repositories/spolkaRepository';
 import { supabase } from '@/integrations/supabase/client';
-import type { CapitalEvent } from '@/shared/types/spolka';
-import { getCapitalEventTypeLabel } from '@/shared/types/spolka';
+import type { CapitalEvent } from '@/modules/spolka/spolka';
+import { getCapitalEventTypeLabel } from '@/modules/spolka/spolka';
 import CapitalEventsDialog from '@/modules/spolka/components/CapitalEventsDialog';
 import { Badge } from '@/shared/ui/badge';
 

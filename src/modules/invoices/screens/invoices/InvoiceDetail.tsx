@@ -36,7 +36,7 @@ import { getLinksForInvoice } from "@/integrations/supabase/repositories/contrac
 import { getContract } from "@/integrations/supabase/repositories/contractRepository";
 import { getBankAccountsForProfile } from '@/integrations/supabase/repositories/bankAccountRepository';
 import { useEffect, useRef } from 'react';
-import { BankAccount } from '@/shared/types/bank';
+import { BankAccount } from '@/modules/banking/bank';
 import { DiscussionPanel } from "@/modules/invoices/components/discussion/DiscussionPanel";
 
 interface InvoiceDetailProps {

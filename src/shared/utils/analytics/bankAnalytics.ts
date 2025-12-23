@@ -1,4 +1,4 @@
-import { BankTransaction } from "@/shared/types/bank";
+import { BankTransaction } from "@/modules/banking/bank";
 
 // Enhanced classification with better categorization
 export function classifyTransactionType(tx: BankTransaction): string {

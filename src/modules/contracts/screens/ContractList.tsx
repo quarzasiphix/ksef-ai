@@ -6,7 +6,7 @@ import { getContracts } from "@/integrations/supabase/repositories/contractRepos
 import { useAuth } from "@/shared/hooks/useAuth";
 import { useGlobalData } from "@/shared/hooks/use-global-data";
 import { Contract } from "@/shared/types";
-import ContractCard from "@/modules/inbox/components/ContractCard";
+import ContractCard from "@/modules/contracts/components/ContractCard";
 import { Card, CardContent, CardHeader, CardTitle } from "@/shared/ui/card";
 import { Button } from "@/shared/ui/button";
 import { Plus } from "lucide-react";

@@ -45,7 +45,7 @@ import { format } from 'date-fns';
 import { pl } from 'date-fns/locale';
 import { toast } from 'sonner';
 import { useCorrections } from '@/shared/hooks/useTreasury';
-import type { AccountMovement, MovementSourceType } from '@/shared/types/treasury';
+import type { AccountMovement, MovementSourceType } from '@/modules/accounting/treasury';
 
 interface MovementsLedgerProps {
   movements: AccountMovement[];

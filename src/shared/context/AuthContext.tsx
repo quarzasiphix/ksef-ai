@@ -8,7 +8,7 @@ import { cleanupAuthState } from "@/shared/lib/auth-utils";
 import { getParentDomain } from "@/shared/config/domains";
 import { clearCrossDomainAuthToken, getCrossDomainAuthToken } from "@/shared/lib/crossDomainAuth";
 
-const PremiumCheckoutModalLazy = React.lazy(() => import("@/components/premium/PremiumCheckoutModal"));
+const PremiumCheckoutModalLazy = React.lazy(() => import("@/modules/premium/components/PremiumCheckoutModal"));
 
 export interface AuthContextType {
   user: User | null;

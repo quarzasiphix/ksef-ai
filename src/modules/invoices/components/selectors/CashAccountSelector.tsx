@@ -2,7 +2,7 @@ import React from 'react';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/shared/ui/select';
 import { Wallet } from 'lucide-react';
 import { formatCurrency } from '@/shared/lib/utils';
-import type { CashAccount } from '@/shared/types/kasa';
+import type { CashAccount } from '@/modules/accounting/kasa';
 
 interface CashAccountSelectorProps {
   value?: string;

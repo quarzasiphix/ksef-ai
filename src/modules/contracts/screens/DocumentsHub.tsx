@@ -41,11 +41,11 @@ import {
   type DocumentCategory,
 } from '@/integrations/supabase/repositories/documentsRepository';
 import { cn } from '@/shared/lib/utils';
-import { FOLDER_TYPE_LABELS, type FolderType } from '@/shared/types/documents';
+import { FOLDER_TYPE_LABELS, type FolderType } from '@/modules/contracts/documents';
 import { getContractsByBusinessProfile } from '@/integrations/supabase/repositories/contractRepository';
 import type { Contract } from '@/shared/types';
 import { getDecisions } from '@/integrations/supabase/repositories/decisionsRepository';
-import type { Decision } from '@/shared/types/decisions';
+import type { Decision } from '@/modules/decisions/decisions';
 import { Breadcrumbs } from '@/components/seo/Breadcrumbs';
 import NextActionPanel from '@/modules/accounting/components/NextActionPanel';
 

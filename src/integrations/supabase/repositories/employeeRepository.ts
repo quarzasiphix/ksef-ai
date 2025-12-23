@@ -1,5 +1,5 @@
 import { supabase } from '../client';
-import { Employee, LabourHours, SalaryPayment, CreateEmployeeData, CreateLabourHoursData, CreateSalaryPaymentData } from '@/shared/types/employee';
+import { Employee, LabourHours, SalaryPayment, CreateEmployeeData, CreateLabourHoursData, CreateSalaryPaymentData } from '@/modules/employees/employee';
 
 export const getEmployees = async (): Promise<Employee[]> => {
   const { data, error } = await supabase

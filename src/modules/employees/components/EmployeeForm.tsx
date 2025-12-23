@@ -9,7 +9,7 @@ import { Label } from '@/shared/ui/label';
 import { Textarea } from '@/shared/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/shared/ui/select';
 import { Card, CardContent, CardHeader, CardTitle } from '@/shared/ui/card';
-import { CreateEmployeeData, Employee } from '@/shared/types/employee';
+import { CreateEmployeeData, Employee } from '@/modules/employees/employee';
 
 const employeeSchema = z.object({
   first_name: z.string().min(1, 'Imię jest wymagane'),

@@ -5,7 +5,7 @@ import { Button } from "@/shared/ui/button";
 import EmployeeForm from "@/modules/employees/components/EmployeeForm";
 import { createEmployee } from "@/integrations/supabase/repositories/employeeRepository";
 import { useToast } from "@/shared/hooks/use-toast";
-import type { CreateEmployeeData } from "@/shared/types/employee";
+import type { CreateEmployeeData } from "@/modules/employees/employee";
 import { useBusinessProfile } from "@/shared/context/BusinessProfileContext";
 import { logCreationEvent, shouldLogEvents } from "@/shared/utils/eventLogging";
 

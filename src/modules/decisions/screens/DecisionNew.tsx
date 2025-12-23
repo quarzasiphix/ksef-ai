@@ -25,7 +25,7 @@ import {
   type DecisionCategory,
   type DecisionStatus,
   type DecisionType,
-} from '@/shared/types/decisions';
+} from '@/modules/decisions/decisions';
 
 const formSchema = z.object({
   title: z.string().min(1, 'Tytuł jest wymagany'),

@@ -6,7 +6,7 @@ import { Capacitor } from '@capacitor/core';
 import { Share } from '@capacitor/share';
 
 import { Invoice, BusinessProfile, Customer } from '@/shared/types';
-import { BankAccount } from '@/shared/types/bank';
+import { BankAccount } from '@/modules/banking/bank';
 import { InvoicePdfTemplate } from '@/modules/invoices/components/pdf/InvoicePdfTemplate';
 import { InvoicePdfDocument } from '@/modules/invoices/components/pdf/InvoicePdfDocument';
 

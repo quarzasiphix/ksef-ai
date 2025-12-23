@@ -1,5 +1,5 @@
 import { supabase } from '../client';
-import { BankAccount } from '@/shared/types/bank';
+import { BankAccount } from '@/modules/banking/bank';
 
 // Pobierz wszystkie konta bankowe dla danego profilu firmy
 export async function getBankAccountsForProfile(businessProfileId: string): Promise<BankAccount[]> {

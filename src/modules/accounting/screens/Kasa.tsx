@@ -79,7 +79,7 @@ import {
   createCashTransfer,
 } from '@/integrations/supabase/repositories/kasaRepository';
 import { getBankAccountsForProfile } from '@/integrations/supabase/repositories/bankAccountRepository';
-import type { BankAccount } from '@/shared/types/bank';
+import type { BankAccount } from '@/modules/banking/bank';
 import type {
   CashAccount,
   CashTransaction,
@@ -91,12 +91,12 @@ import type {
   CreateCashAccountInput,
   CreateCashTransactionInput,
   TransferType,
-} from '@/shared/types/kasa';
+} from '@/modules/accounting/kasa';
 import {
   CASH_CATEGORY_LABELS,
   KP_CATEGORIES,
   KW_CATEGORIES,
-} from '@/shared/types/kasa';
+} from '@/modules/accounting/kasa';
 
 const Kasa = () => {
   const { selectedProfileId, profiles } = useBusinessProfile();

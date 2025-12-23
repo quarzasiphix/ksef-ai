@@ -1,5 +1,5 @@
 import { supabase } from '../client';
-import type { DecisionCategory, DecisionType } from '@/shared/types/decisions';
+import type { DecisionCategory, DecisionType } from '@/modules/decisions/decisions';
 
 // ============================================
 // TYPES

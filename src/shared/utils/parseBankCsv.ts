@@ -1,4 +1,4 @@
-import { BankTransaction } from "@/shared/types/bank";
+import { BankTransaction } from "@/modules/banking/bank";
 
 export function parseBankCsv(csv: string, accountId: string): BankTransaction[] {
   // Try to detect separator

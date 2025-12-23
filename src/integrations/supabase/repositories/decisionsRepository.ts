@@ -5,7 +5,7 @@ import type {
   CreateDecisionInput,
   UpdateDecisionInput,
   DecisionStatus,
-} from '@/shared/types/decisions';
+} from '@/modules/decisions/decisions';
 
 // ============================================
 // DECISION CRUD OPERATIONS
@@ -175,7 +175,7 @@ export async function initializeFoundationalDecisions(
 ): Promise<void> {
   // If custom options provided, create decisions manually
   if (options?.selectedCategories || options?.customDecisions) {
-    const { FOUNDATIONAL_DECISIONS } = await import('@/shared/types/decisions');
+    const { FOUNDATIONAL_DECISIONS } = await import('@/modules/decisions/decisions');
     
     // Create selected foundational decisions
     if (options.selectedCategories && options.selectedCategories.length > 0) {

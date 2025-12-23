@@ -1,7 +1,7 @@
 import React, { useState } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/shared/ui/dialog";
 import { Button } from "@/shared/ui/button";
-import { Bank, BankAccount } from "@/shared/types/bank";
+import { Bank, BankAccount } from "@/modules/banking/bank";
 import { toast } from "sonner";
 
 interface Props {

@@ -21,7 +21,7 @@ import { CheckCircle2, XCircle, AlertCircle } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/shared/hooks/useAuth";
 import { toast } from "sonner";
-import { DisputeReason, DISPUTE_REASON_LABELS } from "@/shared/types/delivery";
+import { DisputeReason, DISPUTE_REASON_LABELS } from "@/modules/invoices/delivery";
 
 interface InboxItemActionsProps {
   deliveryId: string;

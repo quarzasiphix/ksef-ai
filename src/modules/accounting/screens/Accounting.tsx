@@ -27,7 +27,7 @@ import NextActionPanel from "@/modules/accounting/components/NextActionPanel";
 import { getZusPayments, addZusPayment, updateZusPayment } from "@/integrations/supabase/repositories/zusRepository";
 import { getEquityTransactions } from "@/integrations/supabase/repositories/accountingRepository";
 import type { ZusPayment, ZusType } from "@/shared/types/zus";
-import type { EquityTransaction } from "@/shared/types/accounting";
+import type { EquityTransaction } from "@/modules/accounting/accounting";
 import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuItem } from "@/shared/ui/dropdown-menu";
 import { uploadTaxForm, saveFiledTaxForm } from "@/integrations/supabase/repositories/taxFormRepository";
 import { listFiledTaxForms, FiledTaxForm, updateFiledTaxFormStatus } from "@/integrations/supabase/repositories/filedTaxFormsRepository";

@@ -28,8 +28,8 @@ const InventoryPage = React.lazy(() => import('@/pages/inventory/InventoryPage')
 const Accounting = React.lazy(() => import('@/modules/accounting/screens/Accounting'));
 const BalanceSheet = React.lazy(() => import('@/modules/accounting/screens/BalanceSheet'));
 const Shareholders = React.lazy(() => import('@/modules/accounting/screens/Shareholders'));
-const Premium = React.lazy(() => import('@/pages/Premium'));
-const PremiumPlanDetails = React.lazy(() => import('@/pages/PremiumPlanDetails'));
+const Premium = React.lazy(() => import('@/modules/premium/screens/Premium'));
+const PremiumPlanDetails = React.lazy(() => import('@/modules/premium/screens/PremiumPlanDetails'));
 const DocumentsHub = React.lazy(() => import('@/modules/contracts/screens/DocumentsHub'));
 const ContractNew = React.lazy(() => import('@/modules/contracts/screens/ContractNew'));
 const ContractDetails = React.lazy(() => import('@/modules/contracts/screens/ContractDetails'));
@@ -37,9 +37,9 @@ const DecisionsHub = React.lazy(() => import('@/modules/decisions/screens/Decisi
 const DecisionNew = React.lazy(() => import('@/modules/decisions/screens/DecisionNew'));
 const DecisionEdit = React.lazy(() => import('@/modules/decisions/screens/DecisionEdit'));
 const DecisionDetails = React.lazy(() => import('@/modules/decisions/screens/DecisionDetails'));
-const Analytics = React.lazy(() => import('@/pages/Analytics'));
+const Analytics = React.lazy(() => import('@/modules/accounting/screens/Analytics'));
 const BankAccounts = React.lazy(() => import('@/modules/banking/screens/BankAccounts'));
-const CapitalCommitments = React.lazy(() => import('@/pages/assets/CapitalCommitments'));
+const CapitalCommitments = React.lazy(() => import('@/modules/accounting/screens/CapitalCommitments'));
 const BusinessInbox = React.lazy(() => import('@/modules/inbox/screens/BusinessInbox'));
 const DiscussionsPage = React.lazy(() => import('@/modules/inbox/screens/DiscussionsPage'));
 const ReceivedInvoiceDetail = React.lazy(() => import('@/modules/inbox/screens/ReceivedInvoiceDetail'));

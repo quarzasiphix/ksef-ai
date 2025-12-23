@@ -28,7 +28,7 @@ import { format } from "date-fns";
 import { pl } from "date-fns/locale";
 import { InvoiceType } from "@/shared/types";
 import { TransactionType } from "@/shared/types/common";
-import SignaturePadModal from "@/modules/inbox/components/SignaturePadModal";
+import SignaturePadModal from "@/modules/contracts/components/SignaturePadModal";
 import { useAuth } from "@/shared/hooks/useAuth";
 import { toast } from "sonner";
 import { Alert, AlertDescription } from "@/shared/ui/alert";

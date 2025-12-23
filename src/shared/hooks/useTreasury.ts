@@ -19,7 +19,7 @@ import {
   type KasaTransactionResult,
   type TransferResult,
 } from '@/shared/lib/treasury-service';
-import type { DocumentPaymentStatus, TreasurySummary, AccountMovement } from '@/shared/types/treasury';
+import type { DocumentPaymentStatus, TreasurySummary, AccountMovement } from '@/modules/accounting/treasury';
 
 // =============================================================================
 // PAYMENT ACCOUNTS HOOK

@@ -1,7 +1,7 @@
 import React from "react";
 import { Card } from "@/shared/ui/card";
 import { Button } from "@/shared/ui/button";
-import { BankAccount } from "@/shared/types/bank";
+import { BankAccount } from "@/modules/banking/bank";
 import { Banknote, X, Pencil, Upload } from "lucide-react";
 
 interface Props {

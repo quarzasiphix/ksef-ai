@@ -5,7 +5,7 @@ import { Input } from "@/shared/ui/input";
 import { toast } from "sonner";
 import { parseBankCsv } from "@/shared/utils/parseBankCsv";
 import { parseBankXml } from "@/shared/utils/parseBankXml";
-import { BankTransaction } from "@/shared/types/bank";
+import { BankTransaction } from "@/modules/banking/bank";
 import { uploadBankLog } from "@/integrations/supabase/repositories/bankLogRepository";
 import { useAuth } from "@/shared/hooks/useAuth";
 

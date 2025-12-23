@@ -27,7 +27,7 @@ import { calculateItemValues, toPaymentMethodDb } from "@/shared/lib/invoice-uti
 import { PaymentMethodDb } from "@/shared/types/common";
 import ContractsForInvoice from "@/modules/invoices/components/ContractsForInvoice";
 import { getBankAccountsForProfile } from "@/integrations/supabase/repositories/bankAccountRepository";
-import { BankAccount } from "@/shared/types/bank";
+import { BankAccount } from "@/modules/banking/bank";
 import { transformInvoiceForForm } from "@/shared/lib/invoice-transform";
 
 const EditInvoice = () => {

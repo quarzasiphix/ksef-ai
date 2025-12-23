@@ -10,7 +10,7 @@ import { Badge } from "@/shared/ui/badge";
 import { Separator } from "@/shared/ui/separator";
 import { Card, CardContent } from "@/shared/ui/card";
 import { supabase } from "@/integrations/supabase/client";
-import { DeliveryWithContext, DELIVERY_STATUS_LABELS } from "@/shared/types/delivery";
+import { DeliveryWithContext, DELIVERY_STATUS_LABELS } from "@/modules/invoices/delivery";
 import { Loader2, Building2, Calendar, Eye, MessageSquare } from "lucide-react";
 
 interface InboxItemDetailsProps {

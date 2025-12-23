@@ -44,7 +44,7 @@ import { toast } from 'sonner';
 import { format } from 'date-fns';
 import { pl } from 'date-fns/locale';
 import { useInvoicePayment, usePaymentAccounts } from '@/shared/hooks/useTreasury';
-import type { DocumentPayment } from '@/shared/types/treasury';
+import type { DocumentPayment } from '@/modules/accounting/treasury';
 
 interface InvoicePaymentPanelProps {
   invoiceId: string;

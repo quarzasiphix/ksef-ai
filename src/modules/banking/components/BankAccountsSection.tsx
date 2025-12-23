@@ -2,7 +2,7 @@ import React, { useEffect, useState } from "react";
 import { Button } from "@/shared/ui/button";
 import { Card, CardHeader, CardTitle, CardContent } from "@/shared/ui/card";
 import { toast } from "sonner";
-import { BankAccount, BankTransaction } from "@/shared/types/bank";
+import { BankAccount, BankTransaction } from "@/modules/banking/bank";
 import BankAccountCard from "./BankAccountCard";
 import TransactionList from "./TransactionList";
 import ImportBankStatementDialog from "../../../components/bank/ImportBankStatementDialog";

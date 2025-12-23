@@ -6,7 +6,7 @@ import { Input } from '@/shared/ui/input';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/shared/ui/dialog';
 import { Users, Plus, Edit, Building2 } from 'lucide-react';
 import { getShareholders, createShareholder, updateShareholder } from '@/integrations/supabase/repositories/accountingRepository';
-import type { Shareholder } from '@/shared/types/accounting';
+import type { Shareholder } from '@/modules/accounting/accounting';
 import { toast } from 'sonner';
 import { format } from 'date-fns';
 import { pl } from 'date-fns/locale';

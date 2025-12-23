@@ -7,7 +7,7 @@ import type {
   CreateTemplateInput,
   GenerateDocumentInput,
   FolderTreeNode,
-} from '@/shared/types/documents';
+} from '@/modules/contracts/documents';
 
 // Re-export types for convenience
 export type {
@@ -18,7 +18,7 @@ export type {
   CreateTemplateInput,
   GenerateDocumentInput,
   FolderTreeNode,
-} from '@/shared/types/documents';
+} from '@/modules/contracts/documents';
 
 export type DocumentCategory = 
   | 'contracts_vehicles'

@@ -19,8 +19,8 @@ import type {
   CashRegisterSummary,
   ReconciliationResult,
   CashTransactionType,
-} from '@/shared/types/kasa';
-import type { PaymentAccount } from '@/shared/types/treasury';
+} from '@/modules/accounting/kasa';
+import type { PaymentAccount } from '@/modules/accounting/treasury';
 
 // ============================================================================
 // CASH ACCOUNTS

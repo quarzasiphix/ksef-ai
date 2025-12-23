@@ -4,7 +4,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/shared/ui/card';
 import { Button } from '@/shared/ui/button';
 import { Download, FileText, TrendingUp, Building2, DollarSign } from 'lucide-react';
 import { calculateBalanceSheet, getBalanceSheets, saveBalanceSheet } from '@/integrations/supabase/repositories/accountingRepository';
-import type { BalanceSheetData, BalanceSheet as BalanceSheetType } from '@/shared/types/accounting';
+import type { BalanceSheetData, BalanceSheet as BalanceSheetType } from '@/modules/accounting/accounting';
 import { toast } from 'sonner';
 import { format } from 'date-fns';
 import { pl } from 'date-fns/locale';

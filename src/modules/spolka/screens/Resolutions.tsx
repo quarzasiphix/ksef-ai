@@ -8,8 +8,8 @@ import { Plus, FileText, CheckCircle, Clock, Menu, FileCheck, ChevronLeft } from
 import { format } from 'date-fns';
 import { pl } from 'date-fns/locale';
 import { getResolutions, saveResolution, updateResolution } from '@/integrations/supabase/repositories/spolkaRepository';
-import type { Resolution, ResolutionType, ResolutionStatus } from '@/shared/types/spolka';
-import { getResolutionTypeLabel } from '@/shared/types/spolka';
+import type { Resolution, ResolutionType, ResolutionStatus } from '@/modules/spolka/spolka';
+import { getResolutionTypeLabel } from '@/modules/spolka/spolka';
 import { Badge } from '@/shared/ui/badge';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/shared/ui/dialog';
 import { Input } from '@/shared/ui/input';

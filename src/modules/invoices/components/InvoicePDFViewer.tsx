@@ -3,7 +3,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/shared/ui/di
 import { Button } from "@/shared/ui/button";
 import { Download, X } from "lucide-react";
 import { Invoice, BusinessProfile, Customer } from "@/shared/types";
-import { BankAccount } from '@/shared/types/bank';
+import { BankAccount } from '@/modules/banking/bank';
 import { InvoicePdfTemplate } from "@/modules/invoices/components/pdf/InvoicePdfTemplate";
 import { generateInvoicePdf, getInvoiceFileName } from "@/shared/lib/pdf-utils";
 

@@ -7,8 +7,8 @@ import { Card, CardHeader, CardTitle, CardContent } from "@/shared/ui/card";
 import { Button } from "@/shared/ui/button";
 import { useGlobalData } from "@/shared/hooks/use-global-data";
 import { Calendar, User, ArrowLeft, Edit, Send } from "lucide-react";
-import ShareContractDialog from "@/modules/inbox/components/ShareContractDialog";
-import { SendContractDialog } from "@/modules/inbox/components/SendContractDialog";
+import ShareContractDialog from "@/modules/contracts/components/ShareContractDialog";
+import { SendContractDialog } from "@/modules/contracts/components/SendContractDialog";
 
 const ContractDetails: React.FC = () => {
   const { id } = useParams<{ id: string }>();

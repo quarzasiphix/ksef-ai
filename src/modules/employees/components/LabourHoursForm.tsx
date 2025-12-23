@@ -8,7 +8,7 @@ import { Input } from '@/shared/ui/input';
 import { Label } from '@/shared/ui/label';
 import { Textarea } from '@/shared/ui/textarea';
 import { Card, CardContent, CardHeader, CardTitle } from '@/shared/ui/card';
-import { CreateLabourHoursData, LabourHours } from '@/shared/types/employee';
+import { CreateLabourHoursData, LabourHours } from '@/modules/employees/employee';
 
 const labourHoursSchema = z.object({
   work_date: z.string().min(1, 'Data pracy jest wymagana'),

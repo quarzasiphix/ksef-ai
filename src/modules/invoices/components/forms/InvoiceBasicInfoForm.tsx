@@ -11,9 +11,9 @@ import { CashAccountSelector } from "@/modules/invoices/components/selectors/Cas
 import { AlertCircle, Info } from "lucide-react";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/shared/ui/tooltip";
 import { Button } from "@/shared/ui/button";
-import { BankAccount } from "@/shared/types/bank";
+import { BankAccount } from "@/modules/banking/bank";
 import { InvoiceItem } from "@/shared/types";
-import type { CashAccount } from "@/shared/types/kasa";
+import type { CashAccount } from "@/modules/accounting/kasa";
 
 interface InvoiceBasicInfoFormProps {
   form: UseFormReturn<any, any>;

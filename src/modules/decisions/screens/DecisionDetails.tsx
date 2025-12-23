@@ -21,8 +21,8 @@ import {
   Clock,
 } from 'lucide-react';
 import { getDecision, getDecisionWithUsage } from '@/integrations/supabase/repositories/decisionsRepository';
-import type { DecisionWithUsage } from '@/shared/types/decisions';
-import { DECISION_CATEGORY_LABELS, DECISION_STATUS_LABELS, DECISION_TYPE_LABELS } from '@/shared/types/decisions';
+import type { DecisionWithUsage } from '@/modules/decisions/decisions';
+import { DECISION_CATEGORY_LABELS, DECISION_STATUS_LABELS, DECISION_TYPE_LABELS } from '@/modules/decisions/decisions';
 
 const DecisionDetails: React.FC = () => {
   const { id } = useParams<{ id: string }>();

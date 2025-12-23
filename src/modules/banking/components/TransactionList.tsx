@@ -1,5 +1,5 @@
 import React from "react";
-import { BankTransaction } from "@/shared/types/bank";
+import { BankTransaction } from "@/modules/banking/bank";
 import { ArrowDownCircle, ArrowUpCircle } from "lucide-react";
 
 interface Props {
