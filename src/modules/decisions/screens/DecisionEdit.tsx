@@ -12,7 +12,7 @@ import { Input } from '@/shared/ui/input';
 import { Textarea } from '@/shared/ui/textarea';
 import { Label } from '@/shared/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/shared/ui/select';
-import { Shield } from 'lucide-react';
+import { Shield, AlertTriangle } from 'lucide-react';
 import { getDecision, getDecisions, updateDecision } from '@/modules/spolka/data/decisionsRepository';
 import {
   DECISION_CATEGORY_LABELS,
@@ -22,6 +22,7 @@ import {
   type DecisionStatus,
   type DecisionType,
 } from '@/modules/decisions/decisions';
+import { getRevocationRequestByDecisionId } from '@/modules/decisions/data/revocationRepository';
 
 const formSchema = z.object({
   title: z.string().min(1, 'Tytuł jest wymagany'),
@@ -53,6 +54,15 @@ const DecisionEdit: React.FC = () => {
     queryFn: async () => {
       if (!id) return null;
       return getDecision(id);
+    },
+    enabled: !!id,
+  });
+
+  const { data: revocationRequest } = useQuery({
+    queryKey: ['revocation-request', id],
+    queryFn: async () => {
+      if (!id) return null;
+      return getRevocationRequestByDecisionId(id);
     },
     enabled: !!id,
   });
@@ -194,6 +204,8 @@ const DecisionEdit: React.FC = () => {
     );
   }
 
+  const isRevocationPending = decision?.status === 'revoke_requested' && revocationRequest?.status === 'pending';
+
   return (
     <div className="p-6 max-w-3xl">
       <div className="flex items-center justify-between mb-6">
@@ -205,17 +217,51 @@ const DecisionEdit: React.FC = () => {
         </div>
         <div className="flex gap-2">
           <Button variant="outline" onClick={() => navigate('/decisions')}>Anuluj</Button>
-          <Button onClick={form.handleSubmit((v) => mutation.mutate(v))} disabled={mutation.isPending}>
+          <Button
+            onClick={form.handleSubmit((v) => mutation.mutate(v))}
+            disabled={mutation.isPending || isRevocationPending}
+          >
             {mutation.isPending ? 'Zapisywanie...' : 'Zapisz'}
           </Button>
         </div>
       </div>
+
+      {isRevocationPending && (
+        <Card className="mb-6 border-amber-500 bg-amber-50/50 dark:bg-amber-900/10">
+          <CardContent className="py-4">
+            <div className="flex items-start gap-3">
+              <AlertTriangle className="h-5 w-5 text-amber-600 mt-0.5" />
+              <div>
+                <p className="font-semibold text-amber-900 dark:text-amber-100">
+                  Edycja zablokowana — w toku unieważnienia
+                </p>
+                <p className="text-sm text-amber-700 dark:text-amber-300 mt-1">
+                  Ta uchwała oczekuje na zatwierdzenie unieważnienia przez wspólników. Edycja jest zablokowana do czasu zakończenia procesu unieważnienia.
+                </p>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="mt-3"
+                  onClick={() => navigate(`/decisions/${id}`)}
+                >
+                  Zobacz szczegóły unieważnienia
+                </Button>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      )}
 
       <Card>
         <CardHeader>
           <CardTitle>Dane decyzji</CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
+          {isRevocationPending && (
+            <div className="p-3 bg-amber-100 dark:bg-amber-900/30 border border-amber-300 dark:border-amber-700 rounded text-sm text-amber-900 dark:text-amber-100">
+              ⚠️ Formularz jest zablokowany podczas procesu unieważnienia
+            </div>
+          )}
           <div className="space-y-2">
             <Label htmlFor="title">Tytuł</Label>
             <Input id="title" {...form.register('title')} />

@@ -1,6 +1,7 @@
 import React from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { listShares, deleteShare, PublicShare } from "@/integrations/supabase/repositories/publicShareRepository";
+import { listShares, deleteShare, PublicShare } from "@/modules/invoices/data/publicShareRepository";
+
 import { useAuth } from "@/shared/hooks/useAuth";
 import { useGlobalData } from "@/shared/hooks/use-global-data";
 import { supabase } from "@/integrations/supabase/client";

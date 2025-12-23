@@ -18,10 +18,12 @@ export type DecisionCategory =
   | 'other';                  // Inne
 
 export type DecisionStatus =
-  | 'active'      // Currently valid
-  | 'expired'     // Past valid_to date
-  | 'revoked'     // Manually revoked
-  | 'superseded'; // Replaced by newer decision
+  | 'active'           // Currently valid
+  | 'expired'          // Past valid_to date
+  | 'revoked'          // Manually revoked (after approval)
+  | 'superseded'       // Replaced by newer decision
+  | 'revoke_requested' // Revocation requested, awaiting approval
+  | 'revoke_rejected'; // Revocation request was rejected
 
 export interface DecisionCounterparty {
   name: string;
@@ -34,6 +36,7 @@ export interface Decision {
   resolution_id?: string | null;
   decision_number?: string | null;
   parent_decision_id?: string | null;
+  template_id?: string | null;
   
   // Metadata
   title: string;
@@ -100,6 +103,7 @@ export interface CreateDecisionInput {
   business_profile_id: string;
   resolution_id?: string;
   parent_decision_id?: string | null;
+  template_id?: string | null;
   title: string;
   description?: string;
   decision_type: DecisionType;
@@ -119,6 +123,7 @@ export interface UpdateDecisionInput {
   decision_type?: DecisionType;
   category?: DecisionCategory;
   parent_decision_id?: string | null;
+  template_id?: string | null;
   scope_description?: string;
   amount_limit?: number | null;
   currency?: string;
@@ -152,6 +157,8 @@ export const DECISION_STATUS_LABELS: Record<DecisionStatus, string> = {
   expired: 'Wygasła',
   revoked: 'Odwołana',
   superseded: 'Zastąpiona',
+  revoke_requested: 'Oczekuje na unieważnienie',
+  revoke_rejected: 'Unieważnienie odrzucone',
 };
 
 // Foundational decisions that should exist for every business profile

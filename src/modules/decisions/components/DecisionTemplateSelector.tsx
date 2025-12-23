@@ -17,6 +17,7 @@ interface DecisionTemplateSelectorProps {
   onSelectTemplate: (template: DecisionTemplate) => void;
   onCreateCustom?: () => void;
   selectedTemplateIds?: string[];
+  excludeTemplateIds?: string[];
   multiSelect?: boolean;
 }
 
@@ -25,6 +26,7 @@ export const DecisionTemplateSelector: React.FC<DecisionTemplateSelectorProps> =
   onSelectTemplate,
   onCreateCustom,
   selectedTemplateIds = [],
+  excludeTemplateIds = [],
   multiSelect = false,
 }) => {
   const [searchQuery, setSearchQuery] = useState('');
@@ -38,19 +40,37 @@ export const DecisionTemplateSelector: React.FC<DecisionTemplateSelectorProps> =
     }),
   });
 
+  const excludeSet = React.useMemo(() => new Set(excludeTemplateIds), [excludeTemplateIds]);
+
   const filteredTemplates = React.useMemo(() => {
     if (!templates) return [];
 
+    let base = templates;
     switch (activeTab) {
       case 'foundational':
-        return templates.filter(t => t.is_foundational);
+        base = base.filter(t => t.is_foundational);
+        break;
       case 'popular':
-        return templates.filter(t => t.usage_count > 0).sort((a, b) => b.usage_count - a.usage_count);
+        base = base.filter(t => t.usage_count > 0).sort((a, b) => b.usage_count - a.usage_count);
+        break;
       case 'all':
       default:
-        return templates;
+        break;
     }
-  }, [templates, activeTab]);
+
+    if (excludeSet.size === 0) {
+      return base;
+    }
+
+    return base.filter(t => !excludeSet.has(t.id));
+  }, [templates, activeTab, excludeSet]);
+
+  const allTemplatesHidden =
+    !isLoading &&
+    !!templates?.length &&
+    filteredTemplates.length === 0 &&
+    excludeSet.size > 0 &&
+    searchQuery.trim().length === 0;
 
   const groupedByType = React.useMemo(() => {
     const strategic = filteredTemplates.filter(t => t.decision_type === 'strategic_shareholders');
@@ -204,7 +224,9 @@ export const DecisionTemplateSelector: React.FC<DecisionTemplateSelectorProps> =
             ) : filteredTemplates.length === 0 ? (
               <div className="text-center py-8">
                 <p className="text-muted-foreground mb-4">
-                  Nie znaleziono szablonów
+                  {allTemplatesHidden
+                    ? 'Wszystkie rekomendowane szablony zostały już dodane dla tego profilu. Możesz edytować istniejące decyzje lub utworzyć własną.'
+                    : 'Nie znaleziono szablonów'}
                 </p>
                 {onCreateCustom && (
                   <Button onClick={onCreateCustom} variant="outline">

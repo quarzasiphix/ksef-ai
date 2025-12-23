@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { toast } from 'sonner';
@@ -19,18 +19,32 @@ import {
   AlertCircle,
   CheckCircle2,
   Clock,
+  XCircle,
 } from 'lucide-react';
 import { getDecision, getDecisionWithUsage } from '@/modules/spolka/data/decisionsRepository';
 import type { DecisionWithUsage } from '@/modules/decisions/decisions';
 import { DECISION_CATEGORY_LABELS, DECISION_STATUS_LABELS, DECISION_TYPE_LABELS } from '@/modules/decisions/decisions';
+import { RevokeDecisionDialog } from '@/modules/decisions/components/RevokeDecisionDialog';
+import { RevocationApprovalPanel } from '@/modules/decisions/components/RevocationApprovalPanel';
+import { getRevocationRequestByDecisionId } from '@/modules/decisions/data/revocationRepository';
+import { supabase } from '@/integrations/supabase/client';
 
 const DecisionDetails: React.FC = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const { selectedProfileId, profiles } = useBusinessProfile();
+  const [showRevokeDialog, setShowRevokeDialog] = useState(false);
+  const [currentUserId, setCurrentUserId] = useState<string | null>(null);
 
   const selectedProfile = profiles.find(p => p.id === selectedProfileId);
   const isSpoolka = selectedProfile?.entityType === 'sp_zoo' || selectedProfile?.entityType === 'sa';
+
+  // Get current user ID
+  React.useEffect(() => {
+    supabase.auth.getUser().then(({ data }) => {
+      if (data.user) setCurrentUserId(data.user.id);
+    });
+  }, []);
 
   const { data: decision, isLoading } = useQuery({
     queryKey: ['decision-with-usage', id],
@@ -52,6 +66,15 @@ const DecisionDetails: React.FC = () => {
     enabled: !!parentDecisionId,
   });
 
+  const { data: revocationRequest } = useQuery({
+    queryKey: ['revocation-request', id],
+    queryFn: async () => {
+      if (!id) return null;
+      return getRevocationRequestByDecisionId(id);
+    },
+    enabled: !!id,
+  });
+
   const getStatusIcon = (status: string) => {
     switch (status) {
       case 'active':
@@ -60,6 +83,10 @@ const DecisionDetails: React.FC = () => {
         return <Clock className="h-4 w-4 text-orange-600" />;
       case 'revoked':
         return <AlertCircle className="h-4 w-4 text-red-600" />;
+      case 'revoke_requested':
+        return <Clock className="h-4 w-4 text-amber-600" />;
+      case 'revoke_rejected':
+        return <XCircle className="h-4 w-4 text-red-600" />;
       default:
         return <AlertCircle className="h-4 w-4 text-gray-600" />;
     }
@@ -135,12 +162,70 @@ const DecisionDetails: React.FC = () => {
         </div>
 
         <div className="flex gap-2 shrink-0">
-          <Button variant="outline" onClick={() => navigate(`/decisions/${id}/edit`)}>
+          {d.status === 'active' && (
+            <Button
+              variant="destructive"
+              onClick={() => setShowRevokeDialog(true)}
+            >
+              <XCircle className="h-4 w-4 mr-2" />
+              Unieważnij
+            </Button>
+          )}
+          <Button
+            variant="outline"
+            onClick={() => navigate(`/decisions/${id}/edit`)}
+            disabled={d.status === 'revoke_requested'}
+          >
             <Edit className="h-4 w-4 mr-2" />
             Edytuj
           </Button>
         </div>
       </div>
+
+      {revocationRequest && revocationRequest.status === 'pending' && currentUserId && (
+        <RevocationApprovalPanel
+          revocationRequest={revocationRequest}
+          currentUserId={currentUserId}
+          isRequiredApprover={revocationRequest.required_approvers.includes(currentUserId)}
+          canCancel={revocationRequest.requested_by === currentUserId}
+        />
+      )}
+
+      {d.status === 'revoke_requested' && (
+        <Card className="border-amber-500 bg-amber-50/50 dark:bg-amber-900/10">
+          <CardContent className="py-4">
+            <div className="flex items-center gap-3">
+              <Clock className="h-5 w-5 text-amber-600" />
+              <div>
+                <p className="font-semibold text-amber-900 dark:text-amber-100">
+                  Czeka na unieważnienie (wymaga zgód)
+                </p>
+                <p className="text-sm text-amber-700 dark:text-amber-300">
+                  Ta uchwała oczekuje na zatwierdzenie unieważnienia przez wspólników.
+                </p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
+      {d.status === 'revoked' && (
+        <Card className="border-red-500 bg-red-50/50 dark:bg-red-900/10">
+          <CardContent className="py-4">
+            <div className="flex items-center gap-3">
+              <AlertCircle className="h-5 w-5 text-red-600" />
+              <div>
+                <p className="font-semibold text-red-900 dark:text-red-100">
+                  Uchwała unieważniona
+                </p>
+                <p className="text-sm text-red-700 dark:text-red-300">
+                  Ta uchwała została unieważniona i nie jest już aktywna. Pozostaje w systemie dla celów audytowych.
+                </p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      )}
 
       <Card>
         <CardHeader>
@@ -354,6 +439,14 @@ const DecisionDetails: React.FC = () => {
           </CardContent>
         </Card>
       )}
+
+      <RevokeDecisionDialog
+        open={showRevokeDialog}
+        onOpenChange={setShowRevokeDialog}
+        decisionId={id!}
+        decisionTitle={d.title}
+        requiredApprovers={currentUserId ? [currentUserId] : []}
+      />
     </div>
   );
 };

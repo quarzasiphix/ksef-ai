@@ -14,6 +14,7 @@ import { Button } from "@/shared/ui/button";
 import { BankAccount } from "@/modules/banking/bank";
 import { InvoiceItem } from "@/shared/types";
 import type { CashAccount } from "@/modules/accounting/kasa";
+import { cn } from "@/shared/lib/utils";
 
 interface InvoiceBasicInfoFormProps {
   form: UseFormReturn<any, any>;
@@ -193,7 +194,14 @@ export const InvoiceBasicInfoForm: React.FC<InvoiceBasicInfoFormProps> = ({
             rules={{ required: 'Kasa fiskalna jest wymagana dla płatności gotówką' }}
             render={({ field }) => (
               <FormItem>
-                <FormLabel className="text-red-600">Kasa fiskalna *</FormLabel>
+                <FormLabel
+                  className={cn(
+                    "transition-colors",
+                    field.value ? "text-white" : "text-red-600"
+                  )}
+                >
+                  {field.value ? "Kasa fiskalna" : "Kasa fiskalna *"}
+                </FormLabel>
                 <CashAccountSelector
                   value={field.value}
                   onChange={field.onChange}

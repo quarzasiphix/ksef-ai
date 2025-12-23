@@ -455,7 +455,7 @@ export async function getCapitalCommitmentsByDecision(
   // Get the decision details
   const { data: decision, error: decisionError } = await supabase
     .from('decisions')
-    .select('id, title, decision_date, decision_type')
+    .select('id, title, valid_from, decision_type')
     .eq('id', decisionId)
     .single();
 
@@ -496,7 +496,7 @@ export async function getCapitalCommitmentsByDecision(
   return {
     decision_id: decision.id,
     decision_title: decision.title,
-    decision_date: decision.decision_date,
+    decision_date: decision.valid_from,
     decision_type: decision.decision_type,
     assets: assetsWithDetails,
     total_committed: totalCommitted,
@@ -511,7 +511,7 @@ export async function getCapitalCommitmentsByBusinessProfile(
   // Get all decisions for this business profile
   const { data: decisions, error: decisionsError } = await supabase
     .from('decisions')
-    .select('id, title, decision_date, decision_type')
+    .select('id, title, valid_from, decision_type')
     .eq('business_profile_id', businessProfileId)
     .eq('status', 'active');
 

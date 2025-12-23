@@ -81,11 +81,13 @@ const ShareContractDialog: React.FC<ShareContractDialogProps> = ({ isOpen, onClo
       }
 
       const share = await createPublicShareLink({
+        userId: user.id,
         contractId,
         invoiceId: linkedInvoiceId,
         type: linkedInvoiceId ? "combo" : "contract",
         viewOnce,
       });
+
       const url = `${window.location.origin}/share/${share.slug}`;
       setGeneratedLink(url);
       await navigator.clipboard.writeText(url);
