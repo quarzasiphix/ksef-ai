@@ -1,6 +1,6 @@
 import React from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/shared/ui/card";
-import SettingItem from "./SettingItem";
+import SettingItem from "../components/SettingItem";
 
 interface Item {
   title: string;
