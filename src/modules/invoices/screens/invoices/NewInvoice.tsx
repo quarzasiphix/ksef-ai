@@ -48,7 +48,8 @@ import { saveInvoice, getInvoice } from "@/modules/invoices/data/invoiceReposito
 import { saveExpense } from "@/modules/invoices/data/expenseRepository";
 import { addLink as addContractLink } from "@/modules/contracts/data/contractInvoiceLinkRepository";
 import { getBankAccountsForProfile, addBankAccount } from "@/modules/banking/data/bankAccountRepository";
-import { getCashAccounts, createCashTransaction } from "@/modules/accounting/data/kasaRepository";
+import { getCashAccounts, createCashTransaction } from '@/modules/accounting/data/kasaRepository';
+import { createEvent } from '@/modules/accounting/data/eventsRepository';
 import type { CashAccount } from "@/modules/accounting/kasa";
 
 // UI Components
@@ -351,19 +352,24 @@ const NewInvoice = React.forwardRef<{
       form.setValue('number', nextNumber);
     }, [form, now, allInvoices, businessProfileId, initialData?.number, hasManualNumber, invoiceNumber]);
 
-    // Initialize invoice numbering when component mounts or dependencies change
+    // Initialize invoice numbering when component mounts or key dependencies change
+    // Note: allInvoices is intentionally NOT in dependencies to avoid excessive API calls
     useEffect(() => {
-      if (user?.id && businessProfileId) {
+      if (user?.id && businessProfileId && !hasManualNumber && !initialData?.number) {
         reloadInvoiceNumberingSettings(user.id, businessProfileId, allInvoices, initialData);
       }
-    }, [user?.id, businessProfileId, allInvoices, initialData, reloadInvoiceNumberingSettings]);
+    }, [user?.id, businessProfileId, initialData?.number, hasManualNumber]);
 
     // Listen for settings update event and reload invoice number
     useEffect(() => {
-      const handler = () => reloadInvoiceNumberingSettings(user?.id, businessProfileId, allInvoices, initialData);
+      const handler = () => {
+        if (user?.id && businessProfileId) {
+          reloadInvoiceNumberingSettings(user.id, businessProfileId, allInvoices, initialData);
+        }
+      };
       window.addEventListener('invoiceNumberingSettingsUpdated', handler);
       return () => window.removeEventListener('invoiceNumberingSettingsUpdated', handler);
-    }, [allInvoices, businessProfileId, initialData, reloadInvoiceNumberingSettings, user?.id]);
+    }, [businessProfileId, user?.id]);
 
 
     // --- Transaction type state ---
@@ -796,6 +802,8 @@ const NewInvoice = React.forwardRef<{
           userId: user.id,
           user_id: user.id,
           decisionId: formValues.decisionId || undefined,
+          cashAccountId: formValues.cashAccountId || undefined,
+          cash_account_id: formValues.cashAccountId || undefined,
           
           // Items and totals
           items: processedItems.map(item => ({
@@ -852,6 +860,7 @@ const NewInvoice = React.forwardRef<{
             // If cash payment and cash account selected, create cash transaction
             if (formValues.paymentMethod === PaymentMethod.CASH && formValues.cashAccountId && savedInvoice?.id) {
               try {
+                const cashAccount = cashAccounts.find(acc => acc.id === formValues.cashAccountId);
                 await createCashTransaction({
                   business_profile_id: formValues.businessProfileId,
                   cash_account_id: formValues.cashAccountId,
@@ -864,15 +873,49 @@ const NewInvoice = React.forwardRef<{
                   linked_document_type: 'invoice',
                   linked_document_id: savedInvoice.id,
                   is_tax_deductible: true,
+                  accounting_origin: 'invoice_auto',
+                  source_invoice_id: savedInvoice.id,
                 });
-                console.log('Cash transaction created for invoice:', savedInvoice.id);
+                
+                // Log event for cash payment invoice
+                await createEvent({
+                  business_profile_id: formValues.businessProfileId,
+                  event_type: effectiveTransactionType === TransactionType.INCOME ? 'invoice_issued' : 'expense_recorded',
+                  actor_id: user.id,
+                  actor_name: user.email || 'User',
+                  decision_id: formValues.decisionId || undefined,
+                  entity_type: 'invoice',
+                  entity_id: savedInvoice.id,
+                  entity_reference: formValues.number,
+                  action_summary: `Faktura ${formValues.number} - płatność gotówką przez kasę ${cashAccount?.name || 'nieznana'}`,
+                  changes: {
+                    payment_method: 'cash',
+                    cash_account_id: formValues.cashAccountId,
+                    cash_account_name: cashAccount?.name,
+                    amount: totals.totalGrossValue,
+                    currency: formValues.currency || 'PLN',
+                  },
+                  metadata: {
+                    invoice_number: formValues.number,
+                    customer_name: customerName,
+                    transaction_type: effectiveTransactionType,
+                  },
+                });
+                
+                console.log('Cash transaction and event logged for invoice:', savedInvoice.id);
+                
+                // Show detailed success message about KP creation
+                toast.success(
+                  `Faktura utworzona. Utworzono zapis KP w kasie "${cashAccount?.name}" (+${formatCurrency(totals.totalGrossValue, formValues.currency || 'PLN')})`,
+                  { duration: 5000 }
+                );
               } catch (error) {
                 console.error('Error creating cash transaction:', error);
                 toast.error('Faktura utworzona, ale wystąpił błąd podczas rejestracji w kasie');
               }
+            } else {
+              toast.success('Faktura została utworzona');
             }
-            
-            toast.success('Faktura została utworzona');
             
             // Invalidate queries to refresh the data
             await queryClient.invalidateQueries({ queryKey: ["invoices"] });

@@ -27,7 +27,7 @@ import { useAuth } from "@/shared/hooks/useAuth";
 import ShareInvoiceDialog from "@/modules/invoices/components/ShareInvoiceDialog";
 import { calculateItemValues, getInvoiceValueInPLN, calculateInvoiceTotals } from "@/shared/lib/invoice-utils";
 import ContractorCard from "@/modules/invoices/components/detail/ContractorCard";
-import { BusinessProfile, Customer, Invoice } from "@/shared/types";
+import { BusinessProfile, Customer, Invoice, InvoiceType, InvoiceStatus } from "@/shared/types";
 import { generateInvoicePdf, getInvoiceFileName } from "@/shared/lib/pdf-utils";
 import { getInvoiceById } from "@/modules/invoices/data/invoiceRepository";
 import InvoiceItemsCard from "@/modules/invoices/components/detail/InvoiceItemsCard";
@@ -35,9 +35,33 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { getLinksForInvoice } from "@/modules/contracts/data/contractInvoiceLinkRepository";
 import { getContract } from "@/modules/contracts/data/contractRepository";
 import { getBankAccountsForProfile } from '@/modules/banking/data/bankAccountRepository';
+import { getCashAccounts } from '@/modules/accounting/data/kasaRepository';
 import { useEffect, useRef } from 'react';
 import { BankAccount } from '@/modules/banking/bank';
+import type { CashAccount } from '@/modules/accounting/kasa';
 import { DiscussionPanel } from "@/modules/invoices/components/discussion/DiscussionPanel";
+import { Wallet } from 'lucide-react';
+import LinkedAccountingEntries from '@/modules/invoices/components/LinkedAccountingEntries';
+import InvoiceLifecycleStatus from '@/modules/invoices/components/InvoiceLifecycleStatus';
+import DecisionStateCard from '@/modules/invoices/components/DecisionStateCard';
+import FinancialImpactSummary from '@/modules/invoices/components/FinancialImpactSummary';
+import EventHistoryTimeline from '@/modules/invoices/components/EventHistoryTimeline';
+import { useBusinessProfile } from "@/shared/context/BusinessProfileContext";
+import InvoiceEventHeader from '@/modules/invoices/components/InvoiceEventHeader';
+import InvoiceDealCard from '@/modules/invoices/components/InvoiceDealCard';
+import CompactFinancialImpact from '@/modules/invoices/components/CompactFinancialImpact';
+import CompactDecisionBadge from '@/modules/invoices/components/CompactDecisionBadge';
+import CollapsibleLifecycleStatus from '@/modules/invoices/components/CollapsibleLifecycleStatus';
+import CollapsibleEventHistory from '@/modules/invoices/components/CollapsibleEventHistory';
+import { MoreVertical } from 'lucide-react';
+import FinancialControlStrip from '@/modules/invoices/components/FinancialControlStrip';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from '@/shared/ui/dropdown-menu';
 
 interface InvoiceDetailProps {
   type: "income" | "expense";
@@ -48,12 +72,14 @@ const InvoiceDetail: React.FC<InvoiceDetailProps> = ({ type }) => {
   const navigate = useNavigate();
   const location = useLocation();
   const { user } = useAuth();
+  const { profiles: businessProfiles, selectedProfileId } = useBusinessProfile();
   const { invoices: { data: invoices, isLoading }, refreshAllData } = useGlobalData();
   const [showPDF, setShowPDF] = useState(false);
   const [showShareDialog, setShowShareDialog] = useState(false);
   const [isUpdatingPaid, setIsUpdatingPaid] = useState(false);
   const [selectedBankAccount, setSelectedBankAccount] = useState<any>(null);
   const [bankAccounts, setBankAccounts] = useState<BankAccount[]>([]);
+  const [cashAccounts, setCashAccounts] = useState<CashAccount[]>([]);
   const queryClient = useQueryClient();
   const discussionRef = useRef<HTMLDivElement>(null);
 
@@ -146,14 +172,24 @@ const InvoiceDetail: React.FC<InvoiceDetailProps> = ({ type }) => {
   }, [location.search, isLoadingInvoice]);
 
   useEffect(() => {
-    if (invoice?.bankAccountId && invoice.businessProfileId) {
-      getBankAccountsForProfile(invoice.businessProfileId).then(accs => {
-        setSelectedBankAccount(accs.find(a => a.id === invoice.bankAccountId) || null);
-      });
-    } else {
-      setSelectedBankAccount(null);
+    if (invoice?.businessProfileId) {
+      // Load cash accounts for cash payment invoices
+      if (invoice.paymentMethod === 'cash') {
+        getCashAccounts(invoice.businessProfileId).then(accs => {
+          setCashAccounts(accs);
+        }).catch(console.error);
+      }
+      
+      // Load bank accounts for bank payment invoices
+      if (invoice.bankAccountId) {
+        getBankAccountsForProfile(invoice.businessProfileId).then(accs => {
+          setSelectedBankAccount(accs.find(a => a.id === invoice.bankAccountId) || null);
+        });
+      } else {
+        setSelectedBankAccount(null);
+      }
     }
-  }, [invoice?.bankAccountId, invoice?.businessProfileId]);
+  }, [invoice?.bankAccountId, invoice?.businessProfileId, invoice?.paymentMethod]);
 
   useEffect(() => {
     if (invoice?.businessProfileId) {
@@ -307,126 +343,155 @@ const InvoiceDetail: React.FC<InvoiceDetailProps> = ({ type }) => {
     }
   };
 
+  const selectedProfile = businessProfiles.find((profile) => profile.id === selectedProfileId);
+  const isSpoolka = selectedProfile?.entityType === 'sp_zoo' || selectedProfile?.entityType === 'sa';
+  const isOverdue = invoice.dueDate && !invoice.isPaid && new Date(invoice.dueDate) < new Date();
+
   return (
     <div id="invoice-detail-print" className="space-y-6 max-w-full pb-20">
-      {/* Header */}
-      <div className="flex items-center justify-between">
-        <div className="flex items-center space-x-4">
-          <Button variant="ghost" size="icon" asChild>
-            <Link to={isIncome ? "/income" : "/expense"}>
-              <ArrowLeft className="h-4 w-4" />
-            </Link>
+      {/* Back Button */}
+      <div>
+        <Button variant="ghost" size="icon" asChild>
+          <Link to={isIncome ? "/income" : "/expense"}>
+            <ArrowLeft className="h-4 w-4" />
+          </Link>
+        </Button>
+      </div>
+
+      {/* Financial Event Header - Answers: Who → Who, How Much, Is it Paid */}
+      <InvoiceEventHeader
+        invoiceNumber={invoice.number}
+        sellerName={sellerData?.name || invoice.businessName || ''}
+        buyerName={buyerData?.name || invoice.customerName || ''}
+        totalGross={totals.gross}
+        currency={currency}
+        isPaid={invoice.isPaid}
+        dueDate={invoice.dueDate}
+        isOverdue={isOverdue}
+      />
+
+      {/* Financial Control Strip - Status Signals */}
+      <FinancialControlStrip
+        primaryAction={isOwner && !invoice.isPaid ? {
+          label: 'Przypisz płatność',
+          onClick: handleTogglePaid,
+          disabled: isUpdatingPaid,
+          variant: 'success',
+        } : isOwner && invoice.isPaid && !(invoice as any).booked_to_ledger ? {
+          label: 'Zaksięguj',
+          onClick: () => toast.info('Funkcja księgowania w przygotowaniu'),
+          disabled: false,
+          variant: 'default',
+        } : undefined}
+        status={(invoice as any).lifecycle_status || 'issued'}
+        dueDate={invoice.dueDate}
+        isPaid={invoice.isPaid}
+        isVatExempt={fakturaBezVAT}
+        isBooked={(invoice as any).booked_to_ledger || false}
+        companyType={isSpoolka ? 'spolka' : 'jdg'}
+      />
+
+      {/* Secondary Actions - Icon Buttons */}
+      <div className="flex items-center justify-end gap-2">
+          <Button variant="ghost" size="icon" onClick={() => setShowPDF(true)} title="Podgląd PDF">
+            <Eye className="h-4 w-4" />
           </Button>
-          <div>
-            <div className="flex items-center gap-3">
-              <h1 className="text-3xl font-bold">{invoice.number}</h1>
-              {!isOwner && (
-                <Badge variant="secondary" className="text-sm">
-                  <ArrowDownCircle className="h-3 w-3 mr-1" />
-                  Otrzymana
-                </Badge>
-              )}
-            </div>
-            <p className="text-muted-foreground">
-              {getInvoiceTypeLabel(invoice.type)} • {format(new Date(invoice.issueDate), "dd.MM.yyyy", { locale: pl })}
-            </p>
-          </div>
-        </div>
-        {/* Preview & Edit buttons */}
-        <div className="flex flex-col sm:flex-row gap-2">
-          <Button 
-            variant="outline" 
-            onClick={() => setShowPDF(true)}
-          >
-            <Eye className="h-4 w-4 mr-2" />
-            <span>Podgląd</span>
+          <Button variant="ghost" size="icon" onClick={handleDownloadPdf} title="Pobierz PDF">
+            <Download className="h-4 w-4" />
           </Button>
           {isOwner && (
-            <Button asChild>
+            <Button variant="ghost" size="icon" asChild title="Edytuj">
               <Link to={editPath}>
-                <Edit className="h-4 w-4 mr-2" />
-                <span>Edytuj</span>
+                <Edit className="h-4 w-4" />
               </Link>
             </Button>
           )}
-        </div>
+          
+          {/* More Actions Menu */}
+          {isOwner && (
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="ghost" size="icon">
+                  <MoreVertical className="h-4 w-4" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end">
+                {isIncome && (
+                  <DropdownMenuItem onClick={() => setShowShareDialog(true)}>
+                    <Share2 className="h-4 w-4 mr-2" />
+                    Udostępnij
+                  </DropdownMenuItem>
+                )}
+                <DropdownMenuItem onClick={() => {
+                  const base = isIncome ? "/income/new" : "/expense/new";
+                  navigate(`${base}?duplicateId=${invoice.id}`);
+                }}>
+                  <FilePlus className="h-4 w-4 mr-2" />
+                  Duplikuj
+                </DropdownMenuItem>
+                {invoice.isPaid && (
+                  <DropdownMenuItem onClick={handleTogglePaid}>
+                    <DollarSign className="h-4 w-4 mr-2" />
+                    Cofnij płatność
+                  </DropdownMenuItem>
+                )}
+                <DropdownMenuSeparator />
+                <DropdownMenuItem onClick={handleDelete} className="text-destructive">
+                  <Trash2 className="h-4 w-4 mr-2" />
+                  Usuń
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+          )}
       </div>
 
-      {/* Status and Actions */}
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 flex-wrap">
-        {/* Actions */}
-        <div className="flex flex-wrap gap-2 order-1">
-          {isIncome && isOwner && (
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => setShowShareDialog(true)}
-            >
-              <Share2 className="h-4 w-4 mr-2" />
-              <span>Udostępnij</span>
-            </Button>
-          )}
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={handleDownloadPdf}
-          >
-            <Download className="h-4 w-4 mr-2" />
-            <span>PDF</span>
-          </Button>
-          {isOwner && (
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => {
-                const base = isIncome ? "/income/new" : "/expense/new";
-                navigate(`${base}?duplicateId=${invoice.id}`);
-              }}
-            >
-              <FilePlus className="h-4 w-4 mr-2" />
-              <span>Duplikuj</span>
-            </Button>
-          )}
-          {isOwner && (
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={handleTogglePaid}
-              disabled={isUpdatingPaid}
-            >
-              <DollarSign className="h-4 w-4 mr-2" />
-              <span>{invoice.isPaid ? "Nieopłacona" : "Opłacona"}</span>
-            </Button>
-          )}
-          {isOwner && (
-            <Button
-              variant="destructive"
-              size="sm"
-              onClick={handleDelete}
-            >
-              <Trash2 className="h-4 w-4 mr-2" />
-              <span>Usuń</span>
-            </Button>
-          )}
-        </div>
+      {/* Deal Card - Who/Who/How Much */}
+      <InvoiceDealCard
+        seller={{
+          name: sellerData?.name || invoice.businessName || '',
+          taxId: (sellerData as any)?.taxId,
+        }}
+        buyer={{
+          name: buyerData?.name || invoice.customerName || '',
+          taxId: (buyerData as any)?.taxId,
+        }}
+        totalNet={totals.net}
+        totalVat={totals.vat}
+        totalGross={totals.gross}
+        currency={currency}
+        isVatExempt={fakturaBezVAT}
+      />
 
-        {/* Status badges */}
-        <div className="flex items-center space-x-4 order-2 sm:order-1">
-          <Badge variant={invoice.isPaid ? "default" : "secondary"}>
-            {invoice.isPaid ? "Opłacone" : "Nieopłacone"}
-          </Badge>
-          <Badge variant="outline">
-            {isIncome ? "Przychód" : "Wydatek"}
-          </Badge>
-          {invoice.decisionId && (
-            <Link to={`/decisions/${invoice.decisionId}`} className="inline-flex">
-              <Badge variant="outline">
-                {invoice.decisionReference ? `Decyzja ${invoice.decisionReference}` : "Decyzja"}
-              </Badge>
-            </Link>
-          )}
-        </div>
-      </div>
+      {/* Compact Financial Impact - Bullets, Not Paragraphs */}
+      <CompactFinancialImpact
+        totalGross={totals.gross}
+        totalVat={totals.vat}
+        currency={currency}
+        transactionType={invoice.transactionType as 'income' | 'expense'}
+        isVatExempt={fakturaBezVAT}
+        isPaid={invoice.isPaid}
+        isBooked={(invoice as any).booked_to_ledger || false}
+        accountingPeriod={format(new Date(invoice.issueDate), 'MM/yyyy')}
+      />
+
+      {/* Compact Decision Badge - Only for Spółka, Expandable */}
+      <CompactDecisionBadge
+        decisionId={invoice.decisionId}
+        decisionReference={invoice.decisionReference}
+        isSpoolka={isSpoolka}
+        hasRequiredDecision={!!invoice.decisionId}
+        transactionType={invoice.transactionType as 'income' | 'expense'}
+        amount={totals.gross}
+        currency={currency}
+      />
+
+      {/* Collapsible Lifecycle Status */}
+      <CollapsibleLifecycleStatus
+        currentStatus={(invoice as any).lifecycle_status || 'issued'}
+        paymentReceivedAt={(invoice as any).payment_received_at}
+        bookedToLedger={(invoice as any).booked_to_ledger}
+        bookedAt={(invoice as any).booked_at}
+      />
 
       {/* Invoice Details Grid */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
@@ -491,6 +556,17 @@ const InvoiceDetail: React.FC<InvoiceDetailProps> = ({ type }) => {
                  invoice.paymentMethod === 'card' ? 'Karta' : 'Inne'}
               </span>
             </div>
+            {invoice.paymentMethod === 'cash' && (invoice as any).cashAccountId && (
+              <div className="flex justify-between items-center">
+                <span className="text-muted-foreground">Kasa fiskalna:</span>
+                <div className="flex items-center gap-2">
+                  <Wallet className="h-4 w-4 text-blue-600" />
+                  <span className="font-medium">
+                    {cashAccounts.find(acc => acc.id === (invoice as any).cashAccountId)?.name || 'Ładowanie...'}
+                  </span>
+                </div>
+              </div>
+            )}
             <div className="flex justify-between">
               <span className="text-muted-foreground">Waluta:</span>
               <span>{currency}</span>
@@ -550,6 +626,14 @@ const InvoiceDetail: React.FC<InvoiceDetailProps> = ({ type }) => {
         fakturaBezVAT={fakturaBezVAT}
       />
 
+      {/* Linked Accounting Entries */}
+      {invoice.businessProfileId && (
+        <LinkedAccountingEntries
+          invoiceId={invoice.id}
+          businessProfileId={invoice.businessProfileId}
+        />
+      )}
+
       {/* Linked contracts */}
       {linkedContracts.length > 0 && (
         <Card>
@@ -578,6 +662,13 @@ const InvoiceDetail: React.FC<InvoiceDetailProps> = ({ type }) => {
         </Card>
       )}
 
+      {/* Collapsible Event History */}
+      <CollapsibleEventHistory
+        invoiceId={invoice.id}
+        invoiceNumber={invoice.number}
+        businessProfileId={invoice.businessProfileId}
+      />
+
       {/* Discussion Panel */}
       <div ref={discussionRef} className="scroll-mt-24">
         <DiscussionPanel 
@@ -594,7 +685,8 @@ const InvoiceDetail: React.FC<InvoiceDetailProps> = ({ type }) => {
           customer={buyerData as any}
           bankAccounts={bankAccounts}
           isOpen={showPDF}
-          onClose={() => setShowPDF(false)} 
+          onClose={() => setShowPDF(false)}
+          onShare={() => setShowShareDialog(true)}
         />
       )}
 
@@ -605,8 +697,6 @@ const InvoiceDetail: React.FC<InvoiceDetailProps> = ({ type }) => {
           onClose={() => setShowShareDialog(false)}
           invoiceId={invoice.id}
           invoiceNumber={invoice.number}
-          defaultReceiverTaxId={buyerData?.taxId}
-          defaultCustomerId={buyerData?.id}
         />
       )}
     </div>

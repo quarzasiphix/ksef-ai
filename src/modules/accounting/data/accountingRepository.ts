@@ -1,4 +1,5 @@
 import { supabase } from '../../../integrations/supabase/client';
+import { createEvent } from '@/modules/accounting/data/eventsRepository';
 import type {
   ChartOfAccount,
   JournalEntry,
@@ -254,7 +255,11 @@ export async function getEquityTransactions(businessProfileId: string): Promise<
   return data || [];
 }
 
-export async function createEquityTransaction(transaction: Omit<EquityTransaction, 'id' | 'created_at' | 'updated_at'>): Promise<EquityTransaction> {
+export async function createEquityTransaction(transaction: Omit<EquityTransaction, 'id' | 'created_at' | 'updated_at'> & { 
+  payment_method?: 'bank' | 'cash';
+  cash_account_id?: string;
+  bank_account_id?: string;
+}): Promise<EquityTransaction> {
   const { data, error } = await supabase
     .from('equity_transactions')
     .insert(transaction)
@@ -262,6 +267,60 @@ export async function createEquityTransaction(transaction: Omit<EquityTransactio
     .single();
 
   if (error) throw error;
+
+  // Create account movement if payment method is specified
+  if (data && transaction.payment_method) {
+    const paymentAccountId = transaction.payment_method === 'cash' 
+      ? transaction.cash_account_id 
+      : transaction.bank_account_id;
+
+    if (paymentAccountId) {
+      // Determine direction: capital_contribution is IN, withdrawals/dividends are OUT
+      const direction = transaction.transaction_type === 'capital_contribution' ? 'IN' : 'OUT';
+
+      await supabase
+        .from('account_movements')
+        .insert({
+          business_profile_id: transaction.business_profile_id,
+          payment_account_id: paymentAccountId,
+          direction,
+          amount: transaction.amount,
+          currency: 'PLN',
+          source_type: 'equity_transaction',
+          source_id: data.id,
+          description: transaction.description || `Zdarzenie kapitałowe: ${transaction.transaction_type}`,
+        });
+      
+      // Log event for equity transaction
+      try {
+        const user = await supabase.auth.getUser();
+        await createEvent({
+          business_profile_id: transaction.business_profile_id,
+          event_type: 'equity_change',
+          actor_id: user.data.user?.id || '',
+          actor_name: user.data.user?.email || 'System',
+          entity_type: 'equity_transaction',
+          entity_id: data.id,
+          entity_reference: `${transaction.transaction_type}-${data.id.substring(0, 8)}`,
+          action_summary: `Zdarzenie kapitałowe: ${transaction.transaction_type} - ${transaction.amount} PLN przez ${transaction.payment_method === 'cash' ? 'kasę' : 'bank'}`,
+          changes: {
+            transaction_type: transaction.transaction_type,
+            amount: transaction.amount,
+            payment_method: transaction.payment_method,
+            payment_account_id: paymentAccountId,
+            shareholder_name: transaction.shareholder_name,
+          },
+          metadata: {
+            description: transaction.description,
+            transaction_date: transaction.transaction_date,
+          },
+        });
+      } catch (eventError) {
+        console.error('Failed to log equity transaction event:', eventError);
+      }
+    }
+  }
+
   return data;
 }
 

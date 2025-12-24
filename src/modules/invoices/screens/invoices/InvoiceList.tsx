@@ -10,7 +10,8 @@ import {
 } from "@/shared/ui/card";
 import { Input } from "@/shared/ui/input";
 import { Invoice, InvoiceType } from "@/shared/types";
-import { Plus, Search, ChevronDown } from "lucide-react";
+import { Plus, Search, ChevronDown, Filter } from "lucide-react";
+import { Badge } from "@/shared/ui/badge";
 import InvoiceCard from "@/modules/invoices/components/InvoiceCard";
 import { useGlobalData } from "@/shared/hooks/use-global-data";
 import { useIsMobile } from "@/shared/hooks/use-mobile";
@@ -40,10 +41,13 @@ const translateInvoiceType = (type: string): string => {
   }
 };
 
+type SmartFilter = 'all' | 'unpaid_issued' | 'paid_not_booked' | 'booked_not_reconciled' | 'overdue';
+
 const InvoiceList = () => {
   const { invoices: { data: invoices, isLoading } } = useGlobalData();
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedType, setSelectedType] = useState<string>("all");
+  const [smartFilter, setSmartFilter] = useState<SmartFilter>('all');
   const isMobile = useIsMobile();
   
   useEffect(() => {
@@ -68,7 +72,7 @@ const InvoiceList = () => {
     return Array.from(types);
   }, [invoices]);
   
-  // Filter invoices based on search term and selected type
+  // Filter invoices based on search term, selected type, and smart filter
   const filteredInvoices = useMemo(() => {
     return invoices.filter(
       (invoice) => {
@@ -78,10 +82,35 @@ const InvoiceList = () => {
           
         const matchesType = selectedType === "all" || invoice.type === selectedType;
         
-        return matchesSearch && matchesType;
+        // Smart filter logic
+        let matchesSmartFilter = true;
+        const invoiceAny = invoice as any;
+        const isPaid = invoice.isPaid || invoice.paid;
+        const isBooked = invoiceAny.booked_to_ledger;
+        const isOverdue = new Date(invoice.dueDate) < new Date() && !isPaid;
+        
+        switch (smartFilter) {
+          case 'unpaid_issued':
+            matchesSmartFilter = !isPaid;
+            break;
+          case 'paid_not_booked':
+            matchesSmartFilter = isPaid && !isBooked;
+            break;
+          case 'booked_not_reconciled':
+            matchesSmartFilter = isBooked; // Could add reconciliation check later
+            break;
+          case 'overdue':
+            matchesSmartFilter = isOverdue;
+            break;
+          case 'all':
+          default:
+            matchesSmartFilter = true;
+        }
+        
+        return matchesSearch && matchesType && matchesSmartFilter;
       }
     );
-  }, [invoices, searchTerm, selectedType]);
+  }, [invoices, searchTerm, selectedType, smartFilter]);
   
   // For mobile, show first 2 options on main bar, rest in dropdown
   const mainTypes = useMemo(() => {
@@ -127,6 +156,63 @@ const InvoiceList = () => {
         </Button>
       </div>
       
+      {/* Smart Filters - Accounting Views */}
+      <Card className="bg-blue-50 dark:bg-blue-900/20 border-blue-200 dark:border-blue-800">
+        <CardHeader className="pb-3">
+          <div className="flex items-center gap-2">
+            <Filter className="h-4 w-4 text-blue-600" />
+            <CardTitle className="text-sm font-medium text-blue-900 dark:text-blue-100">
+              Widoki księgowe
+            </CardTitle>
+          </div>
+        </CardHeader>
+        <CardContent className="flex flex-wrap gap-2">
+          <Button
+            variant={smartFilter === 'all' ? 'default' : 'outline'}
+            size="sm"
+            onClick={() => setSmartFilter('all')}
+          >
+            Wszystkie
+          </Button>
+          <Button
+            variant={smartFilter === 'unpaid_issued' ? 'default' : 'outline'}
+            size="sm"
+            onClick={() => setSmartFilter('unpaid_issued')}
+            className="gap-1"
+          >
+            <Badge variant="secondary" className="text-xs">⏳</Badge>
+            Wystawione, nieopłacone
+          </Button>
+          <Button
+            variant={smartFilter === 'paid_not_booked' ? 'default' : 'outline'}
+            size="sm"
+            onClick={() => setSmartFilter('paid_not_booked')}
+            className="gap-1"
+          >
+            <Badge variant="secondary" className="text-xs">⚠️</Badge>
+            Opłacone, niezaksięgowane
+          </Button>
+          <Button
+            variant={smartFilter === 'booked_not_reconciled' ? 'default' : 'outline'}
+            size="sm"
+            onClick={() => setSmartFilter('booked_not_reconciled')}
+            className="gap-1"
+          >
+            <Badge variant="secondary" className="text-xs">📘</Badge>
+            Zaksięgowane
+          </Button>
+          <Button
+            variant={smartFilter === 'overdue' ? 'default' : 'outline'}
+            size="sm"
+            onClick={() => setSmartFilter('overdue')}
+            className="gap-1"
+          >
+            <Badge variant="secondary" className="text-xs bg-red-100 text-red-700">🔴</Badge>
+            Zaległe
+          </Button>
+        </CardContent>
+      </Card>
+
       {/* Document Type Filter */}
       <div className="flex items-center gap-2 overflow-x-hidden">
         {mainTypes.map((type) => (

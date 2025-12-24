@@ -1,7 +1,7 @@
 import React, { useRef } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/shared/ui/dialog";
 import { Button } from "@/shared/ui/button";
-import { Download, X } from "lucide-react";
+import { Download, Share2 } from "lucide-react";
 import { Invoice, BusinessProfile, Customer } from "@/shared/types";
 import { BankAccount } from '@/modules/banking/bank';
 import { InvoicePdfTemplate } from "@/modules/invoices/components/pdf/InvoicePdfTemplate";
@@ -14,6 +14,7 @@ interface InvoicePDFViewerProps {
   isOpen: boolean;
   onClose: () => void;
   bankAccounts?: BankAccount[];
+  onShare?: () => void;
 }
 
 const InvoicePDFViewer: React.FC<InvoicePDFViewerProps> = ({
@@ -23,6 +24,7 @@ const InvoicePDFViewer: React.FC<InvoicePDFViewerProps> = ({
   isOpen,
   onClose,
   bankAccounts = [],
+  onShare,
 }) => {
   const htmlRef = useRef<HTMLDivElement>(null);
 
@@ -74,6 +76,10 @@ const InvoicePDFViewer: React.FC<InvoicePDFViewerProps> = ({
               <Button variant="outline" onClick={handleDownloadHtml}>
                 <Download className="h-4 w-4 mr-2" />
                 Pobierz HTML
+              </Button>
+              <Button variant="outline" onClick={() => onShare?.()}>
+                <Share2 className="h-4 w-4 mr-2" />
+                Udostępnij
               </Button>
             </div>
           </div>

@@ -1,17 +1,17 @@
 import React, { useState, useMemo, useRef, useEffect } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { Button } from "@/shared/ui/button";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/shared/ui/card";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/shared/ui/card";
 import { Input } from "@/shared/ui/input";
 import { Invoice, InvoiceType } from "@/shared/types";
-import { Plus, Search, Filter, Trash2, CheckSquare, Square, FileDown, Eye, CreditCard, LayoutGrid, List, Share2, Pen } from "lucide-react";
+import { Plus, Search, Filter, Trash2, CheckSquare, Square, FileDown, Eye, CreditCard, LayoutGrid, List, Share2, Pen, AlertCircle } from "lucide-react";
+import { Badge } from "@/shared/ui/badge";
+import MonthlySummaryBar, { MonthlySummaryFilter } from '@/modules/invoices/components/MonthlySummaryBar';
+import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/shared/ui/sheet";
+import { useIsMobile } from "@/shared/hooks/use-mobile";
 import InvoiceCard from "@/modules/invoices/components/InvoiceCard";
+import ProfessionalInvoiceRow from '@/modules/invoices/components/ProfessionalInvoiceRow';
+import ProfessionalInvoiceRowMobile from '@/modules/invoices/components/ProfessionalInvoiceRowMobile';
 import InvoicePDFViewer from "@/modules/invoices/components/InvoicePDFViewer";
 import ShareInvoiceDialog from "@/modules/invoices/components/ShareInvoiceDialog";
 import { useGlobalData } from "@/shared/hooks/use-global-data";
@@ -42,11 +42,14 @@ import { getBusinessProfileById } from "@/modules/settings/data/businessProfileR
 import { Checkbox } from "@/shared/ui/checkbox";
 import { supabase } from "@/integrations/supabase/client";
 
+type SmartFilter = 'all' | 'unpaid_issued' | 'paid_not_booked' | 'booked_not_reconciled' | 'overdue';
+
 const IncomeList = () => {
   const { invoices: { data: invoices, isLoading } } = useGlobalData();
   const { selectedProfileId } = useBusinessProfile();
   const [searchTerm, setSearchTerm] = useState("");
   const [activeTab, setActiveTab] = useState<string>("all");
+  const [smartFilter, setSmartFilter] = useState<SmartFilter>('all');
   const [viewMode, setViewMode] = useState<'grid' | 'list'>("list");
   const [contextMenu, setContextMenu] = useState<{visible: boolean, x: number, y: number, invoiceId: string | null}>({visible: false, x: 0, y: 0, invoiceId: null});
   const [selectedInvoices, setSelectedInvoices] = useState<Set<string>>(new Set());
@@ -60,6 +63,9 @@ const IncomeList = () => {
   const [previewInvoice, setPreviewInvoice] = useState<Invoice | null>(null);
   const [isPreviewOpen, setIsPreviewOpen] = useState(false);
   const [shareInvoiceId, setShareInvoiceId] = useState<string | null>(null);
+  const [isFilterPanelOpen, setIsFilterPanelOpen] = useState(true);
+  const [isFilterSheetOpen, setIsFilterSheetOpen] = useState(false);
+  const isMobileView = useIsMobile();
 
   // Handle share invoice event
   useEffect(() => {
@@ -293,10 +299,35 @@ const IncomeList = () => {
           (activeTab === "proforma" && invoice.type === InvoiceType.PROFORMA) ||
           (activeTab === "correction" && invoice.type === InvoiceType.CORRECTION);
 
-        return matchesSearch && matchesType;
+        // Smart filter logic
+        let matchesSmartFilter = true;
+        const invoiceAny = invoice as any;
+        const isPaid = invoice.isPaid || invoice.paid;
+        const isBooked = invoiceAny.booked_to_ledger;
+        const isOverdue = new Date(invoice.dueDate) < new Date() && !isPaid;
+        
+        switch (smartFilter) {
+          case 'unpaid_issued':
+            matchesSmartFilter = !isPaid;
+            break;
+          case 'paid_not_booked':
+            matchesSmartFilter = isPaid && !isBooked;
+            break;
+          case 'booked_not_reconciled':
+            matchesSmartFilter = isBooked;
+            break;
+          case 'overdue':
+            matchesSmartFilter = isOverdue;
+            break;
+          case 'all':
+          default:
+            matchesSmartFilter = true;
+        }
+
+        return matchesSearch && matchesType && matchesSmartFilter;
       }
     );
-  }, [invoices, searchTerm, activeTab, selectedProfileId]); // Include all dependencies
+  }, [invoices, searchTerm, activeTab, selectedProfileId, smartFilter]); // Include all dependencies
 
   // Multi-select functions
   const toggleInvoiceSelection = (invoiceId: string, event?: React.MouseEvent) => {
@@ -452,214 +483,122 @@ const IncomeList = () => {
     </div>
   );
 
-  const renderListView = () => (
-    <div className="rounded-md border">
-      <div className="divide-y">
-        {filteredInvoices.map((invoice) => {
-          const customer = (customers as any[])?.find((c) => c.id === invoice.customerId);
-          const isVatDisabled = invoice.vat === false || (invoice as any).fakturaBezVat === true;
-
-          return (
-            <div
-              key={invoice.id}
-              className={`relative transition-colors ${selectedInvoices.has(invoice.id) ? 'bg-accent/10' : ''}`}
-              onContextMenu={(e) => handleContextMenu(e, invoice.id)}
-              onClick={() => navigate(`/income/${invoice.id}`)}
-              onTouchStart={(e) => handleTouchStart(e, invoice.id)}
-              onTouchMove={handleTouchMove}
-              onTouchEnd={handleTouchEnd}
-            >
-              <div className="flex flex-col gap-4 px-4 py-4 hover:bg-muted md:flex-row md:items-center md:justify-between md:gap-6">
-                <div className="flex items-start gap-3 md:min-w-0 md:flex-1">
-                  <button
-                    type="button"
-                    className="p-1 rounded-md hover:bg-muted/60 active:bg-muted/80 shrink-0"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      toggleInvoiceSelection(invoice.id, e);
-                    }}
-                    aria-label={selectedInvoices.has(invoice.id) ? 'Odznacz dokument' : 'Zaznacz dokument'}
-                  >
-                    <Checkbox
-                      checked={selectedInvoices.has(invoice.id)}
-                      onCheckedChange={() => toggleInvoiceSelection(invoice.id)}
-                    />
-                  </button>
-                  <div className="min-w-0 flex-1 space-y-3">
-                    <div className="flex flex-wrap items-center gap-2 text-sm font-medium leading-5">
-                      <span className="truncate max-w-[240px] sm:max-w-xs md:max-w-none">{invoice.number}</span>
-                      {invoice.isPaid && (
-                        <span className="inline-flex items-center rounded-full bg-emerald-100 px-2 py-0.5 text-xs font-semibold text-emerald-800">
-                          Zapłacone
-                        </span>
-                      )}
-                      {isVatDisabled && (
-                        <span className="inline-flex items-center rounded-full bg-amber-100 px-2 py-0.5 text-xs font-semibold text-amber-800">
-                          Bez VAT
-                        </span>
-                      )}
-                    </div>
-                    <div className="space-y-2 text-sm text-muted-foreground">
-                      <div className="truncate">{invoice.customerName || '---'}</div>
-                      {customer && (
-                        <div className="text-xs text-muted-foreground grid gap-x-3 gap-y-1 sm:grid-cols-2 md:grid-cols-1 lg:grid-cols-2">
-                          {customer.taxId && <span className="truncate">NIP: {customer.taxId}</span>}
-                          {(customer.address || customer.postalCode || customer.city) && (
-                            <span className="truncate">
-                              {customer.address}
-                              {customer.address && (customer.postalCode || customer.city) ? ', ' : ''}
-                              {customer.postalCode} {customer.city}
-                            </span>
-                          )}
-                          {customer.phone && <span className="truncate">{customer.phone}</span>}
-                          {customer.email && <span className="truncate">{customer.email}</span>}
-                        </div>
-                      )}
-                    </div>
-                    <div className="flex flex-wrap items-center gap-2 text-sm text-muted-foreground">
-                      <span className="whitespace-nowrap">{new Date(invoice.issueDate).toLocaleDateString()}</span>
-                      <span className="font-semibold text-base text-foreground whitespace-nowrap">{formatInvoiceAmount(invoice)}</span>
-                    </div>
-                  </div>
-                </div>
-                <div className="flex flex-col gap-3 text-sm md:flex-none md:w-64 md:items-end">
-                  <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:justify-end md:w-full">
-                    <div className="flex flex-wrap items-center gap-2 w-full sm:w-auto sm:justify-end">
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        className="w-full sm:w-auto"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          navigate(`/income/${invoice.id}`);
-                        }}
-                      >
-                        Otwórz
-                      </Button>
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        className="w-full sm:w-auto"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          openPreview(invoice);
-                        }}
-                      >
-                        <Eye className="h-4 w-4 mr-2" />
-                        Podgląd
-                      </Button>
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        className="w-full sm:w-auto"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          navigate(`/income/edit/${invoice.id}`);
-                        }}
-                      >
-                        <Pen className="h-4 w-4 mr-2" />
-                        Edytuj
-                      </Button>
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        className="w-full sm:w-auto"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          setShareInvoiceId(invoice.id);
-                        }}
-                      >
-                        <Share2 className="h-4 w-4 mr-2" />
-                        Udostępnij
-                      </Button>
-                    </div>
-                    <div className="w-full sm:w-full md:w-40">
-                      {invoice.isPaid ? (
-                        <Button
-                          variant="secondary"
-                          size="sm"
-                          className="w-full justify-center"
-                          onClick={async (e) => {
-                            e.stopPropagation();
-                            await handleMarkAsUnpaid(invoice.id, invoice);
-                          }}
-                        >
-                          Niezapłacone
-                        </Button>
-                      ) : (
-                        <Button
-                          variant="default"
-                          size="sm"
-                          className="w-full justify-center"
-                          onClick={async (e) => {
-                            e.stopPropagation();
-                            await handleMarkAsPaid(invoice.id, invoice);
-                          }}
-                        >
-                          zapłacone
-                        </Button>
-                      )}
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </div>
-          );
-        })}
+  const renderListView = () => {
+    return (
+      <div className="space-y-0">
+        <div className="divide-y-0">
+          {filteredInvoices.map((invoice) => {
+            const customer = (customers as any[])?.find((c) => c.id === invoice.customerId);
+            const RowComponent = isMobileView ? ProfessionalInvoiceRowMobile : ProfessionalInvoiceRow;
+            
+            return (
+              <RowComponent
+                key={invoice.id}
+                invoice={invoice}
+                isIncome={true}
+                onView={(id) => navigate(`/income/${id}`)}
+                onPreview={openPreview}
+                onDownload={async (inv) => {
+                  const customer = customers?.find((c: any) => c.id === inv.customerId);
+                  await generateInvoicePdf({
+                    invoice: inv,
+                    businessProfile,
+                    customer,
+                    filename: getInvoiceFileName(inv),
+                    bankAccounts,
+                  });
+                }}
+                onEdit={(id) => navigate(`/income/edit/${id}`)}
+                onDelete={handleDeleteInvoice}
+                onShare={(id) => setShareInvoiceId(id)}
+                onDuplicate={(id) => navigate(`/income/new?duplicateId=${id}`)}
+                onTogglePaid={async (id, inv) => {
+                  if (inv.isPaid) {
+                    await handleMarkAsUnpaid(id, inv);
+                  } else {
+                    await handleMarkAsPaid(id, inv);
+                  }
+                }}
+              />
+            );
+          })}
+        </div>
       </div>
-    </div>
-  );
+    );
+  };
   
+  const handleSummaryFilter = (filter: MonthlySummaryFilter) => {
+    if (filter === 'unpaid_issued') {
+      setSmartFilter('unpaid_issued');
+      return;
+    }
+    if (filter === 'overdue') {
+      setSmartFilter('overdue');
+      return;
+    }
+    setSmartFilter('all');
+  };
+
+  const handleFilterButton = () => {
+    if (isMobileView) {
+      setIsFilterSheetOpen(true);
+    } else {
+      setIsFilterPanelOpen((prev) => !prev);
+    }
+  };
+
+  const summaryCTA = (
+    <DropdownMenu>
+      <DropdownMenuTrigger asChild>
+        <Button className="px-4 py-2 text-sm font-semibold">
+          <Plus className="mr-2 h-4 w-4" />
+          Nowe zdarzenie
+        </Button>
+      </DropdownMenuTrigger>
+      <DropdownMenuContent align="end">
+        <DropdownMenuGroup>
+          <DropdownMenuItem asChild>
+            <Link to="/income/new?type=sales">Faktura VAT</Link>
+          </DropdownMenuItem>
+          <DropdownMenuItem asChild>
+            <Link to="/income/new?type=receipt">Rachunek</Link>
+          </DropdownMenuItem>
+          <DropdownMenuItem asChild>
+            <Link to="/income/new?type=proforma">Faktura proforma</Link>
+          </DropdownMenuItem>
+          <DropdownMenuItem asChild>
+            <Link to="/income/new?type=correction">Faktura korygująca</Link>
+          </DropdownMenuItem>
+        </DropdownMenuGroup>
+      </DropdownMenuContent>
+    </DropdownMenu>
+  );
+
   return (
     <div className="space-y-6 pb-20 md:pb-6 relative">
-      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+      <div className="flex flex-col gap-4">
         <div>
-          <h1 className="text-3xl font-bold">Przychód</h1>
+          <h1 className="text-3xl font-bold mb-2">Centrum kontroli przychodów</h1>
           <p className="text-muted-foreground">
-            Zarządzaj fakturami i rachunkami
+            Realny wpływ pieniędzy do firmy — faktury, płatności, rozliczenia
           </p>
         </div>
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <Button>
-              <Plus className="mr-2 h-4 w-4" />
-              Nowy dokument
-            </Button>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent align="end">
-            <DropdownMenuGroup>
-              <DropdownMenuItem asChild>
-                <Link to="/income/new?type=sales">
-                  Faktura VAT
-                </Link>
-              </DropdownMenuItem>
-              <DropdownMenuItem asChild>
-                <Link to="/income/new?type=receipt">
-                  Rachunek
-                </Link>
-              </DropdownMenuItem>
-              <DropdownMenuItem asChild>
-                <Link to="/income/new?type=proforma">
-                  Faktura proforma
-                </Link>
-              </DropdownMenuItem>
-              <DropdownMenuItem asChild>
-                <Link to="/income/new?type=correction">
-                  Faktura korygująca
-                </Link>
-              </DropdownMenuItem>
-            </DropdownMenuGroup>
-          </DropdownMenuContent>
-        </DropdownMenu>
+
+        <MonthlySummaryBar
+          invoices={invoices}
+          transactionType="income"
+          cta={summaryCTA}
+          onFilter={handleSummaryFilter}
+        />
       </div>
       
       <Card>
         <CardHeader className="pb-3">
           <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
             <div>
-              <CardTitle>Dokumenty przychodowe</CardTitle>
+              <CardTitle>Zdarzenia przychodowe</CardTitle>
               <CardDescription>
-                {activeTab !== "all" ? getDocumentTypeName(activeTab) : "Wszystkie dokumenty"}: {filteredInvoices.length}
+                {activeTab !== "all" ? getDocumentTypeName(activeTab) : "Dokumenty ujęte w systemie"}: {filteredInvoices.length}
                 {selectedInvoices.size > 0 && (
                   <span className="ml-2 text-primary font-medium">
                     • Wybrano: {selectedInvoices.size}
@@ -668,6 +607,16 @@ const IncomeList = () => {
               </CardDescription>
             </div>
             <div className="flex gap-2 items-center">
+              {/* Filtry Button */}
+              <Button
+                variant={isFilterPanelOpen && !isMobileView ? 'default' : 'outline'}
+                size="sm"
+                onClick={handleFilterButton}
+                className="gap-1.5"
+              >
+                <Filter className="h-4 w-4" />
+                <span className="hidden sm:inline">Filtry</span>
+              </Button>
               {/* View Toggle */}
               <div className="flex rounded-md border overflow-hidden">
                 <button
@@ -694,7 +643,7 @@ const IncomeList = () => {
               <div className="relative w-full sm:w-72">
                 <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                 <Input
-                  placeholder="Szukaj dokumentów..."
+                  placeholder="Szukaj: kontrahent, kwota, status, NIP..."
                   className="pl-9"
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
@@ -703,6 +652,69 @@ const IncomeList = () => {
             </div>
           </div>
         </CardHeader>
+        
+        {/* Desktop Collapsible Filter Panel */}
+        {!isMobileView && isFilterPanelOpen && (
+          <div className="px-6 pb-4 border-b">
+            <div className="flex flex-wrap gap-2">
+              <Button
+                variant={smartFilter === 'all' ? 'default' : 'outline'}
+                size="sm"
+                onClick={() => setSmartFilter('all')}
+              >
+                Wszystkie
+              </Button>
+              <Button
+                variant={smartFilter === 'unpaid_issued' ? 'default' : 'outline'}
+                size="sm"
+                onClick={() => setSmartFilter('unpaid_issued')}
+                className="gap-1 flex-col items-start h-auto py-2"
+                title="Dokument istnieje, ale nie ma wpływu na cashflow"
+              >
+                <div className="flex items-center gap-1">
+                  <Badge variant="secondary" className="text-xs">⏳</Badge>
+                  <span>Wystawione, nieopłacone</span>
+                </div>
+                <span className="text-xs text-muted-foreground font-normal">Dokument istnieje, ale nie ma wpływu na cashflow</span>
+              </Button>
+              <Button
+                variant={smartFilter === 'paid_not_booked' ? 'default' : 'outline'}
+                size="sm"
+                onClick={() => setSmartFilter('paid_not_booked')}
+                className="gap-1 flex-col items-start h-auto py-2"
+                title="Pieniądze są, ale księgowość nie jest domknięta"
+              >
+                <div className="flex items-center gap-1">
+                  <Badge variant="secondary" className="text-xs">⚠️</Badge>
+                  <span>Opłacone, niezaksięgowane</span>
+                </div>
+                <span className="text-xs text-muted-foreground font-normal">Pieniądze są, ale księgowość nie jest domknięta</span>
+              </Button>
+              <Button
+                variant={smartFilter === 'booked_not_reconciled' ? 'default' : 'outline'}
+                size="sm"
+                onClick={() => setSmartFilter('booked_not_reconciled')}
+                className="gap-1 flex-col items-start h-auto py-2"
+                title="Dokument zamknięty, bezpieczny podatkowo"
+              >
+                <div className="flex items-center gap-1">
+                  <Badge variant="secondary" className="text-xs">📘</Badge>
+                  <span>Zaksięgowane</span>
+                </div>
+                <span className="text-xs text-muted-foreground font-normal">Dokument zamknięty, bezpieczny podatkowo</span>
+              </Button>
+              <Button
+                variant={smartFilter === 'overdue' ? 'default' : 'outline'}
+                size="sm"
+                onClick={() => setSmartFilter('overdue')}
+                className="gap-1"
+              >
+                <Badge variant="secondary" className="text-xs bg-red-100 text-red-700">🔴</Badge>
+                Zaległe
+              </Button>
+            </div>
+          </div>
+        )}
         
         <div className="px-6 pb-2">
           <Tabs defaultValue="all" value={activeTab} onValueChange={setActiveTab}>
@@ -714,7 +726,6 @@ const IncomeList = () => {
               ))}
             </TabsList>
           </Tabs>
-          
           {isMultiSelectMode && filteredInvoices.length > 0 && (
             <div className="flex items-center gap-2 mb-4">
               <Button
@@ -776,8 +787,29 @@ const IncomeList = () => {
               Ładowanie...
             </div>
           ) : filteredInvoices.length === 0 ? (
-            <div className="text-center py-8">
-              {searchTerm.length > 0 || activeTab !== "all" ? "Brak wyników wyszukiwania" : "Brak dokumentów"}
+            <div className="text-center py-12">
+              <div className="max-w-md mx-auto space-y-3">
+                <div className="text-lg font-medium">
+                  {smartFilter !== 'all' ? 'Brak dokumentów w tym stanie' : 
+                   searchTerm.length > 0 ? 'Brak wyników wyszukiwania' : 
+                   'Brak dokumentów'}
+                </div>
+                {smartFilter !== 'all' && (
+                  <p className="text-sm text-muted-foreground">
+                    To znaczy, że wszystkie przychody są pod kontrolą w tym obszarze.
+                  </p>
+                )}
+                {searchTerm.length > 0 && (
+                  <p className="text-sm text-muted-foreground">
+                    Spróbuj wyszukać po numerze faktury, nazwie kontrahenta lub NIP.
+                  </p>
+                )}
+                {smartFilter === 'all' && searchTerm.length === 0 && (
+                  <p className="text-sm text-muted-foreground">
+                    Rozpocznij od utworzenia pierwszego zdarzenia przychodowego.
+                  </p>
+                )}
+              </div>
             </div>
           ) : (
             viewMode === 'grid' ? renderGridView() : renderListView()
@@ -793,6 +825,7 @@ const IncomeList = () => {
           businessProfile={businessProfile}
           customer={customers.find(c => c.id === previewInvoice.customerId)}
           bankAccounts={bankAccounts}
+          onShare={() => setShareInvoiceId(previewInvoice.id)}
         />
       )}
       
@@ -804,6 +837,89 @@ const IncomeList = () => {
           invoiceNumber={shareInvoiceId ? filteredInvoices.find(inv => inv.id === shareInvoiceId)?.number || '' : ''}
         />
       )}
+      
+      {/* Mobile Filter Sheet */}
+      <Sheet open={isFilterSheetOpen} onOpenChange={setIsFilterSheetOpen}>
+        <SheetContent side="bottom" className="h-[80vh]">
+          <SheetHeader>
+            <SheetTitle>Filtry</SheetTitle>
+          </SheetHeader>
+          <div className="mt-6 space-y-4">
+            <div className="flex flex-wrap gap-2">
+              <Button
+                variant={smartFilter === 'all' ? 'default' : 'outline'}
+                size="sm"
+                onClick={() => {
+                  setSmartFilter('all');
+                  setIsFilterSheetOpen(false);
+                }}
+              >
+                Wszystkie
+              </Button>
+              <Button
+                variant={smartFilter === 'unpaid_issued' ? 'default' : 'outline'}
+                size="sm"
+                onClick={() => {
+                  setSmartFilter('unpaid_issued');
+                  setIsFilterSheetOpen(false);
+                }}
+                className="gap-1 flex-col items-start h-auto py-2"
+                title="Dokument istnieje, ale nie ma wpływu na cashflow"
+              >
+                <div className="flex items-center gap-1">
+                  <Badge variant="secondary" className="text-xs">⏳</Badge>
+                  <span>Wystawione, nieopłacone</span>
+                </div>
+                <span className="text-xs text-muted-foreground font-normal">Dokument istnieje, ale nie ma wpływu na cashflow</span>
+              </Button>
+              <Button
+                variant={smartFilter === 'paid_not_booked' ? 'default' : 'outline'}
+                size="sm"
+                onClick={() => {
+                  setSmartFilter('paid_not_booked');
+                  setIsFilterSheetOpen(false);
+                }}
+                className="gap-1 flex-col items-start h-auto py-2"
+                title="Pieniądze są, ale księgowość nie jest domknięta"
+              >
+                <div className="flex items-center gap-1">
+                  <Badge variant="secondary" className="text-xs">⚠️</Badge>
+                  <span>Opłacone, niezaksięgowane</span>
+                </div>
+                <span className="text-xs text-muted-foreground font-normal">Pieniądze są, ale księgowość nie jest domknięta</span>
+              </Button>
+              <Button
+                variant={smartFilter === 'booked_not_reconciled' ? 'default' : 'outline'}
+                size="sm"
+                onClick={() => {
+                  setSmartFilter('booked_not_reconciled');
+                  setIsFilterSheetOpen(false);
+                }}
+                className="gap-1 flex-col items-start h-auto py-2"
+                title="Dokument zamknięty, bezpieczny podatkowo"
+              >
+                <div className="flex items-center gap-1">
+                  <Badge variant="secondary" className="text-xs">📘</Badge>
+                  <span>Zaksięgowane</span>
+                </div>
+                <span className="text-xs text-muted-foreground font-normal">Dokument zamknięty, bezpieczny podatkowo</span>
+              </Button>
+              <Button
+                variant={smartFilter === 'overdue' ? 'default' : 'outline'}
+                size="sm"
+                onClick={() => {
+                  setSmartFilter('overdue');
+                  setIsFilterSheetOpen(false);
+                }}
+                className="gap-1"
+              >
+                <Badge variant="secondary" className="text-xs bg-red-100 text-red-700">🔴</Badge>
+                Zaległe
+              </Button>
+            </div>
+          </div>
+        </SheetContent>
+      </Sheet>
       
       {/* Context Menu - Rendered at the root level */}
       {contextMenu.visible && (

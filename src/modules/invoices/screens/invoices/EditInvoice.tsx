@@ -107,6 +107,7 @@ const EditInvoice = () => {
       customerName: invoiceData.customerName,
       bankAccountId: invoiceData.bankAccountId,
       bankAccountNumber: invoiceData.bankAccountNumber,
+      cashAccountId: invoiceData.cashAccountId,
     };
     return transformed;
   }, []);

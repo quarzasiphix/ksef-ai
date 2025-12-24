@@ -3,7 +3,7 @@ import { Link } from "react-router-dom";
 import { formatCurrency } from "@/shared/lib/invoice-utils";
 import { Invoice, InvoiceType } from "@/shared/types";
 import { Badge } from "@/shared/ui/badge";
-import { Calendar, FileText, User, CreditCard, Share2, MessageSquare } from "lucide-react";
+import { Calendar, FileText, User, CreditCard, Share2, MessageSquare, AlertCircle } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 
@@ -35,15 +35,40 @@ const InvoiceCard: React.FC<InvoiceCardProps> = ({ invoice, currency = invoice.c
 
   // Helper function to determine status badge color
   const getStatusBadge = () => {
-    if (invoice.paid || invoice.isPaid) {
-      return <Badge className="bg-green-500 text-xs">Zapłacono</Badge>;
-    } else {
-      if (new Date(invoice.dueDate) < new Date()) {
-        return <Badge className="bg-red-500 text-xs">Zaległa</Badge>;
-      } else {
-        return <Badge className="bg-orange-500 text-xs">Oczekuje</Badge>;
-      }
+    const invoiceAny = invoice as any;
+    const isPaid = invoice.paid || invoice.isPaid;
+    const isBooked = invoiceAny.booked_to_ledger;
+    const isOverdue = new Date(invoice.dueDate) < new Date() && !isPaid;
+    
+    // Critical: Paid but not booked
+    if (isPaid && !isBooked) {
+      return (
+        <div className="flex gap-1">
+          <Badge className="bg-yellow-500 text-xs flex items-center gap-1">
+            <AlertCircle className="h-3 w-3" />
+            Opłacona, niezaksięgowana
+          </Badge>
+        </div>
+      );
     }
+    
+    // Booked
+    if (isBooked) {
+      return <Badge className="bg-blue-500 text-xs">📘 Zaksięgowana</Badge>;
+    }
+    
+    // Paid
+    if (isPaid) {
+      return <Badge className="bg-green-500 text-xs">💰 Zapłacono</Badge>;
+    }
+    
+    // Overdue
+    if (isOverdue) {
+      return <Badge className="bg-red-500 text-xs">Zaległa</Badge>;
+    }
+    
+    // Pending
+    return <Badge className="bg-orange-500 text-xs">Oczekuje</Badge>;
   };
 
   // Helper function to get the document type title

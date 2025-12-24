@@ -28,6 +28,9 @@ import { RevokeDecisionDialog } from '@/modules/decisions/components/RevokeDecis
 import { RevocationApprovalPanel } from '@/modules/decisions/components/RevocationApprovalPanel';
 import { getRevocationRequestByDecisionId } from '@/modules/decisions/data/revocationRepository';
 import { supabase } from '@/integrations/supabase/client';
+import { getCashAccounts } from '@/modules/accounting/data/kasaRepository';
+import type { CashAccount } from '@/modules/accounting/kasa';
+import { Wallet } from 'lucide-react';
 
 const DecisionDetails: React.FC = () => {
   const { id } = useParams<{ id: string }>();
@@ -73,6 +76,15 @@ const DecisionDetails: React.FC = () => {
       return getRevocationRequestByDecisionId(id);
     },
     enabled: !!id,
+  });
+
+  const { data: cashAccounts } = useQuery({
+    queryKey: ['cash-accounts', selectedProfileId],
+    queryFn: async () => {
+      if (!selectedProfileId) return [];
+      return getCashAccounts(selectedProfileId);
+    },
+    enabled: !!selectedProfileId,
   });
 
   const getStatusIcon = (status: string) => {
@@ -415,6 +427,53 @@ const DecisionDetails: React.FC = () => {
                   )}
                 </div>
               ))}
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
+      {cashAccounts && cashAccounts.length > 0 && (
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Wallet className="h-5 w-5 text-blue-600" />
+              Dostępne kasy ({cashAccounts.length})
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-2">
+              {cashAccounts.map((account) => (
+                <div
+                  key={account.id}
+                  className="flex items-center justify-between p-3 border rounded-lg hover:bg-muted/50"
+                >
+                  <div className="min-w-0">
+                    <div className="font-medium truncate">{account.name}</div>
+                    <div className="text-sm text-muted-foreground">
+                      {account.responsible_person && `Odpowiedzialny: ${account.responsible_person}`}
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-4">
+                    <div className="text-right">
+                      <div className="font-medium">
+                        {account.current_balance.toFixed(2)} {account.currency}
+                      </div>
+                      <div className="text-xs text-muted-foreground">
+                        {account.status === 'active' ? (
+                          <Badge variant="outline" className="text-green-600 border-green-600">Aktywna</Badge>
+                        ) : (
+                          <Badge variant="outline" className="text-gray-600 border-gray-600">Zamknięta</Badge>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+            <div className="mt-4 p-3 bg-blue-50 dark:bg-blue-900/20 rounded-lg text-sm text-blue-800 dark:text-blue-100">
+              <p>
+                💡 Te kasy mogą być używane do płatności gotówkowych w ramach tej decyzji.
+              </p>
             </div>
           </CardContent>
         </Card>

@@ -41,6 +41,44 @@ function mapPaymentAccountToCashAccount(pa: PaymentAccount, computedBalance: num
   };
 }
 
+// ============================================================================
+// CONSOLIDATED DATA FETCHING
+// ============================================================================
+
+export interface CashRegisterData {
+  cashAccounts: CashAccount[];
+  cashSettings: CashSettings | null;
+  bankAccounts: any[];
+  cashTransactions: CashTransaction[];
+  cashSummary: CashRegisterSummary | null;
+  cashReconciliations: CashReconciliation[];
+}
+
+export async function getCashRegisterData(
+  businessProfileId: string,
+  options?: {
+    cashAccountId?: string;
+    startDate?: string;
+    endDate?: string;
+  }
+): Promise<CashRegisterData> {
+  const { data, error } = await supabase.functions.invoke('get-cash-register-data', {
+    body: {
+      businessProfileId,
+      cashAccountId: options?.cashAccountId,
+      startDate: options?.startDate,
+      endDate: options?.endDate,
+    },
+  });
+
+  if (error) throw error;
+  return data as CashRegisterData;
+}
+
+// ============================================================================
+// INDIVIDUAL FETCHERS (kept for backward compatibility)
+// ============================================================================
+
 export async function getCashAccounts(businessProfileId: string): Promise<CashAccount[]> {
   const [accounts, balances] = await Promise.all([
     getPaymentAccounts(businessProfileId, 'CASH'),
@@ -278,7 +316,10 @@ export async function getCashTransaction(id: string): Promise<CashTransaction | 
 }
 
 export async function createCashTransaction(
-  input: CreateCashTransactionInput
+  input: CreateCashTransactionInput & {
+    accounting_origin?: 'invoice_auto' | 'invoice_manual' | 'bank_import' | 'manual' | 'transfer';
+    source_invoice_id?: string;
+  }
 ): Promise<CashTransaction> {
   const user = (await supabase.auth.getUser()).data.user;
   if (!user) throw new Error('Not authenticated');
@@ -323,6 +364,8 @@ export async function createCashTransaction(
       is_tax_deductible: input.is_tax_deductible ?? true,
       is_approved: false,
       created_by: user.id,
+      accounting_origin: input.accounting_origin || 'manual',
+      source_invoice_id: input.source_invoice_id || null,
     })
     .select()
     .single();

@@ -1,0 +1,76 @@
+{
+  "schemaVersions": {
+    "V7M": {
+      "current": "3",
+      "versions": [
+        {
+          "version": "3",
+          "effectiveFrom": "2022-02-17",
+          "schemaUrl": "http://crd.gov.pl/wzor/2021/12/13/11149/",
+          "xsdUrl": "http://crd.gov.pl/xml/schematy/dziedzinowe/mf/2022/02/17/eDeklaracja/",
+          "status": "active",
+          "notes": "Current version for monthly VAT register"
+        }
+      ]
+    },
+    "V7K": {
+      "current": "3",
+      "versions": [
+        {
+          "version": "3",
+          "effectiveFrom": "2022-02-17",
+          "schemaUrl": "http://crd.gov.pl/wzor/2021/12/13/11150/",
+          "status": "active",
+          "notes": "Current version for quarterly VAT register"
+        }
+      ]
+    },
+    "FA": {
+      "current": "2",
+      "versions": [
+        {
+          "version": "2",
+          "effectiveFrom": "2016-12-01",
+          "schemaUrl": "http://crd.gov.pl/wzor/2016/08/25/7549/",
+          "status": "active",
+          "notes": "Invoice register (on demand)"
+        }
+      ]
+    },
+    "KR": {
+      "current": "1",
+      "versions": [
+        {
+          "version": "1",
+          "effectiveFrom": "2016-12-01",
+          "schemaUrl": "http://crd.gov.pl/wzor/2016/08/25/7551/",
+          "status": "active",
+          "notes": "Full accounting ledger (on demand)"
+        }
+      ]
+    },
+    "PKPIR": {
+      "current": "1",
+      "versions": [
+        {
+          "version": "1",
+          "effectiveFrom": "2016-12-01",
+          "schemaUrl": "http://crd.gov.pl/wzor/2016/08/25/7552/",
+          "status": "active",
+          "notes": "Tax revenue book for JDG (on demand)"
+        }
+      ]
+    }
+  },
+  "lastChecked": "2024-12-24T10:00:00Z",
+  "updateStrategy": "schema-watcher",
+  "officialSources": [
+    "https://www.gov.pl/web/kas/struktury-jpk",
+    "https://www.gov.pl/web/kas/jpk-vat"
+  ],
+  "notes": [
+    "Schema versions are checked weekly via automated job",
+    "When new version detected, create PR with updated mapper",
+    "Old versions kept for historical submissions/corrections"
+  ]
+}

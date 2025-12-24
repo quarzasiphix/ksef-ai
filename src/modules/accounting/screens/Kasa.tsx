@@ -77,6 +77,7 @@ import {
   getLastReconciliation,
   getCashSettings,
   createCashTransfer,
+  getCashRegisterData,
 } from '@/modules/accounting/data/kasaRepository';
 import { getBankAccountsForProfile } from '@/modules/banking/data/bankAccountRepository';
 import type { BankAccount } from '@/modules/banking/bank';
@@ -158,72 +159,47 @@ const Kasa = () => {
   });
 
   useEffect(() => {
-    if (selectedProfileId) {
+    if (!selectedProfileId) {
+      setAccounts([]);
       setSelectedAccountId(null);
-      loadData();
+      setTransactions([]);
+      setSummary(null);
+      return;
     }
+    loadData();
   }, [selectedProfileId]);
 
   useEffect(() => {
-    if (selectedAccountId && selectedProfileId) {
-      loadTransactions();
-      loadSummary();
+    if (selectedProfileId && selectedAccountId) {
+      loadData();
     }
-  }, [selectedAccountId, selectedProfileId, dateFilter]);
+  }, [selectedAccountId, dateFilter]);
 
   const loadData = async () => {
     if (!selectedProfileId) return;
     setLoading(true);
     try {
-      const [accountsData, settingsData, bankAccountsData] = await Promise.all([
-        getCashAccounts(selectedProfileId),
-        getCashSettings(selectedProfileId),
-        getBankAccountsForProfile(selectedProfileId),
-      ]);
-      setAccounts(accountsData);
-      setSettings(settingsData);
-      setBankAccounts(bankAccountsData);
+      const data = await getCashRegisterData(selectedProfileId, {
+        cashAccountId: selectedAccountId || undefined,
+        startDate: dateFilter.start,
+        endDate: dateFilter.end,
+      });
 
-      if (accountsData.length > 0) {
-        const stillValid = selectedAccountId && accountsData.some(a => a.id === selectedAccountId);
-        setSelectedAccountId(stillValid ? selectedAccountId : accountsData[0].id);
-      } else {
-        setSelectedAccountId(null);
+      setAccounts(data.cashAccounts);
+      setSettings(data.cashSettings);
+      setBankAccounts(data.bankAccounts);
+      setTransactions(data.cashTransactions);
+      setSummary(data.cashSummary);
+
+      // Only auto-select if no account is selected yet
+      if (!selectedAccountId && data.cashAccounts.length > 0) {
+        setSelectedAccountId(data.cashAccounts[0].id);
       }
     } catch (error) {
       console.error('Error loading cash data:', error);
       toast.error('Błąd podczas ładowania danych kasy');
     } finally {
       setLoading(false);
-    }
-  };
-
-  const loadTransactions = async () => {
-    if (!selectedProfileId || !selectedAccountId) return;
-    try {
-      const txs = await getCashTransactions(selectedProfileId, {
-        cashAccountId: selectedAccountId,
-        startDate: dateFilter.start,
-        endDate: dateFilter.end,
-      });
-      setTransactions(txs);
-    } catch (error) {
-      console.error('Error loading transactions:', error);
-    }
-  };
-
-  const loadSummary = async () => {
-    if (!selectedProfileId || !selectedAccountId) return;
-    try {
-      const summaryData = await getCashRegisterSummary(
-        selectedProfileId,
-        selectedAccountId,
-        dateFilter.start,
-        dateFilter.end
-      );
-      setSummary(summaryData);
-    } catch (error) {
-      console.error('Error loading summary:', error);
     }
   };
 
@@ -773,7 +749,7 @@ const Kasa = () => {
                           {tx.document_number}
                         </TableCell>
                         <TableCell>
-                          {format(new Date(tx.date), 'd MMM yyyy', { locale: pl })}
+                          {format(new Date(tx.payment_date), 'd MMM yyyy', { locale: pl })}
                         </TableCell>
                         <TableCell>
                           <Badge
