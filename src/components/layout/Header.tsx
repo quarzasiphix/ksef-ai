@@ -1,9 +1,12 @@
-import React from "react";
+import React, { useState } from "react";
 import { Button } from "@/shared/ui/button";
-import { Plus, Minus, ArrowDownCircle, ArrowUpCircle, PiggyBank, UserPlus, PackagePlus, DollarSign, FileText, CreditCard, Banknote, Calculator, Users, Package } from "lucide-react";
-import { useNavigate, Link, useLocation } from "react-router-dom";
+import { Plus, ArrowDownCircle, ArrowUpCircle, PiggyBank, UserPlus, PackagePlus, DollarSign, FileText } from "lucide-react";
+import { Link } from "react-router-dom";
 import { useIsMobile } from "@/shared/hooks/use-mobile";
 import { ThemeToggle } from "@/components/theme/ThemeToggle";
+import WorkspaceMenu from "@/components/workspace/WorkspaceMenu";
+import TabSwitcher from "@/components/workspace/TabSwitcher";
+import HeaderTabsStrip from "@/components/workspace/HeaderTabsStrip";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -15,62 +18,37 @@ import {
 } from "@/shared/ui/dropdown-menu";
 
 const Header = () => {
-  const navigate = useNavigate();
   const isMobile = useIsMobile();
-  const location = useLocation();
+  const [tabSwitcherOpen, setTabSwitcherOpen] = useState(false);
 
-  const isActive = (pathPrefix: string) => location.pathname.startsWith(pathPrefix);
+  // Cmd+K / Ctrl+K shortcut for tab switcher
+  React.useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if ((e.metaKey || e.ctrlKey) && e.key === 'k') {
+        e.preventDefault();
+        setTabSwitcherOpen(true);
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, []);
 
   return (
-    <header className="sticky top-0 z-40 border-b px-4 md:px-6 py-3 flex items-center justify-between bg-background">
-      <div className="flex items-center gap-2 md:gap-4">
-        {/* Desktop/Tablet: Finance buttons */}
-        <div className="hidden lg:flex items-center gap-2">
-          {/* Only show Faktury and Wydatek once, then separator, then Klienci and Produkty */}
-          <Button
-            asChild
-            variant={isActive("/income") ? "default" : "outline"}
-            className="font-bold px-5 py-2 text-base flex items-center gap-2"
-          >
-            <Link to="/income" aria-current={isActive("/income") ? "page" : undefined}>
-              <Plus className="w-4 h-4 mr-1 text-green-600" />
-              <FileText className="w-5 h-5 mr-1" /> Faktury
-            </Link>
-          </Button>
-          <Button
-            asChild
-            variant={isActive("/expense") ? "default" : "outline"}
-            className="px-4 py-2 text-base flex items-center gap-2"
-          >
-            <Link to="/expense" aria-current={isActive("/expense") ? "page" : undefined}>
-              <Minus className="w-4 h-4 mr-1 text-red-600" />
-              <CreditCard className="w-5 h-5 mr-1" /> Wydatki
-            </Link>
-          </Button>
-          {/* Separator between Wydatek and Klienci */}
-          <div className="h-6 w-px bg-muted mx-2" />
-          <Button
-            asChild
-            variant={isActive("/customers") ? "default" : "outline"}
-            className="px-4 py-2 text-base flex items-center gap-2"
-          >
-            <Link to="/customers" aria-current={isActive("/customers") ? "page" : undefined}>
-              <Users className="w-5 h-5 mr-1" /> Klienci
-            </Link>
-          </Button>
-          <Button
-            asChild
-            variant={isActive("/products") ? "default" : "outline"}
-            className="px-4 py-2 text-base flex items-center gap-2"
-          >
-            <Link to="/products" aria-current={isActive("/products") ? "page" : undefined}>
-              <Package className="w-5 h-5 mr-1" /> Produkty
-            </Link>
-          </Button>
-        </div>
-        <h1 className={`font-bold text-invoice ${isMobile ? "text-base" : "text-lg"}`}>KsiegaI</h1>
-      </div>
-      <div className="flex items-center gap-4">
+    <>
+      {/* Top Header - Three-region layout: left (brand), center (tabs), right (actions) */}
+      <header className="sticky top-0 z-40 bg-black/40 backdrop-blur-xl border-b border-white/5">
+        <div className="px-4 md:px-6 py-2.5 flex items-center gap-4">
+          {/* Left region - Brand/Logo (if needed in future) */}
+          <div className="flex-shrink-0">
+            {/* Reserved for logo/brand */}
+          </div>
+
+          {/* Center region - Workspace Tabs Strip */}
+          <HeaderTabsStrip />
+
+          {/* Right region - Action buttons */}
+          <div className="flex items-center gap-2 flex-shrink-0">
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
             <Button size="sm">
@@ -144,9 +122,14 @@ const Header = () => {
             </DropdownMenuGroup>
           </DropdownMenuContent>
         </DropdownMenu>
-        <ThemeToggle size={isMobile ? "sm" : "icon"} />
-      </div>
-    </header>
+          <WorkspaceMenu onOpenTabSwitcher={() => setTabSwitcherOpen(true)} />
+          <ThemeToggle size={isMobile ? "sm" : "icon"} />
+          </div>
+        </div>
+      </header>
+      
+      <TabSwitcher open={tabSwitcherOpen} onOpenChange={setTabSwitcherOpen} />
+    </>
   );
 };
 

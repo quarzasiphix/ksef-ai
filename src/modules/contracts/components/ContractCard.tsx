@@ -1,8 +1,8 @@
 import React from "react";
-import { Link } from "react-router-dom";
 import { Contract } from "@/shared/types";
 import { Badge } from "@/shared/ui/badge";
 import { Calendar, User, FileText, Clock } from "lucide-react";
+import { useOpenTab } from "@/shared/hooks/useOpenTab";
 
 interface ContractCardProps {
   contract: Contract;
@@ -10,6 +10,8 @@ interface ContractCardProps {
 }
 
 const ContractCard: React.FC<ContractCardProps> = ({ contract, customerName }) => {
+  const { openContractTab } = useOpenTab();
+  
   const getStatusBadge = () => (
     contract.isActive ? (
       <Badge className="bg-green-600 text-xs">Aktywna</Badge>
@@ -18,8 +20,29 @@ const ContractCard: React.FC<ContractCardProps> = ({ contract, customerName }) =
     )
   );
 
+  const handleClick = () => {
+    openContractTab(contract.id, contract.number);
+    
+    // Track in recent documents
+    const recentDoc = {
+      id: contract.id,
+      title: contract.number,
+      path: `/contracts/${contract.id}`,
+      entityId: contract.id,
+      entityType: 'contract' as const,
+      timestamp: Date.now(),
+    };
+    
+    const recent = JSON.parse(localStorage.getItem('recent_documents') || '[]');
+    const updated = [recentDoc, ...recent.filter((r: any) => r.id !== contract.id)].slice(0, 20);
+    localStorage.setItem('recent_documents', JSON.stringify(updated));
+  };
+
   return (
-    <Link to={`/contracts/${contract.id}`} className="block no-underline">
+    <div 
+      onClick={handleClick}
+      className="block no-underline cursor-pointer"
+    >
       <div className="bg-[#1A1F2C] text-white rounded-lg p-3 shadow-md hover:shadow-lg transition-all h-full">
         <div className="flex justify-between items-center mb-2">
           <h3 className="font-bold text-sm truncate" title={contract.number}>{contract.number}</h3>
@@ -57,7 +80,7 @@ const ContractCard: React.FC<ContractCardProps> = ({ contract, customerName }) =
           )}
         </div>
       </div>
-    </Link>
+    </div>
   );
 };
 

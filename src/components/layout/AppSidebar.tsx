@@ -1,31 +1,12 @@
 import React from "react";
 import { NavLink, useLocation, useNavigate } from "react-router-dom";
 import { 
-  Plus,
-  Users, 
-  Package, 
   Settings, 
   Crown,
   User,
   LogOut,
-  UserCheck,
-  Boxes,
-  LucideIcon,
-  Signature,
   Building,
-  BarChart,
-  Banknote,
-  Calculator,
-  FileText,
-  CreditCard,
-  Shield,
-  TrendingUp,
-  DollarSign,
-  Scale,
-  Briefcase,
-  Wallet,
-  Inbox,
-  Landmark
+  Boxes,
 } from "lucide-react";
 import { cn } from "@/shared/lib/utils";
 import {
@@ -47,6 +28,9 @@ import { Button } from "@/shared/ui/button";
 import { BusinessProfileSwitcher } from "./BusinessProfileSwitcher";
 import { ThemeToggle } from "@/components/theme/ThemeToggle";
 import { useBusinessProfile } from "@/shared/context/BusinessProfileContext";
+import SidebarGroupHeader from "./sidebar/SidebarGroupHeader";
+import SidebarNavItem from "./sidebar/SidebarNavItem";
+import { buildNavGroups } from "./sidebar/navConfig";
 
 const AppSidebar = () => {
   const { state } = useSidebar();
@@ -60,162 +44,67 @@ const AppSidebar = () => {
   const isSpZoo = selectedProfile?.entityType === 'sp_zoo' || selectedProfile?.entityType === 'sa';
   const bankPath = isSpZoo ? '/accounting/bank' : '/bank';
 
-  // Quick actions
-  const quickActions = [
-    { title: "Nowa Faktura", path: "/income/new", icon: Plus, color: "text-green-600 dark:text-green-400" },
-    { title: "Nowy Wydatek", path: "/expense/new", icon: Plus, color: "text-red-600 dark:text-red-400" },
-  ];
-
-  // Sidebar item type with optional premium flag
-  interface SidebarItem {
-    title: string;
-    path: string;
-    icon: LucideIcon;
-    premium?: boolean;
-    className?: string;
-  }
-
-  interface SidebarSection {
-    label: string;
-    subtitle?: string;
-    items: SidebarItem[];
-    showForJdg?: boolean;
-    showForSpoolka?: boolean;
-  }
-
   const isSpoolka = selectedProfile?.entityType === 'sp_zoo' || selectedProfile?.entityType === 'sa';
+  const entityType: "spoolka" | "jdg" = isSpoolka ? "spoolka" : "jdg";
+  const navContext = React.useMemo(() => ({
+    entityType,
+    bankPath,
+    hasPremium: isPremium,
+  }), [entityType, bankPath, isPremium]);
 
-  // 1️⃣ OVERVIEW
-  const overviewItem: SidebarItem = { 
-    title: isSpoolka ? "Przegląd" : "Dashboard", 
-    path: "/dashboard", 
-    icon: BarChart 
+  const navGroups = React.useMemo(() => buildNavGroups(navContext), [navContext]);
+
+  const premiumFeatures = React.useMemo(() => ([
+    { title: "Magazyn", icon: Boxes, path: "/inventory" },
+  ]), []);
+
+  const defaultExpandedSections = React.useMemo(() => {
+    return new Set(navGroups.filter(group => group.defaultExpanded !== false).map(group => group.id));
+  }, [navGroups]);
+
+  const [expandedSections, setExpandedSections] = React.useState<Set<string>>(defaultExpandedSections);
+
+  React.useEffect(() => {
+    setExpandedSections(prev => {
+      const next = new Set(prev);
+      navGroups.forEach(group => {
+        if (group.defaultExpanded !== false && !next.has(group.id)) {
+          next.add(group.id);
+        }
+      });
+      return next;
+    });
+  }, [navGroups]);
+
+  const toggleSection = (sectionId: string) => {
+    setExpandedSections(prev => {
+      const next = new Set(prev);
+      if (next.has(sectionId)) {
+        next.delete(sectionId);
+      } else {
+        next.add(sectionId);
+      }
+      return next;
+    });
   };
 
-  // 2️⃣ FINANSE (Money responsibility)
-  const finanseSection: SidebarSection = {
-    label: "FINANSE",
-    subtitle: "Przepływy pieniężne i rozliczenia",
-    showForJdg: true,
-    showForSpoolka: true,
-    items: [
-      { title: "Faktury", path: "/income", icon: FileText, className: "lg:hidden" },
-      { title: "Wydatki", path: "/expense", icon: CreditCard, className: "lg:hidden" },
-      { title: "Skrzynka", path: "/inbox", icon: Inbox },
-      { title: "Bankowość", path: bankPath, icon: Banknote },
-      { title: "Kasa", path: "/accounting/kasa", icon: Wallet },
-      { title: "Analizy", path: "/analytics", icon: TrendingUp },
-    ],
+  // Context highlighting: determine if current page is related to ledger
+  const isLedgerRelated = () => {
+    return location.pathname.startsWith('/ledger') ||
+           location.pathname.startsWith('/income') ||
+           location.pathname.startsWith('/expense') ||
+           location.pathname.startsWith('/bank') ||
+           location.pathname.startsWith('/accounting/kasa');
   };
 
-  // 3️⃣ KSIĘGOWOŚĆ (Tax & compliance - spółka only)
-  const ksiegowoscSection: SidebarSection = {
-    label: "KSIĘGOWOŚĆ",
-    subtitle: "Podatki i sprawozdania",
-    showForJdg: false,
-    showForSpoolka: true,
-    items: [
-      { title: "Panel główny", path: "/accounting", icon: Calculator },
-      { title: "Bilans", path: "/accounting/balance-sheet", icon: TrendingUp },
-      { title: "Kapitał", path: "/accounting/capital-events", icon: DollarSign },
-      { title: "Wspólnicy", path: "/accounting/shareholders", icon: Users },
-    ],
-  };
-
-  // For JDG: simplified accounting
-  const ksiegowoscJdgSection: SidebarSection = {
-    label: "KSIĘGOWOŚĆ",
-    subtitle: "Podatki i rozliczenia",
-    showForJdg: true,
-    showForSpoolka: false,
-    items: [
-      { title: "Księgowość", path: "/accounting", icon: Calculator },
-    ],
-  };
-
-  // 4️⃣ FORMALNOŚCI (Legal spine - spółka only)
-  const formalnosciSection: SidebarSection = {
-    label: "FORMALNOŚCI",
-    subtitle: "Wymagania prawne i dokumenty",
-    showForJdg: false,
-    showForSpoolka: true,
-    items: [
-      { title: "Decyzje", path: "/decisions", icon: Shield },
-      { title: "Dokumenty", path: "/contracts", icon: Signature },
-      { title: "Majątek", path: "/assets", icon: Landmark },
-      { title: "Rejestr spółki", path: "/accounting/company-registry", icon: Building },
-    ],
-  };
-
-  // For JDG: just contracts
-  const formalnosciJdgSection: SidebarSection = {
-    label: "DOKUMENTY",
-    subtitle: "Umowy i pliki",
-    showForJdg: true,
-    showForSpoolka: false,
-    items: [
-      { title: "Umowy", path: "/contracts", icon: Signature },
-    ],
-  };
-
-  // 5️⃣ OPERACJE (Operations - lower priority)
-  const operacjeSection: SidebarSection = {
-    label: "OPERACJE",
-    subtitle: "Zasoby i działania",
-    showForJdg: true,
-    showForSpoolka: true,
-    items: [
-      { title: "Klienci", path: "/customers", icon: Users, className: "lg:hidden" },
-      { title: "Produkty", path: "/products", icon: Package, className: "lg:hidden" },
-      { title: "Pracownicy", path: "/employees", icon: UserCheck },
-      ...(isPremium ? [{ title: "Magazyn", path: "/inventory", icon: Boxes, premium: true }] : []),
-    ],
-  };
-
-  // 6️⃣ SYSTEM (Settings - last)
-  const systemSection: SidebarSection = {
-    label: "SYSTEM",
-    subtitle: undefined,
-    showForJdg: true,
-    showForSpoolka: true,
-    items: [
-      { title: "Ustawienia", path: "/settings", icon: Settings },
-    ],
-  };
-
-  // Build sections based on entity type
-  const sections: SidebarSection[] = [
-    finanseSection,
-    ...(isSpoolka ? [ksiegowoscSection, formalnosciSection] : [ksiegowoscJdgSection, formalnosciJdgSection]),
-    operacjeSection,
-    systemSection,
-  ].filter(section => 
-    isSpoolka ? section.showForSpoolka !== false : section.showForJdg !== false
-  );
-
-  // Premium section for non-premium users (upsell)
-  const inventoryItem: SidebarItem = { title: "Magazyn", path: "/inventory", icon: Boxes, premium: true };
-  const ksefItem: SidebarItem = { title: "KSeF", path: "/ksef", icon: Building, premium: true };
-  const premiumFeatures: SidebarItem[] = [inventoryItem, ksefItem];
+  const shouldHighlightLedger = isLedgerRelated() && !location.pathname.startsWith('/ledger');
 
   const isActive = (path: string) => {
-    // Special handling for dashboard to prevent matching other routes that start with /
     if (path === "/dashboard") {
       return location.pathname === "/dashboard" || location.pathname === "/";
     }
     if (path === "/") return location.pathname === "/";
     return location.pathname.startsWith(path);
-  };
-
-  const getNavClassName = (path: string, premium?: boolean) => {
-    const active = isActive(path);
-    return cn(
-      "flex items-center gap-3 px-3 py-2.5 rounded-lg transition-all duration-200",
-      active
-        ? "bg-muted/60 text-foreground font-medium"
-        : "text-sidebar-foreground/75 hover:bg-muted/30 hover:text-foreground",
-      premium && !isPremium && "opacity-50"
-    );
   };
 
   const handleLogout = async () => {
@@ -317,61 +206,50 @@ const AppSidebar = () => {
           </div>
         )}
 
-        {/* Overview - always first */}
-        <SidebarGroup>
-          <SidebarGroupContent>
-            <SidebarMenu>
-              <SidebarMenuItem key={overviewItem.path}>
-                <SidebarMenuButton
-                  asChild
-                  isActive={isActive(overviewItem.path)}
-                  tooltip={isCollapsed ? overviewItem.title : undefined}
-                >
-                  <NavLink to={overviewItem.path} className={getNavClassName(overviewItem.path)}>
-                    <overviewItem.icon className="h-5 w-5 flex-shrink-0" />
-                    {!isCollapsed && <span className="text-base">{overviewItem.title}</span>}
-                  </NavLink>
-                </SidebarMenuButton>
-              </SidebarMenuItem>
-            </SidebarMenu>
-          </SidebarGroupContent>
-        </SidebarGroup>
+        {/* Dynamic sections with progressive disclosure */}
+        {navGroups.map((section) => {
+          const sectionId = section.id;
+          const isExpanded = expandedSections.has(sectionId);
+          const isMoney = sectionId === 'money';
+          const isSystem = sectionId === 'system';
+          const collapsible = !isMoney && !isSystem;
+          
+          return (
+            <SidebarGroup key={section.label}>
+              {!isCollapsed && (
+                <SidebarGroupHeader
+                  label={section.label}
+                  subtitle={section.subtitle}
+                  collapsible={collapsible}
+                  expanded={collapsible ? isExpanded : true}
+                  onToggle={collapsible ? () => toggleSection(sectionId) : undefined}
+                />
+              )}
+              
+              {(isCollapsed || !collapsible || isExpanded) && (
+                <SidebarGroupContent>
+                  <SidebarMenu>
+                    {section.items.map((item) => {
+                      const itemIsActive = isActive(item.path);
+                      const isLedgerItem = item.id === "ledger";
+                      const showLedgerGlow = isLedgerItem && shouldHighlightLedger;
 
-        {/* Dynamic sections based on entity type */}
-        {sections.map((section) => (
-          <SidebarGroup key={section.label}>
-            {!isCollapsed && (
-              <div className="px-2 mb-1">
-                <SidebarGroupLabel className="text-xs font-semibold tracking-wider text-sidebar-foreground/50">
-                  {section.label}
-                </SidebarGroupLabel>
-                {section.subtitle && (
-                  <p className="text-[10px] text-sidebar-foreground/40 mt-0.5 leading-tight">
-                    {section.subtitle}
-                  </p>
-                )}
-              </div>
-            )}
-            <SidebarGroupContent>
-              <SidebarMenu>
-                {section.items.map((item) => (
-                  <SidebarMenuItem key={item.path} className={item.className}>
-                    <SidebarMenuButton
-                      asChild
-                      isActive={isActive(item.path)}
-                      tooltip={isCollapsed ? item.title : undefined}
-                    >
-                      <NavLink to={item.path} className={getNavClassName(item.path, item.premium)}>
-                        <item.icon className="h-5 w-5 flex-shrink-0" />
-                        {!isCollapsed && <span className="text-base">{item.title}</span>}
-                      </NavLink>
-                    </SidebarMenuButton>
-                  </SidebarMenuItem>
-                ))}
-              </SidebarMenu>
-            </SidebarGroupContent>
-          </SidebarGroup>
-        ))}
+                      return (
+                        <SidebarNavItem
+                          key={item.id}
+                          item={item}
+                          isActive={itemIsActive}
+                          highlightLedger={showLedgerGlow}
+                          collapsed={isCollapsed}
+                        />
+                      );
+                    })}
+                  </SidebarMenu>
+                </SidebarGroupContent>
+              )}
+            </SidebarGroup>
+          );
+        })}
 
         {/* Upsell Premium Section (visible only for non-premium users) */}
         {!isPremium && (

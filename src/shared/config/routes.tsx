@@ -51,6 +51,7 @@ const AccountingShell = React.lazy(() => import('@/modules/accounting/screens/Ac
 const Kasa = React.lazy(() => import('@/modules/accounting/screens/Kasa'));
 const TransactionalContracts = React.lazy(() => import('@/modules/accounting/screens/TransactionalContracts'));
 const EventLog = React.lazy(() => import('@/modules/accounting/screens/EventLog'));
+const LedgerPage = React.lazy(() => import('@/modules/accounting/screens/LedgerPage'));
 const SettingsMenu = React.lazy(() => import('@/modules/settings/screens/SettingsMenu'));
 const ProfileSettings = React.lazy(() => import('@/modules/settings/screens/ProfileSettings'));
 const TeamManagement = React.lazy(() => import('@/modules/settings/screens/TeamManagement'));
@@ -432,6 +433,16 @@ export const routes: RouteConfig[] = [
     title: 'Analityka',
     icon: 'BarChart',
     section: 'main',
+  },
+
+  // Ledger
+  {
+    path: '/ledger',
+    element: <LedgerPage />,
+    guard: 'protected',
+    title: 'Księga finansowa',
+    icon: 'BookOpen',
+    section: 'finance',
   },
 
   // Settings

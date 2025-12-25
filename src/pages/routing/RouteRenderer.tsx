@@ -13,6 +13,7 @@ import { routes, flattenRoutes, type RouteConfig } from '@/shared/config/routes'
 import { AppGate, ProtectedGate, PremiumGate, PublicGate } from './AppGate';
 import { useAuth } from '@/shared/hooks/useAuth';
 import { redirectToLogin } from '@/shared/utils/domainHelpers';
+import { supabase } from '@/integrations/supabase/client';
 
 const AppLoadingScreen = () => (
   <div className="flex items-center justify-center h-screen">
@@ -94,10 +95,12 @@ function renderRoute(route: RouteConfig) {
 }
 
 /**
- * Root redirect logic
+ * Root redirect logic - checks if user needs onboarding
  */
 const RootRedirect = () => {
   const { user, isLoading } = useAuth();
+  const [checkingProfiles, setCheckingProfiles] = React.useState(true);
+  const [hasProfiles, setHasProfiles] = React.useState(false);
 
   useEffect(() => {
     if (!isLoading && !user) {
@@ -106,15 +109,54 @@ const RootRedirect = () => {
     }
   }, [user, isLoading]);
 
-  console.log('[RootRedirect] Checking auth:', { isLoading, user: user?.id });
+  // Check if user has business profiles
+  useEffect(() => {
+    const checkProfiles = async () => {
+      if (!user) {
+        setCheckingProfiles(false);
+        return;
+      }
 
-  if (isLoading) {
+      try {
+        const { data: profiles, error } = await supabase
+          .from('business_profiles')
+          .select('id')
+          .eq('user_id', user.id)
+          .limit(1);
+
+        if (error) {
+          console.error('[RootRedirect] Error checking profiles:', error);
+          setHasProfiles(false);
+        } else {
+          setHasProfiles(profiles && profiles.length > 0);
+        }
+      } catch (err) {
+        console.error('[RootRedirect] Exception checking profiles:', err);
+        setHasProfiles(false);
+      } finally {
+        setCheckingProfiles(false);
+      }
+    };
+
+    if (user && !isLoading) {
+      checkProfiles();
+    }
+  }, [user, isLoading]);
+
+  console.log('[RootRedirect] State:', { isLoading, checkingProfiles, hasProfiles, userId: user?.id });
+
+  if (isLoading || checkingProfiles) {
     return <AppLoadingScreen />;
   }
 
   if (user) {
-    console.log('[RootRedirect] User authenticated, navigating to dashboard');
-    return <Navigate to="/dashboard" replace />;
+    if (hasProfiles) {
+      console.log('[RootRedirect] User has profiles, navigating to dashboard');
+      return <Navigate to="/dashboard" replace />;
+    } else {
+      console.log('[RootRedirect] User has no profiles, navigating to onboarding');
+      return <Navigate to="/welcome" replace />;
+    }
   }
 
   return <AppLoadingScreen />;

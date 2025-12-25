@@ -4,7 +4,7 @@ import { formatCurrency } from "@/shared/lib/invoice-utils";
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, PieChart, Pie, Cell } from "recharts";
 import { Invoice } from "@/shared/types";
 import InvoiceCard from "@/modules/invoices/components/InvoiceCard";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { Button } from "@/shared/ui/button";
 import { useIsMobile } from "@/shared/hooks/use-mobile";
 import { useGlobalData } from "@/shared/hooks/use-global-data";
@@ -42,11 +42,20 @@ const Dashboard = () => {
   const [monthlySummaries, setMonthlySummaries] = useState<any[]>([]);
   const { selectedProfileId, profiles, isLoadingProfiles } = useBusinessProfile();
   const isMobile = useIsMobile();
+  const navigate = useNavigate();
   
   const { invoices: { data: invoices, isLoading: isLoadingInvoices }, expenses: { data: expenses, isLoading: isLoadingExpenses } } = useGlobalData();
   const { isPremium, openPremiumDialog } = useAuth();
   
   const isLoading = isLoadingInvoices || isLoadingExpenses || isLoadingProfiles;
+
+  // Redirect to onboarding if no profiles exist (first-time user)
+  useEffect(() => {
+    if (!isLoadingProfiles && profiles && profiles.length === 0) {
+      console.log('[Dashboard] No profiles found, redirecting to onboarding');
+      navigate('/welcome', { replace: true });
+    }
+  }, [isLoadingProfiles, profiles, navigate]);
 
   const selectedProfile = profiles?.find((p) => p.id === selectedProfileId);
   const isSpoolka = selectedProfile?.entityType === 'sp_zoo' || selectedProfile?.entityType === 'sa';

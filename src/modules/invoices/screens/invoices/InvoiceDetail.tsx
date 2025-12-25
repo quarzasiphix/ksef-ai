@@ -47,14 +47,16 @@ import DecisionStateCard from '@/modules/invoices/components/DecisionStateCard';
 import FinancialImpactSummary from '@/modules/invoices/components/FinancialImpactSummary';
 import EventHistoryTimeline from '@/modules/invoices/components/EventHistoryTimeline';
 import { useBusinessProfile } from "@/shared/context/BusinessProfileContext";
-import InvoiceEventHeader from '@/modules/invoices/components/InvoiceEventHeader';
-import InvoiceDealCard from '@/modules/invoices/components/InvoiceDealCard';
-import CompactFinancialImpact from '@/modules/invoices/components/CompactFinancialImpact';
+import InvoiceControlHeader from '@/modules/invoices/components/detail/InvoiceControlHeader';
+import FinancialSummaryStrip from '@/modules/invoices/components/detail/FinancialSummaryStrip';
+import PartyRelationshipCard from '@/modules/invoices/components/detail/PartyRelationshipCard';
+import ActionBar from '@/modules/invoices/components/detail/ActionBar';
+import StickyFinancialTotals from '@/modules/invoices/components/detail/StickyFinancialTotals';
 import CompactDecisionBadge from '@/modules/invoices/components/CompactDecisionBadge';
-import CollapsibleLifecycleStatus from '@/modules/invoices/components/CollapsibleLifecycleStatus';
 import CollapsibleEventHistory from '@/modules/invoices/components/CollapsibleEventHistory';
-import { MoreVertical } from 'lucide-react';
-import FinancialControlStrip from '@/modules/invoices/components/FinancialControlStrip';
+import FinancialThreadsPanel from '@/components/financial/FinancialThreadsPanel';
+import MiniLedger from '@/modules/accounting/components/MiniLedger';
+import { getMockLedgerEventsForInvoice } from '@/modules/accounting/data/mockLedgerData';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -347,8 +349,29 @@ const InvoiceDetail: React.FC<InvoiceDetailProps> = ({ type }) => {
   const isSpoolka = selectedProfile?.entityType === 'sp_zoo' || selectedProfile?.entityType === 'sa';
   const isOverdue = invoice.dueDate && !invoice.isPaid && new Date(invoice.dueDate) < new Date();
 
+  // Mock related entities for Financial Threads Panel
+  // TODO: Replace with actual data from backend
+  const relatedEntities = [
+    // Related contracts from existing query
+    ...linkedContracts.map((contract: any) => ({
+      id: contract.id,
+      type: 'contract' as const,
+      title: contract.number || 'Umowa',
+      subtitle: contract.title,
+      status: 'completed' as const,
+    })),
+    // TODO: Add related expenses query
+    // TODO: Add related bank transactions query
+  ];
+
+  // Get ledger events for this invoice
+  // TODO: Replace with actual backend query
+  const ledgerEvents = getMockLedgerEventsForInvoice(invoice.id);
+
   return (
-    <div id="invoice-detail-print" className="space-y-6 max-w-full pb-20">
+    <div id="invoice-detail-print" className="flex gap-6 max-w-full pb-20">
+      {/* Main content */}
+      <div className="flex-1 min-w-0 space-y-6">
       {/* Back Button */}
       <div>
         <Button variant="ghost" size="icon" asChild>
@@ -358,120 +381,63 @@ const InvoiceDetail: React.FC<InvoiceDetailProps> = ({ type }) => {
         </Button>
       </div>
 
-      {/* Financial Event Header - Answers: Who → Who, How Much, Is it Paid */}
-      <InvoiceEventHeader
+      {/* New Financial Control Header - Identity & State */}
+      <InvoiceControlHeader
         invoiceNumber={invoice.number}
         sellerName={sellerData?.name || invoice.businessName || ''}
         buyerName={buyerData?.name || invoice.customerName || ''}
         totalGross={totals.gross}
         currency={currency}
-        isPaid={invoice.isPaid}
         dueDate={invoice.dueDate}
+        isPaid={invoice.isPaid}
         isOverdue={isOverdue}
-      />
-
-      {/* Financial Control Strip - Status Signals */}
-      <FinancialControlStrip
-        primaryAction={isOwner && !invoice.isPaid ? {
-          label: 'Przypisz płatność',
-          onClick: handleTogglePaid,
-          disabled: isUpdatingPaid,
-          variant: 'success',
-        } : isOwner && invoice.isPaid && !(invoice as any).booked_to_ledger ? {
-          label: 'Zaksięguj',
-          onClick: () => toast.info('Funkcja księgowania w przygotowaniu'),
-          disabled: false,
-          variant: 'default',
-        } : undefined}
-        status={(invoice as any).lifecycle_status || 'issued'}
-        dueDate={invoice.dueDate}
-        isPaid={invoice.isPaid}
-        isVatExempt={fakturaBezVAT}
         isBooked={(invoice as any).booked_to_ledger || false}
-        companyType={isSpoolka ? 'spolka' : 'jdg'}
+        lifecycleStatus={(invoice as any).lifecycle_status}
+        onEdit={() => navigate(editPath)}
+        onDownload={handleDownloadPdf}
+        onPreview={() => setShowPDF(true)}
+        onShare={isIncome ? () => setShowShareDialog(true) : undefined}
+        onDuplicate={() => {
+          const base = isIncome ? "/income/new" : "/expense/new";
+          navigate(`${base}?duplicateId=${invoice.id}`);
+        }}
+        onDelete={handleDelete}
+        onTogglePaid={handleTogglePaid}
+        isOwner={isOwner}
       />
 
-      {/* Secondary Actions - Icon Buttons */}
-      <div className="flex items-center justify-end gap-2">
-          <Button variant="ghost" size="icon" onClick={() => setShowPDF(true)} title="Podgląd PDF">
-            <Eye className="h-4 w-4" />
-          </Button>
-          <Button variant="ghost" size="icon" onClick={handleDownloadPdf} title="Pobierz PDF">
-            <Download className="h-4 w-4" />
-          </Button>
-          {isOwner && (
-            <Button variant="ghost" size="icon" asChild title="Edytuj">
-              <Link to={editPath}>
-                <Edit className="h-4 w-4" />
-              </Link>
-            </Button>
-          )}
-          
-          {/* More Actions Menu */}
-          {isOwner && (
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button variant="ghost" size="icon">
-                  <MoreVertical className="h-4 w-4" />
-                </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="end">
-                {isIncome && (
-                  <DropdownMenuItem onClick={() => setShowShareDialog(true)}>
-                    <Share2 className="h-4 w-4 mr-2" />
-                    Udostępnij
-                  </DropdownMenuItem>
-                )}
-                <DropdownMenuItem onClick={() => {
-                  const base = isIncome ? "/income/new" : "/expense/new";
-                  navigate(`${base}?duplicateId=${invoice.id}`);
-                }}>
-                  <FilePlus className="h-4 w-4 mr-2" />
-                  Duplikuj
-                </DropdownMenuItem>
-                {invoice.isPaid && (
-                  <DropdownMenuItem onClick={handleTogglePaid}>
-                    <DollarSign className="h-4 w-4 mr-2" />
-                    Cofnij płatność
-                  </DropdownMenuItem>
-                )}
-                <DropdownMenuSeparator />
-                <DropdownMenuItem onClick={handleDelete} className="text-destructive">
-                  <Trash2 className="h-4 w-4 mr-2" />
-                  Usuń
-                </DropdownMenuItem>
-              </DropdownMenuContent>
-            </DropdownMenu>
-          )}
-      </div>
+      {/* Contextual Action Bar - Small, secondary */}
+      {isOwner && (
+        <ActionBar
+          primaryAction={!invoice.isPaid ? {
+            label: 'Przypisz płatność',
+            onClick: handleTogglePaid,
+            disabled: isUpdatingPaid,
+            variant: isOverdue ? 'danger' : 'success',
+            shortcut: '⌘P',
+          } : invoice.isPaid && !(invoice as any).booked_to_ledger ? {
+            label: 'Zaksięguj',
+            onClick: () => toast.info('Funkcja księgowania w przygotowaniu'),
+            disabled: false,
+            variant: 'default',
+          } : undefined}
+          secondaryActions={[
+            {
+              label: 'Edytuj',
+              onClick: () => navigate(editPath),
+            },
+          ]}
+        />
+      )}
 
-      {/* Deal Card - Who/Who/How Much */}
-      <InvoiceDealCard
-        seller={{
-          name: sellerData?.name || invoice.businessName || '',
-          taxId: (sellerData as any)?.taxId,
-        }}
-        buyer={{
-          name: buyerData?.name || invoice.customerName || '',
-          taxId: (buyerData as any)?.taxId,
-        }}
-        totalNet={totals.net}
-        totalVat={totals.vat}
-        totalGross={totals.gross}
-        currency={currency}
-        isVatExempt={fakturaBezVAT}
-      />
-
-      {/* Compact Financial Impact - Bullets, Not Paragraphs */}
-      <CompactFinancialImpact
-        totalGross={totals.gross}
-        totalVat={totals.vat}
-        currency={currency}
-        transactionType={invoice.transactionType as 'income' | 'expense'}
-        isVatExempt={fakturaBezVAT}
-        isPaid={invoice.isPaid}
-        isBooked={(invoice as any).booked_to_ledger || false}
+      {/* Financial Summary Strip - Soft cards, no white inputs */}
+      <FinancialSummaryStrip
+        cashflowStatus={invoice.isPaid ? 'received' : isOverdue ? 'overdue' : 'expected'}
+        vatStatus={fakturaBezVAT ? 'exempt' : 'applicable'}
         accountingPeriod={format(new Date(invoice.issueDate), 'MM/yyyy')}
+        paymentMethod={invoice.paymentMethod}
+        isBooked={(invoice as any).booked_to_ledger || false}
+        transactionType={invoice.transactionType as 'income' | 'expense'}
       />
 
       {/* Compact Decision Badge - Only for Spółka, Expandable */}
@@ -485,134 +451,107 @@ const InvoiceDetail: React.FC<InvoiceDetailProps> = ({ type }) => {
         currency={currency}
       />
 
-      {/* Collapsible Lifecycle Status */}
-      <CollapsibleLifecycleStatus
-        currentStatus={(invoice as any).lifecycle_status || 'issued'}
-        paymentReceivedAt={(invoice as any).payment_received_at}
-        bookedToLedger={(invoice as any).booked_to_ledger}
-        bookedAt={(invoice as any).booked_at}
-      />
-
-      {/* Invoice Details Grid */}
+      {/* Parties Section - Relationship cards with minimal borders */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        <ContractorCard
+        <PartyRelationshipCard
           title={isIncome ? "Sprzedawca" : "Nabywca"}
-          contractor={{
-            id: sellerData?.id,
-            name: sellerData?.name || (isIncomeDocument ? invoice.businessName : invoice.customerName) || "",
-            taxId: (sellerData as any)?.taxId,
-            regon: (sellerData as any)?.regon,
-            address: (sellerData as any)?.address,
-            postalCode: (sellerData as any)?.postalCode,
-            city: (sellerData as any)?.city,
-            email: (sellerData as any)?.email,
-            phone: (sellerData as any)?.phone,
-            bankAccount: isIncome ? (selectedBankAccount?.accountNumber || (sellerData as any)?.bankAccount) : undefined,
-          }}
+          name={sellerData?.name || invoice.businessName || ''}
+          taxId={(sellerData as any)?.taxId}
+          address={(sellerData as any)?.address}
+          postalCode={(sellerData as any)?.postalCode}
+          city={(sellerData as any)?.city}
+          email={(sellerData as any)?.email}
+          phone={(sellerData as any)?.phone}
+          profileId={sellerData?.id}
+          isCompany={true}
         />
 
-        <ContractorCard
+        <PartyRelationshipCard
           title={isIncome ? "Nabywca" : "Sprzedawca"}
-          contractor={{
-            id: buyerData?.id,
-            name: buyerData?.name || (isIncomeDocument ? invoice.customerName : invoice.businessName) || "",
-            taxId: (buyerData as any)?.taxId,
-            regon: (buyerData as any)?.regon,
-            address: (buyerData as any)?.address,
-            postalCode: (buyerData as any)?.postalCode,
-            city: (buyerData as any)?.city,
-            email: (buyerData as any)?.email,
-            phone: (buyerData as any)?.phone,
-          }}
+          name={buyerData?.name || invoice.customerName || ''}
+          taxId={(buyerData as any)?.taxId}
+          address={(buyerData as any)?.address}
+          postalCode={(buyerData as any)?.postalCode}
+          city={(buyerData as any)?.city}
+          email={(buyerData as any)?.email}
+          phone={(buyerData as any)?.phone}
+          profileId={buyerData?.id}
+          isCompany={true}
         />
+      </div>
 
-        {/* Invoice Details */}
-        <Card>
-          <CardHeader>
-            <CardTitle>Szczegóły faktury</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-3">
-            <div className="flex justify-between">
-              <span className="text-muted-foreground">Typ:</span>
-              <span>{getInvoiceTypeLabel(invoice.type)}</span>
+      {/* Invoice Details & Calculation - Two column layout */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        {/* Left: Line items and metadata (2 columns) */}
+        <div className="lg:col-span-2 space-y-6">
+
+          {/* Invoice metadata - no borders, just spacing */}
+          <div className="space-y-4">
+            <div className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
+              Szczegóły dokumentu
             </div>
-            <div className="flex justify-between">
-              <span className="text-muted-foreground">Data wystawienia:</span>
-              <span>{format(new Date(invoice.issueDate), "dd.MM.yyyy", { locale: pl })}</span>
-            </div>
-            <div className="flex justify-between">
-              <span className="text-muted-foreground">Data sprzedaży:</span>
-              <span>{format(new Date(invoice.sellDate), "dd.MM.yyyy", { locale: pl })}</span>
-            </div>
-            <div className="flex justify-between">
-              <span className="text-muted-foreground">Termin płatności:</span>
-              <span>{format(new Date(invoice.dueDate), "dd.MM.yyyy", { locale: pl })}</span>
-            </div>
-            <div className="flex justify-between">
-              <span className="text-muted-foreground">Sposób płatności:</span>
-              <span>
-                {invoice.paymentMethod === 'transfer' ? 'Przelew' :
-                 invoice.paymentMethod === 'cash' ? 'Gotówka' :
-                 invoice.paymentMethod === 'card' ? 'Karta' : 'Inne'}
-              </span>
-            </div>
-            {invoice.paymentMethod === 'cash' && (invoice as any).cashAccountId && (
-              <div className="flex justify-between items-center">
-                <span className="text-muted-foreground">Kasa fiskalna:</span>
-                <div className="flex items-center gap-2">
-                  <Wallet className="h-4 w-4 text-blue-600" />
-                  <span className="font-medium">
-                    {cashAccounts.find(acc => acc.id === (invoice as any).cashAccountId)?.name || 'Ładowanie...'}
-                  </span>
+            <div className="bg-white/[0.02] rounded-lg p-4 space-y-3 border border-white/5">
+              <div className="flex justify-between text-sm">
+                <span className="text-muted-foreground">Typ</span>
+                <span>{getInvoiceTypeLabel(invoice.type)}</span>
+              </div>
+              <div className="h-px bg-white/5" />
+              <div className="flex justify-between text-sm">
+                <span className="text-muted-foreground">Wystawienie</span>
+                <span>{format(new Date(invoice.issueDate), "dd.MM.yyyy", { locale: pl })}</span>
+              </div>
+              <div className="flex justify-between text-sm">
+                <span className="text-muted-foreground">Sprzedaż</span>
+                <span>{format(new Date(invoice.sellDate), "dd.MM.yyyy", { locale: pl })}</span>
+              </div>
+              <div className="flex justify-between text-sm">
+                <span className="text-muted-foreground">Termin</span>
+                <span>{format(new Date(invoice.dueDate), "dd.MM.yyyy", { locale: pl })}</span>
+              </div>
+              <div className="h-px bg-white/5" />
+              <div className="flex justify-between text-sm">
+                <span className="text-muted-foreground">Płatność</span>
+                <span>
+                  {invoice.paymentMethod === 'transfer' ? 'Przelew' :
+                   invoice.paymentMethod === 'cash' ? 'Gotówka' :
+                   invoice.paymentMethod === 'card' ? 'Karta' : 'Inne'}
+                </span>
+              </div>
+              {invoice.paymentMethod === 'cash' && (invoice as any).cashAccountId && (
+                <div className="flex justify-between items-center text-sm">
+                  <span className="text-muted-foreground">Kasa</span>
+                  <div className="flex items-center gap-2">
+                    <Wallet className="h-3.5 w-3.5 text-blue-400" />
+                    <span>{cashAccounts.find(acc => acc.id === (invoice as any).cashAccountId)?.name || 'Ładowanie...'}</span>
+                  </div>
                 </div>
-              </div>
-            )}
-            <div className="flex justify-between">
-              <span className="text-muted-foreground">Waluta:</span>
-              <span>{currency}</span>
+              )}
             </div>
-          </CardContent>
-        </Card>
+          </div>
+        </div>
 
-        {/* Financial Summary */}
-        <Card>
-          <CardHeader>
-            <CardTitle>Podsumowanie finansowe</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-3">
-            <div className="flex justify-between">
-              <span className="text-muted-foreground">Wartość netto:</span>
-              <span>{formatCurrency(totals.net, currency)}</span>
-            </div>
-            {!fakturaBezVAT && (
-              <div className="flex justify-between">
-                <span className="text-muted-foreground">Podatek VAT:</span>
-                <span>{formatCurrency(totals.vat, currency)}</span>
-              </div>
-            )}
-            <div className="flex justify-between font-semibold text-lg border-t pt-3">
-              <span>Wartość brutto:</span>
-              <span className="text-green-600">{formatCurrency(totals.gross, currency)}</span>
-            </div>
+        {/* Right: Sticky financial totals (1 column) */}
+        <div className="lg:col-span-1">
+          <div className="sticky top-20">
+            <StickyFinancialTotals
+              totalNet={totals.net}
+              totalVat={totals.vat}
+              totalGross={totals.gross}
+              currency={currency}
+              isPaid={invoice.isPaid}
+              isOverdue={isOverdue}
+              isVatExempt={fakturaBezVAT}
+            />
             {invoice.currency !== 'PLN' && invoice.exchangeRate && (
-              <div className="flex justify-between font-semibold text-lg">
-                <span>Wartość brutto (PLN):</span>
-                <span className="text-green-600">{formatCurrency(getInvoiceValueInPLN(invoice), 'PLN')} PLN</span>
-              </div>
-            )}
-            {invoice.currency !== 'PLN' && invoice.exchangeRate && (
-              <div className="text-sm text-muted-foreground">
-                Kurs wymiany: 1 {invoice.currency} = {invoice.exchangeRate} PLN
+              <div className="mt-4 text-xs text-muted-foreground space-y-1">
+                <div>Kurs: 1 {invoice.currency} = {invoice.exchangeRate} PLN</div>
                 {invoice.exchangeRateDate && (
-                  <span> (z dnia: {invoice.exchangeRateDate})</span>
-                )}
-                {invoice.exchangeRateSource && (
-                  <span> [źródło: {invoice.exchangeRateSource === 'NBP' ? 'NBP' : 'ręcznie'}]</span>
+                  <div>Data: {invoice.exchangeRateDate}</div>
                 )}
               </div>
             )}
-          </CardContent>
-        </Card>
+          </div>
+        </div>
       </div>
 
       {/* Invoice Items */}
@@ -624,6 +563,14 @@ const InvoiceDetail: React.FC<InvoiceDetailProps> = ({ type }) => {
         type={invoice.type as any}
         currency={currency}
         fakturaBezVAT={fakturaBezVAT}
+      />
+
+      {/* Mini Ledger - Financial Timeline */}
+      <MiniLedger
+        events={ledgerEvents}
+        documentId={invoice.id}
+        documentType="invoice"
+        title="Historia finansowa"
       />
 
       {/* Linked Accounting Entries */}
@@ -675,6 +622,18 @@ const InvoiceDetail: React.FC<InvoiceDetailProps> = ({ type }) => {
           invoiceId={invoice.id} 
           invoiceNumber={invoice.number} 
         />
+      </div>
+      </div>
+
+      {/* Right sidebar - Financial Threads Panel */}
+      <div className="hidden xl:block w-80 flex-shrink-0">
+        <div className="sticky top-20 space-y-4">
+          <FinancialThreadsPanel
+            entityId={invoice.id}
+            entityType="invoice"
+            relatedEntities={relatedEntities}
+          />
+        </div>
       </div>
 
       {/* PDF Viewer Dialog */}

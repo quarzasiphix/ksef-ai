@@ -8,6 +8,7 @@ import { useSidebar } from "@/shared/ui/sidebar";
 import Footer from './Footer';
 import { Breadcrumbs } from "@/components/seo/Breadcrumbs";
 import { PageHeaderActionsProvider, usePageHeaderActions } from "@/shared/context/PageHeaderActionsContext";
+import { useWorkspaceTabs } from "@/shared/context/WorkspaceTabsContext";
 
 interface LayoutProps {
   children?: React.ReactNode;
@@ -18,6 +19,7 @@ const Layout = ({ children }: LayoutProps) => {
 
   const LayoutContent = ({ innerChildren }: { innerChildren?: React.ReactNode }) => {
     const { actions } = usePageHeaderActions();
+    const { focusMode } = useWorkspaceTabs();
     const location = useLocation();
     const isAccountingRoute = location.pathname.startsWith('/accounting');
     const isContractsRoute = location.pathname.startsWith('/contracts');
@@ -40,13 +42,15 @@ const Layout = ({ children }: LayoutProps) => {
 
     return (
       <div className="flex min-h-screen w-full bg-background">
-        <div className="hidden md:block fixed top-0 left-0 h-screen">
-          <AppSidebar />
-        </div>
+        {!focusMode && (
+          <div className="hidden md:block fixed top-0 left-0 h-screen">
+            <AppSidebar />
+          </div>
+        )}
 
         <div className={cn(
           "flex-1 flex flex-col min-w-0 transition-all duration-300 ease-in-out",
-          state === "expanded" ? "md:ml-64" : "md:ml-32"
+          !focusMode && (state === "expanded" ? "md:ml-64" : "md:ml-32")
         )}>
           <Header />
           <main
@@ -77,7 +81,7 @@ const Layout = ({ children }: LayoutProps) => {
           <Footer />
         </div>
 
-        <MobileNavigation />
+        {!focusMode && <MobileNavigation />}
       </div>
     );
   };

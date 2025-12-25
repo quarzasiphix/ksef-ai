@@ -5,8 +5,9 @@ import { Toaster } from '@/shared/ui/toaster';
 import { ThemeProvider } from '@/components/theme/ThemeProvider';
 import { TooltipProvider } from '@/shared/ui/tooltip';
 import { AuthProvider } from '@/shared/context/AuthContext';
+import { WorkspaceTabsProvider } from '@/shared/context/WorkspaceTabsContext';
 import { queryClient } from '@/shared/lib/queryClient';
-import { RouteRenderer } from '@/components/routing/RouteRenderer';
+import { RouteRenderer } from '@/pages/routing/RouteRenderer';
 
 /**
  * New App.tsx with route config system
@@ -27,7 +28,9 @@ const App = () => {
           <Toaster />
           <Router>
             <AuthProvider>
-              <RouteRenderer />
+              <WorkspaceTabsProvider>
+                <RouteRenderer />
+              </WorkspaceTabsProvider>
             </AuthProvider>
           </Router>
         </TooltipProvider>

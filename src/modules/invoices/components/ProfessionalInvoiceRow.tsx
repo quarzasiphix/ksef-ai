@@ -29,6 +29,7 @@ import {
   FileText,
 } from 'lucide-react';
 import { Invoice } from '@/shared/types';
+import { useOpenTab } from '@/shared/hooks/useOpenTab';
 
 interface ProfessionalInvoiceRowProps {
   invoice: Invoice;
@@ -56,6 +57,7 @@ const ProfessionalInvoiceRow: React.FC<ProfessionalInvoiceRowProps> = ({
   onTogglePaid,
 }) => {
   const navigate = useNavigate();
+  const { openInvoiceTab, openExpenseTab } = useOpenTab();
   
   // Calculate state
   const isPaid = invoice.isPaid || invoice.paid;
@@ -102,15 +104,38 @@ const ProfessionalInvoiceRow: React.FC<ProfessionalInvoiceRowProps> = ({
   // Get contractor name
   const contractorName = isIncome ? invoice.customerName : invoice.businessName;
 
+  // Handle row click to open in tab
+  const handleRowClick = (e: React.MouseEvent) => {
+    if ((e.target as HTMLElement).closest('[role="menu"]') || (e.target as HTMLElement).closest('button')) {
+      return;
+    }
+    
+    // Open in tab instead of navigating
+    if (isIncome) {
+      openInvoiceTab(invoice.id, invoice.number);
+    } else {
+      openExpenseTab(invoice.id, invoice.number);
+    }
+    
+    // Track in recent documents
+    const recentDoc = {
+      id: invoice.id,
+      title: invoice.number,
+      path: isIncome ? `/income/${invoice.id}` : `/expense/${invoice.id}`,
+      entityId: invoice.id,
+      entityType: isIncome ? 'invoice' as const : 'expense' as const,
+      timestamp: Date.now(),
+    };
+    
+    const recent = JSON.parse(localStorage.getItem('recent_documents') || '[]');
+    const updated = [recentDoc, ...recent.filter((r: any) => r.id !== invoice.id)].slice(0, 20);
+    localStorage.setItem('recent_documents', JSON.stringify(updated));
+  };
+
   return (
     <div
       className="group relative py-3 px-4 hover:bg-muted/50 transition-colors cursor-pointer border-b border-border last:border-0"
-      onClick={(e) => {
-        if ((e.target as HTMLElement).closest('[role="menu"]') || (e.target as HTMLElement).closest('button')) {
-          return;
-        }
-        onView(invoice.id);
-      }}
+      onClick={handleRowClick}
     >
       {/* 3-column horizontal layout: DETAILS | ACTIONS | PRICE */}
       <div className="flex items-center justify-between gap-6">
@@ -147,7 +172,14 @@ const ProfessionalInvoiceRow: React.FC<ProfessionalInvoiceRowProps> = ({
             variant="ghost" 
             size="sm" 
             className="h-8 px-3 text-sm inline-flex items-center gap-1.5 hover:bg-muted"
-            onClick={() => onView(invoice.id)}
+            onClick={(e) => {
+              e.stopPropagation();
+              if (isIncome) {
+                openInvoiceTab(invoice.id, invoice.number);
+              } else {
+                openExpenseTab(invoice.id, invoice.number);
+              }
+            }}
           >
             Otwórz
           </Button>

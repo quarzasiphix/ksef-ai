@@ -1,11 +1,11 @@
 import React from "react";
-import { Link } from "react-router-dom";
 import { formatCurrency } from "@/shared/lib/invoice-utils";
 import { Invoice, InvoiceType } from "@/shared/types";
 import { Badge } from "@/shared/ui/badge";
 import { Calendar, FileText, User, CreditCard, Share2, MessageSquare, AlertCircle } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
+import { useOpenTab } from "@/shared/hooks/useOpenTab";
 
 type InvoiceCardProps = {
   invoice: Invoice;
@@ -13,6 +13,8 @@ type InvoiceCardProps = {
 };
 
 const InvoiceCard: React.FC<InvoiceCardProps> = ({ invoice, currency = invoice.currency || 'PLN' }) => {
+  const { openInvoiceTab, openExpenseTab } = useOpenTab();
+
   // Check if invoice has discussion threads
   const { data: hasDiscussion } = useQuery({
     queryKey: ["invoice-discussion", invoice.id],
@@ -124,8 +126,35 @@ const InvoiceCard: React.FC<InvoiceCardProps> = ({ invoice, currency = invoice.c
     document.dispatchEvent(event);
   };
 
+  // Handle card click to open in tab
+  const handleCardClick = (e: React.MouseEvent) => {
+    e.preventDefault();
+    if (invoice.transactionType === 'expense') {
+      openExpenseTab(invoice.id, invoice.number);
+    } else {
+      openInvoiceTab(invoice.id, invoice.number);
+    }
+    
+    // Track in recent documents
+    const recentDoc = {
+      id: invoice.id,
+      title: invoice.number,
+      path: getInvoiceRoute(),
+      entityId: invoice.id,
+      entityType: invoice.transactionType === 'expense' ? 'expense' : 'invoice',
+      timestamp: Date.now(),
+    };
+    
+    const recent = JSON.parse(localStorage.getItem('recent_documents') || '[]');
+    const updated = [recentDoc, ...recent.filter((r: any) => r.id !== invoice.id)].slice(0, 20);
+    localStorage.setItem('recent_documents', JSON.stringify(updated));
+  };
+
   return (
-    <Link to={getInvoiceRoute()} className="block no-underline">
+    <div 
+      onClick={handleCardClick}
+      className="block no-underline cursor-pointer"
+    >
       <div className={`${getCardColorClass()} text-white rounded-lg p-3 shadow-md hover:shadow-lg transition-all h-full`}>
         <div className="flex justify-between items-center mb-2">
           <div className="flex items-center gap-2">
@@ -193,7 +222,7 @@ const InvoiceCard: React.FC<InvoiceCardProps> = ({ invoice, currency = invoice.c
           </div>
         </div>
       </div>
-    </Link>
+    </div>
   );
 };
 
