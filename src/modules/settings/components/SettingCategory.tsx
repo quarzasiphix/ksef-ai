@@ -7,7 +7,7 @@ interface Item {
   description: string;
   icon?: React.ElementType;
   href?: string;
-  action?: () => void;
+  action?: () => void;-
   premium?: boolean;
 }
 
