@@ -81,6 +81,7 @@ export const LedgerEventRow: React.FC<LedgerEventRowProps> = ({ event, onNavigat
   const isIncoming = event.direction === 'incoming';
   const isOutgoing = event.direction === 'outgoing';
   const isNeutral = event.direction === 'neutral';
+  const isPendingIncoming = isIncoming && event.status === 'pending';
 
   // Cash channel icon
   const getCashChannelIcon = () => {
@@ -129,8 +130,9 @@ export const LedgerEventRow: React.FC<LedgerEventRowProps> = ({ event, onNavigat
         {/* Layer 2: Event Type - What happened */}
         <div className="flex-shrink-0">
           <div className={cn(
-            "w-9 h-9 rounded-md flex items-center justify-center",
-            isIncoming && "bg-green-500/10 text-green-400",
+            "w-9 h-9 rounded-md flex items-center justify-center border",
+            isPendingIncoming && "bg-amber-500/10 text-amber-300 border-amber-500/30",
+            !isPendingIncoming && isIncoming && "bg-green-500/10 text-green-400 border-green-500/20",
             isOutgoing && "bg-red-500/10 text-red-400",
             isNeutral && "bg-amber-500/10 text-amber-400"
           )}>
@@ -140,11 +142,17 @@ export const LedgerEventRow: React.FC<LedgerEventRowProps> = ({ event, onNavigat
 
         {/* Layer 3: Document Identity - Why it exists */}
         <div className="flex-1 min-w-0 text-left space-y-1">
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 flex-wrap">
             <span className="text-sm font-medium text-foreground">
               {event.eventLabel}
             </span>
             {event.status && getStatusIcon(event.status)}
+            {isPendingIncoming && (
+              <span className="inline-flex items-center gap-1 text-[11px] font-medium text-amber-400 bg-amber-500/10 px-2 py-0.5 rounded-full">
+                <Clock className="h-3 w-3" />
+                Do wpływu
+              </span>
+            )}
           </div>
           <div className="flex items-center gap-2 text-xs text-muted-foreground">
             <span className="font-mono">{event.documentNumber}</span>
@@ -158,7 +166,8 @@ export const LedgerEventRow: React.FC<LedgerEventRowProps> = ({ event, onNavigat
           {!isNeutral ? (
             <div className={cn(
               "text-base font-semibold tabular-nums",
-              isIncoming && "text-green-400",
+              isPendingIncoming && "text-amber-300",
+              !isPendingIncoming && isIncoming && "text-green-400",
               isOutgoing && "text-red-400"
             )}>
               {isIncoming && '+'}

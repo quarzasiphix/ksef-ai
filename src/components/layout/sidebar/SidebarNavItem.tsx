@@ -32,9 +32,10 @@ const SidebarNavItem: React.FC<SidebarNavItemProps> = ({
       <NavLink
         to={item.path}
         className={cn(
-          "group relative flex items-center gap-3 px-3 h-11 rounded-md text-sm",
+          "group relative flex items-center h-11 rounded-md text-sm",
           "focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-white/30",
           "transition-colors duration-150",
+          collapsed ? "justify-center px-0" : "gap-3 px-3",
           isActive
             ? "bg-white/8 text-white"
             : "text-sidebar-foreground/80 hover:bg-white/5 hover:text-white",

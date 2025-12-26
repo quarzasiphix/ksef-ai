@@ -113,10 +113,10 @@ export function isRootDomain(): boolean {
 export function safeRedirect(url: string, preventLoop: boolean = true): void {
   if (preventLoop) {
     const targetUrl = new URL(url);
-    const currentHostname = window.location.hostname;
-    
-    // Don't redirect if we're already on the target domain
-    if (targetUrl.hostname === currentHostname) {
+    const currentHost = window.location.host;
+
+    // Don't redirect if we're already on the exact same host (hostname + port)
+    if (targetUrl.host === currentHost) {
       console.warn('[safeRedirect] Already on target domain, skipping redirect');
       return;
     }

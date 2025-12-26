@@ -3,6 +3,7 @@ import type { BusinessProfile } from '@/shared/types';
 import { getBusinessProfiles } from '@/modules/settings/data/businessProfileRepository';
 import { useQuery } from '@tanstack/react-query';
 import { useAuth } from '@/shared/hooks/useAuth';
+import { syncManager } from '@/shared/services/syncManager';
 
 const getSelectedProfileStorageKey = (userId: string) => `selected_business_profile_id:${userId}`;
 
@@ -93,6 +94,22 @@ export const BusinessProfileProvider: React.FC<{ children: React.ReactNode }> = 
       // ignore storage errors
     }
   }, [user?.id, selectedProfileId, hasRestoredSelection]);
+
+  // Start/stop sync manager when business profile changes
+  useEffect(() => {
+    if (!selectedProfileId) {
+      syncManager.stop();
+      return;
+    }
+
+    // Start background sync for the selected profile
+    syncManager.start(selectedProfileId);
+
+    // Cleanup on unmount or profile change
+    return () => {
+      syncManager.stop();
+    };
+  }, [selectedProfileId]);
 
   const selectProfile = (id: string | null) => {
     setSelectedProfileId(id);

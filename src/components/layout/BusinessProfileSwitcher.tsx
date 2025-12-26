@@ -65,11 +65,11 @@ export const BusinessProfileSwitcher: React.FC<BusinessProfileSwitcherProps> = (
           <Button
             variant="ghost"
             className={cn(
-              "w-full justify-between text-left font-normal bg-muted border border-muted-foreground/10 hover:bg-muted/80 cursor-pointer shadow-sm",
-              isCollapsed ? "px-2" : "px-3"
+              "w-full text-left font-normal bg-muted border border-muted-foreground/10 hover:bg-muted/80 cursor-pointer shadow-sm",
+              isCollapsed ? "px-0 justify-center" : "px-3 justify-between"
             )}
           >
-            <div className="flex items-center gap-2 min-w-0">
+            <div className={cn("flex items-center min-w-0", isCollapsed ? "" : "gap-2")}>
               <Building2 className="h-4 w-4 flex-shrink-0" />
               {!isCollapsed && selectedProfile && (
                 <span className="truncate text-sm flex items-center gap-1">

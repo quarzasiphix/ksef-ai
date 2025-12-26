@@ -128,8 +128,14 @@ const AppSidebar = () => {
       </div>
     );
     return (
-      <div className="flex items-center gap-3">
-        <NavLink to="/settings" className="flex items-center gap-3 flex-1 min-w-0 group" aria-label="Ustawienia profilu">
+      <div className={cn(
+        "flex items-center",
+        isCollapsed ? "justify-center" : "gap-3"
+      )}>
+        <NavLink to="/settings" className={cn(
+          "flex items-center group",
+          isCollapsed ? "" : "gap-3 flex-1 min-w-0"
+        )} aria-label="Ustawienia profilu">
           {Avatar}
           {!isCollapsed && (
             <div className="flex-1 min-w-0">
@@ -161,9 +167,12 @@ const AppSidebar = () => {
   };
 
   return (
-    <Sidebar className={cn("border-r-2 transition-all duration-300", isCollapsed ? "w-32" : "w-64")}>
+    <Sidebar className={cn("border-r transition-all duration-300", isCollapsed ? "w-16" : "w-56")}>
       <SidebarHeader className="border-b border-sidebar-border">
-        <div className="flex items-center gap-2 px-3 py-3">
+        <div className={cn(
+          "flex items-center py-3",
+          isCollapsed ? "justify-center px-0 flex-col gap-2" : "gap-2 px-3"
+        )}>
           {!isCollapsed && (
             <div className="flex-1">
               <h2 className="text-base font-bold text-sidebar-foreground">
@@ -172,7 +181,10 @@ const AppSidebar = () => {
               <p className="text-xs text-sidebar-foreground/60 mt-0.5">System księgowy</p>
             </div>
           )}
-          <div className="flex items-center gap-1">
+          <div className={cn(
+            "flex items-center",
+            isCollapsed ? "flex-col gap-2" : "gap-1"
+          )}>
             <ThemeToggle size="sm" variant="ghost" showLabel={false} />
             <SidebarTrigger />
           </div>

@@ -12,7 +12,11 @@ import { format } from 'date-fns';
 import { pl } from 'date-fns/locale';
 import { Breadcrumbs } from "@/components/seo/Breadcrumbs";
 
-const Shareholders = () => {
+interface ShareholdersProps {
+  embedded?: boolean;
+}
+
+const Shareholders: React.FC<ShareholdersProps> = ({ embedded = false }) => {
   const { selectedProfileId, profiles } = useBusinessProfile();
   const [shareholders, setShareholders] = useState<Shareholder[]>([]);
   const [loading, setLoading] = useState(false);
@@ -123,6 +127,7 @@ const Shareholders = () => {
   const totalCapital = shareholders.reduce((sum, s) => sum + s.initial_capital_contribution, 0);
 
   if (selectedProfile?.entityType !== 'sp_zoo' && selectedProfile?.entityType !== 'sa') {
+    if (embedded) return null;
     return (
       <div className="space-y-6 pb-20 px-4 md:px-6">
         <div className="mb-4">
@@ -140,25 +145,38 @@ const Shareholders = () => {
   }
 
   return (
-    <div className="space-y-6 pb-20 px-4 md:px-6">
+    <div className={embedded ? "space-y-6" : "space-y-6 pb-20 px-4 md:px-6"}>
         {/* Breadcrumbs */}
-        <div className="mb-4">
-          <Breadcrumbs />
-        </div>
+        {!embedded && (
+          <div className="mb-4">
+            <Breadcrumbs />
+          </div>
+        )}
         
         {/* Header */}
-        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-          <div>
-            <h1 className="text-2xl md:text-3xl font-bold">Wspólnicy</h1>
-            <p className="text-sm text-muted-foreground mt-1">
-              Struktura kapitałowa spółki i dane wspólników
-            </p>
+        {!embedded && (
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+            <div>
+              <h1 className="text-2xl md:text-3xl font-bold">Wspólnicy</h1>
+              <p className="text-sm text-muted-foreground mt-1">
+                Struktura kapitałowa spółki i dane wspólników
+              </p>
+            </div>
+            <Button onClick={() => handleOpenDialog()}>
+              <Plus className="mr-2 h-4 w-4" />
+              Dodaj wspólnika
+            </Button>
           </div>
-          <Button onClick={() => handleOpenDialog()}>
-            <Plus className="mr-2 h-4 w-4" />
-            Dodaj wspólnika
-          </Button>
-        </div>
+        )}
+        
+        {embedded && (
+          <div className="flex items-center justify-end">
+            <Button onClick={() => handleOpenDialog()}>
+              <Plus className="mr-2 h-4 w-4" />
+              Dodaj wspólnika
+            </Button>
+          </div>
+        )}
 
       {/* Summary Cards */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
@@ -212,41 +230,83 @@ const Shareholders = () => {
             </div>
           ) : (
             <div className="space-y-3">
-              {shareholders.map((shareholder) => (
-                <div
-                  key={shareholder.id}
-                  className="flex items-center justify-between p-4 border rounded-lg hover:bg-muted/50 transition-colors"
-                >
-                  <div className="flex-1">
-                    <div className="flex items-center gap-3">
-                      <div className="h-10 w-10 rounded-full bg-purple-100 dark:bg-purple-900 flex items-center justify-center">
-                        <Users className="h-5 w-5 text-purple-600" />
+              {shareholders.map((shareholder) => {
+                // Mock calculation - in real app, this would come from linked capital events
+                const declaredContribution = shareholder.initial_capital_contribution;
+                const paidAmount = declaredContribution * 0.7; // Mock: 70% paid
+                const outstanding = declaredContribution - paidAmount;
+                const lastPaymentDate = '2025-01-15'; // Mock date
+                
+                return (
+                  <div
+                    key={shareholder.id}
+                    className="p-4 border rounded-lg hover:bg-muted/50 transition-colors"
+                  >
+                    {/* Header Row */}
+                    <div className="flex items-start justify-between mb-3">
+                      <div className="flex items-center gap-3 flex-1">
+                        <div className="h-10 w-10 rounded-full bg-purple-100 dark:bg-purple-900 flex items-center justify-center flex-shrink-0">
+                          <Users className="h-5 w-5 text-purple-600" />
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <p className="font-semibold truncate">{shareholder.name}</p>
+                          <p className="text-sm text-muted-foreground truncate">
+                            {shareholder.tax_id && `NIP/PESEL: ${shareholder.tax_id}`}
+                          </p>
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-3">
+                        <div className="text-right">
+                          <p className="font-semibold text-lg">{shareholder.share_percentage}%</p>
+                          <p className="text-xs text-muted-foreground">udział</p>
+                        </div>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => handleOpenDialog(shareholder)}
+                        >
+                          <Edit className="h-4 w-4" />
+                        </Button>
+                      </div>
+                    </div>
+
+                    {/* Financial Obligations Grid */}
+                    <div className="grid grid-cols-2 md:grid-cols-4 gap-3 p-3 bg-muted/30 rounded-lg">
+                      <div>
+                        <p className="text-xs text-muted-foreground mb-1">Zadeklarowano</p>
+                        <p className="font-semibold text-sm">
+                          {new Intl.NumberFormat('pl-PL', { style: 'currency', currency: 'PLN' }).format(declaredContribution)}
+                        </p>
                       </div>
                       <div>
-                        <p className="font-semibold">{shareholder.name}</p>
-                        <p className="text-sm text-muted-foreground">
-                          {shareholder.tax_id && `NIP/PESEL: ${shareholder.tax_id}`}
+                        <p className="text-xs text-muted-foreground mb-1">Wpłacono</p>
+                        <p className="font-semibold text-sm text-green-600">
+                          {new Intl.NumberFormat('pl-PL', { style: 'currency', currency: 'PLN' }).format(paidAmount)}
+                        </p>
+                      </div>
+                      <div>
+                        <p className="text-xs text-muted-foreground mb-1">Do wpłaty</p>
+                        <p className={`font-semibold text-sm ${outstanding > 0 ? 'text-amber-600' : 'text-green-600'}`}>
+                          {new Intl.NumberFormat('pl-PL', { style: 'currency', currency: 'PLN' }).format(outstanding)}
+                        </p>
+                      </div>
+                      <div>
+                        <p className="text-xs text-muted-foreground mb-1">Ostatnia wpłata</p>
+                        <p className="font-semibold text-sm">
+                          {lastPaymentDate ? new Date(lastPaymentDate).toLocaleDateString('pl-PL', { day: '2-digit', month: '2-digit', year: 'numeric' }) : '—'}
                         </p>
                       </div>
                     </div>
+
+                    {/* Warning for outstanding amounts */}
+                    {outstanding > 0 && (
+                      <div className="mt-3 flex items-center gap-2 text-xs text-amber-600">
+                        <span className="font-medium">⚠️ Niespełnione zobowiązanie kapitałowe</span>
+                      </div>
+                    )}
                   </div>
-                  <div className="flex items-center gap-6">
-                    <div className="text-right">
-                      <p className="font-semibold text-lg">{shareholder.share_percentage}%</p>
-                      <p className="text-sm text-muted-foreground">
-                        {new Intl.NumberFormat('pl-PL', { style: 'currency', currency: 'PLN' }).format(shareholder.initial_capital_contribution)}
-                      </p>
-                    </div>
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => handleOpenDialog(shareholder)}
-                    >
-                      <Edit className="h-4 w-4" />
-                    </Button>
-                  </div>
-                </div>
-              ))}
+                );
+              })}
             </div>
           )}
         </CardContent>

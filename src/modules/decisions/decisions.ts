@@ -17,6 +17,36 @@ export type DecisionCategory =
   | 'custom_projects'         // Zgoda na projekty niestandardowe
   | 'other';                  // Inne
 
+// Business domains for decision grouping
+export type BusinessDomain = 
+  | 'capital'      // Kapitał i własność
+  | 'contracts'    // Umowy i relacje
+  | 'costs'        // Koszty i operacje
+  | 'revenue';     // Sprzedaż i przychody
+
+// Map categories to domains
+export const CATEGORY_TO_DOMAIN: Record<DecisionCategory, BusinessDomain> = {
+  company_financing: 'capital',
+  operational_activity: 'costs',
+  compensation: 'costs',
+  sales_services: 'revenue',
+  operational_costs: 'costs',
+  b2b_contracts: 'contracts',
+  cash_management: 'costs',
+  custom_projects: 'contracts',
+  other: 'costs',
+};
+
+export interface DomainCoverage {
+  domain: BusinessDomain;
+  label: string;
+  icon: string;
+  hasDecisions: boolean;
+  activeDecisions: number;
+  totalUsage: number;
+  status: 'covered' | 'partial' | 'missing';
+}
+
 export type DecisionStatus =
   | 'active'           // Currently valid
   | 'expired'          // Past valid_to date
@@ -97,6 +127,22 @@ export interface DecisionWithUsage extends Decision {
     file_name: string;
     created_at?: string;
   }>;
+  capitalEvents?: Array<{
+    id: string;
+    event_type: string;
+    amount: number;
+    event_date: string;
+  }>;
+}
+
+// Decision authority reference (embedded in other entities)
+export interface DecisionReference {
+  decision_id: string;
+  decision_title: string;
+  decision_number?: string;
+  decision_status: DecisionStatus;
+  is_valid: boolean;
+  validation_message?: string;
 }
 
 export interface CreateDecisionInput {

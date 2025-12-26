@@ -19,6 +19,8 @@ interface SidebarContextValue {
   toggle: () => void
   open: boolean
   setOpen: (open: boolean) => void
+  isUserCollapsed: boolean
+  setIsUserCollapsed: (collapsed: boolean) => void
 }
 
 const SidebarContext = React.createContext<SidebarContextValue | null>(null)
@@ -44,8 +46,10 @@ function SidebarProvider({
 }: SidebarProviderProps) {
   const [state, setState] = React.useState<SidebarState>(defaultState)
   const [open, setOpen] = React.useState(false)
+  const [isUserCollapsed, setIsUserCollapsed] = React.useState(false)
 
   const toggle = React.useCallback(() => {
+    setIsUserCollapsed(prev => !prev)
     setState(prev => {
       const newState = prev === "expanded" ? "collapsed" : "expanded"
       onStateChange?.(newState)
@@ -60,8 +64,10 @@ function SidebarProvider({
       toggle,
       open,
       setOpen,
+      isUserCollapsed,
+      setIsUserCollapsed,
     }),
-    [state, toggle, open]
+    [state, toggle, open, isUserCollapsed]
   )
 
   return (
@@ -103,44 +109,54 @@ const Sidebar = React.forwardRef<HTMLDivElement, React.ComponentProps<"div"> & V
     size,
     ...props
   }, ref) => {
-    const { state, toggle, setState } = useSidebar();
+    const { state, setState, isUserCollapsed } = useSidebar();
     const [isHovering, setIsHovering] = React.useState(false);
-    const isDesktop = useMediaQuery('(min-width: 1400px)');
+    const isDesktop = useMediaQuery('(min-width: 768px)');
+    const hoverTimeoutRef = React.useRef<NodeJS.Timeout | null>(null);
 
     React.useEffect(() => {
-      // Handle desktop hover-to-expand when collapsed
-      if (isDesktop) {
-        if (isHovering && state === 'collapsed') {
-          setState('expanded');
-        }
-        // Remove the collapse on mouse leave for desktop to avoid dropdown conflict
-        // else if (!isHovering && state === 'expanded') {
-        //   setState('collapsed');
-        // }
-      }
-      // The mobile state logic in this effect seems incorrect anyway and conflicts.
-      // Remove the !isDesktop part entirely.
-      // if (!isDesktop && isHovering) {
-      //   setState('expanded');
-      // } else if (!isDesktop && !isHovering) {
-      //   setState('collapsed');
-      // }
+      if (!isDesktop) return;
 
-    }, [isHovering, isDesktop, state, setState]); // Keep dependencies
+      if (isUserCollapsed) {
+        if (isHovering) {
+          // Clear any pending collapse timeout
+          if (hoverTimeoutRef.current) {
+            clearTimeout(hoverTimeoutRef.current);
+            hoverTimeoutRef.current = null;
+          }
+          setState('expanded');
+        } else {
+          // Delay collapse to prevent flickering
+          hoverTimeoutRef.current = setTimeout(() => {
+            setState('collapsed');
+          }, 150);
+        }
+      }
+
+      return () => {
+        if (hoverTimeoutRef.current) {
+          clearTimeout(hoverTimeoutRef.current);
+        }
+      };
+    }, [isHovering, isDesktop, isUserCollapsed, setState]);
 
     const handleMouseEnter = () => {
-      setIsHovering(true);
+      if (isDesktop) {
+        setIsHovering(true);
+      }
     };
 
     const handleMouseLeave = () => {
-      setIsHovering(false);
+      if (isDesktop) {
+        setIsHovering(false);
+      }
     };
 
     return (
       <div
         ref={ref}
         data-state={state}
-        className={cn(sidebarVariants({ variant, size }), "z-51", className)}
+        className={cn(sidebarVariants({ variant, size }), "z-51 scrollbar-thin", className)}
         onMouseEnter={handleMouseEnter}
         onMouseLeave={handleMouseLeave}
         {...props}
@@ -169,7 +185,7 @@ const SidebarContent = React.forwardRef<
 >(({ className, ...props }, ref) => (
   <div
     ref={ref}
-    className={cn("flex-1 overflow-y-auto overflow-x-hidden px-3 py-4", className)}
+    className={cn("flex-1 overflow-y-auto overflow-x-hidden px-3 py-4 scrollbar-thin scrollbar-thumb-slate-300 dark:scrollbar-thumb-slate-700 scrollbar-track-transparent hover:scrollbar-thumb-slate-400 dark:hover:scrollbar-thumb-slate-600", className)}
     {...props}
   />
 ))

@@ -14,6 +14,7 @@ import { AppGate, ProtectedGate, PremiumGate, PublicGate } from './AppGate';
 import { useAuth } from '@/shared/hooks/useAuth';
 import { redirectToLogin } from '@/shared/utils/domainHelpers';
 import { supabase } from '@/integrations/supabase/client';
+import { ContentLoadingSpinner } from '@/components/layout/ContentLoadingSpinner';
 
 const AppLoadingScreen = () => (
   <div className="flex items-center justify-center h-screen">
@@ -23,34 +24,17 @@ const AppLoadingScreen = () => (
 
 /**
  * Wraps route element with appropriate guard based on config
+ * NOTE: Layout wrapping moved to parent route level to prevent remounts
  */
 function wrapWithGuard(element: React.ReactNode, guard?: string) {
   if (!guard || guard === 'public') {
     return element;
   }
 
-  if (guard === 'protected') {
-    return (
-      <ProtectedGate>
-        <SidebarProvider>
-          <BusinessProfileProvider>
-            <Layout>{element}</Layout>
-          </BusinessProfileProvider>
-        </SidebarProvider>
-      </ProtectedGate>
-    );
-  }
-
-  if (guard === 'premium') {
-    return (
-      <PremiumGate>
-        <SidebarProvider>
-          <BusinessProfileProvider>
-            <Layout>{element}</Layout>
-          </BusinessProfileProvider>
-        </SidebarProvider>
-      </PremiumGate>
-    );
+  // For protected/premium routes, just return the element
+  // Layout will be wrapped at the parent level
+  if (guard === 'protected' || guard === 'premium') {
+    return element;
   }
 
   if (guard === 'onboarding') {
@@ -78,7 +62,7 @@ function renderRoute(route: RouteConfig) {
   }
 
   const wrappedElement = (
-    <Suspense fallback={<AppLoadingScreen />}>
+    <Suspense fallback={<ContentLoadingSpinner />}>
       {wrapWithGuard(route.element, route.guard)}
     </Suspense>
   );
@@ -164,6 +148,7 @@ const RootRedirect = () => {
 
 /**
  * Main route renderer - generates all routes from config
+ * Layout is now wrapped once around all protected routes to prevent remounts
  */
 export const RouteRenderer: React.FC = () => {
   const flatRoutes = flattenRoutes(routes);
@@ -214,8 +199,20 @@ export const RouteRenderer: React.FC = () => {
         }
       />
 
-      {/* All configured routes */}
-      {flatRoutes.map(route => renderRoute(route))}
+      {/* All protected routes wrapped in persistent Layout */}
+      <Route
+        element={
+          <ProtectedGate>
+            <SidebarProvider>
+              <BusinessProfileProvider>
+                <Layout />
+              </BusinessProfileProvider>
+            </SidebarProvider>
+          </ProtectedGate>
+        }
+      >
+        {flatRoutes.map(route => renderRoute(route))}
+      </Route>
     </Routes>
   );
 };

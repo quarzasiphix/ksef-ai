@@ -7,7 +7,8 @@ import {
   TrendingUp,
   TrendingDown,
   Download,
-  Search
+  Search,
+  Clock
 } from 'lucide-react';
 import { cn } from '@/shared/lib/utils';
 import { formatCurrency } from '@/shared/lib/invoice-utils';
@@ -113,10 +114,15 @@ export const FinancialLedger: React.FC<FinancialLedgerProps> = ({
       .filter(e => e.direction === 'outgoing')
       .reduce((sum, e) => sum + Math.abs(e.amount), 0);
 
+    const pendingIncoming = filteredEvents
+      .filter(e => e.direction === 'incoming' && e.status === 'pending')
+      .reduce((sum, e) => sum + e.amount, 0);
+
     return {
       totalIncoming: incoming,
       totalOutgoing: outgoing,
       netPosition: incoming - outgoing,
+      pendingIncoming,
       currency: filteredEvents[0]?.currency || 'PLN',
       eventCount: filteredEvents.length,
     };
@@ -151,23 +157,29 @@ export const FinancialLedger: React.FC<FinancialLedgerProps> = ({
           {/* Summary strip - financial orientation */}
           <div className="flex items-center gap-8">
             <div className="flex-1">
-              <div className="text-xs text-muted-foreground uppercase tracking-wider mb-1.5">Wpływy</div>
-              <div className="text-2xl font-semibold text-green-400 tabular-nums">
+              <div className="text-xs text-muted-foreground uppercase tracking-wide mb-1.5">Wpływy</div>
+              <div className="text-2xl font-medium tabular-nums tracking-tight text-green-400">
                 +{formatCurrency(summary.totalIncoming, summary.currency)}
               </div>
+              {summary.pendingIncoming > 0 && (
+                <div className="mt-1 inline-flex items-center gap-1 rounded-full bg-amber-500/10 text-amber-400 px-3 py-1 text-xs font-medium">
+                  <Clock className="h-3.5 w-3.5" />
+                  Do wpływu: {formatCurrency(summary.pendingIncoming, summary.currency)}
+                </div>
+              )}
             </div>
 
             <div className="flex-1">
-              <div className="text-xs text-muted-foreground uppercase tracking-wider mb-1.5">Koszty</div>
-              <div className="text-2xl font-semibold text-red-400 tabular-nums">
+              <div className="text-xs text-muted-foreground uppercase tracking-wide mb-1.5">Koszty</div>
+              <div className="text-2xl font-medium tabular-nums tracking-tight text-red-400">
                 −{formatCurrency(summary.totalOutgoing, summary.currency)}
               </div>
             </div>
 
             <div className="flex-1">
-              <div className="text-xs text-muted-foreground uppercase tracking-wider mb-1.5">Zysk netto</div>
+              <div className="text-xs text-muted-foreground uppercase tracking-wide mb-1.5">Zysk netto</div>
               <div className={cn(
-                "text-2xl font-semibold tabular-nums",
+                "text-2xl font-medium tabular-nums tracking-tight",
                 summary.netPosition >= 0 ? "text-green-400" : "text-red-400"
               )}>
                 {summary.netPosition >= 0 ? '+' : ''}

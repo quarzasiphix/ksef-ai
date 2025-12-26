@@ -67,7 +67,8 @@ export function useGlobalData(selectedPeriod?: string, fetchAllInvoices?: boolea
       return invoicesWithTotals;
     },
     enabled: !!user?.id && !!selectedProfileId && (selectedPeriod !== undefined || fetchAllInvoices),
-    staleTime: 1000 * 60 * 5, // 5 minutes
+    placeholderData: (previousData) => previousData, // Keep previous data while refetching
+    // staleTime inherited from global config (10 minutes)
   });
 
   const businessProfilesQuery = useQuery({
@@ -77,13 +78,15 @@ export function useGlobalData(selectedPeriod?: string, fetchAllInvoices?: boolea
       return getBusinessProfiles(user.id);
     },
     enabled: !!user?.id,
-    staleTime: 1000 * 60 * 5, // 5 minutes
+    placeholderData: (previousData) => previousData,
+    // staleTime inherited from global config (10 minutes)
   });
 
   const customersQuery = useQuery({
     queryKey: QUERY_KEYS.customers,
     queryFn: getCustomers,
-    staleTime: 1000 * 60 * 5, // 5 minutes
+    placeholderData: (previousData) => previousData,
+    // staleTime inherited from global config (10 minutes)
   });
 
   const productsQuery = useQuery({
@@ -93,7 +96,8 @@ export function useGlobalData(selectedPeriod?: string, fetchAllInvoices?: boolea
       return getProducts(user.id);
     },
     enabled: !!user?.id,
-    staleTime: 1000 * 60 * 5, // 5 minutes
+    placeholderData: (previousData) => previousData,
+    // staleTime inherited from global config (10 minutes)
   });
 
   const expensesQuery = useQuery({
@@ -107,7 +111,8 @@ export function useGlobalData(selectedPeriod?: string, fetchAllInvoices?: boolea
         : getExpenses(user.id, selectedProfileId || undefined);
     },
     enabled: !!user?.id && !!selectedProfileId && (selectedPeriod !== undefined || fetchAllInvoices),
-    staleTime: 1000 * 60 * 5, // 5 minutes
+    placeholderData: (previousData) => previousData,
+    // staleTime inherited from global config (10 minutes)
   });
 
   // Function to manually refresh all data

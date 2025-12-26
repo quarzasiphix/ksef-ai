@@ -73,7 +73,7 @@ const InvoiceDetail: React.FC<InvoiceDetailProps> = ({ type }) => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const location = useLocation();
-  const { user } = useAuth();
+  const { user, isPremium, openPremiumDialog } = useAuth();
   const { profiles: businessProfiles, selectedProfileId } = useBusinessProfile();
   const { invoices: { data: invoices, isLoading }, refreshAllData } = useGlobalData();
   const [showPDF, setShowPDF] = useState(false);
@@ -347,6 +347,7 @@ const InvoiceDetail: React.FC<InvoiceDetailProps> = ({ type }) => {
 
   const selectedProfile = businessProfiles.find((profile) => profile.id === selectedProfileId);
   const isSpoolka = selectedProfile?.entityType === 'sp_zoo' || selectedProfile?.entityType === 'sa';
+  const isJDG = selectedProfile?.entityType === 'dzialalnosc';
   const isOverdue = invoice.dueDate && !invoice.isPaid && new Date(invoice.dueDate) < new Date();
 
   // Mock related entities for Financial Threads Panel
@@ -409,24 +410,62 @@ const InvoiceDetail: React.FC<InvoiceDetailProps> = ({ type }) => {
       {/* Contextual Action Bar - Small, secondary */}
       {isOwner && (
         <ActionBar
-          primaryAction={!invoice.isPaid ? {
-            label: 'Przypisz płatność',
-            onClick: handleTogglePaid,
-            disabled: isUpdatingPaid,
-            variant: isOverdue ? 'danger' : 'success',
-            shortcut: '⌘P',
-          } : invoice.isPaid && !(invoice as any).booked_to_ledger ? {
-            label: 'Zaksięguj',
-            onClick: () => toast.info('Funkcja księgowania w przygotowaniu'),
-            disabled: false,
-            variant: 'default',
-          } : undefined}
-          secondaryActions={[
-            {
-              label: 'Edytuj',
-              onClick: () => navigate(editPath),
-            },
-          ]}
+          primaryAction={(() => {
+            if (isJDG) {
+              return {
+                label: invoice.isPaid ? 'Oznacz jako nieopłaconą' : 'Oznacz jako opłaconą',
+                onClick: handleTogglePaid,
+                disabled: isUpdatingPaid,
+                variant: invoice.isPaid ? 'warning' : (isOverdue ? 'danger' : 'success'),
+              };
+            }
+
+            if (!invoice.isPaid) {
+              return {
+                label: 'Przypisz płatność',
+                onClick: handleTogglePaid,
+                disabled: isUpdatingPaid,
+                variant: isOverdue ? 'danger' : 'success',
+                shortcut: '⌘P',
+              };
+            }
+            if (invoice.isPaid && !(invoice as any).booked_to_ledger) {
+              return {
+                label: 'Zaksięguj',
+                onClick: () => toast.info('Funkcja księgowania w przygotowaniu'),
+                disabled: false,
+                variant: 'default',
+              };
+            }
+            return undefined;
+          })()}
+          secondaryActions={(() => {
+            const actions = [
+              {
+                label: 'Edytuj',
+                onClick: () => navigate(editPath),
+              },
+            ];
+
+            if (isJDG) {
+              actions.unshift(
+                isPremium
+                  ? {
+                      label: 'Przypisz płatność',
+                      onClick: () => {
+                        const destination = invoice.paymentMethod === 'cash' ? '/accounting/kasa' : '/accounting/bank';
+                        navigate(`${destination}?linkInvoice=${invoice.id}`);
+                      },
+                    }
+                  : {
+                      label: 'Przypisz płatność (Premium)',
+                      onClick: () => openPremiumDialog('accounting'),
+                    }
+              );
+            }
+
+            return actions;
+          })()}
         />
       )}
 

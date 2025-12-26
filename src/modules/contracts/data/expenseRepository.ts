@@ -1,9 +1,9 @@
-import { supabase } from '../client';
+import { supabase } from '../../../integrations/supabase/client';
 import { Expense, TransactionType } from '../../../shared/types';
 import { useAuth } from '@/shared/hooks/useAuth';
 import { format } from 'date-fns';
 import { InvoiceType } from "@/shared/types";
-import { getInvoiceSharesReceived } from '../../../modules/invoices/data/invoiceShareRepository';
+import { getInvoiceSharesReceived } from '../../invoices/data/invoiceShareRepository';
 
 // Function to get start and end dates based on selected period - Duplicated from Accounting.tsx for now
 const getPeriodDates = (period: string): { startDate: string, endDate: string } => {

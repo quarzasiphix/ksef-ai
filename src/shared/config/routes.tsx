@@ -28,6 +28,7 @@ const InventoryPage = React.lazy(() => import('@/pages/inventory/InventoryPage')
 const Accounting = React.lazy(() => import('@/modules/accounting/screens/Accounting'));
 const BalanceSheet = React.lazy(() => import('@/modules/accounting/screens/BalanceSheet'));
 const Shareholders = React.lazy(() => import('@/modules/accounting/screens/Shareholders'));
+const EquityModule = React.lazy(() => import('@/modules/accounting/screens/EquityModule'));
 const Premium = React.lazy(() => import('@/modules/premium/screens/Premium'));
 const PremiumPlanDetails = React.lazy(() => import('@/modules/premium/screens/PremiumPlanDetails'));
 const DocumentsHub = React.lazy(() => import('@/modules/contracts/screens/DocumentsHub'));
@@ -41,6 +42,7 @@ const Analytics = React.lazy(() => import('@/modules/accounting/screens/Analytic
 const BankAccounts = React.lazy(() => import('@/modules/banking/screens/BankAccounts'));
 const CapitalCommitments = React.lazy(() => import('@/modules/accounting/screens/CapitalCommitments'));
 const BusinessInbox = React.lazy(() => import('@/modules/inbox/screens/BusinessInbox'));
+const UnifiedInboxPage = React.lazy(() => import('@/modules/inbox/screens/UnifiedInboxPage'));
 const DiscussionsPage = React.lazy(() => import('@/modules/inbox/screens/DiscussionsPage'));
 const ReceivedInvoiceDetail = React.lazy(() => import('@/modules/inbox/screens/ReceivedInvoiceDetail'));
 const CompanyRegistry = React.lazy(() => import('@/modules/spolka/screens/CompanyRegistry'));
@@ -363,6 +365,10 @@ export const routes: RouteConfig[] = [
         element: <BalanceSheet />,
       },
       {
+        path: '/accounting/equity',
+        element: <EquityModule />,
+      },
+      {
         path: '/accounting/shareholders',
         element: <Shareholders />,
       },
@@ -403,14 +409,20 @@ export const routes: RouteConfig[] = [
     section: 'operations',
   },
 
-  // Inbox
+  // Inbox (Unified Event System)
   {
     path: '/inbox',
-    element: <BusinessInbox />,
+    element: <UnifiedInboxPage />,
     guard: 'protected',
     title: 'Skrzynka',
     icon: 'Inbox',
     section: 'communication',
+  },
+  {
+    path: '/inbox/legacy',
+    element: <BusinessInbox />,
+    guard: 'protected',
+    hideInNav: true,
   },
   {
     path: '/inbox/discussions',

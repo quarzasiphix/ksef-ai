@@ -7,6 +7,7 @@ import { ThemeToggle } from "@/components/theme/ThemeToggle";
 import WorkspaceMenu from "@/components/workspace/WorkspaceMenu";
 import TabSwitcher from "@/components/workspace/TabSwitcher";
 import HeaderTabsStrip from "@/components/workspace/HeaderTabsStrip";
+import { SyncStatusIndicator } from "@/components/layout/SyncStatusIndicator";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -49,6 +50,7 @@ const Header = () => {
 
           {/* Right region - Action buttons */}
           <div className="flex items-center gap-2 flex-shrink-0">
+        <SyncStatusIndicator />
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
             <Button size="sm">
