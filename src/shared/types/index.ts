@@ -99,6 +99,11 @@ export interface Customer {
   business_profile_entity_type?: string; // From view
 }
 
+export type AccountingBehavior = 'przychod_operacyjny' | 'pozostale_przychody' | 'koszt_operacyjny' | 'srodek_trwaly';
+export type VatBehavior = '23' | '8' | '5' | '0' | 'zw' | 'np' | 'ue';
+export type ProductLifecycleState = 'active' | 'hidden' | 'archived';
+export type ProductCategory = 'service' | 'good' | 'asset';
+
 export interface Product {
   id: string;
   user_id: string; // Added for RLS
@@ -106,14 +111,26 @@ export interface Product {
   is_shared?: boolean; // If true, available for all user's business profiles
   name: string;
   unitPrice: number; // Netto price
-  vatRate: number; // VAT percentage, e.g., 23 or -1 for VAT-exempt
-  unit: string; // e.g., "szt.", "godz.", etc.
-  description?: string; // Added optional description
-  product_type: 'income' | 'expense';
+  vatRate: number; // VAT percentage, e.g., 23 or -1 for VAT-exempt (legacy)
+  unit: string; // e.g., "szt.", "godz.", etc. (legacy)
+  description?: string;
+  product_type: 'income' | 'expense'; // Legacy field
   track_stock: boolean;
   stock: number;
   business_profile_name?: string; // From view
   business_profile_entity_type?: string; // From view
+  
+  // New accounting-grade semantic fields
+  accounting_behavior: AccountingBehavior; // Accounting classification
+  vat_behavior: VatBehavior; // VAT rate behavior
+  unit_behavior: string; // Unit of measurement (szt., godz., km, ryczalt, etc.)
+  price_editable: boolean; // Can price be edited on documents?
+  vat_overridable: boolean; // Can VAT be manually overridden?
+  lifecycle_state: ProductLifecycleState; // Product lifecycle state
+  usage_count: number; // Number of times used in documents
+  last_used_at?: string; // Timestamp of last usage
+  product_category: ProductCategory; // Service, good, or asset
+  inventory_managed: boolean; // Whether inventory tracking is enabled
 }
 
 export enum TransactionType {

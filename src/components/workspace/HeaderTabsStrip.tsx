@@ -1,7 +1,7 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useWorkspaceTabs } from '@/shared/context/WorkspaceTabsContext';
-import { X, MoreHorizontal, Inbox, FileText, FileCheck, Users, Package, Building } from 'lucide-react';
+import { X, MoreHorizontal, Inbox, FileText, FileCheck, Users, Package, Building, Calculator, Settings } from 'lucide-react';
 import { cn } from '@/shared/lib/utils';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
@@ -67,6 +67,33 @@ const SECTIONS = {
     accentClass: 'border-t-indigo-500/50',
     bgClass: 'bg-indigo-500/5',
   },
+  accounting: {
+    key: 'accounting',
+    label: 'Księgowość',
+    icon: Calculator,
+    color: 'green',
+    rootPath: '/accounting',
+    accentClass: 'border-t-green-500/50',
+    bgClass: 'bg-green-500/5',
+  },
+  decisions: {
+    key: 'decisions',
+    label: 'Decyzje',
+    icon: FileCheck,
+    color: 'purple',
+    rootPath: '/decisions',
+    accentClass: 'border-t-purple-500/50',
+    bgClass: 'bg-purple-500/5',
+  },
+  settings: {
+    key: 'settings',
+    label: 'Ustawienia',
+    icon: Settings,
+    color: 'slate',
+    rootPath: '/settings',
+    accentClass: 'border-t-slate-500/50',
+    bgClass: 'bg-slate-500/5',
+  },
 } as const;
 
 type SectionKey = keyof typeof SECTIONS;
@@ -79,6 +106,9 @@ const getSectionForPath = (path: string): SectionKey | null => {
   if (path.startsWith('/customers')) return 'customers';
   if (path.startsWith('/products')) return 'products';
   if (path.startsWith('/employees')) return 'employees';
+  if (path.startsWith('/accounting')) return 'accounting';
+  if (path.startsWith('/decisions')) return 'decisions';
+  if (path.startsWith('/settings')) return 'settings';
   return null;
 };
 
@@ -92,6 +122,18 @@ interface SectionTrayProps {
   maxVisibleTabs?: number;
 }
 
+interface SectionTrayProps {
+  section: typeof SECTIONS[SectionKey];
+  tabs: any[];
+  activeTabId: string | null;
+  onSwitchTab: (tabId: string) => void;
+  onCloseTab: (tabId: string) => void;
+  onNavigateRoot: () => void;
+  onToggleCollapse: () => void;
+  collapsed?: boolean;
+  maxVisibleTabs?: number;
+}
+
 const SectionTray: React.FC<SectionTrayProps> = ({
   section,
   tabs,
@@ -99,6 +141,8 @@ const SectionTray: React.FC<SectionTrayProps> = ({
   onSwitchTab,
   onCloseTab,
   onNavigateRoot,
+  onToggleCollapse,
+  collapsed = false,
   maxVisibleTabs = 4,
 }) => {
   const [isHovered, setIsHovered] = useState(false);
@@ -119,6 +163,10 @@ const SectionTray: React.FC<SectionTrayProps> = ({
         isAnySectionTabActive ? section.bgClass : "bg-white/[0.02]",
         "border-white/5"
       )}
+      onContextMenu={(event) => {
+        event.preventDefault();
+        onToggleCollapse();
+      }}
       onMouseEnter={() => setIsHovered(true)}
       onMouseLeave={() => setIsHovered(false)}
     >
@@ -139,66 +187,68 @@ const SectionTray: React.FC<SectionTrayProps> = ({
       </button>
 
       {/* Document tabs in this section */}
-      <AnimatePresence mode="popLayout">
-        {visibleTabs.map((tab) => {
-          const isActive = tab.id === activeTabId;
-          const TabIcon = tab.icon;
+      {!collapsed && (
+        <AnimatePresence mode="popLayout">
+          {visibleTabs.map((tab) => {
+            const isActive = tab.id === activeTabId;
+            const TabIcon = tab.icon;
 
-          return (
-            <motion.button
-              key={tab.id}
-              layout
-              initial={{ opacity: 0, scale: 0.9 }}
-              animate={{ opacity: 1, scale: 1 }}
-              exit={{ opacity: 0, scale: 0.9 }}
-              transition={{
-                layout: { type: "spring", stiffness: 500, damping: 35 },
-                opacity: { duration: 0.12 },
-              }}
-              onClick={() => onSwitchTab(tab.id)}
-              className={cn(
-                "group inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md",
-                "text-xs font-medium transition-all max-w-[140px]",
-                isActive
-                  ? "bg-white/20 text-white shadow-sm"
-                  : "bg-white/5 text-white/60 hover:bg-white/10 hover:text-white/80"
-              )}
-            >
-              {TabIcon && typeof TabIcon === 'function' && (
-                <TabIcon className="h-3.5 w-3.5 flex-shrink-0" />
-              )}
-              <span className="truncate flex-1 min-w-0">{tab.title}</span>
-              
-              {/* Dirty indicator */}
-              {tab.isDirty && (
-                <div className="h-1.5 w-1.5 rounded-full bg-amber-400 flex-shrink-0" />
-              )}
-
-              {/* Close button - only on hover */}
-              <span
-                onClick={(e) => {
-                  e.stopPropagation();
-                  onCloseTab(tab.id);
+            return (
+              <motion.button
+                key={tab.id}
+                layout
+                initial={{ opacity: 0, scale: 0.9 }}
+                animate={{ opacity: 1, scale: 1 }}
+                exit={{ opacity: 0, scale: 0.9 }}
+                transition={{
+                  layout: { type: "spring", stiffness: 500, damping: 35 },
+                  opacity: { duration: 0.12 },
                 }}
+                onClick={() => onSwitchTab(tab.id)}
                 className={cn(
-                  "grid h-4 w-4 place-items-center rounded",
-                  "text-white/40 hover:text-white hover:bg-white/20",
-                  "transition-opacity",
-                  isHovered || isActive ? "opacity-100" : "opacity-0"
+                  "group inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md",
+                  "text-xs font-medium transition-all max-w-[140px]",
+                  isActive
+                    ? "bg-white/20 text-white shadow-sm"
+                    : "bg-white/5 text-white/60 hover:bg-white/10 hover:text-white/80"
                 )}
-                role="button"
-                aria-label="Zamknij"
               >
-                <X className="h-3 w-3" />
-              </span>
-            </motion.button>
-          );
-        })}
-      </AnimatePresence>
+                {TabIcon && typeof TabIcon === 'function' && (
+                  <TabIcon className="h-3.5 w-3.5 flex-shrink-0" />
+                )}
+                <span className="truncate flex-1 min-w-0">{tab.title}</span>
+                
+                {/* Dirty indicator */}
+                {tab.isDirty && (
+                  <div className="h-1.5 w-1.5 rounded-full bg-amber-400 flex-shrink-0" />
+                )}
+
+                {/* Close button - only on hover */}
+                <span
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    onCloseTab(tab.id);
+                  }}
+                  className={cn(
+                    "grid h-4 w-4 place-items-center rounded",
+                    "text-white/40 hover:text-white hover:bg-white/20",
+                    "transition-opacity",
+                    isHovered || isActive ? "opacity-100" : "opacity-0"
+                  )}
+                  role="button"
+                  aria-label="Zamknij"
+                >
+                  <X className="h-3 w-3" />
+                </span>
+              </motion.button>
+            );
+          })}
+        </AnimatePresence>
+      )}
 
       {/* Overflow indicator */}
-      {hasOverflow && (
-        <DropdownMenu>
+      {!collapsed && hasOverflow && (
+        <DropdownMenu open={isHovered}>
           <DropdownMenuTrigger asChild>
             <button className="inline-flex items-center gap-1 px-2 py-1 rounded-md text-xs text-white/60 hover:bg-white/10 hover:text-white/80 transition-all">
               <MoreHorizontal className="h-3.5 w-3.5" />
@@ -234,6 +284,54 @@ const SectionTray: React.FC<SectionTrayProps> = ({
 const HeaderTabsStrip: React.FC = () => {
   const { tabs, activeTabId, switchTab, closeTab } = useWorkspaceTabs();
   const navigate = useNavigate();
+  const [collapsedSections, setCollapsedSections] = useState<Record<SectionKey, boolean>>(() => {
+    try {
+      const stored = localStorage.getItem('workspace_collapsed_sections');
+      if (stored) {
+        const parsed = JSON.parse(stored) as Partial<Record<SectionKey, boolean>>;
+        return {
+          inbox: false,
+          invoices: false,
+          contracts: false,
+          customers: false,
+          products: false,
+          employees: false,
+          accounting: false,
+          decisions: false,
+          settings: false,
+          ...parsed,
+        };
+      }
+    } catch {
+      // ignore
+    }
+    return {
+      inbox: false,
+      invoices: false,
+      contracts: false,
+      customers: false,
+      products: false,
+      employees: false,
+      accounting: false,
+      decisions: false,
+      settings: false,
+    };
+  });
+
+  useEffect(() => {
+    try {
+      localStorage.setItem('workspace_collapsed_sections', JSON.stringify(collapsedSections));
+    } catch {
+      // ignore storage issues
+    }
+  }, [collapsedSections]);
+
+  const toggleSectionCollapse = (sectionKey: SectionKey) => {
+    setCollapsedSections(prev => ({
+      ...prev,
+      [sectionKey]: !prev[sectionKey],
+    }));
+  };
 
   // Group tabs by section
   const groupedTabs = useMemo(() => {
@@ -244,6 +342,9 @@ const HeaderTabsStrip: React.FC = () => {
       customers: [],
       products: [],
       employees: [],
+      accounting: [],
+      decisions: [],
+      settings: [],
     };
 
     tabs.forEach((tab) => {
@@ -279,6 +380,7 @@ const HeaderTabsStrip: React.FC = () => {
             const sectionKey = key as SectionKey;
             const sectionTabs = groupedTabs[sectionKey];
 
+            const isCollapsed = collapsedSections[sectionKey];
             return (
               <motion.div
                 key={key}
@@ -294,6 +396,8 @@ const HeaderTabsStrip: React.FC = () => {
                   onSwitchTab={switchTab}
                   onCloseTab={closeTab}
                   onNavigateRoot={() => navigate(section.rootPath)}
+                  collapsed={isCollapsed}
+                  onToggleCollapse={() => toggleSectionCollapse(sectionKey)}
                 />
               </motion.div>
             );

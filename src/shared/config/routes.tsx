@@ -1,4 +1,5 @@
 import React from 'react';
+import { Navigate } from 'react-router-dom';
 import { TransactionType } from '@/shared/types/common';
 
 // Lazy load pages for better performance
@@ -54,9 +55,11 @@ const Kasa = React.lazy(() => import('@/modules/accounting/screens/Kasa'));
 const TransactionalContracts = React.lazy(() => import('@/modules/accounting/screens/TransactionalContracts'));
 const EventLog = React.lazy(() => import('@/modules/accounting/screens/EventLog'));
 const LedgerPage = React.lazy(() => import('@/modules/accounting/screens/LedgerPage'));
+const SettingsShell = React.lazy(() => import('@/modules/settings/screens/SettingsShell'));
 const SettingsMenu = React.lazy(() => import('@/modules/settings/screens/SettingsMenu'));
 const ProfileSettings = React.lazy(() => import('@/modules/settings/screens/ProfileSettings'));
 const TeamManagement = React.lazy(() => import('@/modules/settings/screens/TeamManagement'));
+const SettingsPremium = React.lazy(() => import('@/modules/settings/screens/SettingsPremium'));
 const SharedLinksPage = React.lazy(() => import('@/pages/SharedLinks'));
 const NotFound = React.lazy(() => import('@/pages/NotFound'));
 
@@ -91,6 +94,14 @@ export const routes: RouteConfig[] = [
     title: 'Dashboard',
     icon: 'LayoutDashboard',
     section: 'main',
+  },
+
+  // Legacy /shares route -> settings screen
+  {
+    path: '/shares',
+    element: <Navigate to="/settings/shared-links" replace />,
+    guard: 'protected',
+    hideInNav: true,
   },
 
   // Invoices (normalized routes)
@@ -457,64 +468,56 @@ export const routes: RouteConfig[] = [
     section: 'finance',
   },
 
-  // Settings
+  // Settings - wrapped in SettingsShell for sidebar
   {
     path: '/settings',
-    element: <SettingsMenu />,
+    element: <SettingsShell />,
     guard: 'protected',
     title: 'Ustawienia',
     icon: 'Settings',
     section: 'settings',
-  },
-  {
-    path: '/settings/profile',
-    element: <ProfileSettings />,
-    guard: 'protected',
-    hideInNav: true,
-  },
-  {
-    path: '/settings/business-profiles',
-    element: <BusinessProfiles />,
-    guard: 'protected',
-    hideInNav: true,
-  },
-  {
-    path: '/settings/business-profiles/new',
-    element: <NewBusinessProfile />,
-    guard: 'protected',
-    hideInNav: true,
-  },
-  {
-    path: '/settings/business-profiles/:id/edit',
-    element: <EditBusinessProfile />,
-    guard: 'protected',
-    hideInNav: true,
-  },
-  {
-    path: '/settings/documents',
-    element: <DocumentSettings />,
-    guard: 'protected',
-    hideInNav: true,
-  },
-  {
-    path: '/settings/erp',
-    element: <ERPIntegrations />,
-    guard: 'protected',
-    hideInNav: true,
-  },
-  {
-    path: '/settings/team',
-    element: <TeamManagement />,
-    guard: 'protected',
-    hideInNav: true,
-  },
-
-  // Shared Links
-  {
-    path: '/shares',
-    element: <SharedLinksPage />,
-    guard: 'protected',
-    hideInNav: true,
+    children: [
+      {
+        path: '',
+        element: <SettingsMenu />,
+      },
+      {
+        path: 'premium',
+        element: <SettingsPremium />,
+      },
+      {
+        path: 'profile',
+        element: <ProfileSettings />,
+      },
+      {
+        path: 'business-profiles',
+        element: <BusinessProfiles />,
+      },
+      {
+        path: 'business-profiles/new',
+        element: <NewBusinessProfile />,
+      },
+      {
+        path: 'business-profiles/:id/edit',
+        element: <EditBusinessProfile />,
+      },
+      {
+        path: 'documents',
+        element: <DocumentSettings />,
+      },
+      {
+        path: 'erp',
+        element: <ERPIntegrations />,
+      },
+      {
+        path: 'team',
+        element: <TeamManagement />,
+      },
+      {
+        path: 'shared-links',
+        element: <SharedLinksPage />,
+      },
+    ],
   },
 
   // Premium

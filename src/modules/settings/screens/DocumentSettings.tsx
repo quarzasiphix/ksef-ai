@@ -2,25 +2,21 @@ import React from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Button } from '@/shared/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/shared/ui/card';
-import { ArrowLeft, FileText, Share2, Loader2 } from 'lucide-react';
+import { ArrowLeft, FileText, Share2, Loader2, AlertCircle } from 'lucide-react';
 import { toast } from 'sonner';
 import { generateInvoiceNumber } from '@/shared/lib/invoice-utils';
 import { getInvoiceNumberingSettings, upsertInvoiceNumberingSettings } from '@/modules/invoices/data/invoiceNumberingSettingsRepository';
 import { supabase } from '@/integrations/supabase/client';
+import { useAuth } from '@/shared/context/AuthContext';
+import { useBusinessProfile } from '@/shared/context/BusinessProfileContext';
 
 const DocumentSettings = () => {
   const navigate = useNavigate();
   
-  // Extend Window interface to include our custom properties
-  interface CustomWindow extends Window {
-    user?: { id: string };
-    businessProfileId?: string;
-  }
-  
-  // Get user and business profile from window (replace with your auth context)
-  const customWindow = window as unknown as CustomWindow;
-  const userId = customWindow.user?.id;
-  const businessProfileId = customWindow.businessProfileId;
+  const { user } = useAuth();
+  const { selectedProfileId } = useBusinessProfile();
+  const userId = user?.id || null;
+  const businessProfileId = selectedProfileId || null;
   
   // State for form fields and UI
   const [loading, setLoading] = React.useState(true);
@@ -28,11 +24,14 @@ const DocumentSettings = () => {
   const [pattern, setPattern] = React.useState<'incremental'|'yearly'|'monthly'>('monthly');
   const [prefix, setPrefix] = React.useState('FV');
   const [invoiceCount, setInvoiceCount] = React.useState(0);
-  const [countLoading, setCountLoading] = React.useState(true);
+  const [countLoading, setCountLoading] = React.useState(false);
 
   // Fetch invoice count based on the selected pattern
   const fetchInvoiceCount = React.useCallback(async (userId: string, businessProfileId: string, pattern: string) => {
-    if (!userId || !businessProfileId) return 0;
+    if (!userId || !businessProfileId) {
+      setCountLoading(false);
+      return 0;
+    }
     
     setCountLoading(true);
     try {
@@ -76,11 +75,15 @@ const DocumentSettings = () => {
 
   // Update invoice count when pattern changes
   React.useEffect(() => {
-    if (userId && businessProfileId) {
-      fetchInvoiceCount(userId, businessProfileId, pattern).then(count => {
-        setInvoiceCount(count);
-      });
+    if (!userId || !businessProfileId) {
+      setInvoiceCount(0);
+      setCountLoading(false);
+      return;
     }
+
+    fetchInvoiceCount(userId, businessProfileId, pattern).then(count => {
+      setInvoiceCount(count);
+    });
   }, [userId, businessProfileId, pattern, fetchInvoiceCount]);
 
   // Load settings from Supabase on component mount
@@ -181,6 +184,33 @@ const DocumentSettings = () => {
       setSaving(false);
     }
   };
+
+  if (!businessProfileId) {
+    return (
+      <div className="max-w-4xl mx-auto space-y-6">
+        <div className="flex items-center gap-4">
+          <Button variant="outline" size="icon" onClick={() => navigate('/settings')}>
+            <ArrowLeft className="h-4 w-4" />
+          </Button>
+          <div>
+            <h1 className="text-2xl font-bold">Ustawienia dokumentów</h1>
+            <p className="text-muted-foreground">Wybierz firmę, aby edytować numerację dokumentów.</p>
+          </div>
+        </div>
+        <Card>
+          <CardContent className="py-12 text-center space-y-4">
+            <AlertCircle className="h-10 w-10 text-muted-foreground mx-auto" />
+            <p className="text-muted-foreground">
+              Nie wybrano aktywnej firmy. Przełącz się na profil biznesowy i spróbuj ponownie.
+            </p>
+            <Button onClick={() => navigate('/settings/business-profiles')}>
+              Zarządzaj profilami
+            </Button>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
 
   return (
     <div className="max-w-4xl mx-auto space-y-6">

@@ -46,7 +46,7 @@ export const useWorkspaceTabs = () => {
 };
 
 // Helper to generate tab icon based on path
-const getIconForPath = (path: string): React.ComponentType<{ className?: string }> | undefined => {
+export const getIconForPath = (path: string): React.ComponentType<{ className?: string }> | undefined => {
   if (path.startsWith('/income') || path.startsWith('/inbox')) return FileText;
   if (path.startsWith('/expense')) return CreditCard;
   if (path.startsWith('/customers')) return Users;
@@ -54,6 +54,8 @@ const getIconForPath = (path: string): React.ComponentType<{ className?: string 
   if (path.startsWith('/contracts')) return FileCheck;
   if (path.startsWith('/accounting')) return Calculator;
   if (path.startsWith('/employees')) return Building;
+  if (path.startsWith('/decisions')) return FileCheck;
+  if (path.startsWith('/settings')) return Building;
   return undefined;
 };
 
@@ -68,7 +70,17 @@ const getTitleForPath = (path: string): string => {
   if (path.startsWith('/accounting')) return 'Księgowość';
   if (path.startsWith('/dashboard')) return 'Pulpit';
   if (path.startsWith('/employees')) return 'Pracownicy';
+  if (path.startsWith('/decisions')) return 'Decyzje';
+  if (path.startsWith('/settings')) return 'Ustawienia';
   return 'Dokument';
+};
+
+// Helper to get category for path (for category-level tab grouping)
+const getCategoryForPath = (path: string): string | null => {
+  if (path.startsWith('/accounting')) return 'accounting';
+  if (path.startsWith('/decisions')) return 'decisions';
+  if (path.startsWith('/settings')) return 'settings';
+  return null;
 };
 
 export const WorkspaceTabsProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
@@ -85,8 +97,12 @@ export const WorkspaceTabsProvider: React.FC<{ children: React.ReactNode }> = ({
     
     if (savedTabs) {
       try {
-        const parsed = JSON.parse(savedTabs);
-        setTabs(parsed);
+        const parsed = JSON.parse(savedTabs) as Omit<WorkspaceTab, 'icon'>[];
+        const hydratedTabs: WorkspaceTab[] = parsed.map(tab => ({
+          ...tab,
+          icon: getIconForPath(tab.path),
+        }));
+        setTabs(hydratedTabs);
         if (savedActiveTab) {
           setActiveTabId(savedActiveTab);
         }
@@ -99,7 +115,8 @@ export const WorkspaceTabsProvider: React.FC<{ children: React.ReactNode }> = ({
   // Save tabs to localStorage whenever they change
   useEffect(() => {
     if (tabs.length > 0) {
-      localStorage.setItem('workspace_tabs', JSON.stringify(tabs));
+      const serializableTabs = tabs.map(({ icon, ...rest }) => rest);
+      localStorage.setItem('workspace_tabs', JSON.stringify(serializableTabs));
     } else {
       localStorage.removeItem('workspace_tabs');
     }
@@ -125,13 +142,33 @@ export const WorkspaceTabsProvider: React.FC<{ children: React.ReactNode }> = ({
         }
       }
 
-      // Check if workspace tab already exists
+      // Check if workspace tab already exists - for category-level tabs, replace with new path
       if (tabData.type === 'workspace') {
-        const existingTab = prevTabs.find(t => t.type === 'workspace' && t.path === tabData.path);
-        if (existingTab) {
-          setActiveTabId(existingTab.id);
-          navigate(existingTab.path);
-          return prevTabs;
+        const category = getCategoryForPath(tabData.path);
+        if (category) {
+          // Find existing tab in same category and replace it
+          const existingCategoryTab = prevTabs.find(t => 
+            t.type === 'workspace' && getCategoryForPath(t.path) === category
+          );
+          if (existingCategoryTab) {
+            // Update existing tab with new path
+            const updatedTabs = prevTabs.map(t => 
+              t.id === existingCategoryTab.id 
+                ? { ...t, path: tabData.path, title: tabData.title || getTitleForPath(tabData.path) }
+                : t
+            );
+            setActiveTabId(existingCategoryTab.id);
+            navigate(tabData.path);
+            return updatedTabs;
+          }
+        } else {
+          // For non-category paths, check exact match
+          const existingTab = prevTabs.find(t => t.type === 'workspace' && t.path === tabData.path);
+          if (existingTab) {
+            setActiveTabId(existingTab.id);
+            navigate(existingTab.path);
+            return prevTabs;
+          }
         }
       }
 

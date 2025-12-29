@@ -69,7 +69,8 @@ import {
 const TeamManagement = () => {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
-  const { selectedProfileId, selectedProfile } = useBusinessProfile();
+  const { selectedProfileId, profiles } = useBusinessProfile();
+  const selectedProfile = profiles.find(p => p.id === selectedProfileId);
 
   const [inviteDialogOpen, setInviteDialogOpen] = useState(false);
   const [inviteEmail, setInviteEmail] = useState('');
@@ -78,17 +79,19 @@ const TeamManagement = () => {
   const [sending, setSending] = useState(false);
 
   // Fetch team members
-  const { data: members = [], isLoading: loadingMembers } = useQuery({
+  const { data: members = [], isLoading: loadingMembers, isFetching: fetchingMembers } = useQuery({
     queryKey: ['companyMembers', selectedProfileId],
     queryFn: () => selectedProfileId ? getCompanyMembers(selectedProfileId) : Promise.resolve([]),
     enabled: !!selectedProfileId,
+    placeholderData: (previousData) => previousData, // Keep previous data while refetching
   });
 
   // Fetch pending invitations
-  const { data: invitations = [], isLoading: loadingInvitations } = useQuery({
+  const { data: invitations = [], isLoading: loadingInvitations, isFetching: fetchingInvitations } = useQuery({
     queryKey: ['companyInvitations', selectedProfileId],
     queryFn: () => selectedProfileId ? getInvitationsForProfile(selectedProfileId) : Promise.resolve([]),
     enabled: !!selectedProfileId,
+    placeholderData: (previousData) => previousData, // Keep previous data while refetching
   });
 
   const pendingInvitations = invitations.filter(i => i.status === 'pending');

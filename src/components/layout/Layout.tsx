@@ -23,8 +23,11 @@ const Layout = ({ children }: LayoutProps) => {
     const location = useLocation();
     const isAccountingRoute = location.pathname.startsWith('/accounting');
     const isContractsRoute = location.pathname.startsWith('/contracts');
-    const isFullBleedRoute = isAccountingRoute || location.pathname.startsWith('/contracts');
+    const isSettingsRoute = location.pathname.startsWith('/settings');
+    const isFullBleedRoute = isAccountingRoute || isContractsRoute || isSettingsRoute;
+    const hideBreadcrumbs = isAccountingRoute || isContractsRoute || isSettingsRoute;
     const isNewBusinessProfileWizardRoute = location.pathname === '/settings/business-profiles/new';
+    const disableOuterScroll = isAccountingRoute || isContractsRoute;
 
     const mainPaddingClass = isFullBleedRoute
       ? isAccountingRoute
@@ -56,7 +59,7 @@ const Layout = ({ children }: LayoutProps) => {
           <main
             className={cn(
               "flex-1 w-full max-w-full",
-              isFullBleedRoute ? "overflow-hidden" : "overflow-auto",
+              disableOuterScroll ? "overflow-hidden" : "overflow-auto",
               mainPaddingClass
             )}
           >
@@ -66,7 +69,7 @@ const Layout = ({ children }: LayoutProps) => {
                 isFullBleedRoute ? "max-w-none" : "max-w-7xl mx-auto"
               )}
             >
-              {!isAccountingRoute && !isContractsRoute && (
+              {!hideBreadcrumbs && (
                 <div className={cn(
                   "flex items-center justify-between gap-3",
                   isFullBleedRoute ? "mb-3" : "mb-6"
