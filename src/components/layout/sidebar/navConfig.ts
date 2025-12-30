@@ -17,6 +17,7 @@ import {
   Scale,
   DollarSign,
   Settings,
+  FolderKanban,
 } from "lucide-react";
 
 import type { LucideIcon } from "lucide-react";
@@ -224,6 +225,13 @@ const navGroupsConfig: NavGroupConfig[] = [
     subtitle: "Ustawienia",
     collapsible: false,
     items: [
+      {
+        id: "projects",
+        label: "Projekty",
+        icon: FolderKanban,
+        path: "/settings/projects",
+        tint: "system",
+      },
       {
         id: "settings",
         label: "Ustawienia",

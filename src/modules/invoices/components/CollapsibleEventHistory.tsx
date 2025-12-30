@@ -26,7 +26,7 @@ const CollapsibleEventHistory: React.FC<CollapsibleEventHistoryProps> = ({
       console.log('[CollapsibleEventHistory] Querying events for:', { invoiceId, businessProfileId });
       
       const { data, error } = await supabase
-        .from('company_events')
+        .from('events')
         .select('*')
         .eq('business_profile_id', businessProfileId)
         .eq('entity_type', 'invoice')

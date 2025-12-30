@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useMemo, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { useNavigate } from 'react-router-dom';
 import { useBusinessProfile } from '@/shared/context/BusinessProfileContext';
@@ -19,8 +19,8 @@ import {
   ChevronRight,
   AlertCircle
 } from 'lucide-react';
-import { getCompanyEvents, getEventStats } from '@/modules/accounting/data/eventsRepository';
-import { EVENT_TYPE_LABELS, EVENT_TYPE_COLORS, type EventType, type CompanyEvent } from '@/shared/types/events';
+import { getEvents } from '@/modules/accounting/data/unifiedEventsRepository';
+import { EVENT_TYPE_LABELS, EVENT_TYPE_COLORS, type EventType, type UnifiedEvent } from '@/shared/types/events';
 import { formatDistanceToNow } from 'date-fns';
 import { pl } from 'date-fns/locale';
 import { toast } from 'sonner';
@@ -36,19 +36,25 @@ const EventLog: React.FC = () => {
   const isSpoolka = selectedProfile?.entityType === 'sp_zoo' || selectedProfile?.entityType === 'sa';
 
   const { data: events = [], isLoading } = useQuery({
-    queryKey: ['company-events', selectedProfileId, filterType],
-    queryFn: () => getCompanyEvents(selectedProfileId!, {
+    queryKey: ['unified-events', selectedProfileId, filterType],
+    queryFn: () => getEvents(selectedProfileId!, {
       limit: 500,
       eventType: filterType === 'all' ? undefined : filterType,
     }),
     enabled: !!selectedProfileId && isSpoolka,
   });
 
-  const { data: stats } = useQuery({
-    queryKey: ['event-stats', selectedProfileId],
-    queryFn: () => getEventStats(selectedProfileId!),
-    enabled: !!selectedProfileId && isSpoolka,
-  });
+  const stats = useMemo(() => {
+    const eventsByType = events.reduce<Record<string, number>>((acc, event) => {
+      acc[event.event_type] = (acc[event.event_type] || 0) + 1;
+      return acc;
+    }, {});
+
+    return {
+      total_events: events.length,
+      events_by_type: eventsByType,
+    };
+  }, [events]);
 
   const filteredEvents = events.filter(event => {
     const matchesSearch = searchQuery === '' || 
@@ -77,7 +83,7 @@ const EventLog: React.FC = () => {
     return colorMap[color] || colorMap.gray;
   };
 
-  const handleEntityClick = (event: CompanyEvent) => {
+  const handleEntityClick = (event: UnifiedEvent) => {
     const entityRoutes: Record<string, string> = {
       invoice: '/income',
       expense: '/expenses',

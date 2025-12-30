@@ -14,6 +14,7 @@ export type DecisionCategory =
   | 'operational_costs'       // Zgoda na ponoszenie kosztów operacyjnych
   | 'b2b_contracts'           // Zgoda na zawieranie umów B2B
   | 'cash_management'         // Zgoda na zarządzanie kasą
+  | 'project_governance'      // Zgoda na utworzenie projektu (charter)
   | 'custom_projects'         // Zgoda na projekty niestandardowe
   | 'other';                  // Inne
 
@@ -33,6 +34,7 @@ export const CATEGORY_TO_DOMAIN: Record<DecisionCategory, BusinessDomain> = {
   operational_costs: 'costs',
   b2b_contracts: 'contracts',
   cash_management: 'costs',
+  project_governance: 'contracts',
   custom_projects: 'contracts',
   other: 'costs',
 };
@@ -194,6 +196,7 @@ export const DECISION_CATEGORY_LABELS: Record<DecisionCategory, string> = {
   operational_costs: 'Koszty operacyjne',
   b2b_contracts: 'Umowy B2B',
   cash_management: 'Zarządzanie kasą',
+  project_governance: 'Utworzenie projektu',
   custom_projects: 'Projekty niestandardowe',
   other: 'Inne',
 };

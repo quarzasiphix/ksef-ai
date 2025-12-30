@@ -251,55 +251,53 @@ export const InvoiceBasicInfoForm: React.FC<InvoiceBasicInfoFormProps> = ({
           )}
         />
 
-{/* Exchange Rate Field */}
-{currency !== 'PLN' && (
-  <FormField
-    control={form.control}
-    name="exchangeRate"
-    render={({ field }) => (
-      <FormItem>
-        <FormLabel>Kurs wymiany (1 {currency} = ? PLN)
-          <TooltipProvider>
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <span className="ml-1 align-middle cursor-pointer"><Info size={14} /></span>
-              </TooltipTrigger>
-              <TooltipContent>
-                {exchangeRateSource === 'NBP'
-                  ? 'Kurs automatycznie pobrany z NBP na dzień poprzedzający datę wystawienia.'
-                  : 'Kurs wpisany ręcznie przez użytkownika.'}
-              </TooltipContent>
-            </Tooltip>
-          </TooltipProvider>
-        </FormLabel>
-        <FormControl>
-          <Input
-            type="number"
-            step="0.0001"
-            min="0"
-            placeholder="np. 4.25"
-            value={exchangeRate || field.value || 1}
-            onChange={(e) => {
-              const value = Number(e.target.value);
-              field.onChange(value);
-              onExchangeRateChange?.(value);
-            }}
+        {/* Exchange Rate Field */}
+        {currency !== 'PLN' && (
+          <FormField
+            control={form.control}
+            name="exchangeRate"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>Kurs wymiany (1 {currency} = ? PLN)
+                  <TooltipProvider>
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <span className="ml-1 align-middle cursor-pointer"><Info size={14} /></span>
+                      </TooltipTrigger>
+                      <TooltipContent>
+                        {exchangeRateSource === 'NBP'
+                          ? 'Kurs automatycznie pobrany z NBP na dzień poprzedzający datę wystawienia.'
+                          : 'Kurs wpisany ręcznie przez użytkownika.'}
+                      </TooltipContent>
+                    </Tooltip>
+                  </TooltipProvider>
+                </FormLabel>
+                <FormControl>
+                  <Input
+                    type="number"
+                    step="0.0001"
+                    min="0"
+                    placeholder="np. 4.25"
+                    value={exchangeRate || field.value || 1}
+                    onChange={(e) => {
+                      const value = Number(e.target.value);
+                      field.onChange(value);
+                      onExchangeRateChange?.(value);
+                    }}
+                  />
+                </FormControl>
+                {exchangeRateDate && (
+                  <div className="text-xs text-muted-foreground mt-1">Kurs z dnia: {exchangeRateDate}</div>
+                )}
+                <div className="text-xs text-muted-foreground mt-1">
+                  Źródło: {exchangeRateSource === 'NBP' ? 'NBP' : 'ręcznie wpisany'}
+                </div>
+                <FormMessage />
+              </FormItem>
+            )}
           />
-        </FormControl>
-        {exchangeRateDate && (
-          <div className="text-xs text-muted-foreground mt-1">Kurs z dnia: {exchangeRateDate}</div>
         )}
-        <div className="text-xs text-muted-foreground mt-1">
-          Źródło: {exchangeRateSource === 'NBP' ? 'NBP' : 'ręcznie wpisany'}
-        </div>
-        <FormMessage />
-      </FormItem>
-    )}
-  />
-)}
 
-        
-        
         <FormField
           control={form.control}
           name="comments"
@@ -314,7 +312,7 @@ export const InvoiceBasicInfoForm: React.FC<InvoiceBasicInfoFormProps> = ({
           )}
         />
 
-<FormField
+        <FormField
           control={form.control}
           name="fakturaBezVAT"
           render={({ field }) => (

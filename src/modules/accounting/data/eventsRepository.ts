@@ -2,9 +2,15 @@ import { supabase } from '../../../integrations/supabase/client';
 import type { CompanyEvent, CreateEventInput, EnforcementCheck, EventType } from '@/shared/types/events';
 
 // ============================================
-// EVENT CRUD OPERATIONS
+// LEGACY EVENT CRUD OPERATIONS
+// @deprecated Use unifiedEventsRepository instead
+// This repository is maintained for backward compatibility only
 // ============================================
 
+/**
+ * @deprecated Use getEvents from unifiedEventsRepository instead
+ * Legacy function that queries company_events table
+ */
 export async function getCompanyEvents(
   businessProfileId: string,
   options?: {

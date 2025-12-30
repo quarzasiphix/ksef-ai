@@ -32,7 +32,7 @@ const EventHistoryTimeline: React.FC<EventHistoryTimelineProps> = ({
     queryKey: ['invoice-events', invoiceId],
     queryFn: async () => {
       const { data, error } = await supabase
-        .from('company_events')
+        .from('events')
         .select('*')
         .eq('entity_id', invoiceId)
         .eq('entity_type', 'invoice')

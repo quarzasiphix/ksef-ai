@@ -62,7 +62,7 @@ import { format } from 'date-fns';
 import { pl } from 'date-fns/locale';
 import { Breadcrumbs } from "@/components/seo/Breadcrumbs";
 import DecisionPicker from '@/modules/decisions/components/DecisionPicker';
-import { logEvent } from '@/modules/accounting/data/eventsRepository';
+import { logEvent } from '@/modules/accounting/data/unifiedEventsRepository';
 import {
   getCashAccounts,
   createCashAccount,

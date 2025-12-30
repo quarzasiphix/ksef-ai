@@ -50,6 +50,13 @@ export const AppGate: React.FC<AppGateProps> = ({
     });
   }, [location.pathname, isAuthenticated, isLoading, requireAuth, requirePremium]);
 
+  // Temporary legacy redirect handling
+  useEffect(() => {
+    if (location.pathname === '/projects') {
+      navigate('/settings/projects', { replace: true });
+    }
+  }, [location.pathname, navigate]);
+
   // Auth redirect effect - MUST be called unconditionally (Rules of Hooks)
   useEffect(() => {
     if (requireAuth && !isAuthenticated && !isLoading) {
@@ -96,7 +103,7 @@ export const AppGate: React.FC<AppGateProps> = ({
   }
 
   // All checks passed, render children
-  return <>{children};</>;
+  return <>{children}</>;
 };
 
 /**

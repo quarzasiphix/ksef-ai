@@ -193,16 +193,16 @@ export async function createDecisionVersion(input: {
     })
     .eq('id', input.decision_id);
 
-  // Log event
-  await supabase.from('company_events').insert({
-    business_profile_id: decision.business_profile_id,
-    event_type: 'decision_created', // TODO: Add 'decision_version_published' to enum
-    actor_id: user.user.id,
-    actor_name: user.user.email || 'Unknown',
-    entity_type: 'decision',
-    entity_id: input.decision_id,
-    action_summary: `Opublikowano wersję ${newVersionNumber} uchwały`,
-    metadata: {
+  // Log event via unified events RPC
+  await supabase.rpc('create_event', {
+    p_business_profile_id: decision.business_profile_id,
+    p_event_type: 'decision_created',
+    p_actor_id: user.user.id,
+    p_actor_name: user.user.email || 'Unknown',
+    p_entity_type: 'decision',
+    p_entity_id: input.decision_id,
+    p_action_summary: `Opublikowano wersję ${newVersionNumber} uchwały`,
+    p_metadata: {
       amendment_id: input.amendment_id,
       from_version: currentVersion.version_number,
       to_version: newVersionNumber,
@@ -303,11 +303,11 @@ export async function createAmendmentRequest(
     .update({ status: 'amendment_pending' })
     .eq('id', input.decision_id);
 
-  // Log event
-  await supabase.from('company_events').insert({
-    business_profile_id: input.business_profile_id,
-    event_type: 'decision_created', // TODO: Add 'decision_amendment_requested' to enum
-    actor_id: user.user.id,
+  // Log event via unified events RPC
+  await supabase.rpc('create_event', {
+    p_business_profile_id: input.business_profile_id,
+    p_event_type: 'decision_created',
+    p_actor_id: user.user.id,
     actor_name: user.user.email || 'Unknown',
     entity_type: 'amendment_request',
     entity_id: data.id,
@@ -368,10 +368,10 @@ export async function uploadAmendmentDocument(
     .single();
 
   if (amendment) {
-    await supabase.from('company_events').insert({
-      business_profile_id: amendment.business_profile_id,
-      event_type: 'document_uploaded',
-      actor_id: user.user.id,
+    await supabase.rpc('create_event', {
+      p_business_profile_id: amendment.business_profile_id,
+      p_event_type: 'document_uploaded',
+      p_actor_id: user.user.id,
       actor_name: user.user.email || 'Unknown',
       entity_type: 'amendment_request',
       entity_id: amendmentId,
@@ -404,11 +404,11 @@ export async function storeAmendmentSignatureVerification(
 
   if (error) throw error;
 
-  // Log event
-  await supabase.from('company_events').insert({
-    business_profile_id: data.business_profile_id,
-    event_type: 'decision_created', // TODO: Add proper event type
-    entity_type: 'amendment_request',
+  // Log event via unified events RPC
+  await supabase.rpc('create_event', {
+    p_business_profile_id: data.business_profile_id,
+    p_event_type: 'decision_created',
+    p_entity_type: 'amendment_request',
     entity_id: amendmentId,
     action_summary:
       verificationData.status === 'valid'
@@ -488,11 +488,11 @@ export async function approveAmendment(
 
   if (error) throw error;
 
-  // Log event
-  await supabase.from('company_events').insert({
-    business_profile_id: amendment.business_profile_id,
-    event_type: 'decision_approved',
-    actor_id: userId,
+  // Log event via unified events RPC
+  await supabase.rpc('create_event', {
+    p_business_profile_id: amendment.business_profile_id,
+    p_event_type: 'decision_approved',
+    p_actor_id: userId,
     entity_type: 'amendment_request',
     entity_id: amendmentId,
     action_summary: allApproved
@@ -546,11 +546,11 @@ export async function rejectAmendment(
     .update({ status: 'active' })
     .eq('id', amendment.decision_id);
 
-  // Log event
-  await supabase.from('company_events').insert({
-    business_profile_id: amendment.business_profile_id,
-    event_type: 'decision_rejected',
-    actor_id: userId,
+  // Log event via unified events RPC
+  await supabase.rpc('create_event', {
+    p_business_profile_id: amendment.business_profile_id,
+    p_event_type: 'decision_rejected',
+    p_actor_id: userId,
     entity_type: 'amendment_request',
     entity_id: amendmentId,
     action_summary: 'Wniosek o zmianę odrzucony',
@@ -599,11 +599,11 @@ export async function cancelAmendment(
     .update({ status: 'active' })
     .eq('id', amendment.decision_id);
 
-  // Log event
-  await supabase.from('company_events').insert({
-    business_profile_id: amendment.business_profile_id,
-    event_type: 'decision_cancelled',
-    actor_id: userId,
+  // Log event via unified events RPC
+  await supabase.rpc('create_event', {
+    p_business_profile_id: amendment.business_profile_id,
+    p_event_type: 'decision_cancelled',
+    p_actor_id: userId,
     entity_type: 'amendment_request',
     entity_id: amendmentId,
     action_summary: 'Wniosek o zmianę anulowany',

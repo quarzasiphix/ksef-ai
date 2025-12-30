@@ -297,6 +297,7 @@ export interface Invoice {
   bankAccountNumber?: string;
   decisionId?: string;
   decisionReference?: string;
+  projectId?: string; // Project assignment
   currency?: string;
   created_at?: string;
   updated_at?: string;
@@ -333,6 +334,7 @@ export interface Expense {
   linkedInvoiceId?: string | null; // References original invoice when expense is derived from received share
   isShared?: boolean;
   shareId?: string | null;
+  projectId?: string; // Project assignment
 }
 
 // Contract entity used for contract management
@@ -362,6 +364,7 @@ export interface Contract {
   board_member_id?: string;
   decision_id?: string; // Link to authorizing decision
   decision_reference?: string; // Cached § reference (e.g., §1.2.3)
+  projectId?: string; // Project assignment
   
   // Transactional contract fields
   payment_account_id?: string;
@@ -395,6 +398,63 @@ export interface Employee {
   employment_type?: 'umowa_o_prace' | 'umowa_zlecenie' | 'umowa_o_dzielo' | 'b2b' | 'other';
   requires_pit?: boolean;
   requires_zus?: boolean;
+  created_at: string;
+  updated_at: string;
+}
+
+export type ProjectStatus = 'active' | 'frozen' | 'closed' | 'archived';
+
+export interface Project {
+  id: string;
+  business_profile_id: string;
+  name: string;
+  description?: string;
+  code?: string; // Short code for project (e.g., "SAAS", "TRANSPORT")
+  color?: string; // UI color for visual distinction
+  status: ProjectStatus;
+  
+  // Governance integration
+  charter_decision_id?: string; // Founding decision that created this project
+  parent_project_id?: string; // For hierarchical projects (optional)
+  
+  // Financial tracking
+  budget_limit?: number;
+  currency?: string;
+  
+  // Metadata
+  created_by?: string;
+  created_at?: string;
+  updated_at?: string;
+  
+  // Lifecycle timestamps
+  activated_at?: string;
+  frozen_at?: string;
+  frozen_by?: string;
+  freeze_decision_id?: string;
+  closed_at?: string;
+  closed_by?: string;
+  close_decision_id?: string;
+  
+  // Sorting and display
+  sort_order?: number;
+  is_default?: boolean; // Default project for new transactions
+}
+
+export interface ProjectStats {
+  id: string;
+  business_profile_id: string;
+  name: string;
+  code?: string;
+  status: ProjectStatus;
+  invoice_count: number;
+  expense_count: number;
+  contract_count: number;
+  event_count: number;
+  total_income: number;
+  total_expenses: number;
+  total_expense_amount: number;
+  budget_limit?: number;
+  currency?: string;
   created_at: string;
   updated_at: string;
 }

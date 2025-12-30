@@ -1,5 +1,5 @@
 import { supabase } from '../../../integrations/supabase/client';
-import { createEvent } from '@/modules/accounting/data/eventsRepository';
+import { logEvent } from '@/modules/accounting/data/unifiedEventsRepository';
 import type {
   ChartOfAccount,
   JournalEntry,
@@ -293,28 +293,29 @@ export async function createEquityTransaction(transaction: Omit<EquityTransactio
       
       // Log event for equity transaction
       try {
-        const user = await supabase.auth.getUser();
-        await createEvent({
-          business_profile_id: transaction.business_profile_id,
-          event_type: 'equity_change',
-          actor_id: user.data.user?.id || '',
-          actor_name: user.data.user?.email || 'System',
-          entity_type: 'equity_transaction',
-          entity_id: data.id,
-          entity_reference: `${transaction.transaction_type}-${data.id.substring(0, 8)}`,
-          action_summary: `Zdarzenie kapitałowe: ${transaction.transaction_type} - ${transaction.amount} PLN przez ${transaction.payment_method === 'cash' ? 'kasę' : 'bank'}`,
-          changes: {
-            transaction_type: transaction.transaction_type,
+        await logEvent(
+          transaction.business_profile_id,
+          'capital_event',
+          'equity_transaction',
+          data.id,
+          `Zdarzenie kapitałowe: ${transaction.transaction_type} - ${transaction.amount} PLN przez ${transaction.payment_method === 'cash' ? 'kasę' : 'bank'}`,
+          {
+            entityReference: `${transaction.transaction_type}-${data.id.substring(0, 8)}`,
             amount: transaction.amount,
-            payment_method: transaction.payment_method,
-            payment_account_id: paymentAccountId,
-            shareholder_name: transaction.shareholder_name,
-          },
-          metadata: {
-            description: transaction.description,
-            transaction_date: transaction.transaction_date,
-          },
-        });
+            currency: 'PLN',
+            changes: {
+              transaction_type: transaction.transaction_type,
+              amount: transaction.amount,
+              payment_method: transaction.payment_method,
+              payment_account_id: paymentAccountId,
+              shareholder_name: transaction.shareholder_name,
+            },
+            metadata: {
+              description: transaction.description,
+              transaction_date: transaction.transaction_date,
+            }
+          }
+        );
       } catch (eventError) {
         console.error('Failed to log equity transaction event:', eventError);
       }

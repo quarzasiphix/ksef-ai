@@ -1,14 +1,9 @@
 /**
- * Hook to fetch aggregated ledger data from edge function
+ * Hook to fetch ledger data from unified events system
  * 
- * This aggregates data from all financial tables:
- * - invoices
- * - expenses
- * - contracts
- * - bank_transactions
- * - account_movements
+ * Reads from public.events (via ledger_live view) - the single source of truth
  * 
- * And transforms them into unified ledger events
+ * Phase 1.5: Migrated from edge function to direct database queries
  */
 
 import { useQuery } from '@tanstack/react-query';
@@ -70,39 +65,96 @@ interface LedgerFilters {
 }
 
 /**
- * Fetch aggregated ledger data from all financial tables
+ * Fetch ledger data from unified events system (ledger_live view)
+ * Phase 1.5: Now reads from public.events - the single source of truth
  */
 export function useAggregatedLedger(
   businessProfileId: string,
   filters?: LedgerFilters
 ) {
   return useQuery({
-    queryKey: ['aggregated-ledger', businessProfileId, filters],
+    queryKey: ['unified-ledger', businessProfileId, filters],
     queryFn: async () => {
-      const { data: { session } } = await supabase.auth.getSession();
-      
-      if (!session) {
-        throw new Error('No active session');
+      // Query ledger_live view which reads from public.events
+      let query = supabase
+        .from('ledger_live')
+        .select('*')
+        .eq('business_profile_id', businessProfileId)
+        .order('occurred_at', { ascending: false });
+
+      // Apply filters
+      if (filters?.startDate) {
+        query = query.gte('occurred_at', filters.startDate);
+      }
+      if (filters?.endDate) {
+        query = query.lte('occurred_at', filters.endDate);
+      }
+      if (filters?.eventTypes && filters.eventTypes.length > 0) {
+        query = query.in('event_type', filters.eventTypes);
+      }
+      if (filters?.documentTypes && filters.documentTypes.length > 0) {
+        query = query.in('entity_type', filters.documentTypes);
       }
 
-      const response = await supabase.functions.invoke('aggregate-ledger-events', {
-        body: {
+      const { data: events, error } = await query;
+
+      if (error) throw error;
+
+      // Transform to expected format
+      const transformedEvents: AggregatedLedgerEvent[] = (events || []).map(event => ({
+        id: event.id,
+        event_type: event.event_type,
+        occurred_at: event.occurred_at,
+        recorded_at: event.recorded_at,
+        amount: parseFloat(event.amount || '0'),
+        currency: event.currency || 'PLN',
+        direction: event.direction || 'neutral',
+        document_type: event.entity_type,
+        document_id: event.entity_id,
+        document_number: event.entity_reference || event.document_number || '',
+        counterparty: event.counterparty || null,
+        status: event.status,
+        posted: event.posted,
+        source_table: 'events',
+        metadata: {
+          actor_name: event.actor_name,
+          action_summary: event.action_summary,
+          decision_id: event.decision_id,
+          decision_number: event.decision_number,
+          ...event.metadata,
+        },
+      }));
+
+      // Calculate summary
+      const summary: LedgerSummary = {
+        total_incoming: transformedEvents
+          .filter(e => e.direction === 'incoming')
+          .reduce((sum, e) => sum + e.amount, 0),
+        total_outgoing: transformedEvents
+          .filter(e => e.direction === 'outgoing')
+          .reduce((sum, e) => sum + e.amount, 0),
+        event_count: transformedEvents.length,
+        by_type: transformedEvents.reduce((acc, e) => {
+          acc[e.event_type] = (acc[e.event_type] || 0) + 1;
+          return acc;
+        }, {} as Record<string, number>),
+        by_source: { events: transformedEvents.length },
+      };
+
+      return {
+        events: transformedEvents,
+        summary,
+        metadata: {
           business_profile_id: businessProfileId,
-          start_date: filters?.startDate,
-          end_date: filters?.endDate,
-          event_types: filters?.eventTypes,
-          document_types: filters?.documentTypes,
+          generated_at: new Date().toISOString(),
+          filters_applied: {
+            start_date: filters?.startDate,
+            end_date: filters?.endDate,
+            event_types: filters?.eventTypes,
+            document_types: filters?.documentTypes,
+          },
         },
-        headers: {
-          Authorization: `Bearer ${session.access_token}`,
-        },
-      });
-
-      if (response.error) {
-        throw new Error(response.error.message);
-      }
-
-      return response.data as AggregatedLedgerResponse;
+      } as AggregatedLedgerResponse;
     },
     enabled: !!businessProfileId,
     staleTime: 1000 * 60 * 5, // 5 minutes

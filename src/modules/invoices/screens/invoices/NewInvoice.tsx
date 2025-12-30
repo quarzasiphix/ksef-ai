@@ -2,6 +2,7 @@
 import React, { useState, useEffect, useCallback, forwardRef, useImperativeHandle } from "react";
 import { useAuth } from "@/shared/context/AuthContext";
 import { useBusinessProfile } from "@/shared/context/BusinessProfileContext";
+import { useProjectScope } from "@/shared/context/ProjectContext";
 import { useSearchParams, useNavigate, useLocation } from "react-router-dom";
 import { useGlobalData } from "@/shared/hooks/use-global-data";
 import { useQueryClient } from "@tanstack/react-query";
@@ -49,7 +50,7 @@ import { saveExpense } from "@/modules/invoices/data/expenseRepository";
 import { addLink as addContractLink } from "@/modules/contracts/data/contractInvoiceLinkRepository";
 import { getBankAccountsForProfile, addBankAccount } from "@/modules/banking/data/bankAccountRepository";
 import { getCashAccounts, createCashTransaction } from '@/modules/accounting/data/kasaRepository';
-import { createEvent } from '@/modules/accounting/data/eventsRepository';
+import { logEvent } from '@/modules/accounting/data/unifiedEventsRepository';
 import type { CashAccount } from "@/modules/accounting/kasa";
 
 // UI Components
@@ -65,6 +66,7 @@ import { InvoiceFormActions } from "@/modules/invoices/components/forms/InvoiceF
 import ContractsPicker from "@/modules/contracts/components/ContractsPicker";
 import { BankAccountEditDialog } from "@/modules/banking/components/BankAccountEditDialog";
 import DecisionPicker from "@/modules/decisions/components/DecisionPicker";
+import { ProjectSelector } from "@/modules/projects/components/ProjectSelector";
 
 // Schema
 const invoiceFormSchema = z.object({
@@ -92,6 +94,7 @@ const invoiceFormSchema = z.object({
   exchangeRateSource: z.enum(['NBP', 'manual']).default('NBP'),
   bankAccountId: z.string().optional(),
   cashAccountId: z.string().optional(),
+  projectId: z.string().optional(),
   
   // Calculated fields (will be set programmatically)
   totalNetValue: z.number().default(0),
@@ -142,6 +145,7 @@ const NewInvoice = React.forwardRef<{
     // All hooks at the top, always called in the same order
     const { user } = useAuth();
     const { profiles, selectedProfileId } = useBusinessProfile();
+    const { selectedProjectId, selectedProject } = useProjectScope();
     const [searchParams] = useSearchParams();
     const navigate = useNavigate();
     const location = useLocation();
@@ -170,6 +174,7 @@ const NewInvoice = React.forwardRef<{
         isPaid: false,
         fakturaBezVAT: initialData?.fakturaBezVAT || false,
         decisionId: initialData?.decisionId || '',
+        projectId: initialData?.projectId || '',
         ...(initialData ? {
           ...initialData,
           paymentMethod: toPaymentMethodUi(initialData.paymentMethod as PaymentMethodDb),
@@ -216,6 +221,14 @@ const NewInvoice = React.forwardRef<{
     const isSpoolka = selectedProfile?.entityType === 'sp_zoo' || selectedProfile?.entityType === 'sa';
 
     const decisionId = form.watch('decisionId');
+    const projectId = form.watch('projectId');
+
+    // Auto-select project from global context when creating new invoice
+    useEffect(() => {
+      if (!initialData && selectedProjectId && !projectId) {
+        form.setValue('projectId', selectedProjectId, { shouldValidate: false });
+      }
+    }, [selectedProjectId, initialData, projectId, form]);
 
     // Auto-lock VAT settings when profile is VAT exempt (income invoices only)
     useEffect(() => {
@@ -857,6 +870,77 @@ const NewInvoice = React.forwardRef<{
             // Create new invoice
             savedInvoice = await saveInvoice(invoiceData);
             
+            // CANONICAL EVENT: Always emit INVOICE_CREATED
+            if (savedInvoice?.id) {
+              try {
+                await logEvent(
+                  formValues.businessProfileId,
+                  'invoice_created',
+                  'invoice',
+                  savedInvoice.id,
+                  `Utworzono fakturę ${formValues.number}`,
+                  {
+                    occurredAt: formValues.issueDate,
+                    entityReference: formValues.number,
+                    amount: totals.totalGrossValue,
+                    currency: formValues.currency || 'PLN',
+                    direction: effectiveTransactionType === TransactionType.INCOME ? 'incoming' : 'outgoing',
+                    decisionId: formValues.decisionId,
+                    changes: {
+                      transaction_type: effectiveTransactionType,
+                      payment_method: formValues.paymentMethod,
+                      customer_name: customerName,
+                      total_net: totals.totalNetValue,
+                      total_vat: totals.totalVatValue,
+                      total_gross: totals.totalGrossValue,
+                    },
+                    metadata: {
+                      invoice_number: formValues.number,
+                      customer_name: customerName,
+                      transaction_type: effectiveTransactionType,
+                      items_count: formValues.items.length,
+                    },
+                    status: 'pending',
+                    posted: false,
+                    needsAction: !!formValues.decisionId, // Needs approval if decision attached
+                  }
+                );
+                
+                // CANONICAL EVENT: Always emit INVOICE_ISSUED
+                await logEvent(
+                  formValues.businessProfileId,
+                  'invoice_issued',
+                  'invoice',
+                  savedInvoice.id,
+                  `Wystawiono fakturę ${formValues.number} dla ${customerName || 'kontrahenta'}`,
+                  {
+                    occurredAt: formValues.issueDate,
+                    entityReference: formValues.number,
+                    amount: totals.totalGrossValue,
+                    currency: formValues.currency || 'PLN',
+                    direction: effectiveTransactionType === TransactionType.INCOME ? 'incoming' : 'outgoing',
+                    decisionId: formValues.decisionId,
+                    changes: {
+                      status: 'issued',
+                      issued_at: formValues.issueDate,
+                    },
+                    metadata: {
+                      invoice_number: formValues.number,
+                      customer_name: customerName,
+                      due_date: formValues.dueDate,
+                    },
+                    status: 'pending',
+                    posted: false,
+                  }
+                );
+                
+                console.log('Canonical events logged for invoice:', savedInvoice.id);
+              } catch (error) {
+                console.error('Error logging invoice events:', error);
+                // Don't fail invoice creation if event logging fails
+              }
+            }
+            
             // If cash payment and cash account selected, create cash transaction
             if (formValues.paymentMethod === PaymentMethod.CASH && formValues.cashAccountId && savedInvoice?.id) {
               try {
@@ -877,32 +961,36 @@ const NewInvoice = React.forwardRef<{
                   source_invoice_id: savedInvoice.id,
                 });
                 
-                // Log event for cash payment invoice
-                await createEvent({
-                  business_profile_id: formValues.businessProfileId,
-                  event_type: effectiveTransactionType === TransactionType.INCOME ? 'invoice_issued' : 'expense_recorded',
-                  actor_id: user.id,
-                  actor_name: user.email || 'User',
-                  decision_id: formValues.decisionId || undefined,
-                  entity_type: 'invoice',
-                  entity_id: savedInvoice.id,
-                  entity_reference: formValues.number,
-                  action_summary: `Faktura ${formValues.number} - płatność gotówką przez kasę ${cashAccount?.name || 'nieznana'}`,
-                  changes: {
-                    payment_method: 'cash',
-                    cash_account_id: formValues.cashAccountId,
-                    cash_account_name: cashAccount?.name,
+                // CANONICAL EVENT: Log payment recorded for cash
+                await logEvent(
+                  formValues.businessProfileId,
+                  'payment_recorded',
+                  'invoice',
+                  savedInvoice.id,
+                  `Zarejestrowano płatność gotówką przez kasę ${cashAccount?.name || 'nieznana'}`,
+                  {
+                    occurredAt: formValues.issueDate,
+                    entityReference: formValues.number,
                     amount: totals.totalGrossValue,
                     currency: formValues.currency || 'PLN',
-                  },
-                  metadata: {
-                    invoice_number: formValues.number,
-                    customer_name: customerName,
-                    transaction_type: effectiveTransactionType,
-                  },
-                });
+                    direction: effectiveTransactionType === TransactionType.INCOME ? 'incoming' : 'outgoing',
+                    cashChannel: 'cash',
+                    changes: {
+                      payment_method: 'cash',
+                      cash_account_id: formValues.cashAccountId,
+                      cash_account_name: cashAccount?.name,
+                    },
+                    metadata: {
+                      invoice_number: formValues.number,
+                      customer_name: customerName,
+                      cash_account: cashAccount?.name,
+                    },
+                    status: 'posted',
+                    posted: true,
+                  }
+                );
                 
-                console.log('Cash transaction and event logged for invoice:', savedInvoice.id);
+                console.log('Cash transaction and payment event logged for invoice:', savedInvoice.id);
                 
                 // Show detailed success message about KP creation
                 toast.success(
@@ -1257,7 +1345,7 @@ const handleFormSubmit = form.handleSubmit(async (formData) => {
                       <span className="font-semibold">Wybierz decyzję autoryzującą (wymagane dla spółek)</span>
                     </div>
                   )}
-                <div className="space-y-2">
+                <div className="space-y-4">
                   <DecisionPicker
                     businessProfileId={businessProfileId}
                     value={decisionId}
@@ -1272,6 +1360,35 @@ const handleFormSubmit = form.handleSubmit(async (formData) => {
                     label="Podstawa prawna (Decyzja / Mandat)"
                     required
                   />
+                  
+                  {/* Project Selector with visual indicator */}
+                  <div className="space-y-2">
+                    <label className="text-sm font-medium flex items-center gap-2">
+                      {selectedProject && (
+                        <div
+                          className="w-3 h-3 rounded-full"
+                          style={{ backgroundColor: selectedProject.color || '#0ea5e9' }}
+                        />
+                      )}
+                      Projekt (opcjonalnie)
+                    </label>
+                    <ProjectSelector
+                      businessProfileId={businessProfileId}
+                      value={projectId}
+                      onChange={(id) => form.setValue('projectId', id, { shouldValidate: true })}
+                      placeholder="Wybierz projekt"
+                      allowEmpty={true}
+                    />
+                    {selectedProject && (
+                      <p className="text-xs text-muted-foreground flex items-center gap-2">
+                        <span>Wybrano:</span>
+                        <span className="font-medium">{selectedProject.name}</span>
+                        {selectedProject.code && (
+                          <span className="text-xs bg-muted px-2 py-0.5 rounded">{selectedProject.code}</span>
+                        )}
+                      </p>
+                    )}
+                  </div>
                 </div>
                 </div>
               )}

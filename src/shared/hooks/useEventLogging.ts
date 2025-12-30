@@ -1,6 +1,6 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
-import { logEvent } from '@/modules/accounting/data/eventsRepository';
+import { logEvent } from '@/modules/accounting/data/unifiedEventsRepository';
 import type { EventType } from '@/shared/types/events';
 
 interface LogEventOptions {

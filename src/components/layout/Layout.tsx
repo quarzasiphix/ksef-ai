@@ -9,6 +9,7 @@ import Footer from './Footer';
 import { Breadcrumbs } from "@/components/seo/Breadcrumbs";
 import { PageHeaderActionsProvider, usePageHeaderActions } from "@/shared/context/PageHeaderActionsContext";
 import { useWorkspaceTabs } from "@/shared/context/WorkspaceTabsContext";
+import { ProjectProvider } from "@/shared/context/ProjectContext";
 
 interface LayoutProps {
   children?: React.ReactNode;
@@ -90,9 +91,11 @@ const Layout = ({ children }: LayoutProps) => {
   };
 
   return (
-    <PageHeaderActionsProvider>
-      <LayoutContent innerChildren={children} />
-    </PageHeaderActionsProvider>
+    <ProjectProvider>
+      <PageHeaderActionsProvider>
+        <LayoutContent innerChildren={children} />
+      </PageHeaderActionsProvider>
+    </ProjectProvider>
   );
 };
 

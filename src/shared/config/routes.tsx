@@ -62,6 +62,11 @@ const TeamManagement = React.lazy(() => import('@/modules/settings/screens/TeamM
 const SettingsPremium = React.lazy(() => import('@/modules/settings/screens/SettingsPremium'));
 const SharedLinksPage = React.lazy(() => import('@/pages/SharedLinks'));
 const NotFound = React.lazy(() => import('@/pages/NotFound'));
+const ProjectsScreen = React.lazy(() =>
+  import('@/modules/projects/screens/ProjectsScreen').then((module) => ({
+    default: module.default ?? module.ProjectsScreen,
+  }))
+);
 
 export type RouteGuard = 'public' | 'protected' | 'premium' | 'onboarding';
 
@@ -517,7 +522,19 @@ export const routes: RouteConfig[] = [
         path: 'shared-links',
         element: <SharedLinksPage />,
       },
+      {
+        path: 'projects',
+        element: <ProjectsScreen />,
+      },
     ],
+  },
+
+  // Legacy projects path -> settings projects
+  {
+    path: '/projects',
+    element: <Navigate to="/settings/projects" replace />,
+    guard: 'protected',
+    hideInNav: true,
   },
 
   // Premium

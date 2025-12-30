@@ -14,7 +14,7 @@ import {
   Filter,
   Download
 } from 'lucide-react';
-import { getCompanyEvents } from '@/modules/accounting/data/eventsRepository';
+import { getEvents } from '@/modules/accounting/data/unifiedEventsRepository';
 import { EVENT_TYPE_LABELS, EVENT_TYPE_COLORS, type EventType } from '@/shared/types/events';
 import { useNavigate } from 'react-router-dom';
 import { formatDistanceToNow } from 'date-fns';
@@ -39,8 +39,8 @@ const EventChainViewer: React.FC<EventChainViewerProps> = ({
   const [filterType, setFilterType] = React.useState<EventType | 'all'>('all');
 
   const { data: events = [], isLoading } = useQuery({
-    queryKey: ['company-events', businessProfileId, filterType, entityType, entityId],
-    queryFn: () => getCompanyEvents(businessProfileId, {
+    queryKey: ['unified-events', businessProfileId, filterType, entityType, entityId],
+    queryFn: () => getEvents(businessProfileId, {
       limit,
       eventType: filterType === 'all' ? undefined : filterType,
       entityType,
