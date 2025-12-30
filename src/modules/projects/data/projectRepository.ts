@@ -1,19 +1,22 @@
 import { supabase } from "@/integrations/supabase/client";
-import type { Project, ProjectStats, ProjectStatus } from "@/shared/types";
+import type { Department, DepartmentStats, DepartmentStatus, Project, ProjectStats } from "@/shared/types";
+
+const DEPARTMENTS_TABLE = "departments";
+const DEPARTMENT_STATS_VIEW = "department_stats";
 
 /**
- * Get all projects for a business profile
+ * Get all departments for a business profile
  */
-export async function getProjects(businessProfileId: string): Promise<Project[]> {
+export async function getDepartments(businessProfileId: string): Promise<Department[]> {
   const { data, error } = await supabase
-    .from("projects")
+    .from(DEPARTMENTS_TABLE)
     .select("*")
     .eq("business_profile_id", businessProfileId)
     .order("sort_order", { ascending: true })
     .order("name", { ascending: true });
 
   if (error) {
-    console.error("Error fetching projects:", error);
+    console.error("Error fetching departments:", error);
     throw error;
   }
 
@@ -21,17 +24,17 @@ export async function getProjects(businessProfileId: string): Promise<Project[]>
 }
 
 /**
- * Get a single project by ID
+ * Get a single department by ID
  */
-export async function getProject(projectId: string): Promise<Project | null> {
+export async function getDepartment(departmentId: string): Promise<Department | null> {
   const { data, error } = await supabase
-    .from("projects")
+    .from(DEPARTMENTS_TABLE)
     .select("*")
-    .eq("id", projectId)
+    .eq("id", departmentId)
     .single();
 
   if (error) {
-    console.error("Error fetching project:", error);
+    console.error("Error fetching department:", error);
     throw error;
   }
 
@@ -39,17 +42,17 @@ export async function getProject(projectId: string): Promise<Project | null> {
 }
 
 /**
- * Get project statistics
+ * Get department statistics
  */
-export async function getProjectStats(businessProfileId: string): Promise<ProjectStats[]> {
+export async function getDepartmentStats(businessProfileId: string): Promise<DepartmentStats[]> {
   const { data, error } = await supabase
-    .from("project_stats")
+    .from(DEPARTMENT_STATS_VIEW)
     .select("*")
     .eq("business_profile_id", businessProfileId)
-    .order("name", { ascending: true });
+    .order("department_name", { ascending: true });
 
   if (error) {
-    console.error("Error fetching project stats:", error);
+    console.error("Error fetching department stats:", error);
     throw error;
   }
 
@@ -57,17 +60,17 @@ export async function getProjectStats(businessProfileId: string): Promise<Projec
 }
 
 /**
- * Get statistics for a single project
+ * Get statistics for a single department
  */
-export async function getProjectStatById(projectId: string): Promise<ProjectStats | null> {
+export async function getDepartmentStatById(departmentId: string): Promise<DepartmentStats | null> {
   const { data, error } = await supabase
-    .from("project_stats")
+    .from(DEPARTMENT_STATS_VIEW)
     .select("*")
-    .eq("id", projectId)
+    .eq("department_id", departmentId)
     .single();
 
   if (error) {
-    console.error("Error fetching project stat:", error);
+    console.error("Error fetching department stat:", error);
     return null;
   }
 
@@ -75,19 +78,19 @@ export async function getProjectStatById(projectId: string): Promise<ProjectStat
 }
 
 /**
- * Create a new project
+ * Create a new department
  */
-export async function createProject(
-  project: Omit<Project, "id" | "created_at" | "updated_at">
-): Promise<Project> {
+export async function createDepartment(
+  department: Omit<Department, "id" | "created_at" | "updated_at">
+): Promise<Department> {
   const { data, error } = await supabase
-    .from("projects")
-    .insert([project])
+    .from(DEPARTMENTS_TABLE)
+    .insert([department])
     .select()
     .single();
 
   if (error) {
-    console.error("Error creating project:", error);
+    console.error("Error creating department:", error);
     throw error;
   }
 
@@ -95,21 +98,21 @@ export async function createProject(
 }
 
 /**
- * Update an existing project
+ * Update an existing department
  */
-export async function updateProject(
-  projectId: string,
-  updates: Partial<Project>
-): Promise<Project> {
+export async function updateDepartment(
+  departmentId: string,
+  updates: Partial<Department>
+): Promise<Department> {
   const { data, error } = await supabase
-    .from("projects")
+    .from(DEPARTMENTS_TABLE)
     .update(updates)
-    .eq("id", projectId)
+    .eq("id", departmentId)
     .select()
     .single();
 
   if (error) {
-    console.error("Error updating project:", error);
+    console.error("Error updating department:", error);
     throw error;
   }
 
@@ -117,29 +120,29 @@ export async function updateProject(
 }
 
 /**
- * Delete a project
+ * Delete a department
  */
-export async function deleteProject(projectId: string): Promise<void> {
+export async function deleteDepartment(departmentId: string): Promise<void> {
   const { error } = await supabase
-    .from("projects")
+    .from(DEPARTMENTS_TABLE)
     .delete()
-    .eq("id", projectId);
+    .eq("id", departmentId);
 
   if (error) {
-    console.error("Error deleting project:", error);
+    console.error("Error deleting department:", error);
     throw error;
   }
 }
 
 /**
- * Freeze a project (prevents new transactions)
+ * Freeze a department (prevents new transactions)
  */
-export async function freezeProject(
-  projectId: string,
+export async function freezeDepartment(
+  departmentId: string,
   userId: string,
   freezeDecisionId?: string
-): Promise<Project> {
-  const updates: Partial<Project> = {
+): Promise<Department> {
+  const updates: Partial<Department> = {
     status: "frozen",
     frozen_at: new Date().toISOString(),
     frozen_by: userId,
@@ -149,14 +152,14 @@ export async function freezeProject(
     updates.freeze_decision_id = freezeDecisionId;
   }
 
-  return updateProject(projectId, updates);
+  return updateDepartment(departmentId, updates);
 }
 
 /**
- * Unfreeze a project (allows new transactions again)
+ * Unfreeze a department (allows new transactions again)
  */
-export async function unfreezeProject(projectId: string): Promise<Project> {
-  return updateProject(projectId, {
+export async function unfreezeDepartment(departmentId: string): Promise<Department> {
+  return updateDepartment(departmentId, {
     status: "active",
     frozen_at: undefined,
     frozen_by: undefined,
@@ -165,14 +168,14 @@ export async function unfreezeProject(projectId: string): Promise<Project> {
 }
 
 /**
- * Close a project (marks as completed)
+ * Close a department (marks as completed)
  */
-export async function closeProject(
-  projectId: string,
+export async function closeDepartment(
+  departmentId: string,
   userId: string,
   closeDecisionId?: string
-): Promise<Project> {
-  const updates: Partial<Project> = {
+): Promise<Department> {
+  const updates: Partial<Department> = {
     status: "closed",
     closed_at: new Date().toISOString(),
     closed_by: userId,
@@ -182,23 +185,23 @@ export async function closeProject(
     updates.close_decision_id = closeDecisionId;
   }
 
-  return updateProject(projectId, updates);
+  return updateDepartment(departmentId, updates);
 }
 
 /**
- * Archive a project (historical record)
+ * Archive a department (historical record)
  */
-export async function archiveProject(projectId: string): Promise<Project> {
-  return updateProject(projectId, {
+export async function archiveDepartment(departmentId: string): Promise<Department> {
+  return updateDepartment(departmentId, {
     status: "archived",
   });
 }
 
 /**
- * Reopen a closed or archived project
+ * Reopen a closed or archived department
  */
-export async function reopenProject(projectId: string): Promise<Project> {
-  return updateProject(projectId, {
+export async function reopenDepartment(departmentId: string): Promise<Department> {
+  return updateDepartment(departmentId, {
     status: "active",
     closed_at: undefined,
     closed_by: undefined,
@@ -207,31 +210,31 @@ export async function reopenProject(projectId: string): Promise<Project> {
 }
 
 /**
- * Set a project as default for the business profile
+ * Set a department as default for the business profile
  */
-export async function setDefaultProject(
-  projectId: string,
+export async function setDefaultDepartment(
+  departmentId: string,
   businessProfileId: string
 ): Promise<void> {
   // First, unset any existing default
   await supabase
-    .from("projects")
+    .from(DEPARTMENTS_TABLE)
     .update({ is_default: false })
     .eq("business_profile_id", businessProfileId)
     .eq("is_default", true);
 
   // Then set the new default
-  await updateProject(projectId, { is_default: true });
+  await updateDepartment(departmentId, { is_default: true });
 }
 
 /**
- * Get the default project for a business profile
+ * Get the default department for a business profile
  */
-export async function getDefaultProject(
+export async function getDefaultDepartment(
   businessProfileId: string
-): Promise<Project | null> {
+): Promise<Department | null> {
   const { data, error } = await supabase
-    .from("projects")
+    .from(DEPARTMENTS_TABLE)
     .select("*")
     .eq("business_profile_id", businessProfileId)
     .eq("is_default", true)
@@ -245,11 +248,11 @@ export async function getDefaultProject(
 }
 
 /**
- * Get active projects only
+ * Get active departments only
  */
-export async function getActiveProjects(businessProfileId: string): Promise<Project[]> {
+export async function getActiveDepartments(businessProfileId: string): Promise<Department[]> {
   const { data, error } = await supabase
-    .from("projects")
+    .from(DEPARTMENTS_TABLE)
     .select("*")
     .eq("business_profile_id", businessProfileId)
     .eq("status", "active")
@@ -257,7 +260,7 @@ export async function getActiveProjects(businessProfileId: string): Promise<Proj
     .order("name", { ascending: true });
 
   if (error) {
-    console.error("Error fetching active projects:", error);
+    console.error("Error fetching active departments:", error);
     throw error;
   }
 
@@ -265,39 +268,58 @@ export async function getActiveProjects(businessProfileId: string): Promise<Proj
 }
 
 /**
- * Update project sort order
+ * Update department sort order
  */
-export async function updateProjectSortOrder(
-  projectId: string,
+export async function updateDepartmentSortOrder(
+  departmentId: string,
   sortOrder: number
 ): Promise<void> {
-  await updateProject(projectId, { sort_order: sortOrder });
+  await updateDepartment(departmentId, { sort_order: sortOrder });
 }
 
 /**
- * Check if a project code is unique within a business profile
+ * Check if a department code is unique within a business profile
  */
-export async function isProjectCodeUnique(
+export async function isDepartmentCodeUnique(
   businessProfileId: string,
   code: string,
-  excludeProjectId?: string
+  excludeDepartmentId?: string
 ): Promise<boolean> {
   let query = supabase
-    .from("projects")
+    .from(DEPARTMENTS_TABLE)
     .select("id")
     .eq("business_profile_id", businessProfileId)
     .eq("code", code);
 
-  if (excludeProjectId) {
-    query = query.neq("id", excludeProjectId);
+  if (excludeDepartmentId) {
+    query = query.neq("id", excludeDepartmentId);
   }
 
   const { data, error } = await query;
 
   if (error) {
-    console.error("Error checking project code uniqueness:", error);
+    console.error("Error checking department code uniqueness:", error);
     return false;
   }
 
   return !data || data.length === 0;
 }
+
+// Backward compatibility exports (deprecated)
+export const getProjects = getDepartments;
+export const getProject = getDepartment;
+export const getProjectStats = getDepartmentStats as unknown as (businessProfileId: string) => ProjectStats[];
+export const getProjectStatById = getDepartmentStatById as unknown as (projectId: string) => ProjectStats | null;
+export const createProject = createDepartment;
+export const updateProject = updateDepartment;
+export const deleteProject = deleteDepartment;
+export const freezeProject = freezeDepartment;
+export const unfreezeProject = unfreezeDepartment;
+export const closeProject = closeDepartment;
+export const archiveProject = archiveDepartment;
+export const reopenProject = reopenDepartment;
+export const setDefaultProject = setDefaultDepartment;
+export const getDefaultProject = getDefaultDepartment;
+export const getActiveProjects = getActiveDepartments;
+export const updateProjectSortOrder = updateDepartmentSortOrder;
+export const isProjectCodeUnique = isDepartmentCodeUnique;

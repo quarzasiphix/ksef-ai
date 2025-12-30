@@ -16,6 +16,7 @@ import InvoicePDFViewer from "@/modules/invoices/components/InvoicePDFViewer";
 import ShareInvoiceDialog from "@/modules/invoices/components/ShareInvoiceDialog";
 import { useGlobalData } from "@/shared/hooks/use-global-data";
 import { useBusinessProfile } from "@/shared/context/BusinessProfileContext";
+import { useProjectScope } from "@/shared/context/ProjectContext";
 import {
   Select,
   SelectContent,
@@ -47,6 +48,7 @@ type SmartFilter = 'all' | 'unpaid_issued' | 'paid_not_booked' | 'booked_not_rec
 const IncomeList = () => {
   const { invoices: { data: invoices, isLoading } } = useGlobalData();
   const { selectedProfileId } = useBusinessProfile();
+  const { selectedProjectId, selectedProject } = useProjectScope();
   const [searchTerm, setSearchTerm] = useState("");
   const [activeTab, setActiveTab] = useState<string>("all");
   const [smartFilter, setSmartFilter] = useState<SmartFilter>('all');
@@ -286,6 +288,7 @@ const IncomeList = () => {
 
         // If a business profile is selected, include only matching invoices; otherwise include all
         if (selectedProfileId && invoice.businessProfileId !== selectedProfileId) return false;
+        if (selectedProjectId && invoice.projectId !== selectedProjectId) return false;
 
         const matchesSearch =
           invoice.number.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -327,7 +330,7 @@ const IncomeList = () => {
         return matchesSearch && matchesType && matchesSmartFilter;
       }
     );
-  }, [invoices, searchTerm, activeTab, selectedProfileId, smartFilter]); // Include all dependencies
+  }, [invoices, searchTerm, activeTab, selectedProfileId, smartFilter, selectedProjectId]); // Include all dependencies
 
   // Multi-select functions
   const toggleInvoiceSelection = (invoiceId: string, event?: React.MouseEvent) => {
@@ -582,6 +585,32 @@ const IncomeList = () => {
           <p className="text-muted-foreground">
             Realny wpływ pieniędzy do firmy — faktury, płatności, rozliczenia
           </p>
+          {selectedProject && (
+            <div className="mt-2">
+              <div className="rounded-lg border bg-muted/50 px-4 py-3 flex flex-col gap-1">
+                <div className="text-xs uppercase tracking-wide text-muted-foreground">
+                  Widok projektowy
+                </div>
+                <div className="flex flex-wrap items-center gap-3">
+                  <div
+                    className="h-3 w-3 rounded-full"
+                    style={{ backgroundColor: selectedProject.color || '#0ea5e9' }}
+                  />
+                  <div className="text-base font-semibold">
+                    {selectedProject.name}
+                  </div>
+                  {selectedProject.code && (
+                    <span className="text-xs font-medium bg-white/70 dark:bg-white/10 px-2 py-0.5 rounded-full">
+                      {selectedProject.code}
+                    </span>
+                  )}
+                  <span className="text-sm text-muted-foreground">
+                    Pokazujemy tylko zdarzenia przychodowe z tego projektu
+                  </span>
+                </div>
+              </div>
+            </div>
+          )}
         </div>
 
         <MonthlySummaryBar
@@ -596,11 +625,22 @@ const IncomeList = () => {
         <CardHeader className="pb-3">
           <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
             <div>
-              <CardTitle>Zdarzenia przychodowe</CardTitle>
-              <CardDescription>
+              <CardTitle className="flex flex-wrap items-center gap-3">
+                Zdarzenia przychodowe
+                {selectedProject && (
+                  <span className="text-xs font-semibold uppercase tracking-wide inline-flex items-center gap-1 bg-primary/10 text-primary px-2 py-0.5 rounded-full">
+                    <span
+                      className="h-2 w-2 rounded-full"
+                      style={{ backgroundColor: selectedProject.color || '#0ea5e9' }}
+                    />
+                    Projekt: {selectedProject.name}
+                  </span>
+                )}
+              </CardTitle>
+              <CardDescription className="flex flex-wrap items-center gap-2">
                 {activeTab !== "all" ? getDocumentTypeName(activeTab) : "Dokumenty ujęte w systemie"}: {filteredInvoices.length}
                 {selectedInvoices.size > 0 && (
-                  <span className="ml-2 text-primary font-medium">
+                  <span className="text-primary font-medium">
                     • Wybrano: {selectedInvoices.size}
                   </span>
                 )}

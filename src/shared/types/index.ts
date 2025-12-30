@@ -403,7 +403,85 @@ export interface Employee {
 }
 
 export type ProjectStatus = 'active' | 'frozen' | 'closed' | 'archived';
+export type DepartmentStatus = 'active' | 'frozen' | 'closed' | 'archived';
+export type JobStatus = 'active' | 'on_hold' | 'completed' | 'cancelled';
 
+export type DepartmentTemplate = 'general' | 'construction' | 'property_admin' | 'marketing' | 'saas' | 'sales' | 'operations';
+
+// Department (formerly Project) - Level 1: Organizational unit
+export interface Department {
+  id: string;
+  business_profile_id: string;
+  name: string;
+  description?: string;
+  code?: string; // Short code for department (e.g., "SAAS", "CONSTRUCTION")
+  color?: string; // UI color for visual distinction
+  status: DepartmentStatus;
+  template: DepartmentTemplate; // Department type defining enabled features
+  
+  // Governance integration
+  charter_decision_id?: string; // Founding decision that created this department
+  
+  // Financial tracking
+  budget_limit?: number;
+  currency?: string;
+  actual_cost?: number;
+  actual_revenue?: number;
+  
+  // Metadata
+  created_by?: string;
+  created_at?: string;
+  updated_at?: string;
+  
+  // Lifecycle timestamps
+  activated_at?: string;
+  frozen_at?: string;
+  frozen_by?: string;
+  freeze_decision_id?: string;
+  closed_at?: string;
+  closed_by?: string;
+  close_decision_id?: string;
+  
+  // Sorting and display
+  sort_order?: number;
+  is_default?: boolean; // Default department for new transactions
+}
+
+// Job/Project - Level 2: Time-bound execution unit inside a department
+export interface Job {
+  id: string;
+  department_id: string; // Parent department
+  business_profile_id: string;
+  name: string;
+  description?: string;
+  code?: string; // Short code for job
+  color?: string; // Inherits from department if not set
+  status: JobStatus;
+  
+  // Timeline
+  start_date?: string;
+  end_date?: string;
+  target_completion_date?: string;
+  
+  // Budget and financials
+  budget_amount?: number;
+  budget_currency?: string;
+  actual_cost?: number;
+  actual_revenue?: number;
+  
+  // Governance
+  charter_decision_id?: string; // Decision authorizing this job
+  
+  // Metadata
+  created_by?: string;
+  created_at?: string;
+  updated_at?: string;
+  
+  // Display
+  is_default?: boolean;
+}
+
+// Backward compatibility: Project is now an alias for Department
 export interface Project {
   id: string;
   business_profile_id: string;
@@ -440,6 +518,42 @@ export interface Project {
   is_default?: boolean; // Default project for new transactions
 }
 
+export interface DepartmentStats {
+  department_id: string;
+  department_name: string;
+  status: DepartmentStatus;
+  budget_amount?: number;
+  budget_currency?: string;
+  total_jobs: number;
+  active_jobs: number;
+  total_invoices: number;
+  total_expenses: number;
+  total_contracts: number;
+  total_revenue: number;
+  total_costs: number;
+  actual_cost?: number;
+  actual_revenue?: number;
+  profit_margin?: number;
+}
+
+export interface JobStats {
+  job_id: string;
+  department_id: string;
+  job_name: string;
+  status: JobStatus;
+  budget_amount?: number;
+  budget_currency?: string;
+  total_invoices: number;
+  total_expenses: number;
+  total_contracts: number;
+  total_revenue: number;
+  total_costs: number;
+  actual_cost?: number;
+  actual_revenue?: number;
+  profit_margin?: number;
+}
+
+// Backward compatibility alias
 export interface ProjectStats {
   id: string;
   business_profile_id: string;

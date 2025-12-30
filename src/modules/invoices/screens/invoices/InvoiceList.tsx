@@ -24,6 +24,7 @@ import {
 import { ScrollArea } from "@/shared/ui/scroll-area";
 import { useAuth } from "@/shared/context/AuthContext";
 import { getInvoiceValueInPLN, formatCurrency } from '@/shared/lib/invoice-utils';
+import { useProjectScope } from "@/shared/context/ProjectContext";
 
 // Helper function to translate invoice type to Polish
 const translateInvoiceType = (type: string): string => {
@@ -49,6 +50,7 @@ const InvoiceList = () => {
   const [selectedType, setSelectedType] = useState<string>("all");
   const [smartFilter, setSmartFilter] = useState<SmartFilter>('all');
   const isMobile = useIsMobile();
+  const { selectedProjectId, selectedProject } = useProjectScope();
   
   useEffect(() => {
     const nonPLNInvoices = invoices.filter(inv => inv.currency && inv.currency !== 'PLN');
@@ -81,6 +83,7 @@ const InvoiceList = () => {
           (invoice.customerName || "").toLowerCase().includes(searchTerm.toLowerCase());
           
         const matchesType = selectedType === "all" || invoice.type === selectedType;
+        const matchesProject = !selectedProjectId || invoice.projectId === selectedProjectId;
         
         // Smart filter logic
         let matchesSmartFilter = true;
@@ -107,10 +110,10 @@ const InvoiceList = () => {
             matchesSmartFilter = true;
         }
         
-        return matchesSearch && matchesType && matchesSmartFilter;
+        return matchesSearch && matchesType && matchesSmartFilter && matchesProject;
       }
     );
-  }, [invoices, searchTerm, selectedType, smartFilter]);
+  }, [invoices, searchTerm, selectedType, smartFilter, selectedProjectId]);
   
   // For mobile, show first 2 options on main bar, rest in dropdown
   const mainTypes = useMemo(() => {
@@ -147,6 +150,32 @@ const InvoiceList = () => {
           <p className="text-muted-foreground">
             Zarządzaj fakturami i rachunkami
           </p>
+          {selectedProject && (
+            <div className="mt-2">
+              <div className="rounded-lg border bg-muted/50 px-4 py-3 flex flex-col gap-1">
+                <div className="text-xs uppercase tracking-wide text-muted-foreground">
+                  Widok projektowy
+                </div>
+                <div className="flex flex-wrap items-center gap-3">
+                  <div
+                    className="h-3 w-3 rounded-full"
+                    style={{ backgroundColor: selectedProject.color || '#0ea5e9' }}
+                  />
+                  <div className="text-base font-semibold">
+                    {selectedProject.name}
+                  </div>
+                  {selectedProject.code && (
+                    <span className="text-xs font-medium bg-white/70 dark:bg-white/10 px-2 py-0.5 rounded-full">
+                      {selectedProject.code}
+                    </span>
+                  )}
+                  <span className="text-sm text-muted-foreground">
+                    Pokazujemy tylko zdarzenia tego działu
+                  </span>
+                </div>
+              </div>
+            </div>
+          )}
         </div>
         <Button asChild>
           <Link to="/invoices/new">

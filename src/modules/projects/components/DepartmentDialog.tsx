@@ -2,7 +2,7 @@ import React, { useEffect } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
-import { Project } from "@/shared/types";
+import { Department, DepartmentTemplate } from "@/shared/types";
 import {
   Dialog,
   DialogContent,
@@ -24,9 +24,16 @@ import { Input } from "@/shared/ui/input";
 import { Textarea } from "@/shared/ui/textarea";
 import { Button } from "@/shared/ui/button";
 import { Switch } from "@/shared/ui/switch";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/shared/ui/select";
 
-const projectFormSchema = z.object({
-  name: z.string().min(1, "Nazwa projektu jest wymagana"),
+const departmentFormSchema = z.object({
+  name: z.string().min(1, "Nazwa działu jest wymagana"),
   description: z.string().optional(),
   code: z
     .string()
@@ -38,16 +45,25 @@ const projectFormSchema = z.object({
   color: z.string().optional(),
   budget_limit: z.number().optional(),
   is_default: z.boolean().default(false),
+  template: z.enum([
+    "general",
+    "construction",
+    "property_admin",
+    "marketing",
+    "saas",
+    "sales",
+    "operations",
+  ]) as z.ZodType<DepartmentTemplate>,
 });
 
-type ProjectFormValues = z.infer<typeof projectFormSchema>;
+type DepartmentFormValues = z.infer<typeof departmentFormSchema>;
 
-interface ProjectDialogProps {
+interface DepartmentDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  project?: Project | null;
+  department?: Department | null;
   businessProfileId: string;
-  onSave: (data: ProjectFormValues) => Promise<void>;
+  onSave: (data: DepartmentFormValues) => Promise<void>;
 }
 
 const colorOptions = [
@@ -61,15 +77,25 @@ const colorOptions = [
   { value: "#84cc16", label: "Limonkowy" },
 ];
 
-export const ProjectDialog: React.FC<ProjectDialogProps> = ({
+const templateOptions: { value: DepartmentTemplate; label: string; description: string }[] = [
+  { value: "general", label: "Ogólny", description: "Uniwersalny dział bez dodatkowych modułów" },
+  { value: "construction", label: "Budownictwo", description: "Zlecenia, kosztorysy, protokoły odbioru" },
+  { value: "property_admin", label: "Administracja nieruchomości", description: "Zgłoszenia, inspekcje, zlecenia serwisowe" },
+  { value: "marketing", label: "Marketing", description: "Kampanie, wydarzenia, budżety mediowe" },
+  { value: "saas", label: "SaaS / Produkt", description: "Subskrypcje, roadmapy, feature work" },
+  { value: "sales", label: "Sprzedaż", description: "Leady, umowy, wydarzenia handlowe" },
+  { value: "operations", label: "Operacje", description: "Procesy, logistyka, transport" },
+];
+
+export const DepartmentDialog: React.FC<DepartmentDialogProps> = ({
   open,
   onOpenChange,
-  project,
+  department,
   businessProfileId,
   onSave,
 }) => {
-  const form = useForm<ProjectFormValues>({
-    resolver: zodResolver(projectFormSchema),
+  const form = useForm<DepartmentFormValues>({
+    resolver: zodResolver(departmentFormSchema),
     defaultValues: {
       name: "",
       description: "",
@@ -77,18 +103,20 @@ export const ProjectDialog: React.FC<ProjectDialogProps> = ({
       color: "#3b82f6",
       budget_limit: undefined,
       is_default: false,
+      template: "general",
     },
   });
 
   useEffect(() => {
-    if (project) {
+    if (department) {
       form.reset({
-        name: project.name,
-        description: project.description || "",
-        code: project.code || "",
-        color: project.color || "#3b82f6",
-        budget_limit: project.budget_limit,
-        is_default: project.is_default || false,
+        name: department.name,
+        description: department.description || "",
+        code: department.code || "",
+        color: department.color || "#3b82f6",
+        budget_limit: department.budget_limit,
+        is_default: department.is_default || false,
+        template: department.template || "general",
       });
     } else {
       form.reset({
@@ -98,11 +126,12 @@ export const ProjectDialog: React.FC<ProjectDialogProps> = ({
         color: "#3b82f6",
         budget_limit: undefined,
         is_default: false,
+        template: "general",
       });
     }
-  }, [project, form]);
+  }, [department, form]);
 
-  const onSubmit = async (data: ProjectFormValues) => {
+  const onSubmit = async (data: DepartmentFormValues) => {
     await onSave(data);
     form.reset();
   };
@@ -112,12 +141,12 @@ export const ProjectDialog: React.FC<ProjectDialogProps> = ({
       <DialogContent className="sm:max-w-[600px]">
         <DialogHeader>
           <DialogTitle>
-            {project ? "Edytuj projekt" : "Nowy projekt"}
+            {department ? "Edytuj dział" : "Nowy dział"}
           </DialogTitle>
           <DialogDescription>
-            {project
-              ? "Zaktualizuj informacje o projekcie"
-              : "Utwórz nowy projekt do organizacji działalności biznesowej"}
+            {department
+              ? "Zaktualizuj informacje o dziale"
+              : "Utwórz nowy dział do organizacji działalności biznesowej"}
           </DialogDescription>
         </DialogHeader>
 
@@ -128,10 +157,43 @@ export const ProjectDialog: React.FC<ProjectDialogProps> = ({
               name="name"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Nazwa projektu *</FormLabel>
+                  <FormLabel>Nazwa działu *</FormLabel>
                   <FormControl>
-                    <Input placeholder="np. SaaS, Transport, Budowa" {...field} />
+                    <Input placeholder="np. SaaS, Budownictwo, Administracja" {...field} />
                   </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+
+            <FormField
+              control={form.control}
+              name="template"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Szablon działu</FormLabel>
+                  <Select value={field.value} onValueChange={field.onChange}>
+                    <FormControl>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Wybierz typ działu" />
+                      </SelectTrigger>
+                    </FormControl>
+                    <SelectContent>
+                      {templateOptions.map((template) => (
+                        <SelectItem key={template.value} value={template.value}>
+                          <div className="flex flex-col gap-0.5">
+                            <span className="font-medium">{template.label}</span>
+                            <span className="text-xs text-muted-foreground">
+                              {template.description}
+                            </span>
+                          </div>
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  <FormDescription>
+                    Określa domyślne moduły i funkcje dostępne w tym dziale
+                  </FormDescription>
                   <FormMessage />
                 </FormItem>
               )}
@@ -142,7 +204,7 @@ export const ProjectDialog: React.FC<ProjectDialogProps> = ({
               name="code"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Kod projektu</FormLabel>
+                  <FormLabel>Kod działu</FormLabel>
                   <FormControl>
                     <Input
                       placeholder="np. SAAS, TRANSPORT"
@@ -203,7 +265,7 @@ export const ProjectDialog: React.FC<ProjectDialogProps> = ({
                     </div>
                   </FormControl>
                   <FormDescription>
-                    Wybierz kolor do wizualnego odróżnienia projektu
+                    Wybierz kolor do wizualnego odróżnienia działu
                   </FormDescription>
                   <FormMessage />
                 </FormItem>
@@ -244,7 +306,7 @@ export const ProjectDialog: React.FC<ProjectDialogProps> = ({
               render={({ field }) => (
                 <FormItem className="flex flex-row items-center justify-between rounded-lg border p-4">
                   <div className="space-y-0.5">
-                    <FormLabel className="text-base">Projekt domyślny</FormLabel>
+                    <FormLabel className="text-base">Dział domyślny</FormLabel>
                     <FormDescription>
                       Automatycznie wybierany przy tworzeniu nowych dokumentów
                     </FormDescription>
@@ -268,7 +330,7 @@ export const ProjectDialog: React.FC<ProjectDialogProps> = ({
                 Anuluj
               </Button>
               <Button type="submit">
-                {project ? "Zapisz zmiany" : "Utwórz projekt"}
+                {department ? "Zapisz zmiany" : "Utwórz dział"}
               </Button>
             </DialogFooter>
           </form>

@@ -1,5 +1,5 @@
 import React from "react";
-import { Project, ProjectStats } from "@/shared/types";
+import { Department, DepartmentStats } from "@/shared/types";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/shared/ui/card";
 import { Badge } from "@/shared/ui/badge";
 import { Button } from "@/shared/ui/button";
@@ -13,17 +13,17 @@ import {
 } from "@/shared/ui/dropdown-menu";
 import { formatCurrency } from "@/shared/lib/invoice-utils";
 
-interface ProjectCardProps {
-  project: Project;
-  stats?: ProjectStats;
-  onEdit?: (project: Project) => void;
-  onFreeze?: (project: Project) => void;
-  onUnfreeze?: (project: Project) => void;
-  onClose?: (project: Project) => void;
-  onArchive?: (project: Project) => void;
-  onReopen?: (project: Project) => void;
-  onDelete?: (project: Project) => void;
-  onClick?: (project: Project) => void;
+interface DepartmentCardProps {
+  department: Department;
+  stats?: DepartmentStats;
+  onEdit?: (department: Department) => void;
+  onFreeze?: (department: Department) => void;
+  onUnfreeze?: (department: Department) => void;
+  onClose?: (department: Department) => void;
+  onArchive?: (department: Department) => void;
+  onReopen?: (department: Department) => void;
+  onDelete?: (department: Department) => void;
+  onClick?: (department: Department) => void;
 }
 
 const statusConfig = {
@@ -53,8 +53,8 @@ const statusConfig = {
   },
 };
 
-export const ProjectCard: React.FC<ProjectCardProps> = ({
-  project,
+export const DepartmentCard: React.FC<DepartmentCardProps> = ({
+  department,
   stats,
   onEdit,
   onFreeze,
@@ -65,13 +65,13 @@ export const ProjectCard: React.FC<ProjectCardProps> = ({
   onDelete,
   onClick,
 }) => {
-  const statusInfo = statusConfig[project.status];
+  const statusInfo = statusConfig[department.status];
   const StatusIcon = statusInfo.icon;
 
   return (
     <Card
       className="hover:shadow-md transition-shadow cursor-pointer"
-      onClick={() => onClick?.(project)}
+      onClick={() => onClick?.(department)}
     >
       <CardHeader>
         <div className="flex items-start justify-between">
@@ -79,18 +79,18 @@ export const ProjectCard: React.FC<ProjectCardProps> = ({
             <div className="flex items-center gap-2 mb-1">
               <div
                 className={`w-3 h-3 rounded-full ${statusInfo.color}`}
-                style={{ backgroundColor: project.color }}
+                style={{ backgroundColor: department.color }}
               />
-              <CardTitle className="text-lg">{project.name}</CardTitle>
-              {project.code && (
+              <CardTitle className="text-lg">{department.name}</CardTitle>
+              {department.code && (
                 <Badge variant="outline" className="text-xs">
-                  {project.code}
+                  {department.code}
                 </Badge>
               )}
             </div>
-            {project.description && (
+            {department.description && (
               <CardDescription className="line-clamp-2">
-                {project.description}
+                {department.description}
               </CardDescription>
             )}
           </div>
@@ -104,52 +104,52 @@ export const ProjectCard: React.FC<ProjectCardProps> = ({
               {onEdit && (
                 <DropdownMenuItem onClick={(e) => {
                   e.stopPropagation();
-                  onEdit(project);
+                  onEdit(department);
                 }}>
                   Edytuj
                 </DropdownMenuItem>
               )}
               <DropdownMenuSeparator />
-              {project.status === "active" && onFreeze && (
+              {department.status === "active" && onFreeze && (
                 <DropdownMenuItem onClick={(e) => {
                   e.stopPropagation();
-                  onFreeze(project);
+                  onFreeze(department);
                 }}>
                   <Lock className="mr-2 h-4 w-4" />
-                  Zamroź projekt
+                  Zamroź dział
                 </DropdownMenuItem>
               )}
-              {project.status === "frozen" && onUnfreeze && (
+              {department.status === "frozen" && onUnfreeze && (
                 <DropdownMenuItem onClick={(e) => {
                   e.stopPropagation();
-                  onUnfreeze(project);
+                  onUnfreeze(department);
                 }}>
                   <FolderOpen className="mr-2 h-4 w-4" />
-                  Odblokuj projekt
+                  Odblokuj dział
                 </DropdownMenuItem>
               )}
-              {project.status === "active" && onClose && (
+              {department.status === "active" && onClose && (
                 <DropdownMenuItem onClick={(e) => {
                   e.stopPropagation();
-                  onClose(project);
+                  onClose(department);
                 }}>
                   <CheckCircle className="mr-2 h-4 w-4" />
-                  Zamknij projekt
+                  Zamknij dział
                 </DropdownMenuItem>
               )}
-              {(project.status === "closed" || project.status === "archived") && onReopen && (
+              {(department.status === "closed" || department.status === "archived") && onReopen && (
                 <DropdownMenuItem onClick={(e) => {
                   e.stopPropagation();
-                  onReopen(project);
+                  onReopen(department);
                 }}>
                   <FolderOpen className="mr-2 h-4 w-4" />
                   Otwórz ponownie
                 </DropdownMenuItem>
               )}
-              {project.status === "closed" && onArchive && (
+              {department.status === "closed" && onArchive && (
                 <DropdownMenuItem onClick={(e) => {
                   e.stopPropagation();
-                  onArchive(project);
+                  onArchive(department);
                 }}>
                   <Archive className="mr-2 h-4 w-4" />
                   Archiwizuj
@@ -162,10 +162,10 @@ export const ProjectCard: React.FC<ProjectCardProps> = ({
                     className="text-destructive"
                     onClick={(e) => {
                       e.stopPropagation();
-                      onDelete(project);
+                      onDelete(department);
                     }}
                   >
-                    Usuń projekt
+                    Usuń dział
                   </DropdownMenuItem>
                 </>
               )}
@@ -177,7 +177,7 @@ export const ProjectCard: React.FC<ProjectCardProps> = ({
         <div className="flex items-center gap-2 mb-3">
           <StatusIcon className="h-4 w-4 text-muted-foreground" />
           <Badge variant={statusInfo.badgeVariant}>{statusInfo.label}</Badge>
-          {project.is_default && (
+          {department.is_default && (
             <Badge variant="outline" className="text-xs">
               Domyślny
             </Badge>
@@ -197,24 +197,24 @@ export const ProjectCard: React.FC<ProjectCardProps> = ({
             <div>
               <p className="text-muted-foreground">Przychody</p>
               <p className="font-medium text-green-600">
-                {formatCurrency(stats.total_income, project.currency || "PLN")}
+                {formatCurrency(stats.total_revenue, department.currency || "PLN")}
               </p>
             </div>
             <div>
               <p className="text-muted-foreground">Koszty</p>
               <p className="font-medium text-red-600">
-                {formatCurrency(stats.total_expenses, project.currency || "PLN")}
+                {formatCurrency(stats.total_costs, department.currency || "PLN")}
               </p>
             </div>
           </div>
         )}
 
-        {project.budget_limit && (
+        {department.budget_limit && (
           <div className="mt-3 pt-3 border-t">
             <div className="flex justify-between text-sm">
               <span className="text-muted-foreground">Budżet</span>
               <span className="font-medium">
-                {formatCurrency(project.budget_limit, project.currency || "PLN")}
+                {formatCurrency(department.budget_limit, department.currency || "PLN")}
               </span>
             </div>
           </div>

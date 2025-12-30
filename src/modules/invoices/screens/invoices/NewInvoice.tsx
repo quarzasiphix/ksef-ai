@@ -66,7 +66,7 @@ import { InvoiceFormActions } from "@/modules/invoices/components/forms/InvoiceF
 import ContractsPicker from "@/modules/contracts/components/ContractsPicker";
 import { BankAccountEditDialog } from "@/modules/banking/components/BankAccountEditDialog";
 import DecisionPicker from "@/modules/decisions/components/DecisionPicker";
-import { ProjectSelector } from "@/modules/projects/components/ProjectSelector";
+import { ProjectSelector } from "@/modules/projects/components/DepartmentSelector";
 
 // Schema
 const invoiceFormSchema = z.object({

@@ -8,6 +8,8 @@ import { Plus, FileText, AlertCircle, Clock, CheckCircle2, MessageSquare, ArrowD
 import { Card, CardContent, CardHeader, CardTitle } from '@/shared/ui/card';
 import { useGlobalData } from '@/shared/hooks/use-global-data';
 import { useBusinessProfile } from "@/shared/context/BusinessProfileContext";
+import { useProjectScope } from "@/shared/context/ProjectContext";
+
 import { Button } from "@/shared/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/shared/ui/tabs';
 import ExpenseCard from '@/modules/invoices/components/expenses/ExpenseCard';
@@ -32,6 +34,7 @@ export default function ExpenseList() {
 
   const { expenses: { data: allExpenses = [], isLoading: isLoadingExpenses } } = useGlobalData();
   const { selectedProfileId } = useBusinessProfile();
+  const { selectedProjectId, selectedProject } = useProjectScope();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
 
@@ -45,6 +48,9 @@ export default function ExpenseList() {
       if (!isShared && selectedProfileId && expense.businessProfileId !== selectedProfileId) {
         return false;
       }
+      if (!isShared && selectedProjectId && expense.projectId !== selectedProjectId) {
+        return false;
+      }
 
       const type = (expense.transactionType || (expense as any).transaction_type || "").toString().toLowerCase();
       return type === "expense";
@@ -52,7 +58,7 @@ export default function ExpenseList() {
 
     console.log("Filtered expenses count:", list.length);
     return list;
-  }, [allExpenses, selectedProfileId]);
+  }, [allExpenses, selectedProfileId, selectedProjectId]);
 
   // Categorize expenses
   const categorizedExpenses = useMemo(() => {
@@ -174,6 +180,23 @@ export default function ExpenseList() {
           <p className="text-muted-foreground mt-1">
             Zarządzaj fakturami kosztowymi i płatnościami
           </p>
+          {selectedProject && (
+            <div className="mt-2 inline-flex items-center gap-2 rounded-full border px-3 py-1 text-sm">
+              <div
+                className="h-2.5 w-2.5 rounded-full"
+                style={{ backgroundColor: selectedProject.color || '#0ea5e9' }}
+              />
+              <span>
+                Widok projektu:{" "}
+                <span className="font-semibold">{selectedProject.name}</span>
+                {selectedProject.code && (
+                  <span className="ml-2 text-xs text-muted-foreground">
+                    ({selectedProject.code})
+                  </span>
+                )}
+              </span>
+            </div>
+          )}
         </div>
         <div className="flex gap-2">
           <Button asChild>

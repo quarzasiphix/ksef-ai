@@ -20,7 +20,7 @@ import { useProjectScope } from "@/shared/context/ProjectContext";
 import { useBusinessProfile } from "@/shared/context/BusinessProfileContext";
 import { useNavigate } from "react-router-dom";
 
-export const ProjectSwitcher: React.FC = () => {
+export const DepartmentSwitcher: React.FC = () => {
   const {
     projects,
     isLoadingProjects,

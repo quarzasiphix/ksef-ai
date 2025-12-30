@@ -8,7 +8,7 @@ import WorkspaceMenu from "@/components/workspace/WorkspaceMenu";
 import TabSwitcher from "@/components/workspace/TabSwitcher";
 import HeaderTabsStrip from "@/components/workspace/HeaderTabsStrip";
 import { SyncStatusIndicator } from "@/components/layout/SyncStatusIndicator";
-import { ProjectSwitcher } from "@/components/workspace/ProjectSwitcher";
+import { DepartmentSwitcher } from "@/components/workspace/DepartmentSwitcher";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -51,7 +51,7 @@ const Header = () => {
 
           {/* Right region - Project switcher + actions */}
           <div className="flex items-center gap-2 flex-shrink-0">
-        <ProjectSwitcher />
+        <DepartmentSwitcher />
         <SyncStatusIndicator />
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
