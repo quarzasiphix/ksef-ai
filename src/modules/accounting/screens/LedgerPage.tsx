@@ -1,4 +1,5 @@
 import React, { useState, useMemo, useEffect } from 'react';
+import { useQuery } from '@tanstack/react-query';
 import { ArrowLeft, Loader2 } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { format } from 'date-fns';
@@ -7,16 +8,21 @@ import { formatCurrency } from '@/shared/lib/invoice-utils';
 import { cn } from '@/shared/lib/utils';
 import { Button } from '@/shared/ui/button';
 import { useBusinessProfile } from '@/shared/context/BusinessProfileContext';
+import { useAuth } from '@/shared/context/AuthContext';
 import { useAggregatedLedger } from '@/shared/hooks/useAggregatedLedger';
+import { getInvoices } from '@/modules/invoices/data/invoiceRepository';
+import { getExpenses } from '@/modules/invoices/data/expenseRepository';
 import LedgerTimelineList from '../components/timeline/LedgerTimelineList';
 import AuditPanel from '../components/audit/AuditPanel';
 import { useOpenTab } from '@/shared/hooks/useOpenTab';
 import type { LedgerFilters } from '../types/ledger';
 import type { TimelineLedgerEvent, TimelineDateGroup, LedgerDirection, LedgerSource } from '../types/timeline';
 import type { AuditPanelState, AuditEvent } from '../types/audit';
+import type { Invoice, Expense } from '@/shared/types';
 
 export const LedgerPage: React.FC = () => {
   const { selectedProfileId } = useBusinessProfile();
+  const { user } = useAuth();
   const { openInvoiceTab, openExpenseTab, openContractTab } = useOpenTab();
   const [filters, setFilters] = useState<LedgerFilters>({});
   
@@ -83,10 +89,40 @@ export const LedgerPage: React.FC = () => {
     }
   );
 
+  // Fetch existing financial documents for backward compatibility
+  const { data: invoices = [], isLoading: invoicesLoading } = useQuery({
+    queryKey: ['ledger-invoices', user?.id, selectedProfileId],
+    queryFn: async () => {
+      if (!user?.id || !selectedProfileId) return [];
+      return getInvoices(user.id, selectedProfileId);
+    },
+    enabled: !!user?.id && !!selectedProfileId,
+    staleTime: 1000 * 60 * 5,
+  });
+
+  const { data: expenses = [], isLoading: expensesLoading } = useQuery({
+    queryKey: ['ledger-expenses', user?.id, selectedProfileId],
+    queryFn: async () => {
+      if (!user?.id || !selectedProfileId) return [];
+      return getExpenses(user.id, selectedProfileId);
+    },
+    enabled: !!user?.id && !!selectedProfileId,
+    staleTime: 1000 * 60 * 5,
+  });
+
+  const normalizeStatus = (raw?: string | null) => {
+    if (!raw) return 'posted';
+    const value = raw.toLowerCase();
+    if (['paid', 'completed', 'posted'].includes(value)) return 'posted';
+    if (['pending', 'unpaid', 'draft'].includes(value)) return 'pending';
+    if (['cancelled', 'void'].includes(value)) return 'cancelled';
+    return 'posted';
+  };
+
   // Transform aggregated events to timeline format
-  const timelineEvents: TimelineLedgerEvent[] = useMemo(() => {
+  const ledgerEvents: TimelineLedgerEvent[] = useMemo(() => {
     if (!ledgerData?.events) return [];
-    
+
     return ledgerData.events.map(event => {
       const rawStatus = event.status;
       const normalizedStatus =
@@ -149,6 +185,77 @@ export const LedgerPage: React.FC = () => {
       };
     });
   }, [ledgerData, selectedProfileId]);
+
+  const derivedDocumentEvents: TimelineLedgerEvent[] = useMemo(() => {
+    const derived: TimelineLedgerEvent[] = [];
+    const makeOccurredAt = (input?: string | null) => input || new Date().toISOString();
+
+    const addInvoiceEvent = (invoice: Invoice) => {
+      const total =
+        invoice.totalGrossValue ??
+        invoice.totalAmount ??
+        invoice.totalNetValue ??
+        0;
+      const isExpense = invoice.transactionType?.toLowerCase() === 'expense';
+      const direction: LedgerDirection = isExpense ? 'out' : 'in';
+      const source: LedgerSource = isExpense ? 'expense' : 'invoice';
+
+      derived.push({
+        id: `invoice-${invoice.id}`,
+        occurredAt: makeOccurredAt(invoice.issueDate || invoice.date),
+        title: direction === 'in' ? 'Faktura przychodowa' : 'Faktura kosztowa',
+        subtitle: `${invoice.number} · ${invoice.customerName || invoice.buyer?.name || 'Kontrahent'}`,
+        amount: {
+          value: total,
+          currency: invoice.currency || 'PLN',
+        },
+        direction,
+        source,
+        status: normalizeStatus(invoice.status),
+        meta: {
+          counterpartyName: invoice.customerName || invoice.buyer?.name,
+          docNo: invoice.number,
+        },
+        linkedDocuments: [],
+        documentId: invoice.id,
+        documentType: 'invoice',
+      });
+    };
+
+    const addExpenseEvent = (expense: Expense) => {
+      derived.push({
+        id: `expense-${expense.id}`,
+        occurredAt: makeOccurredAt(expense.issueDate || expense.date),
+        title: 'Wydatek',
+        subtitle: expense.description || 'Wydatek księgowy',
+        amount: {
+          value: expense.amount || 0,
+          currency: expense.currency || 'PLN',
+        },
+        direction: 'out',
+        source: 'expense',
+        status: 'posted',
+        meta: {
+          counterpartyName: expense.description,
+          docNo: expense.linkedInvoiceId || undefined,
+        },
+        linkedDocuments: [],
+        documentId: expense.id,
+        documentType: 'expense',
+      });
+    };
+
+    invoices.forEach(addInvoiceEvent);
+    expenses.forEach(addExpenseEvent);
+    return derived;
+  }, [invoices, expenses]);
+
+  const timelineEvents: TimelineLedgerEvent[] = useMemo(() => {
+    if (!ledgerEvents.length && !derivedDocumentEvents.length) return [];
+    return [...ledgerEvents, ...derivedDocumentEvents].sort(
+      (a, b) => new Date(b.occurredAt).getTime() - new Date(a.occurredAt).getTime()
+    );
+  }, [ledgerEvents, derivedDocumentEvents]);
 
   // Group events by date
   const groupedEvents: TimelineDateGroup[] = useMemo(() => {

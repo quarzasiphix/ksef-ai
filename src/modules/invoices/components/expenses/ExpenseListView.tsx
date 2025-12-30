@@ -20,13 +20,22 @@ import { pl } from 'date-fns/locale';
 import { formatCurrency } from '@/shared/lib/utils';
 import { Invoice } from '@/shared/types';
 
+export type ExpenseListItem = Invoice & {
+  description?: string;
+  amount?: number;
+  customerName?: string;
+  counterpartyName?: string;
+  linkedInvoiceId?: string | null;
+  isShared?: boolean;
+};
+
 interface ExpenseListViewProps {
-  expenses: Invoice[];
+  expenses: ExpenseListItem[];
   selectedExpenses: Set<string>;
   isMultiSelectMode: boolean;
   onToggleSelection: (id: string, event?: React.MouseEvent) => void;
-  onMarkAsPaid?: (id: string, expense: Invoice) => Promise<void>;
-  onMarkAsUnpaid?: (id: string, expense: Invoice) => Promise<void>;
+  onMarkAsPaid?: (id: string, expense: ExpenseListItem) => Promise<void>;
+  onMarkAsUnpaid?: (id: string, expense: ExpenseListItem) => Promise<void>;
 }
 
 export const ExpenseListView: React.FC<ExpenseListViewProps> = ({
@@ -39,7 +48,7 @@ export const ExpenseListView: React.FC<ExpenseListViewProps> = ({
 }) => {
   const navigate = useNavigate();
 
-  const getUrgencyInfo = (expense: Invoice) => {
+  const getUrgencyInfo = (expense: ExpenseListItem) => {
     if (!expense.dueDate) return null;
     
     const dueDate = new Date(expense.dueDate);
@@ -78,8 +87,24 @@ export const ExpenseListView: React.FC<ExpenseListViewProps> = ({
     return null;
   };
 
-  const isReceived = (expense: Invoice) => {
-    return typeof expense.id === 'string' && expense.id.startsWith('share-');
+  const isReceived = (expense: ExpenseListItem) => {
+    return (
+      (expense as any).isShared ||
+      (typeof expense.id === 'string' && expense.id.startsWith('share-'))
+    );
+  };
+
+  const getInvoiceDetailPath = (expense: ExpenseListItem) => {
+    const invoiceId = expense.linkedInvoiceId || expense.id;
+    return `/inbox/invoice/${invoiceId}`;
+  };
+
+  const handleNavigate = (expense: ExpenseListItem) => {
+    if (isReceived(expense)) {
+      navigate(getInvoiceDetailPath(expense));
+    } else {
+      navigate(`/expense/${expense.id}`);
+    }
   };
 
   return (
@@ -98,7 +123,7 @@ export const ExpenseListView: React.FC<ExpenseListViewProps> = ({
             } ${urgency ? `border-l-4 ${urgency.borderColor} ${urgency.bgColor}` : ''} ${
               received && !isPaid ? 'border-l-4 border-l-blue-600 bg-blue-50 dark:bg-blue-950/20' : ''
             }`}
-            onClick={() => navigate(`/expense/${expense.id}`)}
+            onClick={() => handleNavigate(expense)}
           >
             <CardContent className="p-4 sm:p-6">
               <div className="flex items-start gap-4">
@@ -169,7 +194,11 @@ export const ExpenseListView: React.FC<ExpenseListViewProps> = ({
                   {/* Vendor info */}
                   <p className="text-sm text-muted-foreground">
                     {received ? 'od: ' : ''}
-                    <span className="font-medium">{expense.customerName || 'Brak kontrahenta'}</span>
+                    <span className="font-medium">
+                      {expense.customerName ||
+                        expense.counterpartyName ||
+                        'Brak kontrahenta'}
+                    </span>
                   </p>
 
                   {/* Date and amount row */}
@@ -181,7 +210,8 @@ export const ExpenseListView: React.FC<ExpenseListViewProps> = ({
                     {expense.dueDate && (
                       <div className="flex items-center gap-1">
                         <FileText className="h-3 w-3" />
-                        Termin: {format(new Date(expense.dueDate), 'dd MMM yyyy', { locale: pl })}
+                        Termin:{' '}
+                        {format(new Date(expense.dueDate), 'dd MMM yyyy', { locale: pl })}
                       </div>
                     )}
                     <div className="font-semibold text-base text-foreground">
@@ -197,7 +227,7 @@ export const ExpenseListView: React.FC<ExpenseListViewProps> = ({
                     size="sm"
                     onClick={(e) => {
                       e.stopPropagation();
-                      navigate(`/expense/${expense.id}`);
+                      handleNavigate(expense);
                     }}
                   >
                     <Eye className="h-4 w-4 mr-2" />
@@ -221,7 +251,7 @@ export const ExpenseListView: React.FC<ExpenseListViewProps> = ({
                         size="sm"
                         onClick={(e) => {
                           e.stopPropagation();
-                          navigate(`/inbox/invoice/${expense.id}?section=discussion`);
+                          navigate(`${getInvoiceDetailPath(expense)}?section=discussion`);
                         }}
                       >
                         <MessageSquare className="h-4 w-4 mr-2" />

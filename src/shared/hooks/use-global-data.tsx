@@ -110,7 +110,7 @@ export function useGlobalData(selectedPeriod?: string, fetchAllInvoices?: boolea
         ? getExpenses(user.id, selectedProfileId || undefined, selectedPeriod)
         : getExpenses(user.id, selectedProfileId || undefined);
     },
-    enabled: !!user?.id && !!selectedProfileId && (selectedPeriod !== undefined || fetchAllInvoices),
+    enabled: !!user?.id && !!selectedProfileId,
     placeholderData: (previousData) => previousData,
     // staleTime inherited from global config (10 minutes)
   });

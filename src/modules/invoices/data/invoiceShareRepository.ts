@@ -94,6 +94,13 @@ export async function getInvoiceSharesReceived(userId: string): Promise<any[]> {
           business_profiles:business_profile_id (
             name,
             tax_id
+          ),
+          customers:customer_id (
+            name,
+            tax_id,
+            address,
+            city,
+            postal_code
           )
         )
       `)

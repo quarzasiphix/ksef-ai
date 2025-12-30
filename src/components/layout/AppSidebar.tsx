@@ -192,31 +192,26 @@ const AppSidebar = () => {
       </SidebarHeader>
 
       <SidebarContent className="px-2">
-        {/* Business Profile Switcher */}
-        <div className="py-2 border-b border-sidebar-border">
+        {/* Business Profile Switcher + stability indicator */}
+        <div className="py-2 border-b border-sidebar-border space-y-2">
           <BusinessProfileSwitcher isCollapsed={isCollapsed} />
-        </div>
 
-        {/* Spółka Context Header - only for spółki */}
-        {isSpoolka && selectedProfile && !isCollapsed && (
-          <div 
-            className="px-3 py-3 border-b border-sidebar-border cursor-pointer hover:bg-muted/30 transition-colors"
-            onClick={() => navigate('/accounting/company-registry')}
-          >
-            <div className="flex items-start gap-2">
-              <Building className="h-4 w-4 text-sidebar-foreground/60 mt-0.5 flex-shrink-0" />
-              <div className="flex-1 min-w-0">
-                <p className="text-sm font-medium text-sidebar-foreground truncate">
-                  {selectedProfile.name}
-                </p>
-                <div className="flex items-center gap-1.5 mt-1">
-                  <div className="h-1.5 w-1.5 rounded-full bg-green-500" />
-                  <span className="text-[10px] text-sidebar-foreground/60">stabilna</span>
-                </div>
+          {isSpoolka && selectedProfile && !isCollapsed && (
+            <button
+              type="button"
+              className="w-full px-2 py-2 flex items-center gap-2 rounded-lg border border-sidebar-border/60 hover:bg-muted/30 text-left transition-colors"
+              onClick={() => navigate('/accounting/company-registry')}
+            >
+              <Building className="h-4 w-4 text-sidebar-foreground/60 flex-shrink-0" />
+              <div className="flex items-center gap-1.5">
+                <div className="h-1.5 w-1.5 rounded-full bg-green-500" />
+                <span className="text-[10px] text-sidebar-foreground/60 uppercase tracking-wide">
+                  stabilna
+                </span>
               </div>
-            </div>
-          </div>
-        )}
+            </button>
+          )}
+        </div>
 
         {/* Dynamic sections with progressive disclosure */}
         {navGroups.map((section) => {

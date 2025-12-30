@@ -89,17 +89,17 @@ export const DepartmentSwitcher: React.FC = () => {
         <Command>
           <CommandInput
             placeholder={
-              hasAnyProjects ? "Szukaj projektów..." : "Brak projektów"
+              hasAnyProjects ? "Szukaj działów..." : "Brak działów"
             }
           />
           <CommandList>
             <CommandEmpty>
               {isLoadingProjects
-                ? "Ładowanie projektów..."
-                : "Brak projektów"}
+                ? "Ładowanie działów..."
+                : "Brak działów"}
             </CommandEmpty>
 
-            <CommandGroup heading="Aktywne projekty">
+            <CommandGroup heading="Aktywne działy">
               <CommandItem
                 key="all-projects"
                 onSelect={() => handleSelect(null)}
@@ -111,7 +111,7 @@ export const DepartmentSwitcher: React.FC = () => {
                     Pełen widok firmy
                   </span>
                   <span className="text-xs text-muted-foreground">
-                    Pokaż wszystkie dokumenty niezależnie od projektu
+                    Pokaż wszystkie dokumenty niezależnie od działu
                   </span>
                 </div>
                 {!selectedProjectId && <Check className="h-4 w-4" />}
@@ -150,14 +150,14 @@ export const DepartmentSwitcher: React.FC = () => {
                 className="flex items-center gap-2"
               >
                 <Search className="h-4 w-4" />
-                <span>Zarządzaj projektami</span>
+                <span>Zarządzaj działami</span>
               </CommandItem>
               <CommandItem
                 onSelect={handleAddProject}
                 className="flex items-center gap-2"
               >
                 <FolderPlus className="h-4 w-4" />
-                <span>Dodaj projekt</span>
+                <span>Dodaj dział</span>
               </CommandItem>
             </CommandGroup>
           </CommandList>

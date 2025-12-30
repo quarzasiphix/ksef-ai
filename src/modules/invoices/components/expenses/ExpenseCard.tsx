@@ -5,6 +5,7 @@ import { pl } from "date-fns/locale";
 import { formatCurrency } from "@/shared/lib/invoice-utils";
 import { useNavigate } from "react-router-dom";
 import { Pencil } from "lucide-react";
+
 import { TransactionType } from "@/shared/types";
 
 export interface ExpenseSummary {
@@ -13,6 +14,7 @@ export interface ExpenseSummary {
   amount: number;
   description?: string;
   customerName?: string;
+  counterpartyName?: string;
   transactionType: TransactionType;
   linkedInvoiceId?: string | null;
   isShared?: boolean;
@@ -22,8 +24,9 @@ const ExpenseCard: React.FC<{ expense: ExpenseSummary }> = ({ expense }) => {
   const navigate = useNavigate();
 
   const handleNavigate = () => {
-    if (expense.isShared && expense.linkedInvoiceId) {
-      navigate(`/expense/share/${expense.linkedInvoiceId}`);
+    if (expense.isShared) {
+      const invoiceId = expense.linkedInvoiceId || expense.id;
+      navigate(`/expense/${invoiceId}`);
       return;
     }
     navigate(`/expense/${expense.id}`);
@@ -41,11 +44,12 @@ const ExpenseCard: React.FC<{ expense: ExpenseSummary }> = ({ expense }) => {
         <h3 className="font-semibold truncate">
           {expense.description || "Wydatek"}
         </h3>
-        {expense.customerName && (
+        {(expense.customerName || expense.counterpartyName) && (
           <p className="text-xs text-muted-foreground truncate">
-            {expense.customerName}
+            {expense.customerName || expense.counterpartyName}
           </p>
         )}
+
         <div className="flex items-center justify-between">
           <p className="font-bold text-lg">{formatCurrency(expense.amount)}</p>
           {!expense.isShared && (

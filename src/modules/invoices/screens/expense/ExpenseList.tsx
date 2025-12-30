@@ -24,6 +24,22 @@ import { useQueryClient } from '@tanstack/react-query';
 const ZUS_NIP = "5220005994";
 const ZUS_NAME = "ZAKŁAD UBEZPIECZEŃ SPOŁECZNYCH";
 
+const isSharedExpense = (expense: any) =>
+  (expense?.isShared) ||
+  (typeof expense?.id === 'string' && expense.id.startsWith('share-'));
+
+const getExpenseDetailPath = (expense: any) => {
+  if (isSharedExpense(expense)) {
+    const invoiceId =
+      expense?.linkedInvoiceId ||
+      expense?.invoiceId ||
+      expense?.id?.replace(/^share-/, '') ||
+      expense?.id;
+    return `/expense/${invoiceId}`;
+  }
+  return `/expense/${expense?.id}`;
+};
+
 // ExpenseList component for displaying a list of expenses
 export default function ExpenseList() {
   const [searchTerm, setSearchTerm] = useState("");
@@ -42,7 +58,7 @@ export default function ExpenseList() {
     if (!allExpenses) return [];
 
     const list = allExpenses.filter(expense => {
-      const isShared = typeof expense.id === 'string' && expense.id.startsWith('share-');
+      const isShared = isSharedExpense(expense);
 
       // Apply business profile filter only to own expenses; always include shared ones
       if (!isShared && selectedProfileId && expense.businessProfileId !== selectedProfileId) {
@@ -72,7 +88,7 @@ export default function ExpenseList() {
     filteredExpenses.forEach(expense => {
       const dueDate = expense.dueDate ? new Date(expense.dueDate) : null;
       const isPaid = (expense as any).isPaid || (expense as any).status === 'paid';
-      const isReceived = typeof expense.id === 'string' && expense.id.startsWith('share-');
+      const isReceived = isSharedExpense(expense);
       
       if (isPaid) {
         paid.push(expense);
@@ -324,7 +340,7 @@ export default function ExpenseList() {
                     <Card
                       key={expense.id}
                       className="cursor-pointer hover:shadow-md transition-all border-l-4 border-l-red-600"
-                      onClick={() => navigate(`/expense/${expense.id}`)}
+                      onClick={() => navigate(getExpenseDetailPath(expense))}
                     >
                       <CardContent className="p-4">
                         <div className="flex items-start justify-between gap-4">
@@ -345,7 +361,7 @@ export default function ExpenseList() {
                               )}
                             </div>
                             <p className="text-sm text-muted-foreground">
-                              {expense.customerName || 'Brak kontrahenta'}
+                              {expense.customerName || (expense as any).counterpartyName || 'Brak kontrahenta'}
                             </p>
                             <div className="flex items-center gap-4 text-sm">
                               <span className="font-bold text-lg text-red-600">
@@ -384,7 +400,7 @@ export default function ExpenseList() {
                   <Card
                     key={expense.id}
                     className="cursor-pointer hover:shadow-md transition-all border-l-4 border-l-blue-600"
-                    onClick={() => navigate(`/expense/${expense.id}`)}
+                    onClick={() => navigate(getExpenseDetailPath(expense))}
                   >
                     <CardContent className="p-4">
                       <div className="flex items-start justify-between gap-4">
@@ -399,14 +415,16 @@ export default function ExpenseList() {
                             </Badge>
                           </div>
                           <p className="text-sm text-muted-foreground">
-                            od: {expense.customerName || 'Brak kontrahenta'}
+                            od: {expense.customerName || (expense as any).counterpartyName || 'Brak kontrahenta'}
                           </p>
                           <div className="flex items-center gap-4 text-sm">
                             <span className="font-bold text-lg">
                               {formatCurrency(expense.amount || expense.totalGrossValue || 0)}
                             </span>
                             <span className="text-muted-foreground">
-                              {format(new Date(expense.issueDate), 'dd MMM yyyy', { locale: pl })}
+                              {format(new Date(expense.issueDate), 'dd MMM yyyy', {
+                                locale: pl,
+                              })}
                             </span>
                           </div>
                         </div>
@@ -469,8 +487,11 @@ export default function ExpenseList() {
                     description: exp.description,
                     customerName: exp.customerName || (exp as any).buyer?.name,
                     transactionType: exp.transactionType as InvoiceType | any,
-                    linkedInvoiceId: (exp as any).linkedInvoiceId,
-                    isShared: (exp as any).isShared,
+                    linkedInvoiceId:
+                      (exp as any).linkedInvoiceId ||
+                      (exp as any).invoiceId ||
+                      null,
+                    isShared: isSharedExpense(exp),
                   }}
                 />
               ))}

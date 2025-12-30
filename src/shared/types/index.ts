@@ -323,6 +323,7 @@ export interface Expense {
   userId: string;
   businessProfileId: string;
   issueDate: string;
+  dueDate?: string;
   amount: number;
   currency: string;
   description?: string;
@@ -331,6 +332,8 @@ export interface Expense {
   date: string; // Alias for compatibility
   items?: InvoiceItem[];
   customerId?: string;
+  customerName?: string;
+  counterpartyName?: string;
   linkedInvoiceId?: string | null; // References original invoice when expense is derived from received share
   isShared?: boolean;
   shareId?: string | null;
