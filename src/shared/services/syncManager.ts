@@ -11,6 +11,9 @@ interface SyncTimestamps {
   discussions?: string;
   employees?: string;
   bankAccounts?: string;
+  operationsJobs?: string;
+  operationsDrivers?: string;
+  operationsVehicles?: string;
 }
 
 interface SyncCheckResponse {
@@ -22,6 +25,9 @@ interface SyncCheckResponse {
     discussions: boolean;
     employees: boolean;
     bankAccounts: boolean;
+    operationsJobs: boolean;
+    operationsDrivers: boolean;
+    operationsVehicles: boolean;
   };
   latestTimestamps: {
     invoices: string | null;
@@ -31,6 +37,9 @@ interface SyncCheckResponse {
     discussions: string | null;
     employees: string | null;
     bankAccounts: string | null;
+    operationsJobs: string | null;
+    operationsDrivers: string | null;
+    operationsVehicles: string | null;
   };
   counts: {
     invoices: number;
@@ -40,6 +49,9 @@ interface SyncCheckResponse {
     discussions: number;
     employees: number;
     bankAccounts: number;
+    operationsJobs: number;
+    operationsDrivers: number;
+    operationsVehicles: number;
   };
 }
 

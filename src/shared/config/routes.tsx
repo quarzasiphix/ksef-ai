@@ -68,6 +68,14 @@ const DepartmentsScreen = React.lazy(() =>
     default: module.default ?? module.DepartmentScreen,
   }))
 );
+const OperationsPage = React.lazy(() => import('@/modules/operations/screens/OperationsPage'));
+const JobDetailPage = React.lazy(() => import('@/modules/operations/screens/JobDetailPage'));
+const JobsListPage = React.lazy(() => import('@/modules/operations/screens/JobsListPage'));
+const JobNewPage = React.lazy(() => import('@/modules/operations/screens/JobNewPageEnhanced'));
+const DriversListPage = React.lazy(() => import('@/modules/operations/screens/DriversListPage'));
+const DriverNewPage = React.lazy(() => import('@/modules/operations/screens/DriverNewPage'));
+const VehiclesListPage = React.lazy(() => import('@/modules/operations/screens/VehiclesListPage'));
+const VehicleNewPage = React.lazy(() => import('@/modules/operations/screens/VehicleNewPage'));
 
 export type RouteGuard = 'public' | 'protected' | 'premium' | 'onboarding';
 
@@ -100,6 +108,58 @@ export const routes: RouteConfig[] = [
     title: 'Dashboard',
     icon: 'LayoutDashboard',
     section: 'main',
+  },
+
+  // Operations
+  {
+    path: '/operations',
+    element: <OperationsPage />,
+    guard: 'protected',
+    title: 'Operacje',
+    icon: 'Truck',
+    section: 'operations',
+  },
+  {
+    path: '/operations/jobs',
+    element: <JobsListPage />,
+    guard: 'protected',
+    hideInNav: true,
+  },
+  {
+    path: '/operations/jobs/new',
+    element: <JobNewPage />,
+    guard: 'protected',
+    hideInNav: true,
+  },
+  {
+    path: '/operations/jobs/:id',
+    element: <JobDetailPage />,
+    guard: 'protected',
+    hideInNav: true,
+  },
+  {
+    path: '/operations/drivers',
+    element: <DriversListPage />,
+    guard: 'protected',
+    hideInNav: true,
+  },
+  {
+    path: '/operations/drivers/new',
+    element: <DriverNewPage />,
+    guard: 'protected',
+    hideInNav: true,
+  },
+  {
+    path: '/operations/vehicles',
+    element: <VehiclesListPage />,
+    guard: 'protected',
+    hideInNav: true,
+  },
+  {
+    path: '/operations/vehicles/new',
+    element: <VehicleNewPage />,
+    guard: 'protected',
+    hideInNav: true,
   },
 
   // Legacy /shares route -> settings screen

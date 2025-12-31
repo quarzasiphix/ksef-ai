@@ -53,6 +53,8 @@ const departmentFormSchema = z.object({
     "saas",
     "sales",
     "operations",
+    "funeral_home",
+    "transport_operations",
   ]) as z.ZodType<DepartmentTemplate>,
 });
 
@@ -85,6 +87,8 @@ const templateOptions: { value: DepartmentTemplate; label: string; description: 
   { value: "saas", label: "SaaS / Produkt", description: "Subskrypcje, roadmapy, feature work" },
   { value: "sales", label: "Sprzedaż", description: "Leady, umowy, wydarzenia handlowe" },
   { value: "operations", label: "Operacje", description: "Procesy, logistyka, transport" },
+  { value: "funeral_home", label: "Dom pogrzebowy / Nekrolog", description: "Ceremonie, dokumenty, publikacje" },
+  { value: "transport_operations", label: "Transport zwierząt (operacje)", description: "Zlecenia, pojazdy, kierowcy, dokumenty transportowe" },
 ];
 
 export const DepartmentDialog: React.FC<DepartmentDialogProps> = ({
@@ -198,6 +202,38 @@ export const DepartmentDialog: React.FC<DepartmentDialogProps> = ({
                 </FormItem>
               )}
             />
+
+            {/* Auto-creation preview */}
+            {!department && (
+              <div className="rounded-lg border border-blue-200 bg-blue-50 dark:bg-blue-950/20 p-4 space-y-3">
+                <h4 className="text-sm font-semibold text-blue-900 dark:text-blue-100">
+                  Co zostanie utworzone automatycznie?
+                </h4>
+                <ul className="space-y-2 text-sm text-blue-800 dark:text-blue-200">
+                  <li className="flex items-start gap-2">
+                    <span className="text-blue-600 dark:text-blue-400 mt-0.5">•</span>
+                    <span>
+                      <strong>Decyzja działu (mandat):</strong> Zgoda na świadczenie usług zgodnie z szablonem
+                    </span>
+                  </li>
+                  <li className="flex items-start gap-2">
+                    <span className="text-blue-600 dark:text-blue-400 mt-0.5">•</span>
+                    <span>
+                      <strong>Podstawowa struktura folderów dokumentów</strong> typowa dla tego działu
+                    </span>
+                  </li>
+                  <li className="flex items-start gap-2">
+                    <span className="text-blue-600 dark:text-blue-400 mt-0.5">•</span>
+                    <span>
+                      <strong>Kategorie umów i pola danych</strong> dostosowane do szablonu
+                    </span>
+                  </li>
+                </ul>
+                <p className="text-xs text-blue-700 dark:text-blue-300 pt-2 border-t border-blue-200 dark:border-blue-900">
+                  <strong>Ważne:</strong> Decyzja działu jest wymagana, aby ten dział mógł generować umowy, koszty i faktury w sposób audytowalny.
+                </p>
+              </div>
+            )}
 
             <FormField
               control={form.control}
@@ -330,7 +366,7 @@ export const DepartmentDialog: React.FC<DepartmentDialogProps> = ({
                 Anuluj
               </Button>
               <Button type="submit">
-                {department ? "Zapisz zmiany" : "Utwórz dział"}
+                {department ? "Zapisz zmiany" : "Utwórz dział i decyzję"}
               </Button>
             </DialogFooter>
           </form>

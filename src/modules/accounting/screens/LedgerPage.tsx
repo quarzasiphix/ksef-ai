@@ -257,6 +257,53 @@ export const LedgerPage: React.FC = () => {
     );
   }, [ledgerEvents, derivedDocumentEvents]);
 
+  const fallbackSummary = useMemo(() => {
+    const aggregatedCount = ledgerData?.summary?.event_count ?? 0;
+    if (aggregatedCount > 0 || derivedDocumentEvents.length === 0) {
+      return undefined;
+    }
+
+    const baseTotals = derivedDocumentEvents.reduce(
+      (acc, event) => {
+        if (event.direction === 'in') {
+          acc.incoming += event.amount.value;
+        } else if (event.direction === 'out') {
+          acc.outgoing += event.amount.value;
+        }
+        return acc;
+      },
+      { incoming: 0, outgoing: 0 }
+    );
+
+    const currencyTotals = derivedDocumentEvents.reduce(
+      (acc, event) => {
+        const currency = event.amount.currency || 'PLN';
+        if (!acc[currency]) {
+          acc[currency] = { incoming: 0, outgoing: 0, net: 0 };
+        }
+        if (event.direction === 'in') {
+          acc[currency].incoming += event.amount.value;
+        } else if (event.direction === 'out') {
+          acc[currency].outgoing += event.amount.value;
+        }
+        acc[currency].net = acc[currency].incoming - acc[currency].outgoing;
+        return acc;
+      },
+      {} as Record<string, { incoming: number; outgoing: number; net: number; }>
+    );
+
+    return {
+      total_incoming: baseTotals.incoming,
+      total_outgoing: baseTotals.outgoing,
+      event_count: derivedDocumentEvents.length,
+      by_type: { fallback: derivedDocumentEvents.length },
+      by_source: { fallback: derivedDocumentEvents.length },
+      currency_totals: currencyTotals,
+    };
+  }, [ledgerData?.summary?.event_count, derivedDocumentEvents]);
+
+  const summary = fallbackSummary ?? ledgerData?.summary;
+
   // Group events by date
   const groupedEvents: TimelineDateGroup[] = useMemo(() => {
     const groups = new Map<string, TimelineLedgerEvent[]>();
@@ -368,13 +415,13 @@ export const LedgerPage: React.FC = () => {
       </div>
 
       {/* Summary stats */}
-      {ledgerData?.summary && (
+      {summary && (
         <div className="space-y-4">
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             <div className="border border-slate-200 dark:border-slate-800 rounded-lg p-4">
               <div className="text-sm text-slate-600 dark:text-slate-400">Przychody (PLN)</div>
               <div className="text-2xl font-medium tabular-nums tracking-tight text-slate-50 mt-1">
-                {ledgerData.summary.total_incoming.toLocaleString('pl-PL', {
+                {summary.total_incoming.toLocaleString('pl-PL', {
                   minimumFractionDigits: 2,
                   maximumFractionDigits: 2,
                 })} PLN
@@ -383,7 +430,7 @@ export const LedgerPage: React.FC = () => {
             <div className="border border-slate-200 dark:border-slate-800 rounded-lg p-4">
               <div className="text-sm text-slate-600 dark:text-slate-400">Wydatki (PLN)</div>
               <div className="text-2xl font-medium tabular-nums tracking-tight text-slate-50 mt-1">
-                {ledgerData.summary.total_outgoing.toLocaleString('pl-PL', {
+                {summary.total_outgoing.toLocaleString('pl-PL', {
                   minimumFractionDigits: 2,
                   maximumFractionDigits: 2,
                 })} PLN
@@ -392,7 +439,7 @@ export const LedgerPage: React.FC = () => {
             <div className="border border-slate-200 dark:border-slate-800 rounded-lg p-4">
               <div className="text-sm text-slate-600 dark:text-slate-400">Saldo (PLN)</div>
               <div className="text-2xl font-medium tabular-nums tracking-tight text-slate-50 mt-1">
-                {(ledgerData.summary.total_incoming - ledgerData.summary.total_outgoing).toLocaleString('pl-PL', {
+                {(summary.total_incoming - summary.total_outgoing).toLocaleString('pl-PL', {
                   minimumFractionDigits: 2,
                   maximumFractionDigits: 2,
                 })} PLN
@@ -400,14 +447,14 @@ export const LedgerPage: React.FC = () => {
             </div>
           </div>
 
-          {ledgerData.summary.currency_totals && (
+          {summary.currency_totals && (
             <div className="border border-slate-200 dark:border-slate-800 rounded-lg p-4 space-y-3">
               <div className="flex items-center justify-between">
                 <div className="text-sm text-slate-600 dark:text-slate-400">Waluty</div>
                 <span className="text-xs text-slate-500 dark:text-slate-400">Kwoty w walutach źródłowych</span>
               </div>
               <div className="flex flex-wrap gap-2">
-                {Object.entries(ledgerData.summary.currency_totals).map(([currency, totals]) => (
+                {Object.entries(summary.currency_totals).map(([currency, totals]) => (
                   <div
                     key={currency}
                     className="min-w-[160px] flex-1 rounded-full border border-slate-200 dark:border-slate-700 bg-white/70 dark:bg-slate-900/60 px-4 py-2 flex items-center justify-between text-sm"

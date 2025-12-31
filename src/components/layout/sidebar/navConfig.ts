@@ -18,6 +18,7 @@ import {
   DollarSign,
   Settings,
   FolderKanban,
+  Truck,
 } from "lucide-react";
 
 import type { LucideIcon } from "lucide-react";
@@ -216,6 +217,14 @@ const navGroupsConfig: NavGroupConfig[] = [
         path: "/inventory",
         tint: "operations",
         requiresPremium: true,
+      },
+      {
+        id: "operations",
+        label: "Operacje",
+        icon: Truck,
+        path: "/operations",
+        tint: "operations",
+        showForSpoolka: true,
       },
     ],
   },

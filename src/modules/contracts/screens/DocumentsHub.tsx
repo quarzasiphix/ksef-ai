@@ -1,6 +1,7 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useBusinessProfile } from '@/shared/context/BusinessProfileContext';
+import { useProjectScope } from '@/shared/context/ProjectContext';
 import { Card, CardContent, CardHeader, CardTitle } from '@/shared/ui/card';
 import { Button } from '@/shared/ui/button';
 import { Input } from '@/shared/ui/input';
@@ -10,8 +11,10 @@ import {
   FileText, FolderOpen, Plus, Upload, Search, Filter,
   FileCheck, Mail, Receipt, BarChart, Award, Briefcase,
   ArrowUpCircle, ArrowDownCircle, Info, Download, Trash2,
-  Eye, Edit, FileDown, MoreVertical, FolderPlus, Pencil, X, Check, Menu
+  Eye, Edit, FileDown, MoreVertical, FolderPlus, Pencil, X, Check, Menu, Building2
 } from 'lucide-react';
+import { getDepartmentTemplate } from '@/modules/projects/types/departmentTemplates';
+import { useDepartmentDocumentFolders } from '@/modules/documents/hooks/useDepartmentDocuments';
 import { toast } from 'sonner';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/shared/ui/dialog';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/shared/ui/dropdown-menu';
@@ -54,8 +57,13 @@ type DocumentView = 'all' | 'transactional_payout' | 'transactional_payin' | 'in
 const DocumentsHub = () => {
   const navigate = useNavigate();
   const { profiles, selectedProfileId } = useBusinessProfile();
+  const { selectedProject: selectedDepartment } = useProjectScope();
   const selectedProfile = profiles?.find(p => p.id === selectedProfileId);
   const isSpoolka = selectedProfile?.entityType === 'sp_zoo' || selectedProfile?.entityType === 'sa';
+
+  // Get department template folders
+  const templateFolders = useDepartmentDocumentFolders(selectedDepartment?.template);
+  const departmentTemplate = selectedDepartment ? getDepartmentTemplate(selectedDepartment.template) : null;
 
   const [loading, setLoading] = useState(true);
   const [view, setView] = useState<DocumentView>('all');
@@ -468,13 +476,28 @@ const DocumentsHub = () => {
 
   const SidebarContent = ({ onNavigate }: { onNavigate?: () => void }) => (
     <div className="h-full module-sidebar p-3 overflow-y-auto">
+      {/* Department Context Header */}
+      {selectedDepartment && departmentTemplate && (
+        <div className="mb-3 p-2 rounded-lg border border-primary/20 bg-primary/5">
+          <div className="flex items-center gap-2 mb-1">
+            <div
+              className="h-2 w-2 rounded-full flex-shrink-0"
+              style={{ backgroundColor: selectedDepartment.color || '#3b82f6' }}
+            />
+            <span className="text-xs font-semibold truncate">{selectedDepartment.name}</span>
+          </div>
+          <Badge variant="secondary" className="text-[10px] h-5">
+            {departmentTemplate.name}
+          </Badge>
+        </div>
+      )}
+
       <div className="mb-2">
         <h2 className="font-semibold text-sm mb-2">Dokumenty</h2>
         <button
           type="button"
           onClick={() => {
             onNavigate?.();
-            // Defer route change until after the mobile Sheet close animation
             safeNavigate('/contracts/new');
           }}
           className="w-full flex items-center gap-2 rounded-md px-3 py-2 text-sm bg-muted/60 hover:bg-muted/80 transition-colors"
@@ -595,7 +618,34 @@ const DocumentsHub = () => {
         </SidebarNavButton>
       </div>
 
-      {isSpoolka && (
+      {/* Department Template Folders */}
+      {selectedDepartment && templateFolders.length > 0 ? (
+        <>
+          <div className="pt-2 pb-1">
+            <p className="text-[11px] font-semibold tracking-wide text-muted-foreground px-2">
+              FOLDERY DZIAŁU
+            </p>
+          </div>
+          <div className="space-y-1">
+            {templateFolders.map(folder => (
+              <SidebarNavButton
+                key={folder.id}
+                active={selectedFolder === folder.id}
+                onClick={() => {
+                  setSelectedFolder(folder.id);
+                  onNavigate?.();
+                }}
+              >
+                <FolderOpen className="h-4 w-4" />
+                <span className="flex-1 text-left truncate">{folder.label}</span>
+                {folder.required && (
+                  <span className="text-[10px] text-red-600">*</span>
+                )}
+              </SidebarNavButton>
+            ))}
+          </div>
+        </>
+      ) : isSpoolka && (
         <>
           <div className="pt-2 pb-1 flex items-center justify-between px-2">
             <p className="text-xs font-semibold text-muted-foreground">FOLDERY</p>
@@ -928,6 +978,39 @@ const DocumentsHub = () => {
               </div>
             </CardContent>
           </Card>
+
+          {/* Department Context Banner */}
+          {selectedDepartment && departmentTemplate && (
+            <Card className="border-primary/20 bg-primary/5">
+              <CardContent className="p-4">
+                <div className="flex items-center gap-3">
+                  <div
+                    className="h-3 w-3 rounded-full flex-shrink-0"
+                    style={{ backgroundColor: selectedDepartment.color || '#3b82f6' }}
+                  />
+                  <div className="flex-1">
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <h3 className="font-semibold">Widok działu: {selectedDepartment.name}</h3>
+                      <Badge variant="secondary" className="text-xs">
+                        {departmentTemplate.name}
+                      </Badge>
+                    </div>
+                    <p className="text-sm text-muted-foreground mt-1">
+                      Dokumenty organizowane według szablonu: {departmentTemplate.subtitle}
+                    </p>
+                    {templateFolders.length > 0 && (
+                      <div className="flex items-center gap-2 mt-2">
+                        <FolderOpen className="h-4 w-4 text-muted-foreground" />
+                        <span className="text-xs text-muted-foreground">
+                          {templateFolders.length} folderów szablonu ({templateFolders.filter(f => f.required).length} wymaganych)
+                        </span>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          )}
 
           {/* Next Action Panel - contextual guidance */}
           {!loading && documentNextActions.length > 0 && (

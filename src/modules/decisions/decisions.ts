@@ -76,6 +76,11 @@ export interface Decision {
   decision_type: DecisionType;
   category: DecisionCategory;
   
+  // Hierarchy (new fields)
+  decision_level?: 'global' | 'department' | 'project';
+  department_id?: string | null;
+  project_id?: string | null;
+  
   // Scope and limits
   scope_description?: string;
   amount_limit?: number;

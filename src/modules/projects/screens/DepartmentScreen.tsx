@@ -59,7 +59,7 @@ const DepartmentScreen: React.FC = () => {
         getDepartmentStats(selectedProfileId),
       ]);
       setDepartments(departmentsData);
-      setDepartmentStats(statsData ?? []);
+      setDepartmentStats(Array.isArray(statsData) ? statsData : []);
     } catch (error) {
       console.error("Error loading departments:", error);
       toast.error("Nie udało się załadować działów");

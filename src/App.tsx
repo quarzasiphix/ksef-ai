@@ -6,6 +6,7 @@ import { ThemeProvider } from '@/components/theme/ThemeProvider';
 import { TooltipProvider } from '@/shared/ui/tooltip';
 import { AuthProvider } from '@/shared/context/AuthContext';
 import { WorkspaceTabsProvider } from '@/shared/context/WorkspaceTabsContext';
+import { DepartmentProvider } from '@/shared/context/DepartmentContext';
 import { queryClient } from '@/shared/lib/queryClient';
 import { RouteRenderer } from '@/pages/routing/RouteRenderer';
 
@@ -28,9 +29,11 @@ const App = () => {
           <Toaster />
           <Router>
             <AuthProvider>
-              <WorkspaceTabsProvider>
-                <RouteRenderer />
-              </WorkspaceTabsProvider>
+              <DepartmentProvider>
+                <WorkspaceTabsProvider>
+                  <RouteRenderer />
+                </WorkspaceTabsProvider>
+              </DepartmentProvider>
             </AuthProvider>
           </Router>
         </TooltipProvider>

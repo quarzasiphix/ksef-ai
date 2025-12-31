@@ -409,7 +409,7 @@ export type ProjectStatus = 'active' | 'frozen' | 'closed' | 'archived';
 export type DepartmentStatus = 'active' | 'frozen' | 'closed' | 'archived';
 export type JobStatus = 'active' | 'on_hold' | 'completed' | 'cancelled';
 
-export type DepartmentTemplate = 'general' | 'construction' | 'property_admin' | 'marketing' | 'saas' | 'sales' | 'operations';
+export type DepartmentTemplate = 'general' | 'construction' | 'property_admin' | 'marketing' | 'saas' | 'sales' | 'operations' | 'funeral_home' | 'transport_operations';
 
 // Department (formerly Project) - Level 1: Organizational unit
 export interface Department {
@@ -493,6 +493,7 @@ export interface Project {
   code?: string; // Short code for project (e.g., "SAAS", "TRANSPORT")
   color?: string; // UI color for visual distinction
   status: ProjectStatus;
+  template: DepartmentTemplate; // Department type defining enabled features
   
   // Governance integration
   charter_decision_id?: string; // Founding decision that created this project

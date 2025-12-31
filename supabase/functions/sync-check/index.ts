@@ -16,6 +16,9 @@ interface SyncCheckRequest {
     discussions?: string;
     employees?: string;
     bankAccounts?: string;
+    operationsJobs?: string;
+    operationsDrivers?: string;
+    operationsVehicles?: string;
   };
 }
 
@@ -28,6 +31,9 @@ interface SyncCheckResponse {
     discussions: boolean;
     employees: boolean;
     bankAccounts: boolean;
+    operationsJobs: boolean;
+    operationsDrivers: boolean;
+    operationsVehicles: boolean;
   };
   latestTimestamps: {
     invoices: string | null;
@@ -37,6 +43,9 @@ interface SyncCheckResponse {
     discussions: string | null;
     employees: string | null;
     bankAccounts: string | null;
+    operationsJobs: string | null;
+    operationsDrivers: string | null;
+    operationsVehicles: string | null;
   };
   counts: {
     invoices: number;
@@ -46,6 +55,9 @@ interface SyncCheckResponse {
     discussions: number;
     employees: number;
     bankAccounts: number;
+    operationsJobs: number;
+    operationsDrivers: number;
+    operationsVehicles: number;
   };
 }
 
@@ -161,6 +173,30 @@ Deno.serve(async (req: Request) => {
         .eq('business_profile_id', businessProfileId)
         .order('updated_at', { ascending: false })
         .limit(1),
+
+      // Operational jobs
+      supabaseClient
+        .from('operational_jobs')
+        .select('updated_at', { count: 'exact', head: false })
+        .eq('business_profile_id', businessProfileId)
+        .order('updated_at', { ascending: false })
+        .limit(1),
+
+      // Drivers
+      supabaseClient
+        .from('drivers')
+        .select('updated_at', { count: 'exact', head: false })
+        .eq('business_profile_id', businessProfileId)
+        .order('updated_at', { ascending: false })
+        .limit(1),
+
+      // Vehicles
+      supabaseClient
+        .from('vehicles')
+        .select('updated_at', { count: 'exact', head: false })
+        .eq('business_profile_id', businessProfileId)
+        .order('updated_at', { ascending: false })
+        .limit(1),
     ]);
 
     const [
@@ -171,6 +207,9 @@ Deno.serve(async (req: Request) => {
       discussionsResult,
       employeesResult,
       bankAccountsResult,
+      operationsJobsResult,
+      driversResult,
+      vehiclesResult,
     ] = checks;
 
     // Build response
@@ -183,6 +222,9 @@ Deno.serve(async (req: Request) => {
         discussions: false,
         employees: false,
         bankAccounts: false,
+        operationsJobs: false,
+        operationsDrivers: false,
+        operationsVehicles: false,
       },
       latestTimestamps: {
         invoices: invoicesResult.data?.[0]?.updated_at || null,
@@ -192,6 +234,9 @@ Deno.serve(async (req: Request) => {
         discussions: discussionsResult.data?.[0]?.updated_at || null,
         employees: employeesResult.data?.[0]?.updated_at || null,
         bankAccounts: bankAccountsResult.data?.[0]?.updated_at || null,
+        operationsJobs: operationsJobsResult.data?.[0]?.updated_at || null,
+        operationsDrivers: driversResult.data?.[0]?.updated_at || null,
+        operationsVehicles: vehiclesResult.data?.[0]?.updated_at || null,
       },
       counts: {
         invoices: invoicesResult.count || 0,
@@ -201,6 +246,9 @@ Deno.serve(async (req: Request) => {
         discussions: discussionsResult.count || 0,
         employees: employeesResult.count || 0,
         bankAccounts: bankAccountsResult.count || 0,
+        operationsJobs: operationsJobsResult.count || 0,
+        operationsDrivers: driversResult.count || 0,
+        operationsVehicles: vehiclesResult.count || 0,
       },
     };
 
@@ -245,6 +293,24 @@ Deno.serve(async (req: Request) => {
       response.hasUpdates.bankAccounts = new Date(response.latestTimestamps.bankAccounts) > new Date(lastSyncTimestamps.bankAccounts);
     } else if (response.latestTimestamps.bankAccounts) {
       response.hasUpdates.bankAccounts = true;
+    }
+
+    if (lastSyncTimestamps.operationsJobs && response.latestTimestamps.operationsJobs) {
+      response.hasUpdates.operationsJobs = new Date(response.latestTimestamps.operationsJobs) > new Date(lastSyncTimestamps.operationsJobs);
+    } else if (response.latestTimestamps.operationsJobs) {
+      response.hasUpdates.operationsJobs = true;
+    }
+
+    if (lastSyncTimestamps.operationsDrivers && response.latestTimestamps.operationsDrivers) {
+      response.hasUpdates.operationsDrivers = new Date(response.latestTimestamps.operationsDrivers) > new Date(lastSyncTimestamps.operationsDrivers);
+    } else if (response.latestTimestamps.operationsDrivers) {
+      response.hasUpdates.operationsDrivers = true;
+    }
+
+    if (lastSyncTimestamps.operationsVehicles && response.latestTimestamps.operationsVehicles) {
+      response.hasUpdates.operationsVehicles = new Date(response.latestTimestamps.operationsVehicles) > new Date(lastSyncTimestamps.operationsVehicles);
+    } else if (response.latestTimestamps.operationsVehicles) {
+      response.hasUpdates.operationsVehicles = true;
     }
 
     return new Response(
