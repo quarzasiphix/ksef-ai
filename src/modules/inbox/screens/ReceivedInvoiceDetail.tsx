@@ -322,78 +322,62 @@ export const ReceivedInvoiceDetail = () => {
 
           {/* Details Tab */}
           <TabsContent value="details" className="mt-0">
-            {/* Action Buttons - Prominent at Top of Details */}
+            {/* Action Buttons - Compact version mirroring discussion tab */}
             {['received', 'under_discussion', 'correction_needed'].includes(invoiceData.agreement_status || 'received') && (
-              <Card className="mb-6 border-2 border-primary/20 bg-gradient-to-r from-blue-50 to-purple-50 dark:from-blue-950/20 dark:to-purple-950/20">
-                <CardContent className="pt-6">
-                  <div className="text-center mb-4">
-                    <h3 className="text-xl font-bold mb-2">Co chcesz zrobić z tą fakturą?</h3>
-                    <p className="text-muted-foreground">
-                      Wybierz jedną z poniższych opcji, aby zatwierdzić, poprawić lub zgłosić problem
+              <Card className="mb-6 border border-primary/10 bg-card">
+                <CardContent className="pt-5">
+                  <div className="text-center mb-4 space-y-1">
+                    <h3 className="text-lg font-semibold">Co chcesz zrobić z tą fakturą?</h3>
+                    <p className="text-sm text-muted-foreground">
+                      Wybierz jedną z opcji, aby zatwierdzić dokument, poprosić o korektę lub go odrzucić.
                     </p>
                   </div>
-                  
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                    {/* Accept Button - Green, Most Prominent */}
-                    <Button
-                      onClick={async () => {
-                        await handleApprove();
-                      }}
-                      className="h-auto py-6 px-6 bg-green-600 hover:bg-green-700 text-white font-bold text-lg flex-col gap-3"
-                      size="lg"
-                    >
-                      <Lock className="h-8 w-8" />
-                      <div className="text-center">
-                        <div>Zatwierdź i zablokuj</div>
-                        <div className="text-xs font-normal mt-1 opacity-90">
-                          Wszystko jest OK, akceptuję fakturę
-                        </div>
-                      </div>
-                    </Button>
 
-                    {/* Request Correction - Orange */}
+                  <div className="flex flex-col gap-3 md:flex-row">
                     <Button
                       onClick={() => {
-                        setActiveTab('discussion');
-                        setTimeout(() => {
-                          const discussionPanel = document.querySelector('[data-discussion-panel]');
-                          discussionPanel?.scrollIntoView({ behavior: 'smooth' });
-                        }, 100);
+                        const event = new CustomEvent('open-approve-dialog');
+                        window.dispatchEvent(event);
                       }}
-                      variant="outline"
-                      className="h-auto py-6 px-6 border-2 border-orange-400 text-orange-700 hover:bg-orange-50 dark:hover:bg-orange-950/20 font-bold text-lg flex-col gap-3"
+                      className="flex-1 justify-center gap-2 bg-green-600 hover:bg-green-700 text-white font-semibold"
                       size="lg"
                     >
-                      <MessageSquare className="h-8 w-8" />
-                      <div className="text-center">
-                        <div>Zgłoś problem</div>
-                        <div className="text-xs font-normal mt-1">
-                          Coś jest nie tak, chcę porozmawiać
-                        </div>
+                      <Lock className="h-4 w-4" />
+                      <div className="flex flex-col items-start text-left">
+                        <span>Zatwierdź i zablokuj dokument</span>
+                        <span className="text-xs text-white/80 hidden sm:inline">
+                          Po zatwierdzeniu dokument staje się nieedytowalny
+                        </span>
                       </div>
                     </Button>
-
-                    {/* Reject - Red */}
+                    <Button
+                      onClick={() => setShowCorrectionModal(true)}
+                      variant="outline"
+                      className="flex-1 justify-center gap-2 border-orange-300 text-orange-700 hover:bg-orange-50"
+                      size="lg"
+                    >
+                      <AlertCircle className="h-4 w-4" />
+                      <div className="flex flex-col items-start text-left">
+                        <span>Wymagana korekta</span>
+                        <span className="text-xs text-orange-600/80 hidden sm:inline">
+                          Poproś wystawcę o poprawki
+                        </span>
+                      </div>
+                    </Button>
                     <Button
                       onClick={() => setShowRejectModal(true)}
                       variant="outline"
-                      className="h-auto py-6 px-6 border-2 border-red-400 text-red-700 hover:bg-red-50 dark:hover:bg-red-950/20 font-bold text-lg flex-col gap-3"
+                      className="flex-1 justify-center gap-2 border-red-300 text-red-700 hover:bg-red-50"
                       size="lg"
                     >
-                      <XCircle className="h-8 w-8" />
-                      <div className="text-center">
-                        <div>Odrzuć całkowicie</div>
-                        <div className="text-xs font-normal mt-1">
-                          To nie moja faktura lub jest błędna
-                        </div>
+                      <XCircle className="h-4 w-4" />
+                      <div className="flex flex-col items-start text-left">
+                        <span>Odrzuć</span>
+                        <span className="text-xs text-red-600/80 hidden sm:inline">
+                          Dokument jest nieprawidłowy
+                        </span>
                       </div>
                     </Button>
-                  </div>
-
-                  <div className="mt-4 p-3 bg-blue-100 dark:bg-blue-950/30 rounded-lg">
-                    <p className="text-sm text-center text-blue-900 dark:text-blue-100">
-                      <strong>Wskazówka:</strong> Jeśli masz pytania lub wątpliwości, kliknij "Zgłoś problem" aby porozmawiać z wystawcą przed zatwierdzeniem
-                    </p>
                   </div>
                 </CardContent>
               </Card>
