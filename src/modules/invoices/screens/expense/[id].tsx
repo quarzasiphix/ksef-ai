@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from "react";
-import { useParams, useNavigate, useSearchParams } from "react-router-dom";
+import { useParams, useNavigate, useSearchParams, useLocation } from "react-router-dom";
 import { useAuth } from "@/shared/context/AuthContext";
 import { Button } from "@/shared/ui/button";
 import { toast } from "sonner";
@@ -14,7 +14,7 @@ import { Card, CardHeader, CardTitle, CardContent } from "@/shared/ui/card";
 import CustomerForm from "@/modules/customers/components/CustomerForm";
 import { BusinessProfileSelector } from "@/modules/invoices/components/selectors/BusinessProfileSelector";
 import { useBusinessProfile } from "@/shared/context/BusinessProfileContext";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { format } from "date-fns";
 import { pl } from "date-fns/locale";
 import { formatCurrency } from "@/shared/lib/utils";
@@ -36,7 +36,7 @@ import {
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { DiscussionPanel } from "@/modules/invoices/components/discussion/DiscussionPanel";
-import { AgreementStatusBadge } from "@/modules/invoices/components/AgreementStatusBadge";
+import { AgreementStatusBadge, AgreementStatus } from "@/modules/invoices/components/AgreementStatusBadge";
 import { AgreementActionButtons } from "@/modules/invoices/components/AgreementActionButtons";
 import { updateInvoiceAgreementStatus } from "@/modules/contracts/data/agreementRepository";
 import { RequestCorrectionModal } from "@/modules/invoices/components/RequestCorrectionModal";
