@@ -34,6 +34,10 @@ const EquityModule = React.lazy(() => import('@/modules/accounting/screens/Equit
 const Premium = React.lazy(() => import('@/modules/premium/screens/Premium'));
 const PremiumPlanDetails = React.lazy(() => import('@/modules/premium/screens/PremiumPlanDetails'));
 const DocumentsHub = React.lazy(() => import('@/modules/contracts/screens/DocumentsHub'));
+const DocumentsHubRedesigned = React.lazy(() => import('@/modules/documents/screens/DocumentsHubRedesigned'));
+const DocumentsShell = React.lazy(() => import('@/modules/documents/layouts/DocumentsShell'));
+const SectionDocumentsPage = React.lazy(() => import('@/modules/documents/screens/SectionDocumentsPage'));
+const DocumentDetailPage = React.lazy(() => import('@/modules/documents/screens/DocumentDetailPage'));
 const ContractNew = React.lazy(() => import('@/modules/contracts/screens/ContractNew'));
 const ContractDetails = React.lazy(() => import('@/modules/contracts/screens/ContractDetails'));
 const DecisionsHub = React.lazy(() => import('@/modules/decisions/screens/DecisionsHub'));
@@ -336,14 +340,60 @@ export const routes: RouteConfig[] = [
     section: 'hr',
   },
 
-  // Contracts & Documents
+  // Documents - Section-based routes with persistent shell
   {
-    path: '/contracts',
-    element: <DocumentsHub />,
+    path: '/documents',
+    element: <DocumentsShell />,
     guard: 'protected',
-    title: 'Umowy',
+    title: 'Dokumenty',
     icon: 'FileText',
     section: 'documents',
+    children: [
+      {
+        path: '',
+        element: <DocumentsHubRedesigned />,
+      },
+      {
+        path: 'contracts',
+        element: <SectionDocumentsPage />,
+      },
+      {
+        path: 'contracts/:id',
+        element: <DocumentDetailPage />,
+      },
+      {
+        path: 'financial',
+        element: <SectionDocumentsPage />,
+      },
+      {
+        path: 'financial/:id',
+        element: <DocumentDetailPage />,
+      },
+      {
+        path: 'operations',
+        element: <SectionDocumentsPage />,
+      },
+      {
+        path: 'operations/:id',
+        element: <DocumentDetailPage />,
+      },
+      {
+        path: 'audit',
+        element: <SectionDocumentsPage />,
+      },
+      {
+        path: 'audit/:id',
+        element: <DocumentDetailPage />,
+      },
+    ],
+  },
+  
+  // Legacy routes - redirect to new structure
+  {
+    path: '/contracts',
+    element: <DocumentsHubRedesigned />,
+    guard: 'protected',
+    hideInNav: true,
   },
   {
     path: '/contracts/new',
@@ -367,9 +417,7 @@ export const routes: RouteConfig[] = [
     path: '/contracts/resolutions',
     element: <Resolutions />,
     guard: 'protected',
-    title: 'Uchwały',
-    icon: 'Gavel',
-    section: 'documents',
+    hideInNav: true,
   },
 
   // Decisions

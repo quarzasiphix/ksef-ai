@@ -51,6 +51,8 @@ import { getDecisions } from '@/modules/spolka/data/decisionsRepository';
 import type { Decision } from '@/modules/decisions/decisions';
 import { Breadcrumbs } from '@/components/seo/Breadcrumbs';
 import NextActionPanel from '@/modules/accounting/components/NextActionPanel';
+import { ContractNewModal } from '@/modules/contracts/components/ContractNewModal';
+import type { DocumentSection } from '@/modules/documents/types/blueprints';
 
 type DocumentView = 'all' | 'transactional_payout' | 'transactional_payin' | 'informational' | 'generated' | 'uploaded' | 'decisions';
 
@@ -90,6 +92,10 @@ const DocumentsHub = () => {
     description: '',
     category: 'other' as DocumentCategory,
   });
+  
+  // Contract modal state
+  const [contractModalOpen, setContractModalOpen] = useState(false);
+  const [currentSection, setCurrentSection] = useState<DocumentSection>('contracts');
 
   const safeNavigate = useCallback((to: string) => {
     const hadOverlaysOpen = mobileSidebarOpen || createFolderDialogOpen || deleteFolderDialogOpen || uploadDialogOpen;
@@ -498,7 +504,8 @@ const DocumentsHub = () => {
           type="button"
           onClick={() => {
             onNavigate?.();
-            safeNavigate('/contracts/new');
+            setCurrentSection('contracts');
+            setContractModalOpen(true);
           }}
           className="w-full flex items-center gap-2 rounded-md px-3 py-2 text-sm bg-muted/60 hover:bg-muted/80 transition-colors"
         >
@@ -955,7 +962,13 @@ const DocumentsHub = () => {
                     <Upload className="h-4 w-4 mr-2" />
                     Prześlij plik
                   </Button>
-                  <Button className="w-full sm:w-auto" onClick={() => safeNavigate('/contracts/new')}>
+                  <Button 
+                    className="w-full sm:w-auto" 
+                    onClick={() => {
+                      setCurrentSection('contracts');
+                      setContractModalOpen(true);
+                    }}
+                  >
                     <Plus className="h-4 w-4 mr-2" />
                     Nowy dokument
                   </Button>
@@ -1207,7 +1220,12 @@ const DocumentsHub = () => {
                       <Upload className="h-4 w-4 mr-2" />
                       Prześlij plik
                     </Button>
-                    <Button onClick={() => safeNavigate('/contracts/new')}>
+                    <Button 
+                      onClick={() => {
+                        setCurrentSection('contracts');
+                        setContractModalOpen(true);
+                      }}
+                    >
                       <Plus className="h-4 w-4 mr-2" />
                       Dodaj pierwszy dokument
                     </Button>
@@ -1219,6 +1237,16 @@ const DocumentsHub = () => {
         </div>
       </div>
       </div>
+      <ContractNewModal
+        open={contractModalOpen}
+        onOpenChange={setContractModalOpen}
+        section={currentSection}
+        businessProfileId={selectedProfileId || undefined}
+        onSuccess={() => {
+          loadData();
+          toast.success('Umowa została utworzona');
+        }}
+      />
     </Sheet>
   );
 };

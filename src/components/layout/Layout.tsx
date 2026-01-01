@@ -25,15 +25,18 @@ const Layout = ({ children }: LayoutProps) => {
     const isAccountingRoute = location.pathname.startsWith('/accounting');
     const isContractsRoute = location.pathname.startsWith('/contracts');
     const isSettingsRoute = location.pathname.startsWith('/settings');
-    const isFullBleedRoute = isAccountingRoute || isContractsRoute || isSettingsRoute;
-    const hideBreadcrumbs = isAccountingRoute || isContractsRoute || isSettingsRoute;
+    const isDocumentsRoute = location.pathname.startsWith('/documents');
+    const isFullBleedRoute = isAccountingRoute || isContractsRoute || isSettingsRoute || isDocumentsRoute;
+    const hideBreadcrumbs = isAccountingRoute || isContractsRoute || isSettingsRoute || isDocumentsRoute;
     const isNewBusinessProfileWizardRoute = location.pathname === '/settings/business-profiles/new';
-    const disableOuterScroll = isAccountingRoute || isContractsRoute;
+    const disableOuterScroll = isAccountingRoute || isContractsRoute || isDocumentsRoute;
 
     const mainPaddingClass = isFullBleedRoute
       ? isAccountingRoute
         ? "pt-0 pb-2 pr-2 pl-2 md:pt-0 md:pb-3 md:pr-2 md:pl-2"
-        : "pt-2 pb-2 pr-2 pl-2 md:pt-3 md:pb-3 md:pr-2 md:pl-2"
+        : isDocumentsRoute
+          ? "p-0"
+          : "pt-2 pb-2 pr-2 pl-2 md:pt-3 md:pb-3 md:pr-2 md:pl-2"
       : "p-4 md:p-6";
 
     if (isNewBusinessProfileWizardRoute) {

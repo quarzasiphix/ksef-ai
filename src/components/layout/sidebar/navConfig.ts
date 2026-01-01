@@ -155,7 +155,7 @@ const navGroupsConfig: NavGroupConfig[] = [
         id: "contracts",
         label: "Umowy",
         icon: Signature,
-        path: "/contracts",
+        path: "/documents",
         tint: "structure",
       },
       {
