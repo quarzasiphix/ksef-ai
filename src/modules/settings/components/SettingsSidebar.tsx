@@ -14,6 +14,7 @@ import {
   Settings,
   PanelLeftClose,
   PanelLeftOpen,
+  Activity,
 } from 'lucide-react';
 
 interface NavItem {
@@ -91,6 +92,13 @@ const settingsNavSections: NavSection[] = [
         icon: <Network className="h-5 w-5" />,
         description: 'ERP i automatyzacja',
         color: 'text-blue-500',
+      },
+      {
+        label: 'Dziennik zdarzeń',
+        href: '/settings/event-log',
+        icon: <Activity className="h-5 w-5" />,
+        description: 'Historia zdarzeń systemowych',
+        color: 'text-rose-500',
       },
     ],
   },

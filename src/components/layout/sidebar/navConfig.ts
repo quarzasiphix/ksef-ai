@@ -152,9 +152,9 @@ const navGroupsConfig: NavGroupConfig[] = [
         tint: "structure",
       },
       {
-        id: "contracts",
-        label: "Umowy",
-        icon: Signature,
+        id: "documents",
+        label: "Dokumenty",
+        icon: FileText,
         path: "/documents",
         tint: "structure",
       },
@@ -236,7 +236,7 @@ const navGroupsConfig: NavGroupConfig[] = [
     items: [
       {
         id: "projects",
-        label: "Projekty",
+        label: "Działy",
         icon: FolderKanban,
         path: "/settings/projects",
         tint: "system",

@@ -137,6 +137,20 @@ const DecisionsCommandCenter = () => {
     );
   };
 
+  // Filter decisions by level
+  const globalDecisions = useMemo(() => 
+    decisions.filter(d => !d.decision_level || d.decision_level === 'global'),
+    [decisions]
+  );
+
+  const departmentDecisions = useMemo(() => 
+    decisions.filter(d => 
+      d.decision_level === 'department' && 
+      (!selectedDepartment || d.department_id === selectedDepartment.id)
+    ),
+    [decisions, selectedDepartment]
+  );
+
   if (!selectedProfile) {
     return (
       <div className="p-6">
@@ -161,20 +175,6 @@ const DecisionsCommandCenter = () => {
       </div>
     );
   }
-
-  // Filter decisions by level
-  const globalDecisions = useMemo(() => 
-    decisions.filter(d => !d.decision_level || d.decision_level === 'global'),
-    [decisions]
-  );
-
-  const departmentDecisions = useMemo(() => 
-    decisions.filter(d => 
-      d.decision_level === 'department' && 
-      (!selectedDepartment || d.department_id === selectedDepartment.id)
-    ),
-    [decisions, selectedDepartment]
-  );
 
   const projectDecisions = useMemo(() => 
     decisions.filter(d => 

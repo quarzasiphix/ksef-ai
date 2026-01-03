@@ -11,17 +11,35 @@ import { Sheet, SheetContent, SheetTrigger } from '@/shared/ui/sheet';
 import { Button } from '@/shared/ui/button';
 import { Menu } from 'lucide-react';
 import DocumentsSidebar from '../components/DocumentsSidebar';
-import { getSectionFromRoute, type DocumentSection } from '../types/sections';
+import { getSectionFromRoute } from '../types/sections';
+import { useStorageFolders } from '../hooks/useStorageFolders';
+import { CreateFolderDialog } from '../components/dialogs/CreateFolderDialog';
 
 const DocumentsShell: React.FC = () => {
   const location = useLocation();
   const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
+  const [selectedStorageFolderId, setSelectedStorageFolderId] = useState<string | undefined>();
+  const [draggedFileId, setDraggedFileId] = useState<string | null>(null);
+  const [createFolderDialogOpen, setCreateFolderDialogOpen] = useState(false);
   const currentSection = getSectionFromRoute(location.pathname);
+  
+  // Fetch storage folders from Supabase
+  const { folders: storageFolders, isLoading: isLoadingFolders } = useStorageFolders();
 
   const activeFolderId = useMemo(() => {
     const match = location.pathname.match(/folders\/([^/]+)/);
     return match ? match[1] : null;
   }, [location.pathname]);
+
+  const handleCreateStorageFolder = () => {
+    setCreateFolderDialogOpen(true);
+  };
+
+  const handleFileDropOnFolder = (folderId: string) => {
+    if (!draggedFileId) return;
+    console.log('Move file', draggedFileId, 'to folder', folderId);
+    setDraggedFileId(null);
+  };
 
   return (
     <div className="relative flex gap-6">
@@ -30,6 +48,12 @@ const DocumentsShell: React.FC = () => {
           <DocumentsSidebar
             currentSection={currentSection}
             currentFolderId={activeFolderId}
+            storageFolders={storageFolders || []}
+            selectedStorageFolderId={selectedStorageFolderId}
+            onStorageFolderSelect={setSelectedStorageFolderId}
+            onCreateStorageFolder={handleCreateStorageFolder}
+            draggedFileId={draggedFileId ?? undefined}
+            onFileDropOnFolder={handleFileDropOnFolder}
           />
         </div>
       </div>
@@ -48,14 +72,32 @@ const DocumentsShell: React.FC = () => {
           <DocumentsSidebar
             currentSection={currentSection}
             currentFolderId={activeFolderId}
+            storageFolders={storageFolders || []}
+            selectedStorageFolderId={selectedStorageFolderId}
+            onStorageFolderSelect={setSelectedStorageFolderId}
+            onCreateStorageFolder={handleCreateStorageFolder}
+            draggedFileId={draggedFileId ?? undefined}
+            onFileDropOnFolder={handleFileDropOnFolder}
             onNavigate={() => setMobileSidebarOpen(false)}
           />
         </SheetContent>
       </Sheet>
 
       <main className="flex-1 min-w-0">
-        <Outlet />
+        <Outlet context={{
+          selectedStorageFolderId,
+          setSelectedStorageFolderId,
+          storageFolders: storageFolders || [],
+          setDraggedFileId,
+          handleFileDropOnFolder,
+          draggedFileId,
+        }} />
       </main>
+
+      <CreateFolderDialog
+        open={createFolderDialogOpen}
+        onOpenChange={setCreateFolderDialogOpen}
+      />
     </div>
   );
 };

@@ -11,7 +11,7 @@ export interface WorkspaceTab {
   path: string;
   icon?: React.ComponentType<{ className?: string }>;
   entityId?: string; // For document tabs (invoice ID, contract ID, etc.)
-  entityType?: 'invoice' | 'contract' | 'customer' | 'product' | 'employee' | 'expense';
+  entityType?: 'invoice' | 'contract' | 'customer' | 'product' | 'employee' | 'expense' | 'storage_file';
   isDirty?: boolean; // Has unsaved changes
   isPinned?: boolean;
   state?: any; // Preserved state (form data, scroll position, filters)
@@ -56,6 +56,7 @@ export const getIconForPath = (path: string): React.ComponentType<{ className?: 
   if (path.startsWith('/employees')) return Building;
   if (path.startsWith('/decisions')) return FileCheck;
   if (path.startsWith('/settings')) return Building;
+  if (path.startsWith('/documents/repository')) return FileText;
   return undefined;
 };
 
@@ -72,6 +73,8 @@ const getTitleForPath = (path: string): string => {
   if (path.startsWith('/employees')) return 'Pracownicy';
   if (path.startsWith('/decisions')) return 'Decyzje';
   if (path.startsWith('/settings')) return 'Ustawienia';
+  if (path.startsWith('/documents/repository/file/')) return 'Plik';
+  if (path.startsWith('/documents/repository')) return 'Repozytorium';
   return 'Dokument';
 };
 

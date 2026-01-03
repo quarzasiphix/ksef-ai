@@ -22,6 +22,7 @@ const BusinessProfiles = React.lazy(() => import('@/modules/settings/screens/Bus
 const NewBusinessProfile = React.lazy(() => import('@/modules/settings/screens/NewBusinessProfile'));
 const EditBusinessProfile = React.lazy(() => import('@/modules/settings/screens/EditBusinessProfile'));
 const DocumentSettings = React.lazy(() => import('@/modules/settings/screens/DocumentSettings'));
+const DocumentRepository = React.lazy(() => import('@/modules/documents/screens/DocumentRepository'));
 const ERPIntegrations = React.lazy(() => import('@/modules/settings/screens/ERPIntegrations'));
 const EmployeesList = React.lazy(() => import('@/modules/employees/screens/EmployeesList'));
 const NewEmployee = React.lazy(() => import('@/modules/employees/screens/NewEmployee'));
@@ -38,6 +39,7 @@ const DocumentsHubRedesigned = React.lazy(() => import('@/modules/documents/scre
 const DocumentsShell = React.lazy(() => import('@/modules/documents/layouts/DocumentsShell'));
 const SectionDocumentsPage = React.lazy(() => import('@/modules/documents/screens/SectionDocumentsPage'));
 const DocumentDetailPage = React.lazy(() => import('@/modules/documents/screens/DocumentDetailPage'));
+const AttachmentsPage = React.lazy(() => import('@/modules/documents/screens/AttachmentsPage'));
 const ContractNew = React.lazy(() => import('@/modules/contracts/screens/ContractNew'));
 const ContractDetails = React.lazy(() => import('@/modules/contracts/screens/ContractDetails'));
 const DecisionsHub = React.lazy(() => import('@/modules/decisions/screens/DecisionsHub'));
@@ -354,6 +356,10 @@ export const routes: RouteConfig[] = [
         element: <DocumentsHubRedesigned />,
       },
       {
+        path: 'attachments',
+        element: <AttachmentsPage />,
+      },
+      {
         path: 'contracts',
         element: <SectionDocumentsPage />,
       },
@@ -385,6 +391,18 @@ export const routes: RouteConfig[] = [
         path: 'audit/:id',
         element: <DocumentDetailPage />,
       },
+      {
+        path: 'repository',
+        element: <DocumentRepository />,
+      },
+      {
+        path: 'repository/folder/:folderId',
+        element: <DocumentRepository />,
+      },
+      {
+        path: 'repository/file/:fileId',
+        element: <DocumentRepository />,
+      }
     ],
   },
   
@@ -634,6 +652,10 @@ export const routes: RouteConfig[] = [
       {
         path: 'projects',
         element: <DepartmentsScreen />,
+      },
+      {
+        path: 'event-log',
+        element: <EventLog />,
       },
     ],
   },

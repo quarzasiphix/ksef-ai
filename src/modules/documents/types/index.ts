@@ -437,3 +437,9 @@ export function getFolderPresetsForDepartment(departmentTemplateId: string): Fol
       return TRANSPORT_FOLDER_PRESETS; // Default fallback
   }
 }
+
+// ============================================================================
+// STORAGE LAYER EXPORTS
+// ============================================================================
+
+export * from './storage';

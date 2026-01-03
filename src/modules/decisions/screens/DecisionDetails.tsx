@@ -20,23 +20,26 @@ import {
   CheckCircle2,
   Clock,
   XCircle,
+  Wallet,
 } from 'lucide-react';
 import { getDecision, getDecisionWithUsage } from '@/modules/spolka/data/decisionsRepository';
 import type { DecisionWithUsage } from '@/modules/decisions/decisions';
 import { DECISION_CATEGORY_LABELS, DECISION_STATUS_LABELS, DECISION_TYPE_LABELS } from '@/modules/decisions/decisions';
 import { RevokeDecisionDialog } from '@/modules/decisions/components/RevokeDecisionDialog';
 import { RevocationApprovalPanel } from '@/modules/decisions/components/RevocationApprovalPanel';
+import { DecisionEvidence } from '@/modules/decisions/components/DecisionEvidence';
+import { AttachFileDialog } from '@/modules/decisions/components/AttachFileDialog';
 import { getRevocationRequestByDecisionId } from '@/modules/decisions/data/revocationRepository';
 import { supabase } from '@/integrations/supabase/client';
 import { getCashAccounts } from '@/modules/accounting/data/kasaRepository';
 import type { CashAccount } from '@/modules/accounting/kasa';
-import { Wallet } from 'lucide-react';
 
 const DecisionDetails: React.FC = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const { selectedProfileId, profiles } = useBusinessProfile();
   const [showRevokeDialog, setShowRevokeDialog] = useState(false);
+  const [showAttachDialog, setShowAttachDialog] = useState(false);
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
 
   const selectedProfile = profiles.find(p => p.id === selectedProfileId);
@@ -479,6 +482,13 @@ const DecisionDetails: React.FC = () => {
         </Card>
       )}
 
+      {/* Decision Evidence Section */}
+      <DecisionEvidence
+        decisionId={id!}
+        decisionStatus={d.status}
+        onAddAttachment={() => setShowAttachDialog(true)}
+      />
+
       {!d.contracts?.length && !d.invoices?.length && !d.expenses?.length && !d.documents?.length && (
         <Card>
           <CardContent className="py-10 text-center">
@@ -505,6 +515,15 @@ const DecisionDetails: React.FC = () => {
         decisionId={id!}
         decisionTitle={d.title}
         requiredApprovers={currentUserId ? [currentUserId] : []}
+      />
+
+      <AttachFileDialog
+        open={showAttachDialog}
+        onOpenChange={setShowAttachDialog}
+        entityType="decision"
+        entityId={id!}
+        allowedRoles={['DECISION_DRAFT_PDF', 'DECISION_SIGNED_PDF', 'DECISION_SCAN', 'DECISION_SUPPORTING_DOC']}
+        defaultRole="DECISION_SIGNED_PDF"
       />
     </div>
   );
