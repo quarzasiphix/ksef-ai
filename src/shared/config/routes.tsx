@@ -62,6 +62,8 @@ const Kasa = React.lazy(() => import('@/modules/accounting/screens/Kasa'));
 const TransactionalContracts = React.lazy(() => import('@/modules/accounting/screens/TransactionalContracts'));
 const EventLog = React.lazy(() => import('@/modules/accounting/screens/EventLog'));
 const LedgerPage = React.lazy(() => import('@/modules/accounting/screens/LedgerPage'));
+const GeneralLedger = React.lazy(() => import('@/modules/accounting/screens/GeneralLedger'));
+const ChartOfAccounts = React.lazy(() => import('@/modules/accounting/screens/ChartOfAccounts'));
 const EventsShell = React.lazy(() => import('@/modules/events/components/EventsShell'));
 const EventsTimeline = React.lazy(() => import('@/modules/events/screens/EventsTimeline'));
 const EventsPosting = React.lazy(() => import('@/modules/events/screens/EventsPosting'));
@@ -542,6 +544,14 @@ export const routes: RouteConfig[] = [
       {
         path: '/accounting/event-log',
         element: <EventLog />,
+      },
+      {
+        path: '/accounting/general-ledger',
+        element: <GeneralLedger />,
+      },
+      {
+        path: '/accounting/coa',
+        element: <ChartOfAccounts />,
       },
     ],
   },

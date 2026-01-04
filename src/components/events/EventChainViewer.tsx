@@ -213,13 +213,25 @@ const EventChainViewer: React.FC<EventChainViewerProps> = ({
 
                       {/* Changes preview */}
                       {event.changes && Object.keys(event.changes).length > 0 && (
-                        <details className="mt-2">
-                          <summary className="text-xs text-muted-foreground cursor-pointer hover:text-foreground">
+                        <details className="mt-2 group">
+                          <summary className="flex items-center gap-1 text-xs text-muted-foreground cursor-pointer transition-colors hover:text-foreground">
+                            <span className="h-1.5 w-1.5 rounded-full bg-primary/70 group-open:bg-primary"></span>
                             Szczegóły zmian
                           </summary>
-                          <pre className="mt-2 text-xs bg-muted p-2 rounded overflow-x-auto">
-                            {JSON.stringify(event.changes, null, 2)}
-                          </pre>
+                          <div className="mt-2 rounded-lg border border-border/70 bg-muted/60 text-xs shadow-inner">
+                            <dl className="divide-y divide-border/60">
+                              {Object.entries(event.changes).map(([key, value]) => (
+                                <div key={key} className="grid grid-cols-2 gap-2 px-3 py-2">
+                                  <dt className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
+                                    {formatChangeLabel(key)}
+                                  </dt>
+                                  <dd className="text-[11px] text-foreground/90 break-all">
+                                    {formatChangeValue(value)}
+                                  </dd>
+                                </div>
+                              ))}
+                            </dl>
+                          </div>
                         </details>
                       )}
                     </div>
@@ -235,3 +247,29 @@ const EventChainViewer: React.FC<EventChainViewerProps> = ({
 };
 
 export default EventChainViewer;
+
+function formatChangeLabel(key: string) {
+  return key
+    .replace(/_/g, ' ')
+    .replace(/\b\w/g, (char) => char.toUpperCase());
+}
+
+function formatChangeValue(value: unknown) {
+  if (value === null || value === undefined) return '—';
+
+  if (typeof value === 'number') {
+    return new Intl.NumberFormat('pl-PL', {
+      maximumFractionDigits: 2,
+    }).format(value);
+  }
+
+  if (typeof value === 'boolean') {
+    return value ? 'Tak' : 'Nie';
+  }
+
+  if (typeof value === 'object') {
+    return JSON.stringify(value);
+  }
+
+  return String(value);
+}

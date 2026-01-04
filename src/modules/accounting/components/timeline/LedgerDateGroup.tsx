@@ -14,9 +14,10 @@ interface LedgerDateGroupProps {
     isDelayed?: boolean;
     isBackdated?: boolean;
   } | undefined;
+  hasEventSystem?: (eventId: string) => boolean;
 }
 
-export const LedgerDateGroup: React.FC<LedgerDateGroupProps> = ({ group, onEventClick, onShowAudit, getAuditHint }) => {
+export const LedgerDateGroup: React.FC<LedgerDateGroupProps> = ({ group, onEventClick, onShowAudit, getAuditHint, hasEventSystem }) => {
   return (
     <div className="mb-8">
       {/* Date Header */}
@@ -39,17 +40,22 @@ export const LedgerDateGroup: React.FC<LedgerDateGroupProps> = ({ group, onEvent
 
       {/* Events */}
       <div className="space-y-0">
-        {group.items.map((event, index) => (
-          <TimelineRow
-            key={event.id}
-            event={event}
-            isFirstInGroup={index === 0}
-            isLastInGroup={index === group.items.length - 1}
-            onClick={onEventClick}
-            onShowAudit={onShowAudit ? () => onShowAudit(event.id) : undefined}
-            auditHint={getAuditHint ? getAuditHint(event.id) : undefined}
-          />
-        ))}
+        {group.items.map((event, index) => {
+          // Only show audit button if event has actual event system entry
+          const showAudit = hasEventSystem && hasEventSystem(event.id) && onShowAudit;
+          
+          return (
+            <TimelineRow
+              key={event.id}
+              event={event}
+              isFirstInGroup={index === 0}
+              isLastInGroup={index === group.items.length - 1}
+              onClick={onEventClick}
+              onShowAudit={showAudit ? () => onShowAudit(event.id) : undefined}
+              auditHint={getAuditHint ? getAuditHint(event.id) : undefined}
+            />
+          );
+        })}
       </div>
     </div>
   );

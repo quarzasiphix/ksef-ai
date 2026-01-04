@@ -12,9 +12,10 @@ interface LedgerTimelineListProps {
     isDelayed?: boolean;
     isBackdated?: boolean;
   } | undefined;
+  hasEventSystem?: (eventId: string) => boolean;
 }
 
-export const LedgerTimelineList: React.FC<LedgerTimelineListProps> = ({ groups, onEventClick, onShowAudit, getAuditHint }) => {
+export const LedgerTimelineList: React.FC<LedgerTimelineListProps> = ({ groups, onEventClick, onShowAudit, getAuditHint, hasEventSystem }) => {
   if (groups.length === 0) {
     return (
       <div className="flex items-center justify-center py-16">
@@ -36,6 +37,7 @@ export const LedgerTimelineList: React.FC<LedgerTimelineListProps> = ({ groups, 
           onEventClick={onEventClick}
           onShowAudit={onShowAudit}
           getAuditHint={getAuditHint}
+          hasEventSystem={hasEventSystem}
         />
       ))}
     </div>

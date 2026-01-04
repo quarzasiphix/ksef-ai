@@ -17,6 +17,7 @@ import {
   PanelLeftClose,
   PanelLeftOpen,
   Shield,
+  Book,
 } from 'lucide-react';
 
 interface NavItem {
@@ -42,6 +43,13 @@ const spolkaNavSections: NavSection[] = [
         icon: <LayoutDashboard className="h-5 w-5" />,
         description: 'Przegląd finansów',
         color: 'text-blue-500',
+      },
+      {
+        label: 'Księga główna',
+        href: '/accounting/general-ledger',
+        icon: <Book className="h-5 w-5" />,
+        description: 'Zapisy księgowe i bilans próbny',
+        color: 'text-indigo-500',
       },
     ],
   },

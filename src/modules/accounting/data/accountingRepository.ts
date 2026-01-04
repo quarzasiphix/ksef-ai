@@ -130,41 +130,33 @@ export async function calculateBalanceSheet(
   businessProfileId: string,
   periodEnd: string
 ): Promise<BalanceSheetData> {
-  // Get all posted journal entries up to period end
-  const { data: entries, error } = await supabase
-    .from('journal_entries')
-    .select('*, lines:journal_entry_lines(*, account:chart_of_accounts(*))')
-    .eq('business_profile_id', businessProfileId)
-    .eq('is_posted', true)
-    .lte('entry_date', periodEnd);
+  // Get trial balance from posted journal entries (new system)
+  const { data: trialBalance, error } = await supabase.rpc('get_trial_balance', {
+    p_business_profile_id: businessProfileId,
+    p_period_end: periodEnd,
+  });
 
   if (error) throw error;
 
-  // Calculate balances by account type
+  // Build balances map by account code
   const balances: Record<string, number> = {};
 
-  entries?.forEach(entry => {
-    entry.lines?.forEach((line: any) => {
-      const accountNumber = line.account.account_number;
-      if (!balances[accountNumber]) {
-        balances[accountNumber] = 0;
-      }
-      balances[accountNumber] += line.debit_amount - line.credit_amount;
-    });
+  trialBalance?.forEach((row: any) => {
+    balances[row.account_code] = row.balance;
   });
 
-  // Build balance sheet structure (simplified - you'll need to map specific accounts)
+  // Build balance sheet structure from chart accounts
   const balanceSheet: BalanceSheetData = {
     assets: {
       current: {
-        cash: balances['100'] || 0,
-        accounts_receivable: balances['201'] || 0,
+        cash: (balances['140'] || 0) + (balances['130'] || 0), // Kasa + Bank
+        accounts_receivable: balances['202'] || 0, // Rozrachunki z odbiorcami
         inventory: balances['300'] || 0,
         other: 0,
         total: 0
       },
       fixed: {
-        property: balances['010'] || 0,
+        property: balances['100'] || 0, // Środki trwałe
         equipment: balances['020'] || 0,
         accumulated_depreciation: balances['071'] || 0,
         net: 0,
@@ -174,8 +166,8 @@ export async function calculateBalanceSheet(
     },
     liabilities: {
       current: {
-        accounts_payable: balances['201'] || 0,
-        short_term_debt: balances['240'] || 0,
+        accounts_payable: balances['201'] || 0, // Rozrachunki z dostawcami
+        short_term_debt: (balances['222'] || 0) + (balances['229'] || 0) + (balances['231'] || 0) + (balances['234'] || 0), // VAT + ZUS + US
         other: 0,
         total: 0
       },

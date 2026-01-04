@@ -68,13 +68,17 @@ export const LedgerPage: React.FC = () => {
     // Optionally scroll to the entry in the ledger
   };
 
-  // Mock audit hint data - TODO: replace with real data from backend
+  // Get audit hint data - only for events with actual event system entries
   const getAuditHint = (eventId: string) => {
+    // Find the event in ledgerEvents (actual event system entries)
+    const event = ledgerEvents.find(e => e.id === eventId);
+    if (!event) return undefined; // No audit data for legacy documents
+
     return {
-      recordedAt: new Date().toISOString(),
-      actorName: 'Jan Nowak',
-      isDelayed: Math.random() > 0.8,
-      isBackdated: Math.random() > 0.9,
+      recordedAt: event.occurredAt,
+      actorName: event.meta?.actorName || 'System',
+      isDelayed: false, // TODO: Calculate from event metadata
+      isBackdated: false, // TODO: Calculate from event metadata
     };
   };
 
@@ -190,7 +194,22 @@ export const LedgerPage: React.FC = () => {
     const derived: TimelineLedgerEvent[] = [];
     const makeOccurredAt = (input?: string | null) => input || new Date().toISOString();
 
+    // Track which invoices/expenses already have events
+    const invoicesWithEvents = new Set(
+      ledgerEvents
+        .filter(e => e.documentType === 'invoice')
+        .map(e => e.documentId)
+    );
+    const expensesWithEvents = new Set(
+      ledgerEvents
+        .filter(e => e.documentType === 'expense')
+        .map(e => e.documentId)
+    );
+
     const addInvoiceEvent = (invoice: Invoice) => {
+      // Skip if this invoice already has an event
+      if (invoicesWithEvents.has(invoice.id)) return;
+
       const total =
         invoice.totalGrossValue ??
         invoice.totalAmount ??
@@ -215,6 +234,7 @@ export const LedgerPage: React.FC = () => {
         meta: {
           counterpartyName: invoice.customerName || invoice.buyer?.name,
           docNo: invoice.number,
+          isLegacy: true, // Mark as legacy (pre-event-system)
         },
         linkedDocuments: [],
         documentId: invoice.id,
@@ -223,6 +243,9 @@ export const LedgerPage: React.FC = () => {
     };
 
     const addExpenseEvent = (expense: Expense) => {
+      // Skip if this expense already has an event
+      if (expensesWithEvents.has(expense.id)) return;
+
       derived.push({
         id: `expense-${expense.id}`,
         occurredAt: makeOccurredAt(expense.issueDate || expense.date),
@@ -238,6 +261,7 @@ export const LedgerPage: React.FC = () => {
         meta: {
           counterpartyName: expense.description,
           docNo: expense.linkedInvoiceId || undefined,
+          isLegacy: true, // Mark as legacy (pre-event-system)
         },
         linkedDocuments: [],
         documentId: expense.id,
@@ -248,7 +272,7 @@ export const LedgerPage: React.FC = () => {
     invoices.forEach(addInvoiceEvent);
     expenses.forEach(addExpenseEvent);
     return derived;
-  }, [invoices, expenses]);
+  }, [invoices, expenses, ledgerEvents]);
 
   const timelineEvents: TimelineLedgerEvent[] = useMemo(() => {
     if (!ledgerEvents.length && !derivedDocumentEvents.length) return [];
@@ -493,6 +517,10 @@ export const LedgerPage: React.FC = () => {
             onEventClick={handleEventClick}
             onShowAudit={handleShowAudit}
             getAuditHint={getAuditHint}
+            hasEventSystem={(eventId) => {
+              // Check if this event has actual event system entry
+              return ledgerEvents.some(e => e.id === eventId);
+            }}
           />
         </div>
 

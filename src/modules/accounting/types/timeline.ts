@@ -26,6 +26,8 @@ export interface TimelineLedgerEvent {
     accountName?: string;
     decisionId?: string;
     decisionReference?: string;
+    actorName?: string;
+    isLegacy?: boolean;
   };
   linkedDocuments?: Array<{
     id: string;

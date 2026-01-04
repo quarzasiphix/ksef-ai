@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { X, Link2, FileText, Calculator, Shield, CheckCircle, XCircle, AlertCircle } from 'lucide-react';
+import { X, Link2, FileText, Calculator, Shield, CheckCircle, XCircle, AlertCircle, Sparkles, RefreshCcw } from 'lucide-react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/shared/hooks/useAuth';
@@ -47,6 +47,10 @@ interface EventDetail {
 export function EventDetailDrawer({ eventId, isOpen, onClose }: EventDetailDrawerProps) {
   const { user } = useAuth();
   const queryClient = useQueryClient();
+  
+  // Local state for Wn/Ma account selection
+  const [debitAccount, setDebitAccount] = useState<string | null>(null);
+  const [creditAccount, setCreditAccount] = useState<string | null>(null);
 
   // Fetch event detail
   const { data: eventDetail, isLoading } = useQuery<EventDetail>({
@@ -62,15 +66,56 @@ export function EventDetailDrawer({ eventId, isOpen, onClose }: EventDetailDrawe
       return data;
     },
     enabled: !!eventId && isOpen,
+    onSuccess: (data) => {
+      // Initialize local state from event readiness
+      if (data) {
+        setDebitAccount(data.readiness.debit_account);
+        setCreditAccount(data.readiness.credit_account);
+      }
+    },
+  });
+  
+  // Fetch posting template suggestion
+  const { data: templateSuggestion } = useQuery({
+    queryKey: ['posting-template', eventDetail?.event.business_profile_id, eventDetail?.event.event_type, eventDetail?.event.metadata],
+    queryFn: async () => {
+      if (!eventDetail) return null;
+      
+      const { data, error } = await supabase.rpc('find_posting_template', {
+        p_business_profile_id: eventDetail.event.business_profile_id,
+        p_event_type: eventDetail.event.event_type,
+        p_transaction_type: eventDetail.event.metadata?.transaction_type || null,
+        p_payment_method: eventDetail.event.metadata?.payment_method || null,
+        p_document_type: eventDetail.event.entity_type || null,
+      });
+      
+      if (error) throw error;
+      return data?.[0] || null;
+    },
+    enabled: !!eventDetail && !eventDetail.readiness.is_closed,
   });
 
+  // Auto-fill Wn/Ma from template
+  const handleAutoFill = () => {
+    if (templateSuggestion) {
+      setDebitAccount(templateSuggestion.debit_account_code);
+      setCreditAccount(templateSuggestion.credit_account_code);
+    }
+  };
+  
   // Close event mutation
   const closeEventMutation = useMutation({
     mutationFn: async () => {
+      if (!debitAccount || !creditAccount) {
+        throw new Error('Both debit and credit accounts must be selected');
+      }
+      
       const { data, error } = await supabase.rpc('close_accounting_event', {
         p_event_id: eventId,
         p_actor_id: user?.id,
         p_actor_name: user?.email || 'Unknown',
+        p_debit_account_code: debitAccount,
+        p_credit_account_code: creditAccount,
       });
 
       if (error) throw error;
@@ -107,39 +152,43 @@ export function EventDetailDrawer({ eventId, isOpen, onClose }: EventDetailDrawe
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 z-50 overflow-hidden">
+    <div className="fixed inset-0 z-50">
       {/* Backdrop */}
-      <div 
-        className="absolute inset-0 bg-black/50 transition-opacity"
+      <div
+        className="absolute inset-0 bg-slate-950/80 backdrop-blur-sm transition-opacity"
         onClick={onClose}
       />
-      
+
       {/* Drawer */}
-      <div className="absolute right-0 top-0 h-full w-full max-w-2xl bg-white shadow-xl">
-        <div className="flex h-full flex-col">
+      <div className="absolute right-0 top-0 h-full w-full max-w-3xl">
+        <div className="flex h-full flex-col overflow-hidden rounded-l-3xl border border-slate-800 bg-[#030712] text-slate-50 shadow-2xl">
           {/* Header */}
-          <div className="flex items-center justify-between border-b px-6 py-4">
-            <div>
-              <h2 className="text-lg font-semibold">Szczegóły zdarzenia</h2>
-              {eventDetail?.event && (
-                <p className="text-sm text-gray-600">
-                  {eventDetail.event.action_summary}
-                </p>
-              )}
+          <div className="border-b border-white/5 bg-gradient-to-r from-slate-900/90 via-slate-900/60 to-slate-900/30 px-8 py-5">
+            <div className="flex items-start justify-between gap-6">
+              <div>
+                <p className="text-xs uppercase tracking-[0.3em] text-slate-400">Event detail drawer</p>
+                <h2 className="mt-1 text-2xl font-semibold text-white">{eventDetail?.event?.action_summary || 'Szczegóły zdarzenia'}</h2>
+                {eventDetail?.event?.event_number && (
+                  <p className="mt-1 font-mono text-xs text-slate-400">{eventDetail.event.event_number}</p>
+                )}
+              </div>
+              <Button variant="ghost" size="icon" onClick={onClose} className="h-10 w-10 rounded-full border border-white/10 bg-white/5 text-white hover:bg-white/10">
+                <X className="h-5 w-5" />
+              </Button>
             </div>
-            <Button variant="ghost" size="sm" onClick={onClose}>
-              <X className="h-5 w-5" />
-            </Button>
           </div>
 
           {/* Content */}
-          <div className="flex-1 overflow-y-auto">
+          <div className="flex-1 overflow-y-auto bg-gradient-to-b from-slate-950 via-slate-900 to-slate-950">
             {isLoading ? (
               <div className="flex h-full items-center justify-center">
-                <div className="text-gray-500">Ładowanie...</div>
+                <div className="flex flex-col items-center gap-3 text-slate-400">
+                  <RefreshCcw className="h-5 w-5 animate-spin text-primary" />
+                  Ładowanie...
+                </div>
               </div>
             ) : eventDetail ? (
-              <div className="space-y-6 p-6">
+              <div className="space-y-8 px-8 py-6">
                 {/* Section 1: Context */}
                 <Section
                   icon={FileText}
@@ -152,7 +201,7 @@ export function EventDetailDrawer({ eventId, isOpen, onClose }: EventDetailDrawe
                     )
                   }
                 >
-                  <div className="grid grid-cols-2 gap-4 text-sm">
+                  <div className="grid grid-cols-2 gap-5 text-sm">
                     <InfoRow label="Typ" value={eventDetail.event.event_type} />
                     <InfoRow label="Status" value={eventDetail.event.status} />
                     <InfoRow 
@@ -174,7 +223,7 @@ export function EventDetailDrawer({ eventId, isOpen, onClose }: EventDetailDrawe
                   </div>
                 </Section>
 
-                <Separator />
+                <Separator className="border-white/5" />
 
                 {/* Section 2: Chain (Links) */}
                 <Section
@@ -188,7 +237,7 @@ export function EventDetailDrawer({ eventId, isOpen, onClose }: EventDetailDrawe
                     )
                   }
                 >
-                  <div className="space-y-3">
+                  <div className="space-y-4">
                     {/* Linked Entity */}
                     {eventDetail.linked_entity ? (
                       <LinkedItem
@@ -223,13 +272,31 @@ export function EventDetailDrawer({ eventId, isOpen, onClose }: EventDetailDrawe
                   </div>
 
                   {/* Link action button */}
-                  <Button variant="outline" size="sm" className="mt-4 w-full">
+                  <Button variant="secondary" size="sm" className="mt-4 w-full border border-white/10 bg-white/5 text-white hover:bg-white/10">
                     <Link2 className="mr-2 h-4 w-4" />
                     Powiąż z...
                   </Button>
                 </Section>
 
-                <Separator />
+                <Separator className="border-white/5" />
+
+                {/* Section 2b: Change details */}
+                {eventDetail.event?.changes && Object.keys(eventDetail.event.changes).length > 0 && (
+                  <>
+                    <Section
+                      icon={Sparkles}
+                      title="Szczegóły zmian"
+                      badge={
+                        <Badge variant="outline" className="bg-indigo-500/10 text-indigo-300">
+                          {Object.keys(eventDetail.event.changes).length} pól
+                        </Badge>
+                      }
+                    >
+                      <ChangesList changes={eventDetail.event.changes} />
+                    </Section>
+                    <Separator className="border-white/5" />
+                  </>
+                )}
 
                 {/* Section 3: Accounting (Wn/Ma) */}
                 <Section
@@ -251,21 +318,15 @@ export function EventDetailDrawer({ eventId, isOpen, onClose }: EventDetailDrawe
                       <div className="grid grid-cols-2 gap-4">
                         <AccountPicker
                           businessProfileId={eventDetail.event.business_profile_id}
-                          value={eventDetail.readiness.debit_account}
-                          onChange={(code) => {
-                            // TODO: Update event metadata with debit account
-                            console.log('Debit account selected:', code);
-                          }}
+                          value={debitAccount}
+                          onChange={(code) => setDebitAccount(code)}
                           label="Wn (Debet)"
                           placeholder="Wybierz konto Wn..."
                         />
                         <AccountPicker
                           businessProfileId={eventDetail.event.business_profile_id}
-                          value={eventDetail.readiness.credit_account}
-                          onChange={(code) => {
-                            // TODO: Update event metadata with credit account
-                            console.log('Credit account selected:', code);
-                          }}
+                          value={creditAccount}
+                          onChange={(code) => setCreditAccount(code)}
                           label="Ma (Kredyt)"
                           placeholder="Wybierz konto Ma..."
                         />
@@ -291,26 +352,31 @@ export function EventDetailDrawer({ eventId, isOpen, onClose }: EventDetailDrawe
                       </div>
                     )}
 
-                    <div className="rounded-md bg-gray-50 p-3 text-sm">
-                      <div className="flex items-center justify-between">
-                        <span className="text-gray-600">Kwota księgowania:</span>
-                        <span className="font-semibold">
+                    <div className="rounded-lg border border-white/5 bg-white/5 p-4 text-sm">
+                      <div className="flex items-center justify-between text-slate-300">
+                        <span>Kwota księgowania:</span>
+                        <span className="font-semibold text-white">
                           {formatCurrency(eventDetail.event.amount, eventDetail.event.currency)}
                         </span>
                       </div>
                     </div>
                   </div>
 
-                  {/* Auto-assign button (placeholder for Session 3-4) */}
-                  {!eventDetail.readiness.is_closed && eventDetail.readiness.missing_accounts && (
-                    <Button variant="outline" size="sm" className="mt-4 w-full" disabled>
-                      <Calculator className="mr-2 h-4 w-4" />
-                      Auto-przypisz Wn/Ma (Session 3-4: Posting Templates)
+                  {/* Auto-assign button */}
+                  {!eventDetail.readiness.is_closed && templateSuggestion && (
+                    <Button 
+                      variant="outline" 
+                      size="sm" 
+                      className="mt-4 w-full border-dashed text-slate-300 hover:bg-white/5" 
+                      onClick={handleAutoFill}
+                    >
+                      <Sparkles className="mr-2 h-4 w-4" />
+                      Auto-przypisz Wn/Ma ({templateSuggestion.template_name})
                     </Button>
                   )}
                 </Section>
 
-                <Separator />
+                <Separator className="border-white/5" />
 
                 {/* Section 4: Proof */}
                 <Section
@@ -351,23 +417,23 @@ export function EventDetailDrawer({ eventId, isOpen, onClose }: EventDetailDrawe
 
                   {/* Add proof button */}
                   {!eventDetail.readiness.is_closed && (
-                    <Button variant="outline" size="sm" className="mt-4 w-full">
-                      <Shield className="mr-2 h-4 w-4" />
-                      Dodaj dowód
-                    </Button>
-                  )}
+                    <Button variant="secondary" size="sm" className="mt-4 w-full border border-white/10 bg-white/5 text-white hover:bg-white/10">
+                    <Shield className="mr-2 h-4 w-4" />
+                    Dodaj dowód
+                  </Button>
+                )}
                 </Section>
 
-                <Separator />
+                <Separator className="border-white/5" />
 
                 {/* Blockers (if any) */}
                 {eventDetail.readiness.blocker_reasons.length > 0 && (
-                  <div className="rounded-md border border-red-200 bg-red-50 p-4">
-                    <div className="flex items-start">
-                      <AlertCircle className="mr-2 h-5 w-5 text-red-600" />
+                  <div className="rounded-xl border border-red-500/30 bg-red-500/10 p-4">
+                    <div className="flex items-start gap-3">
+                      <AlertCircle className="mt-1 h-5 w-5 text-red-400" />
                       <div className="flex-1">
-                        <h4 className="text-sm font-semibold text-red-900">Blokery zamknięcia</h4>
-                        <ul className="mt-2 space-y-1 text-sm text-red-800">
+                        <h4 className="text-sm font-semibold text-red-100">Blokery zamknięcia</h4>
+                        <ul className="mt-2 space-y-1 text-sm text-red-200">
                           {eventDetail.readiness.blocker_reasons.map((reason, idx) => (
                             <li key={idx}>• {translateBlockerReason(reason)}</li>
                           ))}
@@ -386,17 +452,19 @@ export function EventDetailDrawer({ eventId, isOpen, onClose }: EventDetailDrawe
 
           {/* Section 5: Actions (Footer) */}
           {eventDetail && (
-            <div className="border-t bg-gray-50 px-6 py-4">
-              <div className="flex items-center justify-between">
-                <div className="text-sm text-gray-600">
+            <div className="border-t border-white/5 bg-slate-950/80 px-8 py-4">
+              <div className="flex items-center justify-between gap-4">
+                <div className="text-sm text-slate-400">
                   {eventDetail.readiness.period_locked && (
-                    <span className="text-amber-600">⚠ Okres zablokowany</span>
+                    <span className="inline-flex items-center gap-2 rounded-full bg-amber-500/10 px-3 py-1 text-amber-300">
+                      ⚠ Okres zablokowany
+                    </span>
                   )}
                 </div>
-                <div className="flex gap-2">
+                <div className="flex flex-wrap gap-2">
                   {/* Verify button */}
                   <Button
-                    variant="outline"
+                    variant="secondary"
                     size="sm"
                     disabled={!eventDetail.readiness.can_verify || verifyEventMutation.isPending}
                     onClick={() => verifyEventMutation.mutate()}
@@ -409,6 +477,7 @@ export function EventDetailDrawer({ eventId, isOpen, onClose }: EventDetailDrawe
                           : 'Brak hash do weryfikacji'
                         : 'Zweryfikuj integralność'
                     }
+                    className="border border-white/10 bg-white/5 text-white hover:bg-white/10"
                   >
                     <CheckCircle className="mr-2 h-4 w-4" />
                     Zweryfikuj
@@ -454,11 +523,13 @@ interface SectionProps {
 
 function Section({ icon: Icon, title, badge, children }: SectionProps) {
   return (
-    <div>
-      <div className="mb-3 flex items-center justify-between">
-        <div className="flex items-center gap-2">
-          <Icon className="h-5 w-5 text-gray-600" />
-          <h3 className="font-semibold text-gray-900">{title}</h3>
+    <div className="rounded-2xl border border-white/5 bg-white/5 p-5 shadow-inner shadow-white/5">
+      <div className="mb-4 flex items-center justify-between gap-3">
+        <div className="flex items-center gap-2 text-white">
+          <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-white/10 text-white">
+            <Icon className="h-4 w-4" />
+          </span>
+          <h3 className="text-base font-semibold">{title}</h3>
         </div>
         {badge}
       </div>
@@ -475,8 +546,8 @@ interface InfoRowProps {
 function InfoRow({ label, value }: InfoRowProps) {
   return (
     <div>
-      <div className="text-xs font-medium text-gray-500">{label}</div>
-      <div className="mt-1 text-sm text-gray-900">{value}</div>
+      <div className="text-xs font-medium uppercase tracking-wide text-slate-400">{label}</div>
+      <div className="mt-1 text-sm font-semibold text-white">{value ?? '—'}</div>
     </div>
   );
 }
@@ -490,12 +561,12 @@ interface LinkedItemProps {
 
 function LinkedItem({ type, label, value, id }: LinkedItemProps) {
   return (
-    <div className="flex items-center justify-between rounded-md border border-gray-200 bg-gray-50 p-3">
+    <div className="flex items-center justify-between rounded-xl border border-white/10 bg-white/5 p-3">
       <div>
-        <div className="text-xs font-medium text-gray-500">{label}</div>
-        <div className="mt-1 text-sm font-medium text-gray-900">{value}</div>
+        <div className="text-xs font-medium uppercase tracking-wide text-slate-400">{label}</div>
+        <div className="mt-1 text-sm font-medium text-white">{value}</div>
       </div>
-      <Button variant="ghost" size="sm">
+      <Button variant="ghost" size="sm" className="text-primary hover:bg-white/10">
         Otwórz
       </Button>
     </div>
@@ -510,24 +581,71 @@ interface ProofIndicatorProps {
 
 function ProofIndicator({ label, present, value }: ProofIndicatorProps) {
   return (
-    <div className="flex items-center justify-between text-sm">
-      <span className="text-gray-600">{label}</span>
+    <div className="flex items-center justify-between rounded-lg border border-white/5 bg-white/5 px-3 py-2 text-sm">
+      <span className="text-slate-300">{label}</span>
       <div className="flex items-center gap-2">
         {present ? (
           <>
-            <CheckCircle className="h-4 w-4 text-green-600" />
+            <CheckCircle className="h-4 w-4 text-green-400" />
             {value && (
-              <span className="font-mono text-xs text-gray-500">
+              <span className="font-mono text-xs text-slate-400">
                 {value.substring(0, 8)}...
               </span>
             )}
           </>
         ) : (
-          <XCircle className="h-4 w-4 text-gray-400" />
+          <XCircle className="h-4 w-4 text-slate-600" />
         )}
       </div>
     </div>
   );
+}
+
+interface ChangesListProps {
+  changes: Record<string, unknown>;
+}
+
+function ChangesList({ changes }: ChangesListProps) {
+  return (
+    <div className="rounded-2xl border border-white/5 bg-slate-950/40">
+      <dl className="divide-y divide-white/5">
+        {Object.entries(changes).map(([key, value]) => (
+          <div key={key} className="grid grid-cols-2 gap-4 px-4 py-3 text-sm">
+            <dt className="text-xs font-semibold uppercase tracking-wide text-slate-400">
+              {formatChangeLabel(key)}
+            </dt>
+            <dd className="font-medium text-white">{formatChangeValue(value)}</dd>
+          </div>
+        ))}
+      </dl>
+    </div>
+  );
+}
+
+function formatChangeLabel(key: string) {
+  return key
+    .replace(/_/g, ' ')
+    .replace(/\b\w/g, (char) => char.toUpperCase());
+}
+
+function formatChangeValue(value: unknown) {
+  if (value === null || value === undefined) return '—';
+
+  if (typeof value === 'number') {
+    return new Intl.NumberFormat('pl-PL', {
+      maximumFractionDigits: 2,
+    }).format(value);
+  }
+
+  if (typeof value === 'boolean') {
+    return value ? 'Tak' : 'Nie';
+  }
+
+  if (typeof value === 'object') {
+    return JSON.stringify(value);
+  }
+
+  return String(value);
 }
 
 function translateBlockerReason(reason: string): string {
