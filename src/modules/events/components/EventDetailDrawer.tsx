@@ -81,14 +81,37 @@ export function EventDetailDrawer({ eventId, isOpen, onClose }: EventDetailDrawe
     queryKey: ['posting-rule', eventDetail?.event.business_profile_id, eventDetail?.event.entity_type, eventDetail?.event.metadata],
     queryFn: async () => {
       if (!eventDetail) return null;
-      
+
+      const metadata = eventDetail.event.metadata || {};
+      const documentType =
+        metadata.document_type ||
+        eventDetail.event.entity_type ||
+        eventDetail.event.event_type ||
+        'sales_invoice';
+      const transactionType =
+        metadata.transaction_type ||
+        (eventDetail.event.direction === 'incoming'
+          ? 'income'
+          : eventDetail.event.direction === 'outgoing'
+            ? 'expense'
+            : null);
+      const paymentMethod = metadata.payment_method || metadata.cash_channel || null;
+      const vatScheme =
+        metadata.vat_scheme ||
+        (metadata.vat_status === 'no_vat'
+          ? 'no_vat'
+          : metadata.vat_status === 'vat'
+            ? 'vat'
+            : null);
+      const vatRate = metadata.vat_rate ?? null;
+
       const { data, error } = await supabase.rpc('find_posting_rule', {
         p_business_profile_id: eventDetail.event.business_profile_id,
-        p_document_type: eventDetail.event.entity_type || 'sales_invoice',
-        p_transaction_type: eventDetail.event.metadata?.transaction_type || null,
-        p_payment_method: eventDetail.event.metadata?.payment_method || null,
-        p_vat_scheme: eventDetail.event.metadata?.vat_scheme || 'vat',
-        p_vat_rate: eventDetail.event.metadata?.vat_rate || null,
+        p_document_type: documentType,
+        p_transaction_type: transactionType,
+        p_payment_method: paymentMethod,
+        p_vat_scheme: vatScheme,
+        p_vat_rate: vatRate,
       });
       
       if (error) throw error;
