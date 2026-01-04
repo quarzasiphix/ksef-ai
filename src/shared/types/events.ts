@@ -23,6 +23,10 @@ export type EventType =
   
   // Expense lifecycle (canonical)
   | 'expense_created'
+  | 'expense_edited'
+  | 'expense_paid'
+  | 'expense_cancelled'
+  | 'expense_deleted'
   | 'expense_approved'
   | 'expense_posted'
   | 'expense_reversed'
@@ -216,6 +220,10 @@ export const EVENT_TYPE_LABELS: Record<EventType, string> = {
   
   // Canonical expense lifecycle
   expense_created: 'Utworzono wydatek',
+  expense_edited: 'Zmodyfikowano wydatek',
+  expense_paid: 'Opłacono wydatek',
+  expense_cancelled: 'Anulowano wydatek',
+  expense_deleted: 'Usunięto wydatek',
   expense_approved: 'Zatwierdzono wydatek',
   expense_posted: 'Zaksięgowano wydatek',
   expense_reversed: 'Cofnięto wydatek',
@@ -278,6 +286,10 @@ export const EVENT_TYPE_ICONS: Record<EventType, string> = {
   
   // Canonical expense lifecycle
   expense_created: '💸',
+  expense_edited: '✏️',
+  expense_paid: '💳',
+  expense_cancelled: '🚫',
+  expense_deleted: '🗑️',
   expense_approved: '✅',
   expense_posted: '📊',
   expense_reversed: '↩️',
@@ -340,6 +352,10 @@ export const EVENT_TYPE_COLORS: Record<EventType, string> = {
   
   // Canonical expense lifecycle
   expense_created: 'orange',
+  expense_edited: 'gray',
+  expense_paid: 'green',
+  expense_cancelled: 'red',
+  expense_deleted: 'red',
   expense_approved: 'green',
   expense_posted: 'blue',
   expense_reversed: 'orange',

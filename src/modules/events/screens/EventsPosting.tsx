@@ -8,6 +8,7 @@ import { cn } from '@/shared/lib/utils';
 import { formatCurrency } from '@/shared/lib/invoice-utils';
 import { format } from 'date-fns';
 import { pl } from 'date-fns/locale';
+import { useEventDrawer } from '../hooks/useEventDrawer';
 
 interface PostingFilters {
   periodYear?: number;
@@ -17,6 +18,7 @@ interface PostingFilters {
 
 export const EventsPosting: React.FC = () => {
   const { selectedProfileId } = useBusinessProfile();
+  const { openDrawer } = useEventDrawer();
   const [filters, setFilters] = useState<PostingFilters>({
     periodYear: new Date().getFullYear(),
     periodMonth: new Date().getMonth() + 1,
@@ -126,6 +128,7 @@ export const EventsPosting: React.FC = () => {
             {events.map((event) => (
               <button
                 key={event.id}
+                onClick={() => openDrawer(event.id)}
                 className="grid grid-cols-[100px_120px_1fr_120px_120px_120px_100px] gap-4 px-6 py-3 text-sm hover:bg-muted/50 transition-colors w-full text-left"
               >
                 <div className="text-muted-foreground">
@@ -161,7 +164,7 @@ export const EventsPosting: React.FC = () => {
                   {event.metadata?.credit_account || '—'}
                 </div>
                 <div className="flex items-center justify-center">
-                  <Button variant="ghost" size="sm">
+                  <Button variant="ghost" size="sm" onClick={(e) => { e.stopPropagation(); openDrawer(event.id); }}>
                     Szczegóły
                   </Button>
                 </div>

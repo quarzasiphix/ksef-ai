@@ -9,9 +9,11 @@ import { cn } from '@/shared/lib/utils';
 import { formatCurrency } from '@/shared/lib/invoice-utils';
 import { format } from 'date-fns';
 import { pl } from 'date-fns/locale';
+import { useEventDrawer } from '../hooks/useEventDrawer';
 
 export const EventsReconciliation: React.FC = () => {
   const { selectedProfileId } = useBusinessProfile();
+  const { openDrawer } = useEventDrawer();
   const [selectedFilter, setSelectedFilter] = useState<'all' | 'unverified' | 'missing_proof'>('unverified');
 
   const { data: events = [], isLoading } = useQuery({
@@ -141,7 +143,8 @@ export const EventsReconciliation: React.FC = () => {
               return (
                 <div
                   key={event.id}
-                  className="rounded-lg border bg-card p-4 hover:bg-accent/50 transition-colors"
+                  onClick={() => openDrawer(event.id)}
+                  className="rounded-lg border bg-card p-4 hover:bg-accent/50 transition-colors cursor-pointer"
                 >
                   <div className="flex items-start justify-between gap-4">
                     <div className="flex-1 min-w-0 space-y-2">

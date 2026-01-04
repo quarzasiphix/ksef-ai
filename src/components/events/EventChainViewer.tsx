@@ -19,6 +19,7 @@ import { EVENT_TYPE_LABELS, EVENT_TYPE_COLORS, type EventType } from '@/shared/t
 import { useNavigate } from 'react-router-dom';
 import { formatDistanceToNow } from 'date-fns';
 import { pl } from 'date-fns/locale';
+import { useEventDrawer } from '@/modules/events/hooks/useEventDrawer';
 
 interface EventChainViewerProps {
   businessProfileId: string;
@@ -36,6 +37,7 @@ const EventChainViewer: React.FC<EventChainViewerProps> = ({
   entityId,
 }) => {
   const navigate = useNavigate();
+  const { openDrawer } = useEventDrawer();
   const [filterType, setFilterType] = React.useState<EventType | 'all'>('all');
 
   const { data: events = [], isLoading } = useQuery({
@@ -128,7 +130,8 @@ const EventChainViewer: React.FC<EventChainViewerProps> = ({
               {events.map((event, index) => (
                 <div
                   key={event.id}
-                  className="relative border rounded-lg p-4 hover:bg-muted/50 transition-colors"
+                  onClick={() => openDrawer(event.id)}
+                  className="relative border rounded-lg p-4 hover:bg-muted/50 transition-colors cursor-pointer"
                 >
                   {/* Timeline connector */}
                   {index < events.length - 1 && (

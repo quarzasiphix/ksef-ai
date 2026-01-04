@@ -1,14 +1,15 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { X, Link2, FileText, Calculator, Shield, CheckCircle, XCircle, AlertCircle } from 'lucide-react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { supabase } from '@/lib/supabase';
-import { useAuth } from '@/hooks/useAuth';
-import { Button } from '@/components/ui/button';
-import { Badge } from '@/components/ui/badge';
-import { Separator } from '@/components/ui/separator';
-import { formatCurrency } from '@/lib/utils';
+import { supabase } from '@/integrations/supabase/client';
+import { useAuth } from '@/shared/hooks/useAuth';
+import { Button } from '@/shared/ui/button';
+import { Badge } from '@/shared/ui/badge';
+import { Separator } from '@/shared/ui/separator';
+import { formatCurrency } from '@/shared/lib/invoice-utils';
 import { format } from 'date-fns';
 import { pl } from 'date-fns/locale';
+import { AccountPicker } from './AccountPicker';
 
 interface EventDetailDrawerProps {
   eventId: string | null;
@@ -145,9 +146,9 @@ export function EventDetailDrawer({ eventId, isOpen, onClose }: EventDetailDrawe
                   title="Kontekst"
                   badge={
                     eventDetail.readiness.is_closed ? (
-                      <Badge variant="success">Zamknięte</Badge>
+                      <Badge variant="outline" className="bg-green-500/10 text-green-600">Zamknięte</Badge>
                     ) : (
-                      <Badge variant="warning">Otwarte</Badge>
+                      <Badge variant="outline" className="bg-amber-500/10 text-amber-600">Otwarte</Badge>
                     )
                   }
                 >
@@ -183,7 +184,7 @@ export function EventDetailDrawer({ eventId, isOpen, onClose }: EventDetailDrawe
                     eventDetail.readiness.missing_required_links ? (
                       <Badge variant="destructive">Brakuje wymaganych</Badge>
                     ) : (
-                      <Badge variant="success">Kompletne</Badge>
+                      <Badge variant="outline" className="bg-green-500/10 text-green-600">Kompletne</Badge>
                     )
                   }
                 >
@@ -238,31 +239,57 @@ export function EventDetailDrawer({ eventId, isOpen, onClose }: EventDetailDrawe
                     eventDetail.readiness.missing_accounts ? (
                       <Badge variant="destructive">Brakuje kont</Badge>
                     ) : eventDetail.readiness.is_closed ? (
-                      <Badge variant="success">Zaksięgowane</Badge>
+                      <Badge variant="outline" className="bg-green-500/10 text-green-600">Zaksięgowane</Badge>
                     ) : (
-                      <Badge variant="warning">Gotowe</Badge>
+                      <Badge variant="outline" className="bg-amber-500/10 text-amber-600">Gotowe</Badge>
                     )
                   }
                 >
                   <div className="space-y-3">
-                    <div className="grid grid-cols-2 gap-4">
-                      <div>
-                        <div className="text-xs font-medium text-gray-500">Wn (Debet)</div>
-                        <div className="mt-1 text-sm font-mono">
-                          {eventDetail.readiness.debit_account || (
-                            <span className="text-red-600">Nie przypisano</span>
-                          )}
+                    {/* Account pickers (only if not closed) */}
+                    {!eventDetail.readiness.is_closed ? (
+                      <div className="grid grid-cols-2 gap-4">
+                        <AccountPicker
+                          businessProfileId={eventDetail.event.business_profile_id}
+                          value={eventDetail.readiness.debit_account}
+                          onChange={(code) => {
+                            // TODO: Update event metadata with debit account
+                            console.log('Debit account selected:', code);
+                          }}
+                          label="Wn (Debet)"
+                          placeholder="Wybierz konto Wn..."
+                        />
+                        <AccountPicker
+                          businessProfileId={eventDetail.event.business_profile_id}
+                          value={eventDetail.readiness.credit_account}
+                          onChange={(code) => {
+                            // TODO: Update event metadata with credit account
+                            console.log('Credit account selected:', code);
+                          }}
+                          label="Ma (Kredyt)"
+                          placeholder="Wybierz konto Ma..."
+                        />
+                      </div>
+                    ) : (
+                      <div className="grid grid-cols-2 gap-4">
+                        <div>
+                          <div className="text-xs font-medium text-gray-500">Wn (Debet)</div>
+                          <div className="mt-1 text-sm font-mono">
+                            {eventDetail.readiness.debit_account || (
+                              <span className="text-red-600">Nie przypisano</span>
+                            )}
+                          </div>
+                        </div>
+                        <div>
+                          <div className="text-xs font-medium text-gray-500">Ma (Kredyt)</div>
+                          <div className="mt-1 text-sm font-mono">
+                            {eventDetail.readiness.credit_account || (
+                              <span className="text-red-600">Nie przypisano</span>
+                            )}
+                          </div>
                         </div>
                       </div>
-                      <div>
-                        <div className="text-xs font-medium text-gray-500">Ma (Kredyt)</div>
-                        <div className="mt-1 text-sm font-mono">
-                          {eventDetail.readiness.credit_account || (
-                            <span className="text-red-600">Nie przypisano</span>
-                          )}
-                        </div>
-                      </div>
-                    </div>
+                    )}
 
                     <div className="rounded-md bg-gray-50 p-3 text-sm">
                       <div className="flex items-center justify-between">
@@ -274,11 +301,11 @@ export function EventDetailDrawer({ eventId, isOpen, onClose }: EventDetailDrawe
                     </div>
                   </div>
 
-                  {/* Auto-assign button (placeholder for Week 3) */}
+                  {/* Auto-assign button (placeholder for Session 3-4) */}
                   {!eventDetail.readiness.is_closed && eventDetail.readiness.missing_accounts && (
                     <Button variant="outline" size="sm" className="mt-4 w-full" disabled>
                       <Calculator className="mr-2 h-4 w-4" />
-                      Auto-przypisz Wn/Ma (dostępne w Week 3)
+                      Auto-przypisz Wn/Ma (Session 3-4: Posting Templates)
                     </Button>
                   )}
                 </Section>
@@ -291,11 +318,11 @@ export function EventDetailDrawer({ eventId, isOpen, onClose }: EventDetailDrawe
                   title="Dowody"
                   badge={
                     eventDetail.readiness.verified ? (
-                      <Badge variant="success">Zweryfikowane</Badge>
+                      <Badge variant="outline" className="bg-green-500/10 text-green-600">Zweryfikowane</Badge>
                     ) : eventDetail.readiness.missing_required_proof ? (
                       <Badge variant="destructive">Brakuje wymaganych</Badge>
                     ) : (
-                      <Badge variant="warning">Niezweryfikowane</Badge>
+                      <Badge variant="outline" className="bg-amber-500/10 text-amber-600">Niezweryfikowane</Badge>
                     )
                   }
                 >
