@@ -19,6 +19,7 @@ import {
   Settings,
   FolderKanban,
   Truck,
+  Activity,
 } from "lucide-react";
 
 import type { LucideIcon } from "lucide-react";
@@ -109,6 +110,13 @@ const navGroupsConfig: NavGroupConfig[] = [
         tint: "finance",
       },
       {
+        id: "accounting",
+        label: "Księgowość",
+        icon: Calculator,
+        path: "/accounting",
+        tint: "finance",
+      },
+      {
         id: "cash",
         label: "Kasa",
         icon: Wallet,
@@ -136,6 +144,13 @@ const navGroupsConfig: NavGroupConfig[] = [
         path: "/accounting/balance-sheet",
         tint: "accounting",
         showForSpoolka: true,
+      },
+      {
+        id: "events",
+        label: "Zdarzenia",
+        icon: Activity,
+        path: "/events/timeline",
+        tint: "accounting",
       },
     ],
   },

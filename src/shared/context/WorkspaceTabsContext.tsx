@@ -132,6 +132,11 @@ export const WorkspaceTabsProvider: React.FC<{ children: React.ReactNode }> = ({
   }, [tabs, activeTabId]);
 
   const openTab = useCallback((tabData: Omit<WorkspaceTab, 'id'>) => {
+    let nextActiveId: string | null = null;
+    let nextPath: string | null = null;
+
+    const result = { nextActiveId: nextActiveId, nextPath: nextPath };
+
     setTabs(prevTabs => {
       // Check if tab already exists (for document tabs with entityId)
       if (tabData.type === 'document' && tabData.entityId) {
@@ -139,8 +144,8 @@ export const WorkspaceTabsProvider: React.FC<{ children: React.ReactNode }> = ({
           t => t.type === 'document' && t.entityId === tabData.entityId && t.entityType === tabData.entityType
         );
         if (existingTab) {
-          setActiveTabId(existingTab.id);
-          navigate(existingTab.path);
+          result.nextActiveId = existingTab.id;
+          result.nextPath = existingTab.path;
           return prevTabs;
         }
       }
@@ -150,7 +155,7 @@ export const WorkspaceTabsProvider: React.FC<{ children: React.ReactNode }> = ({
         const category = getCategoryForPath(tabData.path);
         if (category) {
           // Find existing tab in same category and replace it
-          const existingCategoryTab = prevTabs.find(t => 
+          const existingCategoryTab = prevTabs.find(t =>
             t.type === 'workspace' && getCategoryForPath(t.path) === category
           );
           if (existingCategoryTab) {
@@ -160,16 +165,16 @@ export const WorkspaceTabsProvider: React.FC<{ children: React.ReactNode }> = ({
                 ? { ...t, path: tabData.path, title: tabData.title || getTitleForPath(tabData.path) }
                 : t
             );
-            setActiveTabId(existingCategoryTab.id);
-            navigate(tabData.path);
+            nextActiveId = existingCategoryTab.id;
+            nextPath = tabData.path;
             return updatedTabs;
           }
         } else {
           // For non-category paths, check exact match
           const existingTab = prevTabs.find(t => t.type === 'workspace' && t.path === tabData.path);
           if (existingTab) {
-            setActiveTabId(existingTab.id);
-            navigate(existingTab.path);
+            nextActiveId = existingTab.id;
+            nextPath = existingTab.path;
             return prevTabs;
           }
         }
@@ -183,13 +188,23 @@ export const WorkspaceTabsProvider: React.FC<{ children: React.ReactNode }> = ({
         title: tabData.title || getTitleForPath(tabData.path),
       };
 
-      setActiveTabId(newTab.id);
-      navigate(newTab.path);
+      result.nextActiveId = newTab.id;
+      result.nextPath = newTab.path;
       return [...prevTabs, newTab];
     });
+
+    if (result.nextActiveId && result.nextPath) {
+      setActiveTabId(result.nextActiveId);
+      navigate(result.nextPath);
+    }
   }, [navigate]);
 
   const closeTab = useCallback((tabId: string) => {
+    let nextActiveId: string | null = null;
+    let nextPath: string | null = null;
+
+    const result = { nextActiveId: nextActiveId, nextPath: nextPath };
+
     setTabs(prevTabs => {
       const tabIndex = prevTabs.findIndex(t => t.id === tabId);
       if (tabIndex === -1) return prevTabs;
@@ -211,19 +226,29 @@ export const WorkspaceTabsProvider: React.FC<{ children: React.ReactNode }> = ({
         // Try to activate tab to the right, or left if no right
         const nextTab = newTabs[tabIndex] || newTabs[tabIndex - 1];
         if (nextTab) {
-          setActiveTabId(nextTab.id);
-          navigate(nextTab.path);
+          result.nextActiveId = nextTab.id;
+          result.nextPath = nextTab.path;
         }
       } else if (newTabs.length === 0) {
-        setActiveTabId(null);
-        navigate('/dashboard');
+        result.nextActiveId = null;
+        result.nextPath = '/dashboard';
       }
 
       return newTabs;
     });
+
+    if (result.nextPath) {
+      setActiveTabId(result.nextActiveId);
+      navigate(result.nextPath);
+    }
   }, [activeTabId, navigate]);
 
   const closeOtherTabs = useCallback((tabId: string) => {
+    let nextActiveId: string | null = null;
+    let nextPath: string | null = null;
+
+    const result = { nextActiveId: nextActiveId, nextPath: nextPath };
+
     setTabs(prevTabs => {
       const tab = prevTabs.find(t => t.id === tabId);
       if (!tab) return prevTabs;
@@ -239,10 +264,15 @@ export const WorkspaceTabsProvider: React.FC<{ children: React.ReactNode }> = ({
 
       // Keep pinned tabs and the current tab
       const newTabs = prevTabs.filter(t => t.id === tabId || t.isPinned);
-      setActiveTabId(tabId);
-      navigate(tab.path);
+      result.nextActiveId = tabId;
+      result.nextPath = tab.path;
       return newTabs;
     });
+
+    if (result.nextPath) {
+      setActiveTabId(result.nextActiveId);
+      navigate(result.nextPath);
+    }
   }, [navigate]);
 
   const closeAllTabs = useCallback(() => {

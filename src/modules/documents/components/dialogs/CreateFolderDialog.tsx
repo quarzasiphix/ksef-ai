@@ -18,6 +18,7 @@ import { useBusinessProfile } from '@/shared/context/BusinessProfileContext';
 import { useDepartment } from '@/shared/context/DepartmentContext';
 import { useDepartments } from '../../hooks/useDepartments';
 import type { CreateStorageFolderInput } from '../../types/storage';
+import { useToast } from '@/shared/ui/use-toast';
 
 interface CreateFolderDialogProps {
   open: boolean;
@@ -33,11 +34,13 @@ export const CreateFolderDialog: React.FC<CreateFolderDialogProps> = ({
   const [name, setName] = useState('');
   const [description, setDescription] = useState('');
   const [selectedDeptId, setSelectedDeptId] = useState<string>('');
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const { selectedProfileId, profiles } = useBusinessProfile();
   const currentProfile = profiles.find(p => p.id === selectedProfileId);
   const { selectedDepartment } = useDepartment();
   const { departments } = useDepartments();
   const { createFolder, isCreating } = useStorageFolders();
+  const { toast } = useToast();
 
   // Initialize with current department when dialog opens
   React.useEffect(() => {
@@ -52,6 +55,7 @@ export const CreateFolderDialog: React.FC<CreateFolderDialogProps> = ({
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
+    setErrorMessage(null);
     
     if (!name.trim() || !currentProfile) return;
 
@@ -68,6 +72,10 @@ export const CreateFolderDialog: React.FC<CreateFolderDialogProps> = ({
         setName('');
         setDescription('');
         setSelectedDeptId('__company_wide__');
+        toast({
+          title: 'Folder utworzony',
+          description: `Folder „${name.trim()}” jest już dostępny w repozytorium.`,
+        });
         onOpenChange(false);
       },
     });
@@ -162,6 +170,12 @@ export const CreateFolderDialog: React.FC<CreateFolderDialogProps> = ({
               />
             </div>
           </div>
+
+          {errorMessage && (
+            <div className="text-sm text-destructive bg-destructive/5 border border-destructive/20 rounded-md p-3">
+              {errorMessage}
+            </div>
+          )}
 
           <DialogFooter>
             <Button

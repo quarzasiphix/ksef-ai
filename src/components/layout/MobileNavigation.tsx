@@ -1,5 +1,6 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { NavLink, useLocation, useNavigate } from 'react-router-dom';
+
 import { 
   BarChart, 
   FileText, 
@@ -33,10 +34,13 @@ import { BusinessProfileSwitcher } from './BusinessProfileSwitcher';
 import { useBusinessProfile } from '@/shared/context/BusinessProfileContext';
 
 const MobileNavigation = () => {
+  const [menuOpen, setMenuOpen] = useState(false);
+  const [pendingNavigation, setPendingNavigation] = useState<string | null>(null);
   const { theme, setTheme } = useTheme();
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
   const { isPremium, openPremiumDialog } = useAuth();
   const { profiles, selectedProfileId } = useBusinessProfile();
+  const navigate = useNavigate();
 
   const selectedProfile = profiles?.find((p) => p.id === selectedProfileId);
   const isSpZoo = selectedProfile?.entityType === 'sp_zoo' || selectedProfile?.entityType === 'sa';
@@ -104,6 +108,34 @@ const MobileNavigation = () => {
   const showPremiumSection = !isPremium;
 
   const location = useLocation();
+  const handleSheetNavigation = (path: string) => {
+    if (!path) return;
+    if (location.pathname === path) {
+      setMenuOpen(false);
+      return;
+    }
+
+    setPendingNavigation(path);
+    setMenuOpen(false);
+  };
+
+  useEffect(() => {
+    if (menuOpen) return;
+    if (!pendingNavigation) return;
+
+    const timeout = window.setTimeout(() => {
+      navigate(pendingNavigation);
+      setPendingNavigation(null);
+    }, 450);
+
+    return () => window.clearTimeout(timeout);
+  }, [menuOpen, pendingNavigation, navigate]);
+
+  const isPathActive = (path: string) => {
+    if (path === '/') return location.pathname === '/';
+    return location.pathname === path || location.pathname.startsWith(`${path}/`);
+  };
+
   const hideNav = location.pathname.startsWith('/invoices/new') || 
                   location.pathname.startsWith('/income/new') || 
                   location.pathname.startsWith('/expense/new') ||
@@ -130,7 +162,7 @@ const MobileNavigation = () => {
           <span className="text-xs mt-1">{item.title}</span>
         </NavLink>
       ))}
-      <Sheet>
+      <Sheet open={menuOpen} onOpenChange={setMenuOpen}>
         <SheetTrigger className="flex flex-col items-center justify-center px-4 py-2 text-muted-foreground">
           <Menu className="h-5 w-5" />
           <span className="text-xs mt-1">Menu</span>
@@ -158,14 +190,15 @@ const MobileNavigation = () => {
                 <h3 className="text-sm font-semibold text-muted-foreground mb-3 px-2">SZYBKIE AKCJE</h3>
                 <div className="space-y-2">
                   {quickActions.map((action) => (
-                    <NavLink
+                    <button
+                      type="button"
                       key={action.path}
-                      to={action.path}
-                      className="flex items-center gap-3 px-3 py-3 rounded-lg bg-muted hover:bg-muted/80 transition-colors"
+                      onClick={() => handleSheetNavigation(action.path)}
+                      className="flex w-full items-center gap-3 px-3 py-3 rounded-lg bg-muted hover:bg-muted/80 transition-colors text-left"
                     >
                       <action.icon className={`h-5 w-5 ${action.color}`} />
                       <span className="font-medium">{action.title}</span>
-                    </NavLink>
+                    </button>
                   ))}
                 </div>
               </div>
@@ -174,17 +207,20 @@ const MobileNavigation = () => {
                 <h3 className="text-sm font-semibold text-muted-foreground mb-3 px-2">FINANSE</h3>
                 <div className="space-y-1">
                   {finanseItems.map((item) => (
-                    <NavLink
+                    <button
+                      type="button"
                       key={item.path}
-                      to={item.path}
-                      className={({ isActive }) =>
-                        cn("flex items-center gap-3 px-3 py-2 rounded-lg transition-colors",
-                          isActive ? "bg-primary/10 text-primary font-medium" : "text-foreground hover:bg-muted")
-                      }
+                      onClick={() => handleSheetNavigation(item.path)}
+                      className={cn(
+                        "flex w-full items-center gap-3 px-3 py-2 rounded-lg transition-colors text-left",
+                        isPathActive(item.path)
+                          ? "bg-primary/10 text-primary font-medium"
+                          : "text-foreground hover:bg-muted"
+                      )}
                     >
                       <item.icon className="h-5 w-5" />
                       <span>{item.title}</span>
-                    </NavLink>
+                    </button>
                   ))}
                 </div>
               </div>
@@ -204,17 +240,20 @@ const MobileNavigation = () => {
                         <Crown className="h-4 w-4 text-amber-600" />
                       </div>
                     ) : (
-                      <NavLink
+                      <button
+                        type="button"
                         key={item.path}
-                        to={item.path}
-                        className={({ isActive }) =>
-                          cn("flex items-center gap-3 px-3 py-2 rounded-lg transition-colors",
-                            isActive ? "bg-primary/10 text-primary font-medium" : "text-foreground hover:bg-muted")
-                        }
+                        onClick={() => handleSheetNavigation(item.path)}
+                        className={cn(
+                          "flex w-full items-center gap-3 px-3 py-2 rounded-lg transition-colors text-left",
+                          isPathActive(item.path)
+                            ? "bg-primary/10 text-primary font-medium"
+                            : "text-foreground hover:bg-muted"
+                        )}
                       >
                         <item.icon className="h-5 w-5" />
                         <span>{item.title}</span>
-                      </NavLink>
+                      </button>
                     )
                   ))}
                 </div>
@@ -225,15 +264,16 @@ const MobileNavigation = () => {
                   <h3 className="text-sm font-semibold text-muted-foreground mb-3 px-2">PREMIUM</h3>
                   <div className="space-y-1">
                     {premiumFeatures.map((feature) => (
-                      <div
+                      <button
+                        type="button"
                         key={feature.title}
-                        className="flex items-center gap-3 px-3 py-2 rounded-lg bg-amber-50 border border-amber-200 cursor-pointer"
                         onClick={openPremiumDialog}
+                        className="flex w-full items-center gap-3 px-3 py-2 rounded-lg bg-amber-50 border border-amber-200 cursor-pointer text-left"
                       >
                         <feature.icon className="h-5 w-5 text-amber-600" />
                         <span className="text-amber-900 font-medium flex-1">{feature.title}</span>
                         <Crown className="h-4 w-4 text-amber-600" />
-                      </div>
+                      </button>
                     ))}
                   </div>
                 </div>
@@ -297,36 +337,45 @@ const MobileNavigation = () => {
                 <div className="px-3">
                   <h3 className="text-sm font-semibold text-muted-foreground mb-2">POLITYKI</h3>
                   <div className="space-y-1">
-                    <NavLink
-                      to="/policies/privacy"
-                      className={({ isActive }) =>
-                        cn("flex items-center gap-3 px-3 py-2 rounded-lg transition-colors",
-                          isActive ? "bg-primary/10 text-primary font-medium" : "text-foreground hover:bg-muted")
-                      }
+                    <button
+                      type="button"
+                      onClick={() => handleSheetNavigation('/policies/privacy')}
+                      className={cn(
+                        "flex w-full items-center gap-3 px-3 py-2 rounded-lg transition-colors text-left",
+                        isPathActive('/policies/privacy')
+                          ? "bg-primary/10 text-primary font-medium"
+                          : "text-foreground hover:bg-muted"
+                      )}
                     >
                       <Shield className="h-5 w-5" />
                       <span>Polityka Prywatności</span>
-                    </NavLink>
-                    <NavLink
-                      to="/policies/tos"
-                      className={({ isActive }) =>
-                        cn("flex items-center gap-3 px-3 py-2 rounded-lg transition-colors",
-                          isActive ? "bg-primary/10 text-primary font-medium" : "text-foreground hover:bg-muted")
-                      }
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => handleSheetNavigation('/policies/tos')}
+                      className={cn(
+                        "flex w-full items-center gap-3 px-3 py-2 rounded-lg transition-colors text-left",
+                        isPathActive('/policies/tos')
+                          ? "bg-primary/10 text-primary font-medium"
+                          : "text-foreground hover:bg-muted"
+                      )}
                     >
                       <FileText className="h-5 w-5" />
                       <span>Regulamin</span>
-                    </NavLink>
-                    <NavLink
-                      to="/policies/refunds"
-                      className={({ isActive }) =>
-                        cn("flex items-center gap-3 px-3 py-2 rounded-lg transition-colors",
-                          isActive ? "bg-primary/10 text-primary font-medium" : "text-foreground hover:bg-muted")
-                      }
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => handleSheetNavigation('/policies/refunds')}
+                      className={cn(
+                        "flex w-full items-center gap-3 px-3 py-2 rounded-lg transition-colors text-left",
+                        isPathActive('/policies/refunds')
+                          ? "bg-primary/10 text-primary font-medium"
+                          : "text-foreground hover:bg-muted"
+                      )}
                     >
                       <CreditCard className="h-5 w-5" />
                       <span>Polityka Zwrotów</span>
-                    </NavLink>
+                    </button>
                   </div>
                 </div>
               </div>
@@ -334,7 +383,6 @@ const MobileNavigation = () => {
               <div className="h-20"></div>
             </div>
           </div>
-
           {/* Sticky User Section at bottom */}
           <div className="sticky bottom-0 bg-background border-t">
             <UserMenuFooter />

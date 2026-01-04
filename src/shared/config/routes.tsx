@@ -62,6 +62,10 @@ const Kasa = React.lazy(() => import('@/modules/accounting/screens/Kasa'));
 const TransactionalContracts = React.lazy(() => import('@/modules/accounting/screens/TransactionalContracts'));
 const EventLog = React.lazy(() => import('@/modules/accounting/screens/EventLog'));
 const LedgerPage = React.lazy(() => import('@/modules/accounting/screens/LedgerPage'));
+const EventsShell = React.lazy(() => import('@/modules/events/components/EventsShell'));
+const EventsTimeline = React.lazy(() => import('@/modules/events/screens/EventsTimeline'));
+const EventsPosting = React.lazy(() => import('@/modules/events/screens/EventsPosting'));
+const EventsReconciliation = React.lazy(() => import('@/modules/events/screens/EventsReconciliation'));
 const SettingsShell = React.lazy(() => import('@/modules/settings/screens/SettingsShell'));
 const SettingsMenu = React.lazy(() => import('@/modules/settings/screens/SettingsMenu'));
 const ProfileSettings = React.lazy(() => import('@/modules/settings/screens/ProfileSettings'));
@@ -588,6 +592,34 @@ export const routes: RouteConfig[] = [
     title: 'Analityka',
     icon: 'BarChart',
     section: 'main',
+  },
+
+  // Events Module
+  {
+    path: '/events',
+    element: <EventsShell />,
+    guard: 'protected',
+    title: 'Zdarzenia',
+    icon: 'Activity',
+    section: 'accounting',
+    children: [
+      {
+        path: '/events',
+        element: <Navigate to="/events/timeline" replace />,
+      },
+      {
+        path: '/events/timeline',
+        element: <EventsTimeline />,
+      },
+      {
+        path: '/events/posting',
+        element: <EventsPosting />,
+      },
+      {
+        path: '/events/reconciliation',
+        element: <EventsReconciliation />,
+      },
+    ],
   },
 
   // Ledger
