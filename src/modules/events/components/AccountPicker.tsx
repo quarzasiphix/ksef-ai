@@ -52,8 +52,8 @@ export function AccountPicker({
     queryFn: async () => {
       const { data, error } = await supabase.rpc('get_chart_accounts_for_picker', {
         p_business_profile_id: businessProfileId,
-        p_account_type: accountType || null,
-        p_search_query: null,
+        p_types: accountType ? [accountType] : null,
+        p_search: null,
       });
 
       if (error) throw error;

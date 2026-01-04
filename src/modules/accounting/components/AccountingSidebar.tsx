@@ -51,6 +51,13 @@ const spolkaNavSections: NavSection[] = [
         description: 'Zapisy księgowe i bilans próbny',
         color: 'text-indigo-500',
       },
+      {
+        label: 'Plan kont',
+        href: '/accounting/coa',
+        icon: <FileText className="h-5 w-5" />,
+        description: 'Zarządzanie kontami księgowymi',
+        color: 'text-slate-500',
+      },
     ],
   },
   {
