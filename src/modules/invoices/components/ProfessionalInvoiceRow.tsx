@@ -27,6 +27,9 @@ import {
   BookOpen,
   ArrowRight,
   FileText,
+  Banknote,
+  CreditCard,
+  Landmark,
 } from 'lucide-react';
 import { Invoice } from '@/shared/types';
 import { useOpenTab } from '@/shared/hooks/useOpenTab';
@@ -65,6 +68,22 @@ const ProfessionalInvoiceRow: React.FC<ProfessionalInvoiceRowProps> = ({
   const hasDecision = !!invoice.decisionId;
   const isOverdue = invoice.dueDate && !isPaid && new Date(invoice.dueDate) < new Date();
   const isVatExempt = invoice.fakturaBezVAT || invoice.vat === false;
+  
+  // Get payment method icon
+  const getPaymentMethodIcon = () => {
+    const method = invoice.paymentMethod?.toLowerCase();
+    if (method === 'cash' || method === 'gotówka') {
+      return { icon: Banknote, label: 'Gotówka', color: 'text-green-600 dark:text-green-400' };
+    }
+    if (method === 'card' || method === 'karta') {
+      return { icon: CreditCard, label: 'Karta', color: 'text-blue-600 dark:text-blue-400' };
+    }
+    // Default: transfer/przelew
+    return { icon: Landmark, label: 'Przelew', color: 'text-purple-600 dark:text-purple-400' };
+  };
+  
+  const paymentMethod = getPaymentMethodIcon();
+  const PaymentIcon = paymentMethod.icon;
   
   // Calculate time pressure
   const getDueDateStatus = () => {
@@ -150,7 +169,7 @@ const ProfessionalInvoiceRow: React.FC<ProfessionalInvoiceRowProps> = ({
             </span>
           </div>
           
-          {/* Line 2: Issue date + due date + status pill */}
+          {/* Line 2: Issue date + due date + status pill + payment method */}
           <div className="flex items-center gap-3 text-xs text-muted-foreground">
             <span>{format(new Date(invoice.issueDate), 'dd.MM.yyyy', { locale: pl })}</span>
             {dueDateStatus && (
@@ -163,6 +182,10 @@ const ProfessionalInvoiceRow: React.FC<ProfessionalInvoiceRowProps> = ({
               <StatusIcon className="h-3 w-3" />
               {paymentStatus.label}
             </Badge>
+            <span className={`flex items-center gap-1 ${paymentMethod.color}`} title={paymentMethod.label}>
+              <PaymentIcon className="h-3.5 w-3.5" />
+              <span className="hidden sm:inline">{paymentMethod.label}</span>
+            </span>
           </div>
         </div>
 
@@ -205,14 +228,14 @@ const ProfessionalInvoiceRow: React.FC<ProfessionalInvoiceRowProps> = ({
         {/* COLUMN 3: PRICE (right, strong visual anchor) */}
         <div className="hidden md:block flex-shrink-0 min-w-[140px] text-right">
           <div className="text-2xl font-bold">
-            {formatCurrency(invoice.totalGrossValue || invoice.totalAmount || 0, invoice.currency || 'PLN')}
+            {formatCurrency(isVatExempt ? (invoice.totalNetValue || 0) : (invoice.totalGrossValue || invoice.totalAmount || 0), invoice.currency || 'PLN')}
           </div>
         </div>
 
         {/* Mobile: Kebab menu + price */}
         <div className="md:hidden flex items-center gap-3">
           <div className="text-xl font-bold">
-            {formatCurrency(invoice.totalGrossValue || invoice.totalAmount || 0, invoice.currency || 'PLN')}
+            {formatCurrency(isVatExempt ? (invoice.totalNetValue || 0) : (invoice.totalGrossValue || invoice.totalAmount || 0), invoice.currency || 'PLN')}
           </div>
           <div onClick={(e) => e.stopPropagation()}>
             <DropdownMenu>

@@ -32,10 +32,13 @@ const MonthlySummaryBar: React.FC<MonthlySummaryBarProps> = ({
       );
     });
 
-    const totalAmount = monthlyInvoices.reduce(
-      (sum, inv) => sum + (inv.totalGrossValue || inv.totalAmount || 0),
-      0,
-    );
+    const totalAmount = monthlyInvoices.reduce((sum, inv) => {
+      // Check if invoice is VAT-exempt
+      const isVatExempt = inv.fakturaBezVAT || inv.vat === false;
+      // Use totalNetValue for VAT-exempt invoices, totalGrossValue otherwise
+      const amount = isVatExempt ? (inv.totalNetValue || 0) : (inv.totalGrossValue || inv.totalAmount || 0);
+      return sum + amount;
+    }, 0);
 
     const documentCount = monthlyInvoices.length;
     const unpaidCount = monthlyInvoices.filter((inv) => !(inv.isPaid || inv.paid)).length;

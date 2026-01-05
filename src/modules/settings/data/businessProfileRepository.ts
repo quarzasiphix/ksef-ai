@@ -235,7 +235,11 @@ export async function getBusinessProfileById(id: string, userId: string): Promis
   };
 }
 
-export async function checkTaxIdExists(taxId: string, currentUserId: string): Promise<{ exists: boolean, ownerName?: string }> {
+export async function checkTaxIdExists(
+  taxId: string,
+  currentUserId: string,
+  profileIdToIgnore?: string
+): Promise<{ exists: boolean, ownerName?: string }> {
   try {
     const { data, error } = await supabase.rpc('find_user_by_tax_id', {
       tax_id_param: taxId
@@ -247,11 +251,17 @@ export async function checkTaxIdExists(taxId: string, currentUserId: string): Pr
     }
 
     if (data && data.length > 0) {
-      const existingProfile = data[0];
+      const existingProfile = data.find((profile: any) => profile.id !== profileIdToIgnore);
+
+      if (!existingProfile) {
+        return { exists: false };
+      }
+
       // If the existing profile belongs to the current user, it's OK
       if (existingProfile.user_id === currentUserId) {
         return { exists: false };
       }
+
       return { 
         exists: true, 
         ownerName: existingProfile.business_name 

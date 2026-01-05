@@ -4,7 +4,9 @@ import { Button } from "@/shared/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/shared/ui/card";
 import { Input } from "@/shared/ui/input";
 import { Invoice, InvoiceType } from "@/shared/types";
-import { Plus, Search, Filter, Trash2, CheckSquare, Square, FileDown, Eye, CreditCard, LayoutGrid, List, Share2, Pen, AlertCircle } from "lucide-react";
+import { Plus, Search, Filter, Trash2, CheckSquare, Square, FileDown, Eye, CreditCard, LayoutGrid, List, Share2, Pen, AlertCircle, Calendar, X } from "lucide-react";
+import { format, startOfMonth, endOfMonth, subMonths } from "date-fns";
+import { pl } from "date-fns/locale";
 import { Badge } from "@/shared/ui/badge";
 import MonthlySummaryBar, { MonthlySummaryFilter } from '@/modules/invoices/components/MonthlySummaryBar';
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/shared/ui/sheet";
@@ -36,7 +38,7 @@ import { toast } from "sonner";
 import { deleteInvoice, saveInvoice } from "@/modules/invoices/data/invoiceRepository";
 import { useQueryClient } from "@tanstack/react-query";
 import { generateInvoicePdf, getInvoiceFileName } from "@/shared/lib/pdf-utils";
-import { formatCurrency } from "@/shared/lib/invoice-utils";
+import { formatCurrency, getInvoiceValueInPLN } from "@/shared/lib/invoice-utils";
 import { useQuery } from "@tanstack/react-query";
 import { getBankAccountsForProfile } from "@/modules/banking/data/bankAccountRepository";
 import { getBusinessProfileById } from "@/modules/settings/data/businessProfileRepository";
@@ -44,6 +46,7 @@ import { Checkbox } from "@/shared/ui/checkbox";
 import { supabase } from "@/integrations/supabase/client";
 
 type SmartFilter = 'all' | 'unpaid_issued' | 'paid_not_booked' | 'booked_not_reconciled' | 'overdue';
+type DateFilter = 'all' | 'this_month' | 'last_month' | 'custom';
 
 const IncomeList = () => {
   const { invoices: { data: invoices, isLoading } } = useGlobalData();
@@ -52,6 +55,9 @@ const IncomeList = () => {
   const [searchTerm, setSearchTerm] = useState("");
   const [activeTab, setActiveTab] = useState<string>("all");
   const [smartFilter, setSmartFilter] = useState<SmartFilter>('all');
+  const [dateFilter, setDateFilter] = useState<DateFilter>('all');
+  const [customStartDate, setCustomStartDate] = useState<string>('');
+  const [customEndDate, setCustomEndDate] = useState<string>('');
   const [viewMode, setViewMode] = useState<'grid' | 'list'>("list");
   const [contextMenu, setContextMenu] = useState<{visible: boolean, x: number, y: number, invoiceId: string | null}>({visible: false, x: 0, y: 0, invoiceId: null});
   const [selectedInvoices, setSelectedInvoices] = useState<Set<string>>(new Set());
@@ -327,10 +333,46 @@ const IncomeList = () => {
             matchesSmartFilter = true;
         }
 
-        return matchesSearch && matchesType && matchesSmartFilter;
+        // Date filter logic
+        let matchesDateFilter = true;
+        const invoiceDate = new Date(invoice.issueDate);
+        
+        switch (dateFilter) {
+          case 'this_month': {
+            const now = new Date();
+            const monthStart = startOfMonth(now);
+            const monthEnd = endOfMonth(now);
+            matchesDateFilter = invoiceDate >= monthStart && invoiceDate <= monthEnd;
+            break;
+          }
+          case 'last_month': {
+            const lastMonth = subMonths(new Date(), 1);
+            const monthStart = startOfMonth(lastMonth);
+            const monthEnd = endOfMonth(lastMonth);
+            matchesDateFilter = invoiceDate >= monthStart && invoiceDate <= monthEnd;
+            break;
+          }
+          case 'custom': {
+            if (customStartDate) {
+              const startDate = new Date(customStartDate);
+              matchesDateFilter = invoiceDate >= startDate;
+            }
+            if (customEndDate && matchesDateFilter) {
+              const endDate = new Date(customEndDate);
+              endDate.setHours(23, 59, 59, 999);
+              matchesDateFilter = invoiceDate <= endDate;
+            }
+            break;
+          }
+          case 'all':
+          default:
+            matchesDateFilter = true;
+        }
+
+        return matchesSearch && matchesType && matchesSmartFilter && matchesDateFilter;
       }
     );
-  }, [invoices, searchTerm, activeTab, selectedProfileId, smartFilter, selectedProjectId]); // Include all dependencies
+  }, [invoices, searchTerm, activeTab, selectedProfileId, smartFilter, selectedProjectId, dateFilter, customStartDate, customEndDate]); // Include all dependencies
 
   // Multi-select functions
   const toggleInvoiceSelection = (invoiceId: string, event?: React.MouseEvent) => {
@@ -637,14 +679,34 @@ const IncomeList = () => {
                   </span>
                 )}
               </CardTitle>
-              <CardDescription className="flex flex-wrap items-center gap-2">
-                {activeTab !== "all" ? getDocumentTypeName(activeTab) : "Dokumenty ujęte w systemie"}: {filteredInvoices.length}
-                {selectedInvoices.size > 0 && (
-                  <span className="text-primary font-medium">
-                    • Wybrano: {selectedInvoices.size}
+              <div className="flex flex-col gap-1">
+                <CardDescription className="flex flex-wrap items-center gap-2">
+                  <span>
+                    {activeTab !== "all" ? getDocumentTypeName(activeTab) : "Dokumenty ujęte w systemie"}: {filteredInvoices.length}
                   </span>
+                  {selectedInvoices.size > 0 && (
+                    <span className="text-primary font-medium">
+                      • Wybrano: {selectedInvoices.size}
+                    </span>
+                  )}
+                </CardDescription>
+                {filteredInvoices.length > 0 && (
+                  <div className="text-sm font-normal text-muted-foreground">
+                    Suma wyświetlonych: {(() => {
+                      const totalPLN = filteredInvoices.reduce((sum, inv) => {
+                        const isVatExempt = inv.fakturaBezVAT || inv.vat === false;
+                        const baseAmount = isVatExempt ? (inv.totalNetValue || 0) : (inv.totalGrossValue || inv.totalAmount || 0);
+                        const plnValue = inv.currency === 'PLN' ? baseAmount : getInvoiceValueInPLN(inv);
+                        return sum + plnValue;
+                      }, 0);
+                      return formatCurrency(totalPLN, 'PLN');
+                    })()}
+                    {filteredInvoices.some(inv => inv.currency && inv.currency !== 'PLN') && (
+                      <span className="text-xs ml-1">(z przeliczeniem)</span>
+                    )}
+                  </div>
                 )}
-              </CardDescription>
+              </div>
             </div>
             <div className="flex gap-2 items-center">
               {/* Filtry Button */}
@@ -696,62 +758,118 @@ const IncomeList = () => {
         {/* Desktop Collapsible Filter Panel */}
         {!isMobileView && isFilterPanelOpen && (
           <div className="px-6 pb-4 border-b">
-            <div className="flex flex-wrap gap-2">
-              <Button
-                variant={smartFilter === 'all' ? 'default' : 'outline'}
-                size="sm"
-                onClick={() => setSmartFilter('all')}
-              >
-                Wszystkie
-              </Button>
-              <Button
-                variant={smartFilter === 'unpaid_issued' ? 'default' : 'outline'}
-                size="sm"
-                onClick={() => setSmartFilter('unpaid_issued')}
-                className="gap-1 flex-col items-start h-auto py-2"
-                title="Dokument istnieje, ale nie ma wpływu na cashflow"
-              >
-                <div className="flex items-center gap-1">
-                  <Badge variant="secondary" className="text-xs">⏳</Badge>
-                  <span>Wystawione, nieopłacone</span>
-                </div>
-                <span className="text-xs text-muted-foreground font-normal">Dokument istnieje, ale nie ma wpływu na cashflow</span>
-              </Button>
-              <Button
-                variant={smartFilter === 'paid_not_booked' ? 'default' : 'outline'}
-                size="sm"
-                onClick={() => setSmartFilter('paid_not_booked')}
-                className="gap-1 flex-col items-start h-auto py-2"
-                title="Pieniądze są, ale księgowość nie jest domknięta"
-              >
-                <div className="flex items-center gap-1">
-                  <Badge variant="secondary" className="text-xs">⚠️</Badge>
-                  <span>Opłacone, niezaksięgowane</span>
-                </div>
-                <span className="text-xs text-muted-foreground font-normal">Pieniądze są, ale księgowość nie jest domknięta</span>
-              </Button>
-              <Button
-                variant={smartFilter === 'booked_not_reconciled' ? 'default' : 'outline'}
-                size="sm"
-                onClick={() => setSmartFilter('booked_not_reconciled')}
-                className="gap-1 flex-col items-start h-auto py-2"
-                title="Dokument zamknięty, bezpieczny podatkowo"
-              >
-                <div className="flex items-center gap-1">
-                  <Badge variant="secondary" className="text-xs">📘</Badge>
-                  <span>Zaksięgowane</span>
-                </div>
-                <span className="text-xs text-muted-foreground font-normal">Dokument zamknięty, bezpieczny podatkowo</span>
-              </Button>
-              <Button
-                variant={smartFilter === 'overdue' ? 'default' : 'outline'}
-                size="sm"
-                onClick={() => setSmartFilter('overdue')}
-                className="gap-1"
-              >
-                <Badge variant="secondary" className="text-xs bg-red-100 text-red-700">🔴</Badge>
-                Zaległe
-              </Button>
+            <div className="flex flex-wrap gap-4 items-start">
+              {/* Date Range Dropdown */}
+              <div className="space-y-2 flex-1 min-w-[200px]">
+                <label className="text-sm font-medium text-muted-foreground">Zakres dat</label>
+                <Select value={dateFilter} onValueChange={(value: DateFilter) => {
+                  setDateFilter(value);
+                  if (value !== 'custom') {
+                    setCustomStartDate('');
+                    setCustomEndDate('');
+                  }
+                }}>
+                  <SelectTrigger className="w-full">
+                    <SelectValue placeholder="Wybierz zakres" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">
+                      <div className="flex items-center gap-2">
+                        <Calendar className="h-4 w-4" />
+                        <span>Wszystkie</span>
+                      </div>
+                    </SelectItem>
+                    <SelectItem value="this_month">
+                      <div className="flex items-center gap-2">
+                        <Calendar className="h-4 w-4" />
+                        <span>Bieżący miesiąc</span>
+                      </div>
+                    </SelectItem>
+                    <SelectItem value="last_month">
+                      <div className="flex items-center gap-2">
+                        <Calendar className="h-4 w-4" />
+                        <span>Poprzedni miesiąc</span>
+                      </div>
+                    </SelectItem>
+                    <SelectItem value="custom">
+                      <div className="flex items-center gap-2">
+                        <Calendar className="h-4 w-4" />
+                        <span>Własny zakres</span>
+                      </div>
+                    </SelectItem>
+                  </SelectContent>
+                </Select>
+                {dateFilter === 'custom' && (
+                  <div className="flex gap-2 items-center mt-2">
+                    <div className="flex items-center gap-2">
+                      <label className="text-sm text-muted-foreground">Od:</label>
+                      <Input
+                        type="date"
+                        value={customStartDate}
+                        onChange={(e) => setCustomStartDate(e.target.value)}
+                        className="w-40"
+                      />
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <label className="text-sm text-muted-foreground">Do:</label>
+                      <Input
+                        type="date"
+                        value={customEndDate}
+                        onChange={(e) => setCustomEndDate(e.target.value)}
+                        className="w-40"
+                      />
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              {/* Status Dropdown */}
+              <div className="space-y-2 flex-1 min-w-[200px]">
+                <label className="text-sm font-medium text-muted-foreground">Status</label>
+                <Select value={smartFilter} onValueChange={(value: SmartFilter) => setSmartFilter(value)}>
+                  <SelectTrigger className="w-full">
+                    <SelectValue placeholder="Wybierz status" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">
+                      <span>Wszystkie</span>
+                    </SelectItem>
+                    <SelectItem value="unpaid_issued">
+                      <div className="flex items-center gap-2">
+                        <Badge variant="secondary" className="text-xs">⏳</Badge>
+                        <div className="flex flex-col items-start">
+                          <span>Wystawione, nieopłacone</span>
+                          <span className="text-xs text-muted-foreground">Brak wpływu na cashflow</span>
+                        </div>
+                      </div>
+                    </SelectItem>
+                    <SelectItem value="paid_not_booked">
+                      <div className="flex items-center gap-2">
+                        <Badge variant="secondary" className="text-xs">⚠️</Badge>
+                        <div className="flex flex-col items-start">
+                          <span>Opłacone, niezaksięgowane</span>
+                          <span className="text-xs text-muted-foreground">Księgowość niezamknięta</span>
+                        </div>
+                      </div>
+                    </SelectItem>
+                    <SelectItem value="booked_not_reconciled">
+                      <div className="flex items-center gap-2">
+                        <Badge variant="secondary" className="text-xs">📘</Badge>
+                        <div className="flex flex-col items-start">
+                          <span>Zaksięgowane</span>
+                          <span className="text-xs text-muted-foreground">Bezpieczne podatkowo</span>
+                        </div>
+                      </div>
+                    </SelectItem>
+                    <SelectItem value="overdue">
+                      <div className="flex items-center gap-2">
+                        <Badge variant="secondary" className="text-xs bg-red-100 text-red-700">🔴</Badge>
+                        <span>Zaległe</span>
+                      </div>
+                    </SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
             </div>
           </div>
         )}

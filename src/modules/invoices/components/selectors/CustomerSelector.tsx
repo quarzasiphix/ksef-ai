@@ -10,6 +10,7 @@ import {
   CommandInput,
   CommandItem,
   CommandList,
+  CommandSeparator,
 } from "@/shared/ui/command";
 import {
   Popover,
@@ -25,12 +26,14 @@ interface CustomerSelectorProps {
   value: string;
   onChange: (id: string, name?: string) => void;
   showBusinessProfiles?: boolean;
+  currentBusinessProfileId?: string;
 }
 
 export const CustomerSelector: React.FC<CustomerSelectorProps> = ({
   value,
   onChange,
   showBusinessProfiles = true,
+  currentBusinessProfileId,
 }) => {
   const { customers: { data: customers }, businessProfiles: { data: businessProfiles } } = useGlobalData();
   const [open, setOpen] = useState(false);
@@ -51,22 +54,35 @@ export const CustomerSelector: React.FC<CustomerSelectorProps> = ({
     setOpen(false);
   };
 
-  const allOptions = [
-    ...customers.map(customer => ({
-      id: customer.id,
-      name: customer.name,
-      type: 'customer' as const,
-      isLinked: !!customer.linkedBusinessProfile,
-      customer,
-    })),
-    ...(showBusinessProfiles ? businessProfiles.map(profile => ({
-      id: profile.id,
-      name: profile.name,
-      type: 'business' as const,
-      isLinked: true,
-      customer: null,
-    })) : [])
-  ];
+  // Group customers by business profile
+  const currentProfileCustomers = customers.filter(c => 
+    c.business_profile_id === currentBusinessProfileId && !c.is_shared
+  );
+  
+  const sharedCustomers = customers.filter(c => c.is_shared);
+  
+  const otherProfileCustomers = customers.filter(c => 
+    c.business_profile_id !== currentBusinessProfileId && !c.is_shared
+  );
+
+  const createCustomerOption = (customer: Customer) => ({
+    id: customer.id,
+    name: customer.name,
+    type: 'customer' as const,
+    isLinked: !!customer.linkedBusinessProfile,
+    customer,
+  });
+
+  const currentProfileOptions = currentProfileCustomers.map(createCustomerOption);
+  const sharedOptions = sharedCustomers.map(createCustomerOption);
+  const otherProfileOptions = otherProfileCustomers.map(createCustomerOption);
+  const businessProfileOptions = showBusinessProfiles ? businessProfiles.map(profile => ({
+    id: profile.id,
+    name: profile.name,
+    type: 'business' as const,
+    isLinked: true,
+    customer: null,
+  })) : [];
 
   return (
     <div className="space-y-2">
@@ -108,38 +124,127 @@ export const CustomerSelector: React.FC<CustomerSelectorProps> = ({
                   </Button>
                 </div>
               </CommandEmpty>
-              <CommandGroup>
-                {allOptions.map((option) => (
-                  <CommandItem
-                    key={option.id}
-                    value={option.name}
-                    onSelect={() => handleSelect(option.id, option.name)}
-                  >
-                    <Check
-                      className={cn(
-                        "mr-2 h-4 w-4",
-                        value === option.id ? "opacity-100" : "opacity-0"
-                      )}
-                    />
-                    <div className="flex items-center justify-between w-full">
-                      <div className="flex items-center gap-2">
-                        <span className="truncate" style={{ whiteSpace: 'pre-wrap' }}>{option.name}</span>
-                        {option.type === 'business' && (
+              
+              {/* Current Business Profile Customers */}
+              {currentProfileOptions.length > 0 && (
+                <CommandGroup heading="Bieżący profil">
+                  {currentProfileOptions.map((option) => (
+                    <CommandItem
+                      key={option.id}
+                      value={option.name}
+                      onSelect={() => handleSelect(option.id, option.name)}
+                    >
+                      <Check
+                        className={cn(
+                          "mr-2 h-4 w-4",
+                          value === option.id ? "opacity-100" : "opacity-0"
+                        )}
+                      />
+                      <div className="flex items-center justify-between w-full">
+                        <div className="flex items-center gap-2">
+                          <span className="truncate" style={{ whiteSpace: 'pre-wrap' }}>{option.name}</span>
+                          {option.isLinked && (
+                            <Badge variant="outline" className="text-xs text-green-600 border-green-300">
+                              <User className="mr-1 h-3 w-3" />
+                              Połączony
+                            </Badge>
+                          )}
+                        </div>
+                      </div>
+                    </CommandItem>
+                  ))}
+                </CommandGroup>
+              )}
+
+              {/* Shared Customers */}
+              {sharedOptions.length > 0 && (
+                <CommandGroup heading="Udostępnione">
+                  {sharedOptions.map((option) => (
+                    <CommandItem
+                      key={option.id}
+                      value={option.name}
+                      onSelect={() => handleSelect(option.id, option.name)}
+                    >
+                      <Check
+                        className={cn(
+                          "mr-2 h-4 w-4",
+                          value === option.id ? "opacity-100" : "opacity-0"
+                        )}
+                      />
+                      <div className="flex items-center justify-between w-full">
+                        <div className="flex items-center gap-2">
+                          <span className="truncate" style={{ whiteSpace: 'pre-wrap' }}>{option.name}</span>
+                          {option.isLinked && (
+                            <Badge variant="outline" className="text-xs text-green-600 border-green-300">
+                              <User className="mr-1 h-3 w-3" />
+                              Połączony
+                            </Badge>
+                          )}
+                        </div>
+                      </div>
+                    </CommandItem>
+                  ))}
+                </CommandGroup>
+              )}
+
+              {/* Other Profile Customers */}
+              {otherProfileOptions.length > 0 && (
+                <CommandGroup heading="Inne profile">
+                  {otherProfileOptions.map((option) => (
+                    <CommandItem
+                      key={option.id}
+                      value={option.name}
+                      onSelect={() => handleSelect(option.id, option.name)}
+                    >
+                      <Check
+                        className={cn(
+                          "mr-2 h-4 w-4",
+                          value === option.id ? "opacity-100" : "opacity-0"
+                        )}
+                      />
+                      <div className="flex items-center justify-between w-full">
+                        <div className="flex items-center gap-2">
+                          <span className="truncate" style={{ whiteSpace: 'pre-wrap' }}>{option.name}</span>
+                          {option.isLinked && (
+                            <Badge variant="outline" className="text-xs text-green-600 border-green-300">
+                              <User className="mr-1 h-3 w-3" />
+                              Połączony
+                            </Badge>
+                          )}
+                        </div>
+                      </div>
+                    </CommandItem>
+                  ))}
+                </CommandGroup>
+              )}
+
+              {/* Business Profiles */}
+              {businessProfileOptions.length > 0 && (
+                <CommandGroup heading="Profile biznesowe">
+                  {businessProfileOptions.map((option) => (
+                    <CommandItem
+                      key={option.id}
+                      value={option.name}
+                      onSelect={() => handleSelect(option.id, option.name)}
+                    >
+                      <Check
+                        className={cn(
+                          "mr-2 h-4 w-4",
+                          value === option.id ? "opacity-100" : "opacity-0"
+                        )}
+                      />
+                      <div className="flex items-center justify-between w-full">
+                        <div className="flex items-center gap-2">
+                          <span className="truncate" style={{ whiteSpace: 'pre-wrap' }}>{option.name}</span>
                           <Badge variant="secondary" className="text-xs">
                             Profil biznesowy
                           </Badge>
-                        )}
-                        {option.isLinked && option.type === 'customer' && (
-                          <Badge variant="outline" className="text-xs text-green-600 border-green-300">
-                            <User className="mr-1 h-3 w-3" />
-                            Połączony
-                          </Badge>
-                        )}
+                        </div>
                       </div>
-                    </div>
-                  </CommandItem>
-                ))}
-              </CommandGroup>
+                    </CommandItem>
+                  ))}
+                </CommandGroup>
+              )}
             </CommandList>
           </Command>
         </PopoverContent>

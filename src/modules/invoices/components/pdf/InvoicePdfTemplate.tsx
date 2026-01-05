@@ -1,6 +1,6 @@
 import toWords from 'numbers-to-words-pl';
 import React from 'react';
-import { Invoice, InvoiceType, BusinessProfile, Customer, PaymentMethod, PaymentMethodDb } from '@/shared/types';
+import { Invoice, InvoiceType, BusinessProfile, Customer, PaymentMethod, PaymentMethodDb, VatExemptionReason } from '@/shared/types';
 import { calculateItemValues, calculateInvoiceTotals, formatCurrency as formatCurrencyUtil, getPolishPaymentMethod, toPaymentMethodUi, calculatePaymentSplit } from '@/shared/lib/invoice-utils';
 import { BankAccount } from '@/modules/banking/bank';
 
@@ -8,6 +8,37 @@ import { BankAccount } from '@/modules/banking/bank';
 function isTransfer(paymentMethod: string | PaymentMethod | PaymentMethodDb): boolean {
     const method = typeof paymentMethod === 'string' ? paymentMethod : toPaymentMethodUi(paymentMethod);
     return method === PaymentMethod.TRANSFER || method === 'przelew' || method === 'transfer';
+}
+
+// Helper to get full VAT exemption text
+function getVatExemptionText(reason: VatExemptionReason | string | null | undefined): string {
+    if (!reason) return '';
+    
+    switch (reason) {
+        case VatExemptionReason.ART_113_UST_1:
+        case '113_1':
+            return 'Zwolnienie ze względu na nieprzekroczenie 200 000 PLN obrotu (art. 113 ust 1 i 9 ustawy o VAT)';
+        case VatExemptionReason.ART_43_UST_1:
+        case '43_1':
+            return 'zwolnienie przedmiotowe (art. 43 ust. 1 ustawy o VAT)';
+        case VatExemptionReason.ART_41_UST_4:
+        case '41_4':
+            return 'eksport towarów (art. 41 ust. 4 ustawy o VAT)';
+        case VatExemptionReason.ART_42:
+        case '42':
+            return 'wewnątrzwspólnotowa dostawa towarów (art. 42 ustawy o VAT)';
+        case VatExemptionReason.ART_28B:
+        case '28b':
+            return 'usługi zagraniczne - reverse charge (art. 28b ustawy o VAT)';
+        case VatExemptionReason.ART_17:
+        case '17':
+            return 'odwrotne obciążenie (art. 17 ust. 1 pkt 7 i 8 ustawy o VAT)';
+        case VatExemptionReason.OTHER:
+        case 'other':
+            return 'inna podstawa prawna zwolnienia z VAT';
+        default:
+            return String(reason);
+    }
 }
 
 const formatPrice = (value: number) => {
@@ -564,9 +595,9 @@ export const InvoicePdfTemplate: React.FC<InvoicePdfTemplateProps> = ({ invoice,
 
                 {/* Display VAT Exemption Reason if applicable */}
                 {invoice.vat === false && invoice.vatExemptionReason && (
-                    <div style={{ marginTop: 5, fontSize: 10 }}>
-                        <div style={{ fontWeight: 'bold' }}>Powód zwolnienia z VAT:</div>
-                        <div style={{ fontSize: 10 }}>{invoice.vatExemptionReason}</div>
+                    <div style={{ marginTop: 16, padding: '12px 16px', borderTop: '2px solid #dee2e6' }}>
+                        <div style={{ fontWeight: 600, fontSize: 13, marginBottom: 6, color: '#333' }}>Powód zwolnienia z VAT:</div>
+                        <div style={{ fontSize: 12, color: '#555', lineHeight: 1.5 }}>{getVatExemptionText(invoice.vatExemptionReason)}</div>
                     </div>
                 )}
 

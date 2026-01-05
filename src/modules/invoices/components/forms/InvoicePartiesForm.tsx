@@ -4,10 +4,11 @@ import { CardHeader, CardTitle, CardContent, Card } from "@/shared/ui/card";
 import { CustomerSelector } from "@/modules/invoices/components/selectors/CustomerSelector";
 import { BusinessProfileSelector } from "@/modules/invoices/components/selectors/BusinessProfileSelector";
 import { TransactionType } from "@/shared/types/common";
-import { Plus } from "lucide-react";
+import { Plus, Pencil } from "lucide-react";
 import { Button } from "@/shared/ui/button";
 import CustomerForm from "@/modules/customers/components/CustomerForm";
 import { useQueryClient } from "@tanstack/react-query";
+import { useGlobalData } from "@/shared/hooks/use-global-data";
 
 interface InvoicePartiesFormProps {
   businessProfileId: string;
@@ -25,7 +26,9 @@ export const InvoicePartiesForm: React.FC<InvoicePartiesFormProps> = ({
   onCustomerChange
 }) => {
   const [showCustomerModal, setShowCustomerModal] = React.useState(false);
+  const [editingCustomer, setEditingCustomer] = React.useState<any>(null);
   const queryClient = useQueryClient();
+  const { customers: { data: customers } } = useGlobalData();
 
   const handleNewCustomerSuccess = async (customer: any) => {
     // Refresh global data if available
@@ -38,6 +41,8 @@ export const InvoicePartiesForm: React.FC<InvoicePartiesFormProps> = ({
     }
     // Set newly created customer as selected
     onCustomerChange(customer.id, customer.name);
+    // Invalidate and refetch customers to ensure fresh data
+    await queryClient.invalidateQueries({ queryKey: ['customers'] });
     // Optimistically update customers cache
     queryClient.setQueryData(['customers'], (old: any) => {
       if (!old) return [customer];
@@ -46,6 +51,35 @@ export const InvoicePartiesForm: React.FC<InvoicePartiesFormProps> = ({
       return [...old, customer];
     });
     setShowCustomerModal(false);
+  };
+
+  const handleEditCustomerSuccess = async (customer: any) => {
+    // Refresh global data if available
+    if (window.triggerCustomersRefresh) {
+      try {
+        await window.triggerCustomersRefresh();
+      } catch {
+        // ignore
+      }
+    }
+    // Update the selected customer name
+    onCustomerChange(customer.id, customer.name);
+    // Invalidate and refetch customers to ensure fresh data
+    await queryClient.invalidateQueries({ queryKey: ['customers'] });
+    // Update customers cache
+    queryClient.setQueryData(['customers'], (old: any) => {
+      if (!old) return [customer];
+      return old.map((c: any) => c.id === customer.id ? customer : c);
+    });
+    setEditingCustomer(null);
+  };
+
+  const handleEditCustomer = () => {
+    if (!customerId) return;
+    const customer = customers.find(c => c.id === customerId);
+    if (customer) {
+      setEditingCustomer(customer);
+    }
   };
 
   return (
@@ -69,17 +103,30 @@ export const InvoicePartiesForm: React.FC<InvoicePartiesFormProps> = ({
               <CustomerSelector
                 value={customerId}
                 onChange={onCustomerChange}
+                currentBusinessProfileId={businessProfileId}
               />
-              <Button
-                type="button"
-                variant="secondary"
-                size="sm"
-                className="mt-2"
-                onClick={() => setShowCustomerModal(true)}
-              >
-                <Plus className="mr-2 h-4 w-4" />
-                Nowy klient
-              </Button>
+              <div className="flex gap-2 mt-2">
+                <Button
+                  type="button"
+                  variant="secondary"
+                  size="sm"
+                  onClick={() => setShowCustomerModal(true)}
+                >
+                  <Plus className="mr-2 h-4 w-4" />
+                  Nowy klient
+                </Button>
+                {customerId && (
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={handleEditCustomer}
+                  >
+                    <Pencil className="mr-2 h-4 w-4" />
+                    Edytuj
+                  </Button>
+                )}
+              </div>
             </div>
           </>
         ) : (
@@ -100,17 +147,30 @@ export const InvoicePartiesForm: React.FC<InvoicePartiesFormProps> = ({
                 value={customerId}
                 onChange={onCustomerChange}
                 showBusinessProfiles={false}
+                currentBusinessProfileId={businessProfileId}
               />
-              <Button
-                type="button"
-                variant="secondary"
-                size="sm"
-                className="mt-2"
-                onClick={() => setShowCustomerModal(true)}
-              >
-                <Plus className="mr-2 h-4 w-4" />
-                Nowy klient
-              </Button>
+              <div className="flex gap-2 mt-2">
+                <Button
+                  type="button"
+                  variant="secondary"
+                  size="sm"
+                  onClick={() => setShowCustomerModal(true)}
+                >
+                  <Plus className="mr-2 h-4 w-4" />
+                  Nowy klient
+                </Button>
+                {customerId && (
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={handleEditCustomer}
+                  >
+                    <Pencil className="mr-2 h-4 w-4" />
+                    Edytuj
+                  </Button>
+                )}
+              </div>
             </div>
           </>
         )}
@@ -123,6 +183,18 @@ export const InvoicePartiesForm: React.FC<InvoicePartiesFormProps> = ({
           onClose={() => setShowCustomerModal(false)}
           onSuccess={handleNewCustomerSuccess}
           defaultCustomerType={transactionType === TransactionType.INCOME ? 'odbiorca' : 'sprzedawca'}
+          businessProfileId={businessProfileId}
+        />
+      )}
+
+      {/* Modal for editing existing customer */}
+      {editingCustomer && (
+        <CustomerForm
+          isOpen={!!editingCustomer}
+          onClose={() => setEditingCustomer(null)}
+          onSuccess={handleEditCustomerSuccess}
+          initialData={editingCustomer}
+          businessProfileId={businessProfileId}
         />
       )}
     </Card>
