@@ -122,6 +122,13 @@ export async function createEvent(input: CreateEventInput): Promise<UnifiedEvent
     p_posted: input.posted || false,
     p_needs_action: input.needs_action || false,
     p_cash_channel: input.cash_channel || null,
+    // Chain system support
+    p_chain_id: (input as any).chain_id || null,
+    p_object_type: (input as any).object_type || null,
+    p_object_id: (input as any).object_id || null,
+    p_object_version_id: (input as any).object_version_id || null,
+    p_causation_event_id: (input as any).causation_event_id || null,
+    p_auto_create_chain: (input as any).auto_create_chain !== false,
   });
 
   if (error) throw error;
@@ -158,6 +165,13 @@ export async function logEvent(
     posted?: boolean;
     needsAction?: boolean;
     cashChannel?: 'bank' | 'cash' | 'card' | 'other';
+    // Chain system support
+    chainId?: string;
+    objectType?: string;
+    objectId?: string;
+    objectVersionId?: string;
+    causationEventId?: string;
+    autoCreateChain?: boolean;
   }
 ): Promise<UnifiedEvent> {
   // Get current user
@@ -186,7 +200,14 @@ export async function logEvent(
     posted: options?.posted,
     needs_action: options?.needsAction,
     cash_channel: options?.cashChannel,
-  });
+    // Chain system support
+    chain_id: options?.chainId,
+    object_type: options?.objectType,
+    object_id: options?.objectId,
+    object_version_id: options?.objectVersionId,
+    causation_event_id: options?.causationEventId,
+    auto_create_chain: options?.autoCreateChain,
+  } as any);
 }
 
 // ============================================

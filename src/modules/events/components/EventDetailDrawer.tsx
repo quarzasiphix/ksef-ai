@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { X, Link2, FileText, Calculator, Shield, CheckCircle, XCircle, AlertCircle, Sparkles, RefreshCcw } from 'lucide-react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
@@ -10,6 +10,7 @@ import { formatCurrency } from '@/shared/lib/invoice-utils';
 import { format } from 'date-fns';
 import { pl } from 'date-fns/locale';
 import { AccountPicker } from './AccountPicker';
+import { AttachFileDialog } from '@/modules/decisions/components/AttachFileDialog';
 
 interface EventDetailDrawerProps {
   eventId: string | null;
@@ -52,9 +53,10 @@ export function EventDetailDrawer({ eventId, isOpen, onClose }: EventDetailDrawe
   const [isManualMode, setIsManualMode] = useState(false);
   const [debitAccount, setDebitAccount] = useState<string | null>(null);
   const [creditAccount, setCreditAccount] = useState<string | null>(null);
+  const [isProofDialogOpen, setIsProofDialogOpen] = useState(false);
 
   // Fetch event detail
-  const { data: eventDetail, isLoading } = useQuery<EventDetail>({
+  const { data: eventDetail, isLoading } = useQuery({
     queryKey: ['event-detail', eventId],
     queryFn: async () => {
       if (!eventId) return null;
@@ -67,14 +69,17 @@ export function EventDetailDrawer({ eventId, isOpen, onClose }: EventDetailDrawe
       return data;
     },
     enabled: !!eventId && isOpen,
-    onSuccess: (data) => {
-      // Initialize local state from event readiness
-      if (data) {
-        setDebitAccount(data.readiness.debit_account);
-        setCreditAccount(data.readiness.credit_account);
-      }
-    },
+    refetchOnMount: true,
+    refetchOnWindowFocus: false,
   });
+  
+  // Initialize local state from event readiness
+  useEffect(() => {
+    if (eventDetail) {
+      setDebitAccount(eventDetail.readiness.debit_account);
+      setCreditAccount(eventDetail.readiness.credit_account);
+    }
+  }, [eventDetail]);
   
   // Fetch posting rule suggestion
   const { data: postingRule } = useQuery({
@@ -133,9 +138,14 @@ export function EventDetailDrawer({ eventId, isOpen, onClose }: EventDetailDrawe
       if (!data.success) throw new Error(data.error);
       return data;
     },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['event-detail', eventId] });
-      queryClient.invalidateQueries({ queryKey: ['events-posting-readiness'] });
+    onSuccess: async (data) => {
+      // Update local state immediately
+      setDebitAccount(data.debit_account.code);
+      setCreditAccount(data.credit_account.code);
+      
+      // Invalidate and refetch queries
+      await queryClient.invalidateQueries({ queryKey: ['event-detail', eventId] });
+      await queryClient.refetchQueries({ queryKey: ['event-detail', eventId] });
     },
   });
   
@@ -536,11 +546,16 @@ export function EventDetailDrawer({ eventId, isOpen, onClose }: EventDetailDrawe
 
                   {/* Add proof button */}
                   {!eventDetail.readiness.is_closed && (
-                    <Button variant="secondary" size="sm" className="mt-4 w-full border border-white/10 bg-white/5 text-white hover:bg-white/10">
-                    <Shield className="mr-2 h-4 w-4" />
-                    Dodaj dowód
-                  </Button>
-                )}
+                    <Button
+                      variant="secondary"
+                      size="sm"
+                      className="mt-4 w-full border border-white/10 bg-white/5 text-white hover:bg-white/10"
+                      onClick={() => setIsProofDialogOpen(true)}
+                    >
+                      <Shield className="mr-2 h-4 w-4" />
+                      Dodaj dowód
+                    </Button>
+                  )}
                 </Section>
 
                 <Separator className="border-white/5" />
@@ -627,6 +642,25 @@ export function EventDetailDrawer({ eventId, isOpen, onClose }: EventDetailDrawe
           )}
         </div>
       </div>
+      {eventDetail?.event?.id && (
+        <AttachFileDialog
+          open={isProofDialogOpen}
+          onOpenChange={setIsProofDialogOpen}
+          entityType="ledger_event"
+          entityId={eventDetail.event.id}
+          allowedRoles={[
+            'PRIMARY',
+            'SUPPORTING',
+            'SCAN',
+            'SIGNED',
+            'COST_ESTIMATE',
+            'CORRESPONDENCE',
+            'DELIVERY_PROOF',
+            'TRANSFER_CONFIRMATION',
+            'OTHER',
+          ]}
+        />
+      )}
     </div>
   );
 }

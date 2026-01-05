@@ -59,7 +59,7 @@ export const AttachFileDialog: React.FC<AttachFileDialogProps> = ({
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const currentProfile = profiles.find(p => p.id === selectedProfileId);
-  const { files } = useStorageFiles(folderId);
+  const { files } = useStorageFiles(folderId || undefined);
 
   const availableRoles = allowedRoles || Object.keys(ATTACHMENT_ROLE_LABELS) as AttachmentRole[];
 
@@ -86,6 +86,9 @@ export const AttachFileDialog: React.FC<AttachFileDialogProps> = ({
 
       // If uploading a new file, upload it first
       if (uploadedFile && !fileId) {
+        if (!folderId) {
+          throw new Error('Folder ID is required for file upload');
+        }
         const uploadResult = await StorageService.uploadFile({
           storage_folder_id: folderId,
           business_profile_id: currentProfile.id,

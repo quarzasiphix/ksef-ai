@@ -14,6 +14,7 @@ interface SyncTimestamps {
   operationsJobs?: string;
   operationsDrivers?: string;
   operationsVehicles?: string;
+  cashRegister?: string;
 }
 
 interface SyncCheckResponse {
@@ -28,6 +29,7 @@ interface SyncCheckResponse {
     operationsJobs: boolean;
     operationsDrivers: boolean;
     operationsVehicles: boolean;
+    cashRegister: boolean;
   };
   latestTimestamps: {
     invoices: string | null;
@@ -40,6 +42,7 @@ interface SyncCheckResponse {
     operationsJobs: string | null;
     operationsDrivers: string | null;
     operationsVehicles: string | null;
+    cashRegister: string | null;
   };
   counts: {
     invoices: number;
@@ -52,6 +55,7 @@ interface SyncCheckResponse {
     operationsJobs: number;
     operationsDrivers: number;
     operationsVehicles: number;
+    cashRegister: number;
   };
 }
 
@@ -233,6 +237,13 @@ class SyncManager {
       if (data.hasUpdates.bankAccounts) {
         console.log('[SyncManager] Invalidating bank accounts queries');
         invalidations.push(queryClient.invalidateQueries({ queryKey: ['bank-accounts', businessProfileId] }));
+      }
+
+      if (data.hasUpdates.cashRegister) {
+        console.log('[SyncManager] Invalidating cash register queries');
+        invalidations.push(queryClient.invalidateQueries({ queryKey: ['cash-register', businessProfileId] }));
+        invalidations.push(queryClient.invalidateQueries({ queryKey: ['cash-accounts', businessProfileId] }));
+        invalidations.push(queryClient.invalidateQueries({ queryKey: ['cash-transactions'] }));
       }
 
       // Wait for all invalidations to complete

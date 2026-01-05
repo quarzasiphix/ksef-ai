@@ -880,7 +880,7 @@ const NewInvoice = React.forwardRef<{
                   savedInvoice.id,
                   `Utworzono fakturę ${formValues.number}`,
                   {
-                    occurredAt: formValues.issueDate,
+                    occurredAt: new Date().toISOString(),
                     entityReference: formValues.number,
                     amount: totals.totalGrossValue,
                     currency: formValues.currency || 'PLN',
@@ -914,7 +914,7 @@ const NewInvoice = React.forwardRef<{
                   savedInvoice.id,
                   `Wystawiono fakturę ${formValues.number} dla ${customerName || 'kontrahenta'}`,
                   {
-                    occurredAt: formValues.issueDate,
+                    occurredAt: new Date().toISOString(),
                     entityReference: formValues.number,
                     amount: totals.totalGrossValue,
                     currency: formValues.currency || 'PLN',
@@ -969,7 +969,7 @@ const NewInvoice = React.forwardRef<{
                   savedInvoice.id,
                   `Zarejestrowano płatność gotówką przez kasę ${cashAccount?.name || 'nieznana'}`,
                   {
-                    occurredAt: formValues.issueDate,
+                    occurredAt: new Date().toISOString(),
                     entityReference: formValues.number,
                     amount: totals.totalGrossValue,
                     currency: formValues.currency || 'PLN',

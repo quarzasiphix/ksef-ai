@@ -19,6 +19,7 @@ interface SyncCheckRequest {
     operationsJobs?: string;
     operationsDrivers?: string;
     operationsVehicles?: string;
+    cashRegister?: string;
   };
 }
 
@@ -34,6 +35,7 @@ interface SyncCheckResponse {
     operationsJobs: boolean;
     operationsDrivers: boolean;
     operationsVehicles: boolean;
+    cashRegister: boolean;
   };
   latestTimestamps: {
     invoices: string | null;
@@ -46,6 +48,7 @@ interface SyncCheckResponse {
     operationsJobs: string | null;
     operationsDrivers: string | null;
     operationsVehicles: string | null;
+    cashRegister: string | null;
   };
   counts: {
     invoices: number;
@@ -58,6 +61,7 @@ interface SyncCheckResponse {
     operationsJobs: number;
     operationsDrivers: number;
     operationsVehicles: number;
+    cashRegister: number;
   };
 }
 
@@ -197,6 +201,14 @@ Deno.serve(async (req: Request) => {
         .eq('business_profile_id', businessProfileId)
         .order('updated_at', { ascending: false })
         .limit(1),
+
+      // Cash register (kasa_documents)
+      supabaseClient
+        .from('kasa_documents')
+        .select('updated_at', { count: 'exact', head: false })
+        .eq('business_profile_id', businessProfileId)
+        .order('updated_at', { ascending: false })
+        .limit(1),
     ]);
 
     const [
@@ -210,6 +222,7 @@ Deno.serve(async (req: Request) => {
       operationsJobsResult,
       driversResult,
       vehiclesResult,
+      cashRegisterResult,
     ] = checks;
 
     // Build response
@@ -225,6 +238,7 @@ Deno.serve(async (req: Request) => {
         operationsJobs: false,
         operationsDrivers: false,
         operationsVehicles: false,
+        cashRegister: false,
       },
       latestTimestamps: {
         invoices: invoicesResult.data?.[0]?.updated_at || null,
@@ -237,6 +251,7 @@ Deno.serve(async (req: Request) => {
         operationsJobs: operationsJobsResult.data?.[0]?.updated_at || null,
         operationsDrivers: driversResult.data?.[0]?.updated_at || null,
         operationsVehicles: vehiclesResult.data?.[0]?.updated_at || null,
+        cashRegister: cashRegisterResult.data?.[0]?.updated_at || null,
       },
       counts: {
         invoices: invoicesResult.count || 0,
@@ -249,6 +264,7 @@ Deno.serve(async (req: Request) => {
         operationsJobs: operationsJobsResult.count || 0,
         operationsDrivers: driversResult.count || 0,
         operationsVehicles: vehiclesResult.count || 0,
+        cashRegister: cashRegisterResult.count || 0,
       },
     };
 
@@ -311,6 +327,12 @@ Deno.serve(async (req: Request) => {
       response.hasUpdates.operationsVehicles = new Date(response.latestTimestamps.operationsVehicles) > new Date(lastSyncTimestamps.operationsVehicles);
     } else if (response.latestTimestamps.operationsVehicles) {
       response.hasUpdates.operationsVehicles = true;
+    }
+
+    if (lastSyncTimestamps.cashRegister && response.latestTimestamps.cashRegister) {
+      response.hasUpdates.cashRegister = new Date(response.latestTimestamps.cashRegister) > new Date(lastSyncTimestamps.cashRegister);
+    } else if (response.latestTimestamps.cashRegister) {
+      response.hasUpdates.cashRegister = true;
     }
 
     return new Response(
