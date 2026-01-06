@@ -67,6 +67,11 @@ const CustomerList = () => {
 
   // Group customers by business profile
   const groupedCustomers = useMemo(() => {
+    // Debug: Log total customers received
+    console.log('CustomerList: Total customers received:', customers.length);
+    console.log('CustomerList: Customers with ba9bcb8a profile:', 
+      customers.filter(c => c.business_profile_id === 'ba9bcb8a-6be7-4989-ab26-4ea234c892d4').length);
+    
     // Filter by search and tab first
     const filtered = customers.filter((customer) => {
       const matchesSearch =

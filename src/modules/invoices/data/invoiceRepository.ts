@@ -691,11 +691,7 @@ export async function getInvoices(userId: string, businessProfileId?: string, pe
     query = query.gte('issue_date', startDate).lte('issue_date', endDate);
   }
 
-  // Order by created_at (timestamp) first, then issue_date as secondary sort
-  // This ensures invoices created on the same day are ordered by creation time
-  const { data, error } = await query
-    .order("created_at", { ascending: false })
-    .order("issue_date", { ascending: false });
+  const { data, error } = await query.order("issue_date", { ascending: false });
 
   if (error) {
     console.error("Error fetching invoices:", error);

@@ -27,9 +27,6 @@ import {
   BookOpen,
   ArrowRight,
   FileText,
-  Banknote,
-  CreditCard,
-  Landmark,
 } from 'lucide-react';
 import { Invoice } from '@/shared/types';
 import { useOpenTab } from '@/shared/hooks/useOpenTab';
@@ -61,6 +58,7 @@ const ProfessionalInvoiceRow: React.FC<ProfessionalInvoiceRowProps> = ({
 }) => {
   const navigate = useNavigate();
   const { openInvoiceTab, openExpenseTab } = useOpenTab();
+  const [contextMenuOpen, setContextMenuOpen] = React.useState(false);
   
   // Calculate state
   const isPaid = invoice.isPaid || invoice.paid;
@@ -68,22 +66,6 @@ const ProfessionalInvoiceRow: React.FC<ProfessionalInvoiceRowProps> = ({
   const hasDecision = !!invoice.decisionId;
   const isOverdue = invoice.dueDate && !isPaid && new Date(invoice.dueDate) < new Date();
   const isVatExempt = invoice.fakturaBezVAT || invoice.vat === false;
-  
-  // Get payment method icon
-  const getPaymentMethodIcon = () => {
-    const method = invoice.paymentMethod?.toLowerCase();
-    if (method === 'cash' || method === 'gotówka') {
-      return { icon: Banknote, label: 'Gotówka', color: 'text-green-600 dark:text-green-400' };
-    }
-    if (method === 'card' || method === 'karta') {
-      return { icon: CreditCard, label: 'Karta', color: 'text-blue-600 dark:text-blue-400' };
-    }
-    // Default: transfer/przelew
-    return { icon: Landmark, label: 'Przelew', color: 'text-purple-600 dark:text-purple-400' };
-  };
-  
-  const paymentMethod = getPaymentMethodIcon();
-  const PaymentIcon = paymentMethod.icon;
   
   // Calculate time pressure
   const getDueDateStatus = () => {
@@ -123,6 +105,13 @@ const ProfessionalInvoiceRow: React.FC<ProfessionalInvoiceRowProps> = ({
   // Get contractor name
   const contractorName = isIncome ? invoice.customerName : invoice.businessName;
 
+  // Handle right-click to open context menu
+  const handleContextMenu = (e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setContextMenuOpen(true);
+  };
+
   // Handle row click to open in tab
   const handleRowClick = (e: React.MouseEvent) => {
     if ((e.target as HTMLElement).closest('[role="menu"]') || (e.target as HTMLElement).closest('button')) {
@@ -155,6 +144,7 @@ const ProfessionalInvoiceRow: React.FC<ProfessionalInvoiceRowProps> = ({
     <div
       className="group relative py-3 px-4 hover:bg-muted/50 transition-colors cursor-pointer border-b border-border last:border-0"
       onClick={handleRowClick}
+      onContextMenu={handleContextMenu}
     >
       {/* 3-column horizontal layout: DETAILS | ACTIONS | PRICE */}
       <div className="flex items-center justify-between gap-6">
@@ -169,7 +159,7 @@ const ProfessionalInvoiceRow: React.FC<ProfessionalInvoiceRowProps> = ({
             </span>
           </div>
           
-          {/* Line 2: Issue date + due date + status pill + payment method */}
+          {/* Line 2: Issue date + due date + status pill */}
           <div className="flex items-center gap-3 text-xs text-muted-foreground">
             <span>{format(new Date(invoice.issueDate), 'dd.MM.yyyy', { locale: pl })}</span>
             {dueDateStatus && (
@@ -182,10 +172,6 @@ const ProfessionalInvoiceRow: React.FC<ProfessionalInvoiceRowProps> = ({
               <StatusIcon className="h-3 w-3" />
               {paymentStatus.label}
             </Badge>
-            <span className={`flex items-center gap-1 ${paymentMethod.color}`} title={paymentMethod.label}>
-              <PaymentIcon className="h-3.5 w-3.5" />
-              <span className="hidden sm:inline">{paymentMethod.label}</span>
-            </span>
           </div>
         </div>
 
@@ -212,8 +198,8 @@ const ProfessionalInvoiceRow: React.FC<ProfessionalInvoiceRowProps> = ({
             className="h-8 px-3 text-sm inline-flex items-center gap-1.5 hover:bg-muted"
             onClick={() => onPreview(invoice)}
           >
-            <Share2 className="h-3.5 w-3.5" />
-            Udostępnij
+            <Eye className="h-3.5 w-3.5" />
+            Podgląd
           </Button>
           <Button 
             variant="ghost" 
@@ -223,19 +209,68 @@ const ProfessionalInvoiceRow: React.FC<ProfessionalInvoiceRowProps> = ({
           >
             Edytuj
           </Button>
+          <DropdownMenu open={contextMenuOpen} onOpenChange={setContextMenuOpen}>
+            <DropdownMenuTrigger asChild>
+              <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
+                <MoreVertical className="h-4 w-4" />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" className="w-48">
+              <DropdownMenuItem onClick={() => { 
+                setContextMenuOpen(false); 
+                setTimeout(() => onDuplicate(invoice.id), 100);
+              }}>
+                <FilePlus className="h-4 w-4 mr-2" />
+                Duplikuj
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={() => { 
+                setContextMenuOpen(false);
+                setTimeout(() => onTogglePaid(invoice.id, invoice), 100);
+              }}>
+                <CheckCircle className="h-4 w-4 mr-2" />
+                {isPaid ? 'Oznacz nieopłacone' : 'Oznacz opłacone'}
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={() => { 
+                setContextMenuOpen(false); 
+              }}>
+                <BookOpen className="h-4 w-4 mr-2" />
+                Zaksięguj
+              </DropdownMenuItem>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem onClick={() => { 
+                setContextMenuOpen(false);
+                setTimeout(() => onDelete(invoice.id), 100);
+              }} className="text-destructive">
+                <Trash2 className="h-4 w-4 mr-2" />
+                Usuń
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
         </div>
 
         {/* COLUMN 3: PRICE (right, strong visual anchor) */}
         <div className="hidden md:block flex-shrink-0 min-w-[140px] text-right">
-          <div className="text-2xl font-bold">
+          <div className="text-2xl font-semibold">
             {formatCurrency(isVatExempt ? (invoice.totalNetValue || 0) : (invoice.totalGrossValue || invoice.totalAmount || 0), invoice.currency || 'PLN')}
           </div>
+          {invoice.currency && invoice.currency !== 'PLN' && invoice.exchangeRate && (
+            <div className="text-xs text-muted-foreground mt-0.5">
+              {formatCurrency((isVatExempt ? (invoice.totalNetValue || 0) : (invoice.totalGrossValue || invoice.totalAmount || 0)) * invoice.exchangeRate, 'PLN')}
+            </div>
+          )}
         </div>
 
         {/* Mobile: Kebab menu + price */}
         <div className="md:hidden flex items-center gap-3">
-          <div className="text-xl font-bold">
-            {formatCurrency(isVatExempt ? (invoice.totalNetValue || 0) : (invoice.totalGrossValue || invoice.totalAmount || 0), invoice.currency || 'PLN')}
+          <div>
+            <div className="text-xl font-semibold">
+              {formatCurrency(isVatExempt ? (invoice.totalNetValue || 0) : (invoice.totalGrossValue || invoice.totalAmount || 0), invoice.currency || 'PLN')}
+            </div>
+            {invoice.currency && invoice.currency !== 'PLN' && invoice.exchangeRate && (
+              <div className="text-xs text-muted-foreground">
+                {formatCurrency((isVatExempt ? (invoice.totalNetValue || 0) : (invoice.totalGrossValue || invoice.totalAmount || 0)) * invoice.exchangeRate, 'PLN')}
+              </div>
+            )}
           </div>
           <div onClick={(e) => e.stopPropagation()}>
             <DropdownMenu>
@@ -245,39 +280,51 @@ const ProfessionalInvoiceRow: React.FC<ProfessionalInvoiceRowProps> = ({
                 </Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end" className="w-48">
-                <DropdownMenuItem onClick={() => onView(invoice.id)}>
+                <DropdownMenuItem onClick={() => {
+                  setTimeout(() => onView(invoice.id), 100);
+                }}>
                   <Eye className="h-4 w-4 mr-2" />
                   Otwórz
                 </DropdownMenuItem>
-                <DropdownMenuItem onClick={() => onPreview(invoice)}>
+                <DropdownMenuItem onClick={() => {
+                  setTimeout(() => onPreview(invoice), 100);
+                }}>
                   <Eye className="h-4 w-4 mr-2" />
                   Podgląd PDF
                 </DropdownMenuItem>
-                <DropdownMenuItem onClick={() => onDownload(invoice)}>
+                <DropdownMenuItem onClick={() => {
+                  setTimeout(() => onDownload(invoice), 100);
+                }}>
                   <Download className="h-4 w-4 mr-2" />
                   Pobierz PDF
                 </DropdownMenuItem>
-                <DropdownMenuItem onClick={() => onEdit(invoice.id)}>
+                <DropdownMenuItem onClick={() => {
+                  setTimeout(() => onEdit(invoice.id), 100);
+                }}>
                   <Edit className="h-4 w-4 mr-2" />
                   Edytuj
                 </DropdownMenuItem>
-                <DropdownMenuItem onClick={() => onDuplicate(invoice.id)}>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem onClick={() => {
+                  setTimeout(() => onDuplicate(invoice.id), 100);
+                }}>
                   <FilePlus className="h-4 w-4 mr-2" />
                   Duplikuj
                 </DropdownMenuItem>
-                {onShare && isIncome && (
-                  <DropdownMenuItem onClick={() => onShare(invoice.id)}>
-                    <Share2 className="h-4 w-4 mr-2" />
-                    Udostępnij
-                  </DropdownMenuItem>
-                )}
-                <DropdownMenuSeparator />
-                <DropdownMenuItem onClick={() => onTogglePaid(invoice.id, invoice)}>
-                  <DollarSign className="h-4 w-4 mr-2" />
-                  {isPaid ? 'Cofnij płatność' : 'Oznacz jako opłaconą'}
+                <DropdownMenuItem onClick={() => {
+                  setTimeout(() => onTogglePaid(invoice.id, invoice), 100);
+                }}>
+                  <CheckCircle className="h-4 w-4 mr-2" />
+                  {isPaid ? 'Oznacz nieopłacone' : 'Oznacz opłacone'}
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => {}}>
+                  <BookOpen className="h-4 w-4 mr-2" />
+                  Zaksięguj
                 </DropdownMenuItem>
                 <DropdownMenuSeparator />
-                <DropdownMenuItem onClick={() => onDelete(invoice.id)} className="text-destructive">
+                <DropdownMenuItem onClick={() => {
+                  setTimeout(() => onDelete(invoice.id), 100);
+                }} className="text-destructive">
                   <Trash2 className="h-4 w-4 mr-2" />
                   Usuń
                 </DropdownMenuItem>

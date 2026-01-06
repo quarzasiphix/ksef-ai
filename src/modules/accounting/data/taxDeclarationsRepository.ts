@@ -1,5 +1,6 @@
 import { supabase } from "../../../integrations/supabase/client";
 import { createTaxDeclarationGenerator, type TaxDeclarationData } from "@/shared/utils/tax/taxDeclarationGenerator";
+import { formatCurrency, calculateInvoicesSum } from "@/shared/lib/invoice-utils";
 import type { Invoice } from "@/shared/types";
 
 export interface TaxDeclaration {
@@ -41,13 +42,11 @@ export async function generateTaxDeclaration(
              invDate.getMonth() === parseInt(monthNum) - 1;
     });
 
-    const totalIncome = monthInvoices
-      .filter(inv => inv.transactionType === 'income')
-      .reduce((sum, inv) => sum + (inv.totalGrossValue || 0), 0);
-
-    const totalExpenses = monthInvoices
-      .filter(inv => inv.transactionType === 'expense')
-      .reduce((sum, inv) => sum + (inv.totalGrossValue || 0), 0);
+    const incomeInvoices = monthInvoices.filter(inv => inv.transactionType === 'income');
+    const expenseInvoices = monthInvoices.filter(inv => inv.transactionType === 'expense');
+    
+    const totalIncome = calculateInvoicesSum(incomeInvoices);
+    const totalExpenses = calculateInvoicesSum(expenseInvoices);
 
     const vatTotal = monthInvoices
       .reduce((sum, inv) => sum + (inv.totalVatValue || 0), 0);

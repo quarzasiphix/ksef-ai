@@ -5,7 +5,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/shared/ui/card";
 import { Button } from "@/shared/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/shared/ui/tabs";
 import { Badge } from "@/shared/ui/badge";
-import { formatCurrency } from "@/shared/lib/invoice-utils";
+import { formatCurrency, calculateInvoicesSum } from "@/shared/lib/invoice-utils";
 import { format } from "date-fns";
 import { pl } from "date-fns/locale";
 import { Edit, ArrowLeft, FileText, Plus, MessageCircle, Mail, Phone } from "lucide-react";
@@ -14,14 +14,44 @@ import { getCustomerWithLinkedProfile } from "@/modules/customers/data/customerR
 import InvoiceCard from "@/modules/invoices/components/InvoiceCard";
 import ReceivedInvoicesTab from "@/modules/invoices/components/ReceivedInvoicesTab";
 import { Customer } from "@/shared/types";
+import ProfessionalInvoiceRow from "@/modules/invoices/components/ProfessionalInvoiceRow";
+import ProfessionalInvoiceRowMobile from "@/modules/invoices/components/ProfessionalInvoiceRowMobile";
+import InvoicePDFViewer from "@/modules/invoices/components/InvoicePDFViewer";
+import { generateInvoicePdf, getInvoiceFileName } from "@/shared/lib/pdf-utils";
+import { useBusinessProfile } from "@/shared/context/BusinessProfileContext";
+import { useQuery } from "@tanstack/react-query";
+import { getBankAccountsForProfile } from '@/modules/banking/data/bankAccountRepository';
+import { getBusinessProfileById } from '@/modules/settings/data/businessProfileRepository';
+import { useNavigate } from 'react-router-dom';
 
 const CustomerDetail = () => {
   const { id } = useParams<{ id: string }>();
+  const navigate = useNavigate();
   const { invoices: { data: invoices, isLoading: invoicesLoading } } = useGlobalData();
+  const { selectedProfileId } = useBusinessProfile();
   const [customer, setCustomer] = useState<Customer | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [previewInvoice, setPreviewInvoice] = useState<any | null>(null);
+  const [isPreviewOpen, setIsPreviewOpen] = useState(false);
   
   const customerInvoices = invoices.filter(inv => inv.customerId === id);
+
+  const { data: bankAccounts = [] } = useQuery({
+    queryKey: ['bank-accounts', selectedProfileId],
+    queryFn: () => selectedProfileId ? getBankAccountsForProfile(selectedProfileId) : Promise.resolve([]),
+    enabled: !!selectedProfileId,
+  });
+
+  const { data: businessProfile } = useQuery({
+    queryKey: ['business-profile', selectedProfileId],
+    queryFn: () => selectedProfileId ? getBusinessProfileById(selectedProfileId, selectedProfileId) : Promise.resolve(null),
+    enabled: !!selectedProfileId,
+  });
+
+  const openPreview = (invoice: any) => {
+    setPreviewInvoice(invoice);
+    setIsPreviewOpen(true);
+  };
 
   useEffect(() => {
     const fetchCustomer = async () => {
@@ -49,10 +79,24 @@ const CustomerDetail = () => {
     return <div className="text-center py-8">Klient nie został znaleziony</div>;
   }
 
-  const totalRevenue = customerInvoices.reduce((sum, inv) => sum + (inv.totalGrossValue || 0), 0);
+  const totalRevenue = calculateInvoicesSum(customerInvoices);
   const paidInvoices = customerInvoices.filter(inv => inv.isPaid);
   const unpaidInvoices = customerInvoices.filter(inv => !inv.isPaid);
   const isLinkedToUser = customer.linkedBusinessProfile?.user_id;
+
+  // Calculate foreign currency breakdown
+  const currencyBreakdown = customerInvoices.reduce((acc, inv) => {
+    if (inv.currency && inv.currency !== 'PLN') {
+      const isVatExempt = inv.fakturaBezVAT || inv.vat === false;
+      const amount = isVatExempt ? (inv.totalNetValue || 0) : (inv.totalGrossValue || inv.totalAmount || 0);
+      
+      if (!acc[inv.currency]) {
+        acc[inv.currency] = 0;
+      }
+      acc[inv.currency] += amount;
+    }
+    return acc;
+  }, {} as Record<string, number>);
 
   return (
     <div className="space-y-6 max-w-full pb-20">
@@ -113,8 +157,17 @@ const CustomerDetail = () => {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold text-green-600">
-              {formatCurrency(totalRevenue)}
+              {formatCurrency(totalRevenue, 'PLN')}
             </div>
+            {Object.keys(currencyBreakdown).length > 0 && (
+              <div className="mt-2 space-y-1">
+                {Object.entries(currencyBreakdown).map(([currency, amount]) => (
+                  <div key={currency} className="text-xs text-muted-foreground">
+                    {formatCurrency(amount, currency)}
+                  </div>
+                ))}
+              </div>
+            )}
           </CardContent>
         </Card>
         
@@ -254,10 +307,32 @@ const CustomerDetail = () => {
                     </Button>
                   </div>
                 ) : (
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                    {customerInvoices.map((invoice) => (
-                      <InvoiceCard key={invoice.id} invoice={invoice as any} />
-                    ))}
+                  <div className="space-y-0">
+                    <div className="divide-y-0">
+                      {customerInvoices.map((invoice) => (
+                        <ProfessionalInvoiceRow
+                          key={invoice.id}
+                          invoice={invoice}
+                          isIncome={true}
+                          onView={(id) => navigate(`/income/${id}`)}
+                          onPreview={openPreview}
+                          onDownload={async (inv) => {
+                            await generateInvoicePdf({
+                              invoice: inv,
+                              businessProfile,
+                              customer,
+                              filename: getInvoiceFileName(inv),
+                              bankAccounts,
+                            });
+                          }}
+                          onEdit={(id) => navigate(`/income/edit/${id}`)}
+                          onDelete={() => {}}
+                          onShare={() => {}}
+                          onDuplicate={(id) => navigate(`/income/new?duplicateId=${id}`)}
+                          onTogglePaid={() => {}}
+                        />
+                      ))}
+                    </div>
                   </div>
                 )}
               </TabsContent>
@@ -281,10 +356,32 @@ const CustomerDetail = () => {
                   </Button>
                 </div>
               ) : (
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                  {customerInvoices.map((invoice) => (
-                    <InvoiceCard key={invoice.id} invoice={invoice as any} />
-                  ))}
+                <div className="space-y-0">
+                  <div className="divide-y-0">
+                    {customerInvoices.map((invoice) => (
+                      <ProfessionalInvoiceRow
+                        key={invoice.id}
+                        invoice={invoice}
+                        isIncome={true}
+                        onView={(id) => navigate(`/income/${id}`)}
+                        onPreview={openPreview}
+                        onDownload={async (inv) => {
+                          await generateInvoicePdf({
+                            invoice: inv,
+                            businessProfile,
+                            customer,
+                            filename: getInvoiceFileName(inv),
+                            bankAccounts,
+                          });
+                        }}
+                        onEdit={(id) => navigate(`/income/edit/${id}`)}
+                        onDelete={() => {}}
+                        onShare={() => {}}
+                        onDuplicate={(id) => navigate(`/income/new?duplicateId=${id}`)}
+                        onTogglePaid={() => {}}
+                      />
+                    ))}
+                  </div>
                 </div>
               )}
               <div className="mt-4 p-4 bg-muted/50 rounded-lg">
@@ -297,6 +394,18 @@ const CustomerDetail = () => {
           )}
         </CardContent>
       </Card>
+
+      {/* Invoice Preview Modal */}
+      {isPreviewOpen && previewInvoice && (
+        <InvoicePDFViewer 
+          invoice={previewInvoice} 
+          isOpen={isPreviewOpen}
+          onClose={() => setIsPreviewOpen(false)}
+          businessProfile={businessProfile}
+          customer={customer}
+          bankAccounts={bankAccounts}
+        />
+      )}
     </div>
   );
 };

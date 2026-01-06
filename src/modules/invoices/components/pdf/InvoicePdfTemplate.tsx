@@ -17,7 +17,7 @@ function getVatExemptionText(reason: VatExemptionReason | string | null | undefi
     switch (reason) {
         case VatExemptionReason.ART_113_UST_1:
         case '113_1':
-            return 'Zwolnienie ze względu na nieprzekroczenie 200 000 PLN obrotu (art. 113 ust 1 i 9 ustawy o VAT)';
+            return 'zwolnienie ze względu na nieprzekroczenie 200 000 PLN obrotu (art. 113 ust. 1 i 9 ustawy o VAT)';
         case VatExemptionReason.ART_43_UST_1:
         case '43_1':
             return 'zwolnienie przedmiotowe (art. 43 ust. 1 ustawy o VAT)';
@@ -485,8 +485,17 @@ export const InvoicePdfTemplate: React.FC<InvoicePdfTemplateProps> = ({ invoice,
 
                 {/* Amount in Words Section at the bottom */}
                 <div style={{ marginTop: '32px', paddingTop: '20px', borderTop: '2px solid #dee2e6', textAlign: 'left' }}>
-                    <div style={{ fontSize: '20px', color: '#212529', marginBottom: '8px', fontWeight: 700 }}>
-                        Do zapłaty: <span style={{ color: '#2c2930' }}>{formatCurrencyUtil(totalGrossValue, currency)}</span>
+                    <div style={{ fontSize: '20px', color: '#212529', marginBottom: '8px', fontWeight: 700, display: 'flex', alignItems: 'center', gap: '8px' }}>
+                        {invoice.isPaid ? (
+                            <>
+                                Zapłacono: <span style={{ color: '#16a34a' }}>{formatCurrencyUtil(totalGrossValue, currency)}</span>
+                                <span style={{ fontSize: '18px', color: '#16a34a' }}>✓</span>
+                            </>
+                        ) : (
+                            <>
+                                Do zapłaty: <span style={{ color: '#2c2930' }}>{formatCurrencyUtil(totalGrossValue, currency)}</span>
+                            </>
+                        )}
                     </div>
                     <div style={{ fontSize: '15px', color: '#495057', fontStyle: 'italic' }}>
                         Słownie: {formatAmountInWords(totalGrossValue, currency)}

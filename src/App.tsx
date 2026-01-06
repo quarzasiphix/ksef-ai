@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import { BrowserRouter as Router } from 'react-router-dom';
 import { QueryClientProvider } from '@tanstack/react-query';
 import { Toaster } from '@/shared/ui/toaster';
@@ -9,6 +9,7 @@ import { WorkspaceTabsProvider } from '@/shared/context/WorkspaceTabsContext';
 import { DepartmentProvider } from '@/shared/context/DepartmentContext';
 import { queryClient } from '@/shared/lib/queryClient';
 import { RouteRenderer } from '@/pages/routing/RouteRenderer';
+import { routeChangeHandler } from '@/shared/lib/routeChangeHandler';
 
 /**
  * New App.tsx with route config system
@@ -20,8 +21,14 @@ import { RouteRenderer } from '@/pages/routing/RouteRenderer';
  * - Proper domain bounce: app.ksiegai.pl → ksiegai.pl/auth/login?returnTo=...
  * - No navigation side-effects during render (all in useEffect)
  * - Preserves existing provider order and behaviors
+ * - Route change handler cancels queries on navigation to prevent infinite loads
  */
 const App = () => {
+  // Initialize route change handler (imported for side effects)
+  useEffect(() => {
+    console.log('[App] Route change handler initialized');
+  }, []);
+
   return (
     <ThemeProvider defaultTheme="dark">
       <QueryClientProvider client={queryClient}>

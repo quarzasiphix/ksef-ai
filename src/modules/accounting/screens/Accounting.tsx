@@ -31,7 +31,7 @@ import type { EquityTransaction } from "@/modules/accounting/accounting";
 import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuItem } from "@/shared/ui/dropdown-menu";
 import { uploadTaxForm, saveFiledTaxForm } from "@/modules/accounting/data/taxFormRepository";
 import { listFiledTaxForms, FiledTaxForm, updateFiledTaxFormStatus } from "@/modules/accounting/data/filedTaxFormsRepository";
-import { getInvoiceValueInPLN } from '@/shared/lib/invoice-utils';
+import { formatCurrency, calculateInvoicesSum, getInvoiceValueInPLN } from "@/shared/lib/invoice-utils";
 
 const ZUS_TYPES: ZusType[] = ["społeczne", "zdrowotne", "FP", "FGŚP", "inne"];
 const monthNamesFull = [
@@ -150,9 +150,8 @@ const Accounting = () => {
       date.setMonth(date.getMonth() - i);
       const monthKey = format(date, 'yyyy-MM');
       
-      const monthlyIncome = allInvoices
-        .filter(inv => inv.issueDate.startsWith(monthKey))
-        .reduce((sum, inv) => sum + (inv.totalGrossValue || 0), 0);
+      const monthInvoices = allInvoices.filter(inv => inv.issueDate.startsWith(monthKey));
+      const monthlyIncome = calculateInvoicesSum(monthInvoices);
       
       const monthlyExpenses = expenses
         .filter(exp => exp.date.startsWith(monthKey))
@@ -333,7 +332,7 @@ const Accounting = () => {
       });
 
       // Calculate total income and expenses for this specific period
-      const totalIncomeForPeriod = invoicesForPeriod.reduce((sum, invoice) => sum + (invoice.totalGrossValue || 0), 0);
+      const totalIncomeForPeriod = calculateInvoicesSum(invoicesForPeriod);
       const totalExpensesForPeriod = expensesForPeriod.reduce((sum, expense) => sum + (expense.amount || 0), 0);
 
       // Calculate estimated tax for this period (using placeholder ZUS for now)

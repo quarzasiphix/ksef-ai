@@ -407,65 +407,16 @@ const InvoiceDetail: React.FC<InvoiceDetailProps> = ({ type }) => {
         isOwner={isOwner}
       />
 
-      {/* Contextual Action Bar - Small, secondary */}
-      {isOwner && (
+      {/* Contextual Action Bar - Small, secondary - Only show for unpaid invoices */}
+      {isOwner && !invoice.isPaid && (
         <ActionBar
-          primaryAction={(() => {
-            if (isJDG) {
-              return {
-                label: invoice.isPaid ? 'Oznacz jako nieopłaconą' : 'Oznacz jako opłaconą',
-                onClick: handleTogglePaid,
-                disabled: isUpdatingPaid,
-                variant: invoice.isPaid ? 'warning' : (isOverdue ? 'danger' : 'success'),
-              };
-            }
-
-            if (!invoice.isPaid) {
-              return {
-                label: 'Przypisz płatność',
-                onClick: handleTogglePaid,
-                disabled: isUpdatingPaid,
-                variant: isOverdue ? 'danger' : 'success',
-                shortcut: '⌘P',
-              };
-            }
-            if (invoice.isPaid && !(invoice as any).booked_to_ledger) {
-              return {
-                label: 'Zaksięguj',
-                onClick: () => toast.info('Funkcja księgowania w przygotowaniu'),
-                disabled: false,
-                variant: 'default',
-              };
-            }
-            return undefined;
-          })()}
-          secondaryActions={(() => {
-            const actions = [
-              {
-                label: 'Edytuj',
-                onClick: () => navigate(editPath),
-              },
-            ];
-
-            if (isJDG) {
-              actions.unshift(
-                isPremium
-                  ? {
-                      label: 'Przypisz płatność',
-                      onClick: () => {
-                        const destination = invoice.paymentMethod === 'cash' ? '/accounting/kasa' : '/accounting/bank';
-                        navigate(`${destination}?linkInvoice=${invoice.id}`);
-                      },
-                    }
-                  : {
-                      label: 'Przypisz płatność (Premium)',
-                      onClick: () => openPremiumDialog('accounting'),
-                    }
-              );
-            }
-
-            return actions;
-          })()}
+          primaryAction={{
+            label: 'Oznacz jako opłaconą',
+            onClick: handleTogglePaid,
+            disabled: isUpdatingPaid,
+            variant: isOverdue ? 'danger' : 'success',
+            shortcut: '⌘P',
+          }}
         />
       )}
 
@@ -515,6 +466,7 @@ const InvoiceDetail: React.FC<InvoiceDetailProps> = ({ type }) => {
           email={(buyerData as any)?.email}
           phone={(buyerData as any)?.phone}
           profileId={buyerData?.id}
+          onViewProfile={invoice.customerId ? () => navigate(`/customers/${invoice.customerId}`) : undefined}
           isCompany={true}
         />
       </div>
@@ -587,6 +539,9 @@ const InvoiceDetail: React.FC<InvoiceDetailProps> = ({ type }) => {
                 {invoice.exchangeRateDate && (
                   <div>Data: {invoice.exchangeRateDate}</div>
                 )}
+                <div className="text-sm font-medium text-foreground mt-2">
+                  Wartość w PLN: {formatCurrency(getInvoiceValueInPLN(invoice), 'PLN')}
+                </div>
               </div>
             )}
           </div>

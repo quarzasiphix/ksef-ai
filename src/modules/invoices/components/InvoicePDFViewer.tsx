@@ -1,11 +1,14 @@
-import React, { useRef } from "react";
+import React, { useRef, useState } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/shared/ui/dialog";
 import { Button } from "@/shared/ui/button";
-import { Download, Share2 } from "lucide-react";
+import { Download, Share2, CheckCircle } from "lucide-react";
 import { Invoice, BusinessProfile, Customer } from "@/shared/types";
 import { BankAccount } from '@/modules/banking/bank';
 import { InvoicePdfTemplate } from "@/modules/invoices/components/pdf/InvoicePdfTemplate";
 import { generateInvoicePdf, getInvoiceFileName } from "@/shared/lib/pdf-utils";
+import { updateInvoicePaymentStatus } from "@/modules/invoices/data/invoiceRepository";
+import { toast } from "sonner";
+import { useQueryClient } from "@tanstack/react-query";
 
 interface InvoicePDFViewerProps {
   invoice: Invoice;
@@ -15,6 +18,7 @@ interface InvoicePDFViewerProps {
   onClose: () => void;
   bankAccounts?: BankAccount[];
   onShare?: () => void;
+  onInvoiceUpdate?: (updatedInvoice: Invoice) => void;
 }
 
 const InvoicePDFViewer: React.FC<InvoicePDFViewerProps> = ({
@@ -25,16 +29,58 @@ const InvoicePDFViewer: React.FC<InvoicePDFViewerProps> = ({
   onClose,
   bankAccounts = [],
   onShare,
+  onInvoiceUpdate,
 }) => {
   const htmlRef = useRef<HTMLDivElement>(null);
+  const queryClient = useQueryClient();
+  const [currentInvoice, setCurrentInvoice] = useState(invoice);
+  const [isMarkingPaid, setIsMarkingPaid] = useState(false);
+
+  // Update local state when invoice prop changes
+  React.useEffect(() => {
+    setCurrentInvoice(invoice);
+  }, [invoice]);
+  
+  // Debug logging
+  console.log('InvoicePDFViewer - Customer data:', customer);
+  console.log('InvoicePDFViewer - Invoice customerId:', invoice.customerId);
+
+  const handleMarkAsPaid = async () => {
+    if (currentInvoice.isPaid) {
+      toast.info('Faktura jest już oznaczona jako opłacona');
+      return;
+    }
+
+    setIsMarkingPaid(true);
+    try {
+      await updateInvoicePaymentStatus(currentInvoice.id, true);
+      
+      // Update local state
+      const updatedInvoice = { ...currentInvoice, isPaid: true };
+      setCurrentInvoice(updatedInvoice);
+      
+      // Notify parent component
+      onInvoiceUpdate?.(updatedInvoice);
+      
+      // Invalidate queries to refresh data
+      queryClient.invalidateQueries({ queryKey: ['invoices'] });
+      
+      toast.success('Faktura została oznaczona jako opłacona');
+    } catch (error) {
+      console.error('Error marking invoice as paid:', error);
+      toast.error('Nie udało się oznaczyć faktury jako opłaconej');
+    } finally {
+      setIsMarkingPaid(false);
+    }
+  };
 
   const handleDownload = async () => {
     try {
       const success = await generateInvoicePdf({
-        invoice,
+        invoice: currentInvoice,
         businessProfile,
         customer,
-        filename: getInvoiceFileName(invoice),
+        filename: getInvoiceFileName(currentInvoice),
         bankAccounts,
       });
       if (!success) {
@@ -48,12 +94,12 @@ const InvoicePDFViewer: React.FC<InvoicePDFViewerProps> = ({
 
   const handleDownloadHtml = () => {
     if (!htmlRef.current) return;
-    const htmlContent = `<!DOCTYPE html><html lang=\"pl\"><head><meta charset=\"UTF-8\"><title>Faktura ${invoice.number}</title></head><body>${htmlRef.current.innerHTML}</body></html>`;
+    const htmlContent = `<!DOCTYPE html><html lang=\"pl\"><head><meta charset=\"UTF-8\"><title>Faktura ${currentInvoice.number}</title></head><body>${htmlRef.current.innerHTML}</body></html>`;
     const blob = new Blob([htmlContent], { type: 'text/html' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
-    a.download = `faktura_${invoice.number}.html`;
+    a.download = `faktura_${currentInvoice.number}.html`;
     document.body.appendChild(a);
     a.click();
     setTimeout(() => {
@@ -67,8 +113,20 @@ const InvoicePDFViewer: React.FC<InvoicePDFViewerProps> = ({
       <DialogContent className="max-w-4xl max-h-[90vh]">
         <DialogHeader>
           <div className="flex items-center justify-between">
-            <DialogTitle>Podgląd faktury {invoice.number}</DialogTitle>
+            <DialogTitle>Podgląd faktury {currentInvoice.number}</DialogTitle>
             <div className="flex space-x-2 mr-8">
+              {!currentInvoice.isPaid && (
+                <Button 
+                  variant="default" 
+                  onClick={handleMarkAsPaid}
+                  disabled={isMarkingPaid}
+                  className="bg-green-600 hover:bg-green-700"
+                >
+                  <CheckCircle className="h-4 w-4 mr-2" />
+                  <span className="hidden sm:inline">{isMarkingPaid ? 'Oznaczanie...' : 'Oznacz jako opłaconą'}</span>
+                  <span className="sm:hidden">Opłacone</span>
+                </Button>
+              )}
               <Button variant="outline" onClick={handleDownload}>
                 <Download className="h-4 w-4 mr-2" />
                 Pobierz PDF
@@ -86,7 +144,7 @@ const InvoicePDFViewer: React.FC<InvoicePDFViewerProps> = ({
         </DialogHeader>
         <div ref={htmlRef} className="mt-4 p-4 bg-white border rounded-lg overflow-auto max-h-[70vh] min-h-[60vh]">
           <InvoicePdfTemplate
-            invoice={invoice}
+            invoice={currentInvoice}
             businessProfile={businessProfile as any}
             customer={customer as any}
             bankAccounts={bankAccounts}

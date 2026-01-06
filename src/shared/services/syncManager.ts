@@ -167,26 +167,35 @@ class SyncManager {
    */
   private async checkForUpdates(businessProfileId: string) {
     if (!this.isOnline) {
+      console.log('[SyncManager] Skipping sync check - offline');
       return;
     }
 
     try {
       this.updateStatus('syncing');
       
+      // Set a timeout to prevent sync from hanging indefinitely
+      const syncTimeout = new Promise((_, reject) => {
+        setTimeout(() => reject(new Error('Sync timeout after 30s')), 30000);
+      });
+      
       // Get last sync timestamps from localStorage
       const lastSyncTimestamps = this.getLastSyncTimestamps(businessProfileId);
       
-      // Call edge function to check for updates
-      const { data, error } = await supabase.functions.invoke<SyncCheckResponse>('sync-check', {
+      // Call edge function to check for updates with timeout protection
+      const syncPromise = supabase.functions.invoke<SyncCheckResponse>('sync-check', {
         body: {
           businessProfileId,
           lastSyncTimestamps,
         },
       });
+      
+      const { data, error } = await Promise.race([syncPromise, syncTimeout]) as any;
 
       if (error) {
         console.error('[SyncManager] Sync check error:', error);
         this.updateStatus('error');
+        // Don't block - continue with cached data
         return;
       }
 

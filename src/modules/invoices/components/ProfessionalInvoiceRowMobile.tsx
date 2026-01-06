@@ -24,9 +24,6 @@ import {
   CheckCircle,
   AlertCircle,
   BookOpen,
-  Banknote,
-  CreditCard,
-  Landmark,
 } from 'lucide-react';
 import { Invoice } from '@/shared/types';
 
@@ -61,22 +58,6 @@ const ProfessionalInvoiceRowMobile: React.FC<ProfessionalInvoiceRowMobileProps> 
   const hasDecision = !!invoice.decisionId;
   const isOverdue = invoice.dueDate && !isPaid && new Date(invoice.dueDate) < new Date();
   const isVatExempt = invoice.fakturaBezVAT || invoice.vat === false;
-  
-  // Get payment method icon
-  const getPaymentMethodIcon = () => {
-    const method = invoice.paymentMethod?.toLowerCase();
-    if (method === 'cash' || method === 'gotówka') {
-      return { icon: Banknote, label: 'Gotówka', color: 'text-green-600 dark:text-green-400' };
-    }
-    if (method === 'card' || method === 'karta') {
-      return { icon: CreditCard, label: 'Karta', color: 'text-blue-600 dark:text-blue-400' };
-    }
-    // Default: transfer/przelew
-    return { icon: Landmark, label: 'Przelew', color: 'text-purple-600 dark:text-purple-400' };
-  };
-  
-  const paymentMethod = getPaymentMethodIcon();
-  const PaymentIcon = paymentMethod.icon;
   
   // Calculate time pressure
   const getDueDateStatus = () => {
@@ -131,9 +112,16 @@ const ProfessionalInvoiceRowMobile: React.FC<ProfessionalInvoiceRowMobileProps> 
         {/* TOP LINE: Number, Amount */}
         <div className="flex items-baseline justify-between gap-2">
           <span className="font-medium text-sm">{invoice.number}</span>
-          <span className="text-xl font-bold flex-shrink-0">
-            {formatCurrency(isVatExempt ? (invoice.totalNetValue || 0) : (invoice.totalGrossValue || invoice.totalAmount || 0), invoice.currency || 'PLN')}
-          </span>
+          <div className="flex-shrink-0 text-right">
+            <div className="text-xl font-semibold">
+              {formatCurrency(isVatExempt ? (invoice.totalNetValue || 0) : (invoice.totalGrossValue || invoice.totalAmount || 0), invoice.currency || 'PLN')}
+            </div>
+            {invoice.currency && invoice.currency !== 'PLN' && invoice.exchangeRate && (
+              <div className="text-xs text-muted-foreground">
+                {formatCurrency((isVatExempt ? (invoice.totalNetValue || 0) : (invoice.totalGrossValue || invoice.totalAmount || 0)) * invoice.exchangeRate, 'PLN')}
+              </div>
+            )}
+          </div>
         </div>
         
         {/* Counterparty */}
@@ -142,26 +130,25 @@ const ProfessionalInvoiceRowMobile: React.FC<ProfessionalInvoiceRowMobileProps> 
           {isVatExempt && <span className="ml-1">• Bez VAT</span>}
         </div>
 
-        {/* BOTTOM LINE: Dates, Status, System State, Payment Method */}
-        <div className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
-          <span>{format(new Date(invoice.issueDate), 'dd.MM.yyyy', { locale: pl })}</span>
+        {/* BOTTOM LINE: Dates, Status, System State */}
+        <div className="flex flex-wrap items-center gap-2 text-xs opacity-75">
+          <span className="text-muted-foreground">
+            {format(new Date(invoice.issueDate), 'dd.MM.yyyy', { locale: pl })}
+          </span>
           {dueDateStatus && (
             <span className={`flex items-center gap-1 ${dueDateStatus.color}`}>
               {dueDateStatus.urgent && <AlertCircle className="h-3 w-3" />}
               {dueDateStatus.label}
             </span>
           )}
-          <Badge className={`${paymentStatus.color} flex items-center gap-1 text-xs`}>
-            <StatusIcon className="h-3 w-3" />
-            {paymentStatus.label}
-          </Badge>
-          <span className={`flex items-center gap-1 ${paymentMethod.color}`} title={paymentMethod.label}>
-            <PaymentIcon className="h-3.5 w-3.5" />
-          </span>
         </div>
         
         {/* Status badges row */}
         <div className="flex flex-wrap items-center gap-2">
+          <Badge className={`${paymentStatus.color} flex items-center gap-1 text-xs`}>
+            <StatusIcon className="h-3 w-3" />
+            {paymentStatus.label}
+          </Badge>
           {isPaid && !isBooked && (
             <span className="flex items-center gap-1 text-yellow-700 dark:text-yellow-400 text-xs">
               <Clock className="h-3 w-3" />

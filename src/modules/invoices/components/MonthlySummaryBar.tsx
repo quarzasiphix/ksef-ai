@@ -1,5 +1,5 @@
 import React, { useMemo } from 'react';
-import { formatCurrency } from '@/shared/lib/invoice-utils';
+import { formatCurrency, getInvoiceValueInPLN } from '@/shared/lib/invoice-utils';
 import { Invoice } from '@/shared/types';
 import { AlertCircle, Clock, FileText, TrendingUp } from 'lucide-react';
 
@@ -33,11 +33,13 @@ const MonthlySummaryBar: React.FC<MonthlySummaryBarProps> = ({
     });
 
     const totalAmount = monthlyInvoices.reduce((sum, inv) => {
-      // Check if invoice is VAT-exempt
+      // Check if VAT exempt
       const isVatExempt = inv.fakturaBezVAT || inv.vat === false;
       // Use totalNetValue for VAT-exempt invoices, totalGrossValue otherwise
-      const amount = isVatExempt ? (inv.totalNetValue || 0) : (inv.totalGrossValue || inv.totalAmount || 0);
-      return sum + amount;
+      const baseAmount = isVatExempt ? (inv.totalNetValue || 0) : (inv.totalGrossValue || inv.totalAmount || 0);
+      // Convert to PLN if foreign currency
+      const plnValue = inv.currency === 'PLN' ? baseAmount : getInvoiceValueInPLN(inv);
+      return sum + plnValue;
     }, 0);
 
     const documentCount = monthlyInvoices.length;

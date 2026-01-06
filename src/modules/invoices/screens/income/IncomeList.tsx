@@ -46,7 +46,7 @@ import { Checkbox } from "@/shared/ui/checkbox";
 import { supabase } from "@/integrations/supabase/client";
 
 type SmartFilter = 'all' | 'unpaid_issued' | 'paid_not_booked' | 'booked_not_reconciled' | 'overdue';
-type DateFilter = 'all' | 'this_month' | 'last_month' | 'custom';
+type DateFilter = 'all' | 'this_month' | 'last_month' | 'this_year' | 'last_year' | 'custom';
 
 const IncomeList = () => {
   const { invoices: { data: invoices, isLoading } } = useGlobalData();
@@ -104,16 +104,25 @@ const IncomeList = () => {
 
   // Load additional data needed for bulk operations
   const { data: customers = [] } = useQuery({
-    queryKey: ['customers'],
+    queryKey: ['customers', selectedProfileId],
     queryFn: async () => {
-      // Get all customers with their profiles - simplified query for now
+      if (!selectedProfileId) return [];
+      
+      // Get customers for the selected business profile OR shared customers
       const { data, error } = await supabase
         .from('customers')
-        .select('*');
+        .select('*')
+        .or(`business_profile_id.eq.${selectedProfileId},is_shared.eq.true`);
       
-      if (error) throw error;
+      if (error) {
+        console.error('Error fetching customers:', error);
+        throw error;
+      }
+      
+      console.log('Loaded customers for profile:', selectedProfileId, 'Count:', data?.length);
       return data || [];
     },
+    enabled: !!selectedProfileId,
   });
 
   const { data: bankAccounts = [] } = useQuery({
@@ -177,6 +186,10 @@ const IncomeList = () => {
   };
 
   const openPreview = (invoice: Invoice) => {
+    console.log('Opening preview for invoice:', invoice.id, 'customerId:', invoice.customerId);
+    console.log('Available customers:', customers);
+    const foundCustomer = customers?.find((c: any) => c.id === invoice.customerId);
+    console.log('Found customer:', foundCustomer);
     setPreviewInvoice(invoice);
     setIsPreviewOpen(true);
   };
@@ -352,6 +365,21 @@ const IncomeList = () => {
             matchesDateFilter = invoiceDate >= monthStart && invoiceDate <= monthEnd;
             break;
           }
+          case 'this_year': {
+            const now = new Date();
+            const yearStart = new Date(now.getFullYear(), 0, 1);
+            const yearEnd = new Date(now.getFullYear(), 11, 31, 23, 59, 59, 999);
+            matchesDateFilter = invoiceDate >= yearStart && invoiceDate <= yearEnd;
+            break;
+          }
+          case 'last_year': {
+            const now = new Date();
+            const lastYear = now.getFullYear() - 1;
+            const yearStart = new Date(lastYear, 0, 1);
+            const yearEnd = new Date(lastYear, 11, 31, 23, 59, 59, 999);
+            matchesDateFilter = invoiceDate >= yearStart && invoiceDate <= yearEnd;
+            break;
+          }
           case 'custom': {
             if (customStartDate) {
               const startDate = new Date(customStartDate);
@@ -496,6 +524,65 @@ const IncomeList = () => {
     const baseAmount = (isVatDisabled ? invoice.totalNetValue : invoice.totalGrossValue) ?? invoice.totalNetValue ?? 0;
     return formatCurrency(baseAmount, currency).replace(/^\u00A0/, '');
   };
+
+  // Calculate sum of displayed invoices
+  const displayedInvoicesSum = useMemo(() => {
+    return filteredInvoices.reduce((sum, inv) => {
+      const isVatExempt = inv.fakturaBezVAT || inv.vat === false;
+      const baseAmount = isVatExempt ? (inv.totalNetValue || 0) : (inv.totalGrossValue || inv.totalAmount || 0);
+      const plnValue = inv.currency === 'PLN' ? baseAmount : getInvoiceValueInPLN(inv);
+      return sum + plnValue;
+    }, 0);
+  }, [filteredInvoices]);
+
+  const hasForeignCurrency = useMemo(() => {
+    return filteredInvoices.some(inv => inv.currency && inv.currency !== 'PLN');
+  }, [filteredInvoices]);
+
+  // Get date range display text
+  const dateRangeText = useMemo(() => {
+    if (dateFilter === 'all') return '';
+    
+    if (dateFilter === 'this_month') {
+      const now = new Date();
+      const monthStart = startOfMonth(now);
+      const monthEnd = endOfMonth(now);
+      return `(${format(monthStart, 'dd.MM.yyyy', { locale: pl })} - ${format(monthEnd, 'dd.MM.yyyy', { locale: pl })})`;
+    }
+    
+    if (dateFilter === 'last_month') {
+      const lastMonth = subMonths(new Date(), 1);
+      const monthStart = startOfMonth(lastMonth);
+      const monthEnd = endOfMonth(lastMonth);
+      return `(${format(monthStart, 'dd.MM.yyyy', { locale: pl })} - ${format(monthEnd, 'dd.MM.yyyy', { locale: pl })})`;
+    }
+    
+    if (dateFilter === 'this_year') {
+      const now = new Date();
+      const yearStart = new Date(now.getFullYear(), 0, 1);
+      const yearEnd = new Date(now.getFullYear(), 11, 31);
+      return `(${format(yearStart, 'dd.MM.yyyy', { locale: pl })} - ${format(yearEnd, 'dd.MM.yyyy', { locale: pl })})`;
+    }
+    
+    if (dateFilter === 'last_year') {
+      const lastYear = new Date().getFullYear() - 1;
+      const yearStart = new Date(lastYear, 0, 1);
+      const yearEnd = new Date(lastYear, 11, 31);
+      return `(${format(yearStart, 'dd.MM.yyyy', { locale: pl })} - ${format(yearEnd, 'dd.MM.yyyy', { locale: pl })})`;
+    }
+    
+    if (dateFilter === 'custom') {
+      if (customStartDate && customEndDate) {
+        return `(${format(new Date(customStartDate), 'dd.MM.yyyy', { locale: pl })} - ${format(new Date(customEndDate), 'dd.MM.yyyy', { locale: pl })})`;
+      } else if (customStartDate) {
+        return `(od ${format(new Date(customStartDate), 'dd.MM.yyyy', { locale: pl })})`;
+      } else if (customEndDate) {
+        return `(do ${format(new Date(customEndDate), 'dd.MM.yyyy', { locale: pl })})`;
+      }
+    }
+    
+    return '';
+  }, [dateFilter, customStartDate, customEndDate]);
 
   const renderGridView = () => (
     <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
@@ -679,34 +766,14 @@ const IncomeList = () => {
                   </span>
                 )}
               </CardTitle>
-              <div className="flex flex-col gap-1">
-                <CardDescription className="flex flex-wrap items-center gap-2">
-                  <span>
-                    {activeTab !== "all" ? getDocumentTypeName(activeTab) : "Dokumenty ujęte w systemie"}: {filteredInvoices.length}
+              <CardDescription className="flex flex-wrap items-center gap-2">
+                {activeTab !== "all" ? getDocumentTypeName(activeTab) : "Dokumenty ujęte w systemie"}: {filteredInvoices.length}
+                {selectedInvoices.size > 0 && (
+                  <span className="text-primary font-medium">
+                    • Wybrano: {selectedInvoices.size}
                   </span>
-                  {selectedInvoices.size > 0 && (
-                    <span className="text-primary font-medium">
-                      • Wybrano: {selectedInvoices.size}
-                    </span>
-                  )}
-                </CardDescription>
-                {filteredInvoices.length > 0 && (
-                  <div className="text-sm font-normal text-muted-foreground">
-                    Suma wyświetlonych: {(() => {
-                      const totalPLN = filteredInvoices.reduce((sum, inv) => {
-                        const isVatExempt = inv.fakturaBezVAT || inv.vat === false;
-                        const baseAmount = isVatExempt ? (inv.totalNetValue || 0) : (inv.totalGrossValue || inv.totalAmount || 0);
-                        const plnValue = inv.currency === 'PLN' ? baseAmount : getInvoiceValueInPLN(inv);
-                        return sum + plnValue;
-                      }, 0);
-                      return formatCurrency(totalPLN, 'PLN');
-                    })()}
-                    {filteredInvoices.some(inv => inv.currency && inv.currency !== 'PLN') && (
-                      <span className="text-xs ml-1">(z przeliczeniem)</span>
-                    )}
-                  </div>
                 )}
-              </div>
+              </CardDescription>
             </div>
             <div className="flex gap-2 items-center">
               {/* Filtry Button */}
@@ -758,9 +825,9 @@ const IncomeList = () => {
         {/* Desktop Collapsible Filter Panel */}
         {!isMobileView && isFilterPanelOpen && (
           <div className="px-6 pb-4 border-b">
-            <div className="flex flex-wrap gap-4 items-start">
+            <div className="flex justify-end items-start gap-4">
               {/* Date Range Dropdown */}
-              <div className="space-y-2 flex-1 min-w-[200px]">
+              <div className="space-y-2 w-[220px]">
                 <label className="text-sm font-medium text-muted-foreground">Zakres dat</label>
                 <Select value={dateFilter} onValueChange={(value: DateFilter) => {
                   setDateFilter(value);
@@ -789,6 +856,18 @@ const IncomeList = () => {
                       <div className="flex items-center gap-2">
                         <Calendar className="h-4 w-4" />
                         <span>Poprzedni miesiąc</span>
+                      </div>
+                    </SelectItem>
+                    <SelectItem value="this_year">
+                      <div className="flex items-center gap-2">
+                        <Calendar className="h-4 w-4" />
+                        <span>Bieżący rok</span>
+                      </div>
+                    </SelectItem>
+                    <SelectItem value="last_year">
+                      <div className="flex items-center gap-2">
+                        <Calendar className="h-4 w-4" />
+                        <span>Poprzedni rok</span>
                       </div>
                     </SelectItem>
                     <SelectItem value="custom">
@@ -824,7 +903,7 @@ const IncomeList = () => {
               </div>
 
               {/* Status Dropdown */}
-              <div className="space-y-2 flex-1 min-w-[200px]">
+              <div className="space-y-2 w-[220px]">
                 <label className="text-sm font-medium text-muted-foreground">Status</label>
                 <Select value={smartFilter} onValueChange={(value: SmartFilter) => setSmartFilter(value)}>
                   <SelectTrigger className="w-full">
@@ -884,6 +963,17 @@ const IncomeList = () => {
               ))}
             </TabsList>
           </Tabs>
+          
+          {/* Sum Display Above Invoice List */}
+          {filteredInvoices.length > 0 && (
+            <div className="mb-4 pb-3 border-b">
+              <div className="text-sm text-muted-foreground">
+                Suma wyświetlonych {dateRangeText && <span className="font-medium">{dateRangeText}</span>}: <span className="text-lg font-medium text-foreground">{formatCurrency(displayedInvoicesSum, 'PLN')}</span>
+                {hasForeignCurrency && <span className="text-xs ml-1">(z przeliczeniem)</span>}
+              </div>
+            </div>
+          )}
+          
           {isMultiSelectMode && filteredInvoices.length > 0 && (
             <div className="flex items-center gap-2 mb-4">
               <Button
@@ -973,6 +1063,124 @@ const IncomeList = () => {
             viewMode === 'grid' ? renderGridView() : renderListView()
           )}
         </CardContent>
+        
+        {/* Bottom Filter Bar */}
+        {!isMobileView && filteredInvoices.length > 0 && (
+          <div className="px-6 py-3 border-t bg-muted/30">
+            <div className="flex flex-wrap gap-4 items-center">
+              {/* Date Range Dropdown */}
+              <div className="flex items-center gap-2">
+                <label className="text-sm font-medium text-muted-foreground">Zakres dat:</label>
+                <Select value={dateFilter} onValueChange={(value: DateFilter) => {
+                  setDateFilter(value);
+                  if (value !== 'custom') {
+                    setCustomStartDate('');
+                    setCustomEndDate('');
+                  }
+                }}>
+                  <SelectTrigger className="w-[180px]">
+                    <SelectValue placeholder="Wybierz zakres" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">
+                      <div className="flex items-center gap-2">
+                        <Calendar className="h-4 w-4" />
+                        <span>Wszystkie</span>
+                      </div>
+                    </SelectItem>
+                    <SelectItem value="this_month">
+                      <div className="flex items-center gap-2">
+                        <Calendar className="h-4 w-4" />
+                        <span>Bieżący miesiąc</span>
+                      </div>
+                    </SelectItem>
+                    <SelectItem value="last_month">
+                      <div className="flex items-center gap-2">
+                        <Calendar className="h-4 w-4" />
+                        <span>Poprzedni miesiąc</span>
+                      </div>
+                    </SelectItem>
+                    <SelectItem value="this_year">
+                      <div className="flex items-center gap-2">
+                        <Calendar className="h-4 w-4" />
+                        <span>Bieżący rok</span>
+                      </div>
+                    </SelectItem>
+                    <SelectItem value="last_year">
+                      <div className="flex items-center gap-2">
+                        <Calendar className="h-4 w-4" />
+                        <span>Poprzedni rok</span>
+                      </div>
+                    </SelectItem>
+                    <SelectItem value="custom">
+                      <div className="flex items-center gap-2">
+                        <Calendar className="h-4 w-4" />
+                        <span>Własny zakres</span>
+                      </div>
+                    </SelectItem>
+                  </SelectContent>
+                </Select>
+                {dateFilter === 'custom' && (
+                  <div className="flex gap-2 items-center">
+                    <Input
+                      type="date"
+                      value={customStartDate}
+                      onChange={(e) => setCustomStartDate(e.target.value)}
+                      className="w-36"
+                      placeholder="Od"
+                    />
+                    <Input
+                      type="date"
+                      value={customEndDate}
+                      onChange={(e) => setCustomEndDate(e.target.value)}
+                      className="w-36"
+                      placeholder="Do"
+                    />
+                  </div>
+                )}
+              </div>
+
+              {/* Status Dropdown */}
+              <div className="flex items-center gap-2">
+                <label className="text-sm font-medium text-muted-foreground">Status:</label>
+                <Select value={smartFilter} onValueChange={(value: SmartFilter) => setSmartFilter(value)}>
+                  <SelectTrigger className="w-[200px]">
+                    <SelectValue placeholder="Wybierz status" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">
+                      <span>Wszystkie</span>
+                    </SelectItem>
+                    <SelectItem value="unpaid_issued">
+                      <div className="flex items-center gap-2">
+                        <Badge variant="secondary" className="text-xs">⏳</Badge>
+                        <span>Wystawione, nieopłacone</span>
+                      </div>
+                    </SelectItem>
+                    <SelectItem value="paid_not_booked">
+                      <div className="flex items-center gap-2">
+                        <Badge variant="secondary" className="text-xs">⚠️</Badge>
+                        <span>Opłacone, niezaksięgowane</span>
+                      </div>
+                    </SelectItem>
+                    <SelectItem value="booked_not_reconciled">
+                      <div className="flex items-center gap-2">
+                        <Badge variant="secondary" className="text-xs">📘</Badge>
+                        <span>Zaksięgowane</span>
+                      </div>
+                    </SelectItem>
+                    <SelectItem value="overdue">
+                      <div className="flex items-center gap-2">
+                        <Badge variant="secondary" className="text-xs bg-red-100 text-red-700">🔴</Badge>
+                        <span>Zaległe</span>
+                      </div>
+                    </SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+          </div>
+        )}
       </Card>
       {/* Invoice Preview Modal */}
       {isPreviewOpen && previewInvoice && (
@@ -981,7 +1189,7 @@ const IncomeList = () => {
           isOpen={isPreviewOpen}
           onClose={() => setIsPreviewOpen(false)}
           businessProfile={businessProfile}
-          customer={customers.find(c => c.id === previewInvoice.customerId)}
+          customer={customers?.find((c: any) => c.id === previewInvoice.customerId)}
           bankAccounts={bankAccounts}
           onShare={() => setShareInvoiceId(previewInvoice.id)}
         />

@@ -50,6 +50,9 @@ export async function getCustomers(businessProfileId?: string): Promise<Customer
     .from("business_profiles")
     .select("id, name, email, phone, user_id, tax_id");
 
+  // Create a set of owned profile IDs for efficient lookup
+  const ownedProfileIds = new Set(businessProfiles?.map(bp => bp.id) || []);
+
   // Map customers and ensure linked profile detection even across accounts
   const customersWithLinks: Customer[] = await Promise.all(
     data.map(async (item) => {
@@ -91,16 +94,37 @@ export async function getCustomers(businessProfileId?: string): Promise<Customer
     }),
   );
 
-  // Filter by business profile if specified
+  // Debug logging
+  console.log('getCustomers: Total customers from DB:', customersWithLinks.length);
+  console.log('getCustomers: businessProfileId param:', businessProfileId);
+  console.log('getCustomers: ownedProfileIds:', Array.from(ownedProfileIds));
+  console.log('getCustomers: Customers with ba9bcb8a:', 
+    customersWithLinks.filter(c => c.business_profile_id === 'ba9bcb8a-6be7-4989-ab26-4ea234c892d4').length);
+
+  // Filter logic:
+  // - If businessProfileId is NOT specified: return ALL customers from ALL owned profiles
+  // - If businessProfileId IS specified: return customers for that specific profile only
+  // Always include: shared customers and unassigned customers
   let filteredCustomers = customersWithLinks;
   if (businessProfileId) {
+    // Specific profile view: show only customers for that profile + shared + unassigned
+    console.log('getCustomers: Using SPECIFIC profile filter for:', businessProfileId);
     filteredCustomers = customersWithLinks.filter(c => 
       c.is_shared || 
       !c.business_profile_id || 
       c.business_profile_id === businessProfileId
     );
+  } else {
+    // Global view: show ALL customers from ALL owned profiles + shared + unassigned
+    console.log('getCustomers: Using GLOBAL filter with owned profiles');
+    filteredCustomers = customersWithLinks.filter(c =>
+      c.is_shared ||
+      !c.business_profile_id ||
+      ownedProfileIds.has(c.business_profile_id)
+    );
   }
 
+  console.log('getCustomers: Filtered customers count:', filteredCustomers.length);
   return filteredCustomers;
 }
 

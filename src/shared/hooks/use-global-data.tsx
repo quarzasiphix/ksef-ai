@@ -83,8 +83,8 @@ export function useGlobalData(selectedPeriod?: string, fetchAllInvoices?: boolea
   });
 
   const customersQuery = useQuery({
-    queryKey: QUERY_KEYS.customers,
-    queryFn: getCustomers,
+    queryKey: [...QUERY_KEYS.customers, 'global'], // Add 'global' to differentiate from profile-specific queries
+    queryFn: () => getCustomers(), // Explicitly call without parameters for global view
     placeholderData: (previousData) => previousData,
     // staleTime inherited from global config (10 minutes)
   });

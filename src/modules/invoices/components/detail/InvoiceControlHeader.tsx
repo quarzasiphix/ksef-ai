@@ -10,7 +10,8 @@ import {
   Share2,
   Trash2,
   FilePlus,
-  DollarSign
+  DollarSign,
+  FileText
 } from 'lucide-react';
 import { formatCurrency } from '@/shared/lib/invoice-utils';
 import { cn } from '@/shared/lib/utils';
@@ -226,6 +227,18 @@ export const InvoiceControlHeader: React.FC<InvoiceControlHeaderProps> = ({
                       <DropdownMenuItem onClick={onTogglePaid}>
                         <DollarSign className="h-4 w-4 mr-2" />
                         Cofnij płatność
+                      </DropdownMenuItem>
+                    )}
+                    {isPaid && !isBooked && (
+                      <DropdownMenuItem onClick={() => {
+                        // Placeholder for booking functionality
+                        const toast = (window as any).toast;
+                        if (toast?.info) {
+                          toast.info('Funkcja księgowania w przygotowaniu');
+                        }
+                      }}>
+                        <FileText className="h-4 w-4 mr-2" />
+                        Zaksięguj
                       </DropdownMenuItem>
                     )}
                     {onDelete && (

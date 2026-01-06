@@ -94,7 +94,7 @@ export async function getThreadMessages(threadId: string): Promise<DiscussionMes
     .from('discussion_messages')
     .select(`
       *,
-      profile:user_id(full_name, avatar_url)
+      profile:profiles!discussion_messages_user_id_fkey(full_name, avatar_url)
     `)
     .eq('thread_id', threadId)
     .order('created_at', { ascending: true });

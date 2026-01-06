@@ -108,7 +108,11 @@ export const calculateInvoiceTotals = (items: InvoiceItem[]) => {
   );
   
   const totalVatValue = itemsWithValues.reduce(
-    (sum, item) => sum + (item.vatRate === -1 ? 0 : (item.totalVatValue || 0)), 
+    (sum, item) => {
+      // Ignore VAT if rate is negative or zero
+      if (!item.vatRate || item.vatRate <= 0) return sum;
+      return sum + (item.totalVatValue || 0);
+    }, 
     0
   );
   
@@ -257,11 +261,51 @@ export async function getNbpExchangeRate(currency: string, date: string): Promis
 }
 
 export function getInvoiceValueInPLN(invoice: Invoice): number {
+  // Check if VAT exempt
+  const isVatExempt = invoice.fakturaBezVAT || invoice.vat === false;
+  const baseAmount = isVatExempt ? invoice.totalNetValue : invoice.totalGrossValue;
+  
   if (invoice.currency === 'PLN' || !invoice.exchangeRate) {
-    return invoice.totalGrossValue;
+    return baseAmount;
   }
   
-  return invoice.totalGrossValue * invoice.exchangeRate;
+  return baseAmount * invoice.exchangeRate;
+}
+
+/**
+ * Calculate the total sum of multiple invoices with proper VAT and currency handling
+ * 
+ * This is the CENTRALIZED solution for calculating invoice sums throughout the application.
+ * 
+ * Key features:
+ * - Handles VAT-exempt invoices (uses totalNetValue instead of totalGrossValue)
+ * - Converts foreign currencies to PLN using exchange rates
+ * - Ignores negative VAT rates (e.g., "zw" enum = -1)
+ * 
+ * @param invoices - Array of invoices to sum
+ * @returns Total sum in PLN
+ * 
+ * @example
+ * const totalRevenue = calculateInvoicesSum(customerInvoices);
+ * const monthlyIncome = calculateInvoicesSum(monthlyInvoices);
+ */
+export function calculateInvoicesSum(invoices: Invoice[]): number {
+  return invoices.reduce((sum, invoice) => {
+    // Check if VAT exempt (fakturaBezVAT or vat === false)
+    const isVatExempt = invoice.fakturaBezVAT || invoice.vat === false;
+    
+    // Use totalNetValue for VAT-exempt invoices, totalGrossValue otherwise
+    const baseAmount = isVatExempt 
+      ? (invoice.totalNetValue || 0) 
+      : (invoice.totalGrossValue || invoice.totalAmount || 0);
+    
+    // Convert to PLN if foreign currency
+    const plnValue = invoice.currency === 'PLN' || !invoice.exchangeRate
+      ? baseAmount
+      : baseAmount * invoice.exchangeRate;
+    
+    return sum + plnValue;
+  }, 0);
 }
 
 export interface PaymentSplit {
