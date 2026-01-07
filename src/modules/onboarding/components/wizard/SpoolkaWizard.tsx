@@ -22,6 +22,7 @@ import type { DecisionTemplate } from '@/modules/spolka/data/decisionTemplatesRe
 import type { BusinessProfile } from '@/shared/types';
 import { useAuth } from '@/shared/hooks/useAuth';
 import { useQuery } from '@tanstack/react-query';
+import { sendOnboardingWelcomeEmail } from '@/shared/utils/emailService';
 
 interface SpoolkaWizardProps {
   onComplete?: (profileId: string) => void;
@@ -309,6 +310,18 @@ export const SpoolkaWizard: React.FC<SpoolkaWizardProps> = ({ onComplete, onCanc
         }
         
         toast.success('Spółka utworzona pomyślnie!');
+
+        // Send welcome email
+        try {
+          await sendOnboardingWelcomeEmail({
+            user_name: user.email?.split('@')[0] || 'Użytkowniku',
+            business_name: wizardData.name,
+          });
+          console.log('Welcome email sent successfully');
+        } catch (emailError) {
+          console.error('Failed to send welcome email:', emailError);
+          // Don't block onboarding if email fails
+        }
 
         if (draftKey && typeof window !== 'undefined') {
           localStorage.removeItem(draftKey);

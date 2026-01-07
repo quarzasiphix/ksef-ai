@@ -23,6 +23,7 @@ import { initializeFoundationalDecisions } from '@/modules/spolka/data/decisions
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/shared/hooks/useAuth";
 import { useIsMobile } from "@/shared/hooks/use-mobile";
+import { sendOnboardingWelcomeEmail } from "@/shared/utils/emailService";
 import {
   Select,
   SelectContent,
@@ -199,6 +200,20 @@ const BusinessProfileForm = ({
       toast.success(
         isEditing ? "Profil zaktualizowany" : "Profil utworzony"
       );
+
+      // Send welcome email for new profiles (onboarding)
+      if (!isEditing && isWizardJdg && savedId) {
+        try {
+          await sendOnboardingWelcomeEmail({
+            user_name: user.email?.split('@')[0] || 'Użytkowniku',
+            business_name: values.name,
+          });
+          console.log('Welcome email sent successfully');
+        } catch (emailError) {
+          console.error('Failed to send welcome email:', emailError);
+          // Don't block onboarding if email fails
+        }
+      }
 
       if (onComplete && savedId) {
         onComplete(savedId);

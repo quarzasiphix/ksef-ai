@@ -41,6 +41,13 @@ import {
   getDocumentTitle
 } from "@/shared/lib/invoice-utils";
 import { cn } from "@/shared/lib/utils";
+import { 
+  sendInvoiceCreatedEmail, 
+  sendInvoiceReceivedEmail,
+  formatEmailDate,
+  formatEmailCurrency,
+  getAppUrl
+} from "@/shared/utils/emailService";
 
 // Supabase Repositories
 import { getInvoiceNumberingSettings } from "@/modules/invoices/data/invoiceNumberingSettingsRepository";
@@ -869,6 +876,50 @@ const NewInvoice = React.forwardRef<{
           } else {
             // Create new invoice
             savedInvoice = await saveInvoice(invoiceData);
+            
+            // Send email notifications
+            if (savedInvoice?.id) {
+              try {
+                // Prepare invoice data for email
+                const invoiceEmailData = {
+                  invoice_number: formValues.number,
+                  client_name: customerName || 'Kontrahent',
+                  total_amount: formatEmailCurrency(totals.totalGrossValue, formValues.currency || 'PLN'),
+                  issue_date: formatEmailDate(formValues.issueDate),
+                  due_date: formatEmailDate(formValues.dueDate),
+                  invoice_url: getAppUrl(`/invoices/${savedInvoice.id}`),
+                  download_pdf_url: getAppUrl(`/invoices/${savedInvoice.id}/pdf`),
+                  items: processedItems.map(item => ({
+                    name: item.name,
+                    quantity: String(item.quantity),
+                    unit_price: formatEmailCurrency(item.unitPrice, formValues.currency || 'PLN'),
+                    total: formatEmailCurrency(item.totalGrossValue, formValues.currency || 'PLN'),
+                  })),
+                };
+
+                // Send email to invoice creator (current user)
+                await sendInvoiceCreatedEmail(invoiceEmailData);
+
+                // If this is a sales invoice (INCOME), optionally send to customer
+                // TODO: Add customer email field to invoice form and enable this
+                // if (effectiveTransactionType === TransactionType.INCOME && customerEmail) {
+                //   await sendInvoiceReceivedEmail(customerEmail, {
+                //     invoice_number: formValues.number,
+                //     sender_name: businessName || 'KsięgaI',
+                //     total_amount: formatEmailCurrency(totals.totalGrossValue, formValues.currency || 'PLN'),
+                //     issue_date: formatEmailDate(formValues.issueDate),
+                //     due_date: formatEmailDate(formValues.dueDate),
+                //     invoice_url: getAppUrl(`/invoices/${savedInvoice.id}`),
+                //     download_pdf_url: getAppUrl(`/invoices/${savedInvoice.id}/pdf`),
+                //   });
+                // }
+
+                console.log('Invoice email notifications sent');
+              } catch (emailError) {
+                console.error('Error sending invoice emails:', emailError);
+                // Don't fail invoice creation if email fails
+              }
+            }
             
             // CANONICAL EVENT: Always emit INVOICE_CREATED
             if (savedInvoice?.id) {
