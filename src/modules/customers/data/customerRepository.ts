@@ -94,13 +94,6 @@ export async function getCustomers(businessProfileId?: string): Promise<Customer
     }),
   );
 
-  // Debug logging
-  console.log('getCustomers: Total customers from DB:', customersWithLinks.length);
-  console.log('getCustomers: businessProfileId param:', businessProfileId);
-  console.log('getCustomers: ownedProfileIds:', Array.from(ownedProfileIds));
-  console.log('getCustomers: Customers with ba9bcb8a:', 
-    customersWithLinks.filter(c => c.business_profile_id === 'ba9bcb8a-6be7-4989-ab26-4ea234c892d4').length);
-
   // Filter logic:
   // - If businessProfileId is NOT specified: return ALL customers from ALL owned profiles
   // - If businessProfileId IS specified: return customers for that specific profile only
@@ -108,7 +101,6 @@ export async function getCustomers(businessProfileId?: string): Promise<Customer
   let filteredCustomers = customersWithLinks;
   if (businessProfileId) {
     // Specific profile view: show only customers for that profile + shared + unassigned
-    console.log('getCustomers: Using SPECIFIC profile filter for:', businessProfileId);
     filteredCustomers = customersWithLinks.filter(c => 
       c.is_shared || 
       !c.business_profile_id || 
@@ -116,7 +108,6 @@ export async function getCustomers(businessProfileId?: string): Promise<Customer
     );
   } else {
     // Global view: show ALL customers from ALL owned profiles + shared + unassigned
-    console.log('getCustomers: Using GLOBAL filter with owned profiles');
     filteredCustomers = customersWithLinks.filter(c =>
       c.is_shared ||
       !c.business_profile_id ||
@@ -124,7 +115,6 @@ export async function getCustomers(businessProfileId?: string): Promise<Customer
     );
   }
 
-  console.log('getCustomers: Filtered customers count:', filteredCustomers.length);
   return filteredCustomers;
 }
 

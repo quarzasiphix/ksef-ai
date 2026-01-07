@@ -1,6 +1,6 @@
 
-import React, { useState, useEffect } from "react";
-import { Check, ChevronsUpDown, Plus, User } from "lucide-react";
+import React, { useState, useEffect, useMemo } from "react";
+import { Check, ChevronsUpDown, Plus, User, Building2 } from "lucide-react";
 import { cn } from "@/shared/lib/utils";
 import { Button } from "@/shared/ui/button";
 import {
@@ -18,6 +18,7 @@ import {
 } from "@/shared/ui/popover";
 import { Badge } from "@/shared/ui/badge";
 import { useGlobalData } from "@/shared/hooks/use-global-data";
+import { useBusinessProfile } from "@/shared/context/BusinessProfileContext";
 import { Customer } from "@/shared/types";
 import { Link } from "react-router-dom";
 
@@ -25,14 +26,17 @@ interface CustomerSelectorProps {
   value: string;
   onChange: (id: string, name?: string) => void;
   showBusinessProfiles?: boolean;
+  onBusinessProfileSelect?: (id: string, name: string) => void;
 }
 
 export const CustomerSelector: React.FC<CustomerSelectorProps> = ({
   value,
   onChange,
   showBusinessProfiles = true,
+  onBusinessProfileSelect,
 }) => {
   const { customers: { data: customers }, businessProfiles: { data: businessProfiles } } = useGlobalData();
+  const { selectedProfileId, profiles } = useBusinessProfile();
   const [open, setOpen] = useState(false);
   const [selectedCustomer, setSelectedCustomer] = useState<Customer | null>(null);
 
@@ -51,22 +55,48 @@ export const CustomerSelector: React.FC<CustomerSelectorProps> = ({
     setOpen(false);
   };
 
-  const allOptions = [
-    ...customers.map(customer => ({
-      id: customer.id,
-      name: customer.name,
-      type: 'customer' as const,
-      isLinked: !!customer.linkedBusinessProfile,
-      customer,
-    })),
-    ...(showBusinessProfiles ? businessProfiles.map(profile => ({
-      id: profile.id,
-      name: profile.name,
-      type: 'business' as const,
-      isLinked: true,
-      customer: null,
-    })) : [])
-  ];
+  // Group customers by business profile
+  const groupedCustomers = useMemo(() => {
+    const groups = new Map<string | null, Customer[]>();
+    
+    customers.forEach(customer => {
+      const profileId = customer.business_profile_id || null;
+      if (!groups.has(profileId)) {
+        groups.set(profileId, []);
+      }
+      groups.get(profileId)!.push(customer);
+    });
+
+    // Convert to array and sort: selected profile first, then others
+    const result: Array<{
+      profileId: string | null;
+      profileName: string;
+      customers: Customer[];
+      isSelected: boolean;
+    }> = [];
+    
+    groups.forEach((customers, profileId) => {
+      const profile = profiles?.find(p => p.id === profileId);
+      const isSelected = profileId === selectedProfileId;
+      const profileName = profileId
+        ? (profile?.name || 'Moja firma')
+        : 'Nieprzypisane';
+      
+      result.push({
+        profileId,
+        profileName,
+        customers: customers.sort((a, b) => a.name.localeCompare(b.name)),
+        isSelected,
+      });
+    });
+
+    // Sort: selected first, then alphabetically
+    return result.sort((a, b) => {
+      if (a.isSelected) return -1;
+      if (b.isSelected) return 1;
+      return a.profileName.localeCompare(b.profileName);
+    });
+  }, [customers, selectedProfileId, profiles]);
 
   return (
     <div className="space-y-2">
@@ -108,38 +138,78 @@ export const CustomerSelector: React.FC<CustomerSelectorProps> = ({
                   </Button>
                 </div>
               </CommandEmpty>
-              <CommandGroup>
-                {allOptions.map((option) => (
-                  <CommandItem
-                    key={option.id}
-                    value={option.name}
-                    onSelect={() => handleSelect(option.id, option.name)}
-                  >
-                    <Check
-                      className={cn(
-                        "mr-2 h-4 w-4",
-                        value === option.id ? "opacity-100" : "opacity-0"
-                      )}
-                    />
-                    <div className="flex items-center justify-between w-full">
-                      <div className="flex items-center gap-2">
-                        <span className="truncate" style={{ whiteSpace: 'pre-wrap' }}>{option.name}</span>
-                        {option.type === 'business' && (
-                          <Badge variant="secondary" className="text-xs">
-                            Profil biznesowy
-                          </Badge>
+              
+              {/* Business profiles (if enabled) */}
+              {showBusinessProfiles && onBusinessProfileSelect && businessProfiles.length > 0 && (
+                <CommandGroup heading="Profile biznesowe">
+                  {businessProfiles.map((profile) => (
+                    <CommandItem
+                      key={profile.id}
+                      value={profile.name}
+                      onSelect={() => {
+                        onBusinessProfileSelect(profile.id, profile.name);
+                        setOpen(false);
+                      }}
+                    >
+                      <Check
+                        className={cn(
+                          "mr-2 h-4 w-4",
+                          value === profile.id ? "opacity-100" : "opacity-0"
                         )}
-                        {option.isLinked && option.type === 'customer' && (
+                      />
+                      <div className="flex items-center gap-2">
+                        <span className="truncate">{profile.name}</span>
+                        <Badge variant="secondary" className="text-xs">
+                          Profil biznesowy
+                        </Badge>
+                      </div>
+                    </CommandItem>
+                  ))}
+                </CommandGroup>
+              )}
+              
+              {/* Grouped customers by business profile */}
+              {groupedCustomers.map((group) => (
+                <CommandGroup 
+                  key={group.profileId || 'unassigned'}
+                  heading={
+                    <div className="flex items-center gap-2">
+                      <Building2 className="h-4 w-4" />
+                      <span>{group.profileName}</span>
+                      {group.isSelected && (
+                        <Badge variant="secondary" className="text-xs bg-blue-100 text-blue-700">
+                          Wybrana firma
+                        </Badge>
+                      )}
+                      <span className="text-xs text-muted-foreground">({group.customers.length})</span>
+                    </div>
+                  }
+                >
+                  {group.customers.map((customer) => (
+                    <CommandItem
+                      key={customer.id}
+                      value={customer.name}
+                      onSelect={() => handleSelect(customer.id, customer.name)}
+                    >
+                      <Check
+                        className={cn(
+                          "mr-2 h-4 w-4",
+                          value === customer.id ? "opacity-100" : "opacity-0"
+                        )}
+                      />
+                      <div className="flex items-center gap-2">
+                        <span className="truncate">{customer.name}</span>
+                        {customer.linkedBusinessProfile && (
                           <Badge variant="outline" className="text-xs text-green-600 border-green-300">
                             <User className="mr-1 h-3 w-3" />
                             Połączony
                           </Badge>
                         )}
                       </div>
-                    </div>
-                  </CommandItem>
-                ))}
-              </CommandGroup>
+                    </CommandItem>
+                  ))}
+                </CommandGroup>
+              ))}
             </CommandList>
           </Command>
         </PopoverContent>

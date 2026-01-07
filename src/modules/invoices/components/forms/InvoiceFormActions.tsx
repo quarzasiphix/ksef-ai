@@ -54,8 +54,17 @@ export const InvoiceFormActions: React.FC<InvoiceFormActionsProps> = ({
             onSubmit();
           }
         }}
+        className="relative overflow-hidden group"
       >
-        {isLoading ? "Zapisywanie..." : isEditing ? "Zapisz" : "Utwórz dokument"}
+        <span className="absolute inset-0 rounded-md">
+          <span className="absolute inset-0 rounded-md border-2 border-primary/50 animate-spin-border" style={{ clipPath: 'polygon(0 0, 100% 0, 100% 2px, 0 2px)' }}></span>
+          <span className="absolute inset-0 rounded-md border-2 border-primary/50 animate-spin-border" style={{ clipPath: 'polygon(100% 0, 100% 100%, calc(100% - 2px) 100%, calc(100% - 2px) 0)', animationDelay: '0.5s' }}></span>
+          <span className="absolute inset-0 rounded-md border-2 border-primary/50 animate-spin-border" style={{ clipPath: 'polygon(0 100%, 100% 100%, 100% calc(100% - 2px), 0 calc(100% - 2px))', animationDelay: '1s' }}></span>
+          <span className="absolute inset-0 rounded-md border-2 border-primary/50 animate-spin-border" style={{ clipPath: 'polygon(0 0, 2px 0, 2px 100%, 0 100%)', animationDelay: '1.5s' }}></span>
+        </span>
+        <span className="relative z-10">
+          {isLoading ? "Zapisywanie..." : isEditing ? "Aktualizuj" : "Utwórz"}
+        </span>
       </Button>
     </div>
   );

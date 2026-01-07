@@ -21,10 +21,14 @@ import type { AuditPanelState, AuditEvent } from '../types/audit';
 import type { Invoice, Expense } from '@/shared/types';
 
 export const LedgerPage: React.FC = () => {
-  const { selectedProfileId } = useBusinessProfile();
+  const { selectedProfileId, profiles } = useBusinessProfile();
   const { user } = useAuth();
   const { openInvoiceTab, openExpenseTab, openContractTab } = useOpenTab();
   const [filters, setFilters] = useState<LedgerFilters>({});
+  
+  // Get selected profile's tax ID for expense matching
+  const selectedProfile = profiles?.find(p => p.id === selectedProfileId);
+  const selectedProfileTaxId = selectedProfile?.taxId;
   
   // Audit panel state
   const [auditPanelState, setAuditPanelState] = useState<AuditPanelState>('closed');
@@ -104,15 +108,30 @@ export const LedgerPage: React.FC = () => {
     staleTime: 1000 * 60 * 5,
   });
 
-  const { data: expenses = [], isLoading: expensesLoading } = useQuery({
-    queryKey: ['ledger-expenses', user?.id, selectedProfileId],
+  const { data: allExpenses = [], isLoading: expensesLoading } = useQuery({
+    queryKey: ['ledger-expenses', user?.id],
     queryFn: async () => {
-      if (!user?.id || !selectedProfileId) return [];
-      return getExpenses(user.id, selectedProfileId);
+      if (!user?.id) return [];
+      // Fetch all expenses without business profile filter
+      return getExpenses(user.id);
     },
-    enabled: !!user?.id && !!selectedProfileId,
+    enabled: !!user?.id,
     staleTime: 1000 * 60 * 5,
   });
+
+  // Filter expenses by matching tax ID (NIP) with selected profile
+  const expenses = useMemo(() => {
+    if (!selectedProfileTaxId || !allExpenses.length) return [];
+    
+    return allExpenses.filter(expense => {
+      // Match by business profile ID first (if available)
+      if (expense.businessProfileId === selectedProfileId) return true;
+      
+      // Fallback: try to match by tax ID from linked invoice or customer data
+      // Note: Expense type doesn't have direct taxId fields, so we rely on businessProfileId
+      return false;
+    });
+  }, [allExpenses, selectedProfileTaxId, selectedProfileId]);
 
   const normalizeStatus = (raw?: string | null) => {
     if (!raw) return 'posted';

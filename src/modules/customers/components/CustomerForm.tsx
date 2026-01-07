@@ -17,7 +17,7 @@ import {
 import { Customer } from "@/shared/types";
 import { saveCustomer } from "@/modules/customers/data/customerRepository";
 import { useAuth } from "@/shared/context/AuthContext";
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/shared/ui/dialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/shared/ui/dialog";
 import {
   Select,
   SelectContent,
@@ -29,6 +29,8 @@ import { supabase } from "@/integrations/supabase/client";
 import { useBusinessProfile } from "@/shared/context/BusinessProfileContext";
 import { Badge } from "@/shared/ui/badge";
 import { Switch } from "@/shared/ui/switch";
+import { getClientGroups } from "@/modules/customers/data/clientGroupRepository";
+import { ClientGroup } from "@/modules/customers/types/clientGroup";
 
 const formSchema = z.object({
   name: z.string().min(1, "Nazwa jest wymagana"),
@@ -41,6 +43,7 @@ const formSchema = z.object({
   customerType: z.enum(['odbiorca', 'sprzedawca', 'both'], { required_error: "Typ klienta jest wymagany" }),
   business_profile_id: z.string().optional(),
   is_shared: z.boolean().default(false),
+  client_group_id: z.string().optional().or(z.literal("")),
 });
 
 interface CustomerFormProps {
@@ -70,6 +73,7 @@ const CustomerForm = ({
     ownerEmail?: string;
   } | null>(null);
   const [isSearching, setIsSearching] = React.useState(false);
+  const [clientGroups, setClientGroups] = React.useState<ClientGroup[]>([]);
   const effectiveProfileId = businessProfileId || initialData?.business_profile_id || selectedProfileId || profiles?.[0]?.id;
   const effectiveProfile = profiles?.find(p => p.id === effectiveProfileId);
 
@@ -93,6 +97,7 @@ const CustomerForm = ({
         ? "" 
         : (initialData?.business_profile_id || effectiveProfileId || ""),
       is_shared: initialData?.is_shared ?? false,
+      client_group_id: initialData?.client_group_id || "",
     }),
     [
       initialData?.name,
@@ -107,6 +112,7 @@ const CustomerForm = ({
       initialData?.business_profile_id,
       effectiveProfileId,
       initialData?.is_shared,
+      initialData?.client_group_id,
     ]
   );
 
@@ -114,6 +120,22 @@ const CustomerForm = ({
     resolver: zodResolver(formSchema),
     defaultValues,
   });
+
+  // Load client groups
+  useEffect(() => {
+    if (!isOpen || !effectiveProfileId) return;
+    
+    const loadGroups = async () => {
+      try {
+        const groups = await getClientGroups(effectiveProfileId);
+        setClientGroups(groups);
+      } catch (error) {
+        console.error("Error loading client groups:", error);
+      }
+    };
+    
+    loadGroups();
+  }, [isOpen, effectiveProfileId]);
 
   useEffect(() => {
     if (!isOpen) return;
@@ -217,6 +239,9 @@ const CustomerForm = ({
           <DialogTitle>
             {isEditing ? "Edytuj klienta" : "Dodaj nowego klienta"}
           </DialogTitle>
+          <DialogDescription>
+            Uzupełnij szczegóły klienta, aby móc przypisywać go do faktur i dokumentów.
+          </DialogDescription>
         </DialogHeader>
         <Form {...form}>
           <form
@@ -633,6 +658,38 @@ const CustomerForm = ({
                       <SelectItem value="both">Oba</SelectItem>
                     </SelectContent>
                   </Select>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+
+            <FormField
+              control={form.control}
+              name="client_group_id"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Grupa klientów (opcjonalnie)</FormLabel>
+                  <Select
+                    value={field.value || "none"}
+                    onValueChange={(value) => field.onChange(value === "none" ? "" : value)}
+                  >
+                    <FormControl>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Wybierz grupę (np. Domikom, TOP-BUD)" />
+                      </SelectTrigger>
+                    </FormControl>
+                    <SelectContent>
+                      <SelectItem value="none">Brak grupy</SelectItem>
+                      {clientGroups.map((group) => (
+                        <SelectItem key={group.id} value={group.id}>
+                          {group.name} {group.invoice_prefix && `(${group.invoice_prefix})`}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  <FormDescription>
+                    Przypisz klienta do grupy (administracji, portfolio, kraju)
+                  </FormDescription>
                   <FormMessage />
                 </FormItem>
               )}

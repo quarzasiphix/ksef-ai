@@ -10,7 +10,7 @@ import {
 } from "@/shared/ui/card";
 import { Input } from "@/shared/ui/input";
 import { Customer } from "@/shared/types";
-import { Plus, Search, User, MapPin, Phone, Mail, Building2, ChevronDown, ChevronUp } from "lucide-react";
+import { Plus, Search, User, MapPin, Phone, Mail, Building2, ChevronDown, ChevronUp, FolderKanban } from "lucide-react";
 import { Badge } from "@/shared/ui/badge";
 import { useGlobalData } from "@/shared/hooks/use-global-data";
 import { useBusinessProfile } from "@/shared/context/BusinessProfileContext";
@@ -29,6 +29,10 @@ import {
 } from "@/shared/ui/alert-dialog";
 import { toast } from "sonner";
 import { cn } from "@/shared/lib/utils";
+import { ClientGroupManager } from "@/modules/customers/components/ClientGroupManager";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { getClientGroups } from "@/modules/customers/data/clientGroupRepository";
+import CustomerForm from "@/modules/customers/components/CustomerForm";
 
 const CLIENT_TYPE_LABELS: Record<string, string> = {
   odbiorca: "Odbiorca",
@@ -54,7 +58,26 @@ const CustomerList = () => {
   const [isDeleting, setIsDeleting] = useState(false);
   const [contextMenu, setContextMenu] = useState<{visible: boolean, x: number, y: number, customer: Customer | null}>({visible: false, x: 0, y: 0, customer: null});
   const [collapsedGroups, setCollapsedGroups] = useState<Set<string>>(new Set());
+  const [showGroupManager, setShowGroupManager] = useState(false);
+  const [editingCustomer, setEditingCustomer] = useState<Customer | null>(null);
   const menuRef = useRef<HTMLDivElement>(null);
+
+  const queryClient = useQueryClient();
+
+  const { data: clientGroups = [] } = useQuery({
+    queryKey: ['client-groups'],
+    queryFn: () => getClientGroups(),
+    placeholderData: (previousData) => previousData ?? [],
+    staleTime: 60_000,
+  });
+
+  const clientGroupMap = useMemo(() => {
+    const map = new Map<string, { name: string; invoice_prefix?: string }>();
+    clientGroups.forEach(group => {
+      map.set(group.id, { name: group.name, invoice_prefix: group.invoice_prefix ?? undefined });
+    });
+    return map;
+  }, [clientGroups]);
 
   // Expose this function for triggering a customer refresh from outside (edit/new)
   React.useEffect(() => {
@@ -67,11 +90,6 @@ const CustomerList = () => {
 
   // Group customers by business profile
   const groupedCustomers = useMemo(() => {
-    // Debug: Log total customers received
-    console.log('CustomerList: Total customers received:', customers.length);
-    console.log('CustomerList: Customers with ba9bcb8a profile:', 
-      customers.filter(c => c.business_profile_id === 'ba9bcb8a-6be7-4989-ab26-4ea234c892d4').length);
-    
     // Filter by search and tab first
     const filtered = customers.filter((customer) => {
       const matchesSearch =
@@ -196,12 +214,18 @@ const CustomerList = () => {
             Zarządzaj bazą klientów wszystkich firm
           </p>
         </div>
-        <Button asChild>
-          <Link to="/customers/new">
-            <Plus className="mr-2 h-4 w-4" />
-            Nowy klient
-          </Link>
-        </Button>
+        <div className="flex gap-2">
+          <Button variant="outline" onClick={() => setShowGroupManager(true)}>
+            <FolderKanban className="mr-2 h-4 w-4" />
+            Zarządzaj grupami
+          </Button>
+          <Button asChild>
+            <Link to="/customers/new">
+              <Plus className="mr-2 h-4 w-4" />
+              Nowy klient
+            </Link>
+          </Button>
+        </div>
       </div>
       
       <Card>
@@ -331,6 +355,17 @@ const CustomerList = () => {
                                         {CLIENT_TYPE_LABELS[customer.customerType]}
                                       </Badge>
                                     )}
+                                    {customer.client_group_id && clientGroupMap.has(customer.client_group_id) && (
+                                      <Badge
+                                        variant="secondary"
+                                        className="text-xs bg-purple-100 text-purple-800 dark:bg-purple-900/40 dark:text-purple-100"
+                                      >
+                                        {clientGroupMap.get(customer.client_group_id)?.invoice_prefix
+                                          ? `${clientGroupMap.get(customer.client_group_id)?.invoice_prefix} • `
+                                          : ""}
+                                        {clientGroupMap.get(customer.client_group_id)?.name}
+                                      </Badge>
+                                    )}
                                   </div>
                                   <div className="mt-1 flex items-center gap-4 text-sm text-muted-foreground truncate">
                                     <span className="flex items-center gap-1 truncate">
@@ -374,6 +409,15 @@ const CustomerList = () => {
           onClick={e => e.stopPropagation()}
         >
           <button
+            className="w-full text-left px-4 py-2 text-sm text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700"
+            onClick={() => {
+              setEditingCustomer(contextMenu.customer);
+              setContextMenu({...contextMenu, visible: false});
+            }}
+          >
+            Edytuj klienta
+          </button>
+          <button
             className="w-full text-left px-4 py-2 text-sm text-red-600 hover:bg-gray-100 dark:hover:bg-gray-700 flex items-center"
             onClick={() => {
               setCustomerToDelete(contextMenu.customer);
@@ -409,6 +453,33 @@ const CustomerList = () => {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {/* Client Group Manager */}
+      <ClientGroupManager
+        isOpen={showGroupManager}
+        onClose={() => setShowGroupManager(false)}
+        onGroupsChanged={async () => {
+          setIsUpdating(true);
+          await refreshAllData();
+          setIsUpdating(false);
+        }}
+      />
+
+      {/* Edit Customer Dialog */}
+      {editingCustomer && (
+        <CustomerForm
+          initialData={editingCustomer}
+          isOpen={!!editingCustomer}
+          onClose={() => setEditingCustomer(null)}
+          onSuccess={async (customer) => {
+            toast.success('Klient został zaktualizowany');
+            setEditingCustomer(null);
+            setIsUpdating(true);
+            await refreshAllData();
+            setIsUpdating(false);
+          }}
+        />
+      )}
     </div>
   );
 };

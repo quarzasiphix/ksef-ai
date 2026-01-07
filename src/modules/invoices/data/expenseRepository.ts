@@ -85,6 +85,11 @@ export const getExpenses = async (userId: string, businessProfileId?: string, pe
     return [];
   }
 
+  console.log(`[getExpenses] Fetched ${data.length} expenses for businessProfileId: ${businessProfileId || 'ALL'}`);
+  if (data.length > 0) {
+    console.log('[getExpenses] Sample expense business_profile_id:', data[0]?.business_profile_id);
+  }
+
   /* -------------------------------------------------------------
      Fetch invoices shared with this user and convert to expenses
   --------------------------------------------------------------*/

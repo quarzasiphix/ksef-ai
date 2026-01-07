@@ -87,6 +87,8 @@ export const InvoicePartiesForm: React.FC<InvoicePartiesFormProps> = ({
               <CustomerSelector
                 value={customerId}
                 onChange={onCustomerChange}
+                onBusinessProfileSelect={onBusinessProfileChange}
+                showBusinessProfiles={false}
               />
               <div className="flex gap-2 mt-2">
                 <Button

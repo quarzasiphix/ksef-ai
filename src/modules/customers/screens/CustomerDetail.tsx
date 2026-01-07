@@ -11,6 +11,7 @@ import { pl } from "date-fns/locale";
 import { Edit, ArrowLeft, FileText, Plus, MessageCircle, Mail, Phone } from "lucide-react";
 import { useGlobalData } from "@/shared/hooks/use-global-data";
 import { getCustomerWithLinkedProfile } from "@/modules/customers/data/customerRepository";
+import { getClientGroup } from "@/modules/customers/data/clientGroupRepository";
 import InvoiceCard from "@/modules/invoices/components/InvoiceCard";
 import ReceivedInvoicesTab from "@/modules/invoices/components/ReceivedInvoicesTab";
 import { Customer } from "@/shared/types";
@@ -40,6 +41,13 @@ const CustomerDetail = () => {
     queryKey: ['bank-accounts', selectedProfileId],
     queryFn: () => selectedProfileId ? getBankAccountsForProfile(selectedProfileId) : Promise.resolve([]),
     enabled: !!selectedProfileId,
+  });
+
+  const { data: customerGroup } = useQuery({
+    queryKey: ['customer-group', customer?.client_group_id],
+    queryFn: () =>
+      customer?.client_group_id ? getClientGroup(customer.client_group_id) : Promise.resolve(null),
+    enabled: !!customer?.client_group_id,
   });
 
   const { data: businessProfile } = useQuery({
@@ -111,6 +119,12 @@ const CustomerDetail = () => {
           <div>
             <div className="flex items-center space-x-3">
               <h1 className="text-3xl font-bold">{customer.name}</h1>
+              {customerGroup && (
+                <Badge variant="secondary" className="bg-purple-100 text-purple-800 dark:bg-purple-900/40 dark:text-purple-100">
+                  {customerGroup.invoice_prefix ? `${customerGroup.invoice_prefix} • ` : ""}
+                  {customerGroup.name}
+                </Badge>
+              )}
               {isLinkedToUser && (
                 <Badge variant="outline" className="border-emerald-500 text-emerald-600">
                   Użytkownik aplikacji
@@ -271,6 +285,23 @@ const CustomerDetail = () => {
                     <div>
                       <span className="font-medium">Telefon:</span> {customer.phone}
                     </div>
+                  )}
+                </div>
+              </div>
+            )}
+
+            {customerGroup && (
+              <div>
+                <h4 className="font-semibold mb-3">Grupa / administracja</h4>
+                <div className="space-y-1 text-sm">
+                  <div className="flex items-center gap-2">
+                    <Badge variant="secondary" className="bg-purple-100 text-purple-800 dark:bg-purple-900/40 dark:text-purple-100">
+                      {customerGroup.invoice_prefix ? `${customerGroup.invoice_prefix} • ` : ""}
+                      {customerGroup.name}
+                    </Badge>
+                  </div>
+                  {customerGroup.description && (
+                    <p className="text-muted-foreground">{customerGroup.description}</p>
                   )}
                 </div>
               </div>

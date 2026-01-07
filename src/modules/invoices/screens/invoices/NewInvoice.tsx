@@ -1275,8 +1275,8 @@ const handleFormSubmit = form.handleSubmit(async (formData) => {
               </div>
             </div>
 
-            {/* Form sections - Wrapped in a flex-1, overflow-y-auto div */}
-            <div className="flex-1 overflow-y-auto space-y-6">
+            {/* Form sections - Wrapped in a flex-1, overflow-y-auto div with bottom padding for sticky nav */}
+            <div className="flex-1 overflow-y-auto space-y-6 pb-24">
               {/* Step 1: Invoice Number - Highlighted */}
               <div className={cn(
                 "p-4 rounded-lg border-2 transition-all",
@@ -1453,13 +1453,13 @@ const handleFormSubmit = form.handleSubmit(async (formData) => {
               </div>
             </div>
 
-            {/* Przeniesiony InvoiceFormActions do wnętrza <form> */}
-            {showFormActions && ( 
+            {/* Sticky bottom nav - only show when all 3 steps complete */}
+            {showFormActions && isStep1Complete && customerId && items.length > 0 && ( 
               <div className={cn(
-                  "fixed bottom-0 left-0 right-0 w-full border-t bg-background z-[9999]", // Fixed at bottom on mobile with high z-index
-                  "md:static md:bottom-auto md:left-auto md:right-auto md:w-auto md:border-t-0 md:bg-transparent md:z-auto", // Static on medium+ screens
-                  "py-2 lg:py-2", // Padding
-                  "container" // Apply container padding
+                  "fixed bottom-0 left-0 right-0 w-full border-t bg-background shadow-lg z-[9999]",
+                  "py-3 px-4",
+                  "flex items-center justify-end gap-3",
+                  "animate-slide-up"
                 )}>
                 <InvoiceFormActions
                   isLoading={isLoading}

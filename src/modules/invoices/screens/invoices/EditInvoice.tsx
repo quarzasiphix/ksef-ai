@@ -47,6 +47,9 @@ const EditInvoice = () => {
   const { user } = useAuth();
   const formRef = useRef<{ handleSubmit: (onValid: (data: any) => Promise<void>) => (e?: React.BaseSyntheticEvent) => Promise<void> }>(null);
   const [isSaving, setIsSaving] = useState(false);
+  
+  // Track form validation state for sticky nav
+  const [formIsValid, setFormIsValid] = useState(false);
 
   const transformInvoiceData = useCallback((invoiceData: Invoice | null) => {
     if (!invoiceData) return null;
@@ -116,9 +119,25 @@ const EditInvoice = () => {
   const transformedData = useMemo(() => transformInvoiceData(invoice), [invoice, transformInvoiceData]);
   const displayData = transformedData || transformedInvoice;
 
-  const handleItemsChange = (newItems: InvoiceItem[]) => {
-    setItems([...newItems]);
-  };
+  const handleItemsChange = useCallback((newItems: InvoiceItem[]) => {
+    setItems(newItems);
+    // Update form validation state
+    checkFormValidity(invoice, newItems);
+  }, [invoice]);
+
+  // Check if form is valid for sticky nav
+  const checkFormValidity = useCallback((invoiceData: Invoice | null, currentItems: InvoiceItem[]) => {
+    if (!invoiceData) {
+      setFormIsValid(false);
+      return;
+    }
+    
+    const hasNumber = Boolean(invoiceData.number);
+    const hasCustomer = Boolean(invoiceData.customerId);
+    const hasItems = currentItems.length > 0;
+    
+    setFormIsValid(hasNumber && hasCustomer && hasItems);
+  }, []);
 
   useEffect(() => {
     if (!id || id === 'new') {
@@ -141,8 +160,10 @@ const EditInvoice = () => {
   useEffect(() => {
     if (invoice?.items) {
       setItems([...invoice.items]);
+      // Check form validity when invoice loads
+      checkFormValidity(invoice, invoice.items);
     }
-  }, [invoice]);
+  }, [invoice, checkFormValidity]);
 
   useEffect(() => {
     if (invoice?.businessProfileId) {
@@ -308,8 +329,8 @@ const EditInvoice = () => {
         </div>
       </div>
 
-      <div className="flex flex-col flex-1 pb-12 md:pb-0">
-        <div className="flex-1 overflow-y-auto">
+      <div className="flex flex-col flex-1">
+        <div className="flex-1 overflow-y-auto pb-24">
           <div className="container mx-auto px-4 py-6">
             {displayData && (
               <NewInvoice
@@ -331,15 +352,22 @@ const EditInvoice = () => {
           )}
         </div>
 
-        <div className="hidden md:block sticky bottom-0 bg-white dark:bg-gray-800 border-t border-gray-200 dark:border-gray-700 p-4">
-          <InvoiceFormActions
-            onSubmit={() => formRef.current?.handleSubmit(handleUpdate)()}
-            isLoading={isSaving}
-            isEditing={true} // Always editing in this component
-            // NIE przekazuj onSubmit, bo obsługuje to NewInvoice
-            transactionType={invoice.transactionType as any}
-          />
-        </div>
+        {/* Sticky bottom nav - only show when form is valid (all 3 steps complete) */}
+        {formIsValid && (
+          <div className={cn(
+            "fixed bottom-0 left-0 right-0 w-full border-t bg-background shadow-lg z-[9999]",
+            "py-3 px-4",
+            "flex items-center justify-end gap-3",
+            "animate-slide-up"
+          )}>
+            <InvoiceFormActions
+              onSubmit={() => formRef.current?.handleSubmit(handleUpdate)()}
+              isLoading={isSaving}
+              isEditing={true}
+              transactionType={invoice.transactionType as any}
+            />
+          </div>
+        )}
 
       </div>
 

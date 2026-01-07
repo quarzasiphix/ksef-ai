@@ -87,6 +87,7 @@ export interface Customer {
   user_id: string; // Added for RLS
   business_profile_id?: string; // Links to specific business profile
   is_shared?: boolean; // If true, available for all user's business profiles
+  client_group_id?: string; // Links to client group (administration/portfolio)
   customerType: 'odbiorca' | 'sprzedawca' | 'both';
   linkedBusinessProfile?: {
     id: string;
