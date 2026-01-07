@@ -308,7 +308,6 @@ export async function sendOnboardingWelcomeEmail(welcomeData: {
   business_name: string;
   app_url?: string;
   premium_url?: string;
-  support_url?: string;
   help_url?: string;
   settings_url?: string;
 }) {
@@ -320,7 +319,6 @@ export async function sendOnboardingWelcomeEmail(welcomeData: {
       ...welcomeData,
       app_url: welcomeData.app_url || baseUrl,
       premium_url: welcomeData.premium_url || `${baseUrl}/premium`,
-      support_url: welcomeData.support_url || `${baseUrl}/support`,
       help_url: welcomeData.help_url || `${baseUrl}/help`,
       settings_url: welcomeData.settings_url || `${baseUrl}/settings`,
       year: new Date().getFullYear(),
