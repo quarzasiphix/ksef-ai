@@ -62,12 +62,24 @@ export async function getCashRegisterData(
     endDate?: string;
   }
 ): Promise<CashRegisterData> {
+  // Ensure we have a valid auth session
+  const {
+    data: { session },
+  } = await supabase.auth.getSession();
+
+  if (!session?.access_token) {
+    throw new Error('No active session - please log in');
+  }
+
   const { data, error } = await supabase.functions.invoke('get-cash-register-data', {
     body: {
       businessProfileId,
       cashAccountId: options?.cashAccountId,
       startDate: options?.startDate,
       endDate: options?.endDate,
+    },
+    headers: {
+      Authorization: `Bearer ${session.access_token}`,
     },
   });
 

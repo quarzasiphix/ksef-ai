@@ -182,11 +182,27 @@ class SyncManager {
       // Get last sync timestamps from localStorage
       const lastSyncTimestamps = this.getLastSyncTimestamps(businessProfileId);
       
+      // Ensure we have a valid auth session for the edge function
+      // Try to refresh the session first to ensure we have a valid token
+      const {
+        data: { session },
+        error: sessionError
+      } = await supabase.auth.refreshSession();
+
+      if (sessionError || !session?.access_token) {
+        console.warn('[SyncManager] Auth session refresh failed, skipping sync', sessionError);
+        this.updateStatus('error');
+        return;
+      }
+
       // Call edge function to check for updates with timeout protection
       const syncPromise = supabase.functions.invoke<SyncCheckResponse>('sync-check', {
         body: {
           businessProfileId,
           lastSyncTimestamps,
+        },
+        headers: {
+          Authorization: `Bearer ${session.access_token}`,
         },
       });
       

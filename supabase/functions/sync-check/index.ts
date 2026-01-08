@@ -89,8 +89,13 @@ Deno.serve(async (req: Request) => {
     } = await supabaseClient.auth.getUser();
 
     if (authError || !user) {
+      console.error('Auth error:', authError);
+      console.error('Authorization header:', req.headers.get('Authorization')?.substring(0, 20) + '...');
       return new Response(
-        JSON.stringify({ error: 'Unauthorized' }),
+        JSON.stringify({ 
+          error: 'Unauthorized',
+          details: authError?.message || 'No user found'
+        }),
         { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
