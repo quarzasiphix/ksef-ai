@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { useBusinessProfile } from "@/shared/context/BusinessProfileContext";
 import { useAuth } from "@/shared/context/AuthContext";
+import { useProjectScope } from "@/shared/context/ProjectContext";
 import { Department, DepartmentStats } from "@/shared/types";
 import {
   getDepartments,
@@ -34,6 +35,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/shared/ui/tabs";
 const DepartmentScreen: React.FC = () => {
   const { selectedProfileId } = useBusinessProfile();
   const { user } = useAuth();
+  const { refreshProjects } = useProjectScope();
   const [departments, setDepartments] = useState<Department[]>([]);
   const [departmentStats, setDepartmentStats] = useState<DepartmentStats[]>([]);
   const [loading, setLoading] = useState(true);
@@ -96,6 +98,8 @@ const DepartmentScreen: React.FC = () => {
       }
       setDialogOpen(false);
       loadDepartments();
+      // Refresh projects to update DepartmentSwitcher
+      await refreshProjects();
     } catch (error) {
       console.error("Error saving department:", error);
       toast.error("Nie udało się zapisać działu");
@@ -116,6 +120,8 @@ const DepartmentScreen: React.FC = () => {
       setDeleteDialogOpen(false);
       setDepartmentToDelete(null);
       loadDepartments();
+      // Refresh projects to update DepartmentSwitcher
+      await refreshProjects();
     } catch (error) {
       console.error("Error deleting department:", error);
       toast.error("Nie udało się usunąć działu");
@@ -129,6 +135,7 @@ const DepartmentScreen: React.FC = () => {
       await freezeDepartment(department.id, user.id);
       toast.success("Dział zamrożony");
       loadDepartments();
+      await refreshProjects();
     } catch (error) {
       console.error("Error freezing department:", error);
       toast.error("Nie udało się zamrozić działu");
@@ -140,6 +147,7 @@ const DepartmentScreen: React.FC = () => {
       await unfreezeDepartment(department.id);
       toast.success("Dział odblokowany");
       loadDepartments();
+      await refreshProjects();
     } catch (error) {
       console.error("Error unfreezing department:", error);
       toast.error("Nie udało się odblokować działu");
@@ -153,6 +161,7 @@ const DepartmentScreen: React.FC = () => {
       await closeDepartment(department.id, user.id);
       toast.success("Dział zamknięty");
       loadDepartments();
+      await refreshProjects();
     } catch (error) {
       console.error("Error closing department:", error);
       toast.error("Nie udało się zamknąć działu");
@@ -164,6 +173,7 @@ const DepartmentScreen: React.FC = () => {
       await archiveDepartment(department.id);
       toast.success("Dział zarchiwizowany");
       loadDepartments();
+      await refreshProjects();
     } catch (error) {
       console.error("Error archiving department:", error);
       toast.error("Nie udało się zarchiwizować działu");
@@ -175,6 +185,7 @@ const DepartmentScreen: React.FC = () => {
       await reopenDepartment(department.id);
       toast.success("Dział otwarty ponownie");
       loadDepartments();
+      await refreshProjects();
     } catch (error) {
       console.error("Error reopening department:", error);
       toast.error("Nie udało się otworzyć działu ponownie");

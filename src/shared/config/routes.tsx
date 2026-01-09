@@ -84,10 +84,13 @@ const OperationsPage = React.lazy(() => import('@/modules/operations/screens/Ope
 const JobDetailPage = React.lazy(() => import('@/modules/operations/screens/JobDetailPage'));
 const JobsListPage = React.lazy(() => import('@/modules/operations/screens/JobsListPage'));
 const JobNewPage = React.lazy(() => import('@/modules/operations/screens/JobNewPageEnhanced'));
-const DriversListPage = React.lazy(() => import('@/modules/operations/screens/DriversListPage'));
-const DriverNewPage = React.lazy(() => import('@/modules/operations/screens/DriverNewPage'));
-const VehiclesListPage = React.lazy(() => import('@/modules/operations/screens/VehiclesListPage'));
-const VehicleNewPage = React.lazy(() => import('@/modules/operations/screens/VehicleNewPage'));
+const DriversListPage = React.lazy(() => import('@/modules/operations/screens/TransportDriversListPage'));
+const DriverNewPage = React.lazy(() => import('@/modules/operations/screens/TransportDriverNewPage'));
+const VehiclesListPage = React.lazy(() => import('@/modules/operations/screens/TransportVehiclesListPage'));
+const VehicleNewPage = React.lazy(() => import('@/modules/operations/screens/TransportVehicleNewPage'));
+const FuneralCasesListPage = React.lazy(() => import('@/modules/operations/screens/FuneralCasesListPage'));
+const FuneralCaseNewPage = React.lazy(() => import('@/modules/operations/screens/FuneralCaseNewPage'));
+const FuneralCaseDetailPage = React.lazy(() => import('@/modules/operations/screens/FuneralCaseDetailPage'));
 
 export type RouteGuard = 'public' | 'protected' | 'premium' | 'onboarding';
 
@@ -170,6 +173,24 @@ export const routes: RouteConfig[] = [
   {
     path: '/operations/vehicles/new',
     element: <VehicleNewPage />,
+    guard: 'protected',
+    hideInNav: true,
+  },
+  {
+    path: '/operations/funeral-cases',
+    element: <FuneralCasesListPage />,
+    guard: 'protected',
+    hideInNav: true,
+  },
+  {
+    path: '/operations/funeral-cases/new',
+    element: <FuneralCaseNewPage />,
+    guard: 'protected',
+    hideInNav: true,
+  },
+  {
+    path: '/operations/funeral-cases/:id',
+    element: <FuneralCaseDetailPage />,
     guard: 'protected',
     hideInNav: true,
   },

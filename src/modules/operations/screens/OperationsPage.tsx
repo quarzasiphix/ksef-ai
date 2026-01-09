@@ -8,12 +8,18 @@ import { Button } from '@/shared/ui/button';
 import { Badge } from '@/shared/ui/badge';
 import { 
   Truck, Users, Briefcase, AlertCircle, CheckCircle2, 
-  Clock, XCircle, Plus, TrendingUp, Shield, FileText
+  Clock, XCircle, Plus, TrendingUp, Shield, FileText,
+  User, Calendar, DollarSign, Heart
 } from 'lucide-react';
 import { getOperationsDashboard, getJobs, getDrivers, getVehicles } from '../data/operationsRepository';
+import { getFuneralCases, getFuneralCaseStats, getActiveFuneralCases } from '../data/funeralCaseRepository';
 import type { OperationalJob, Driver, Vehicle } from '../types';
+import type { FuneralCase, FuneralCaseStats } from '../types/funeralCases';
+import { FUNERAL_CASE_STATUS_LABELS, FUNERAL_SERVICE_TYPE_LABELS } from '../types/funeralCases';
 import { getDepartmentTemplate } from '@/modules/projects/types/departmentTemplates';
 import { getJobTerminology } from '../types';
+import { format } from 'date-fns';
+import { pl } from 'date-fns/locale';
 
 /**
  * Operations Page - Run the business today
@@ -35,6 +41,7 @@ const OperationsPage: React.FC = () => {
   // Determine if this template uses vehicles/drivers
   const usesVehicles = departmentTemplate?.id === 'transport_operations' || departmentTemplate?.id === 'operations';
   const usesDrivers = departmentTemplate?.id === 'transport_operations' || departmentTemplate?.id === 'operations';
+  const isFuneralHome = departmentTemplate?.id === 'funeral_home';
 
   // Fetch dashboard data
   const { data: dashboard, isLoading: dashboardLoading } = useQuery({
@@ -86,6 +93,25 @@ const OperationsPage: React.FC = () => {
     enabled: !!selectedDepartment && usesVehicles,
   });
 
+  // Fetch funeral cases data (only for funeral home template)
+  const { data: funeralStats } = useQuery({
+    queryKey: ['funeral-stats', selectedProfileId, selectedDepartment?.id],
+    queryFn: async () => {
+      if (!selectedProfileId) return null;
+      return getFuneralCaseStats(selectedProfileId, selectedDepartment?.id);
+    },
+    enabled: !!selectedProfileId && isFuneralHome,
+  });
+
+  const { data: activeFuneralCases = [] } = useQuery({
+    queryKey: ['funeral-cases-active', selectedProfileId, selectedDepartment?.id],
+    queryFn: async () => {
+      if (!selectedProfileId) return [];
+      return getActiveFuneralCases(selectedProfileId, selectedDepartment?.id);
+    },
+    enabled: !!selectedProfileId && isFuneralHome,
+  });
+
   if (!selectedDepartment) {
     return (
       <div className="p-6">
@@ -122,6 +148,247 @@ const OperationsPage: React.FC = () => {
     }
   };
 
+  const getStatusColor = (status: string) => {
+    switch (status) {
+      case 'new': return 'bg-blue-100 text-blue-800';
+      case 'scheduled': return 'bg-purple-100 text-purple-800';
+      case 'in_progress': return 'bg-orange-100 text-orange-800';
+      case 'completed': return 'bg-green-100 text-green-800';
+      case 'settled': return 'bg-emerald-100 text-emerald-800';
+      case 'archived': return 'bg-gray-100 text-gray-800';
+      default: return 'bg-gray-100 text-gray-800';
+    }
+  };
+
+  // Funeral Home View
+  if (isFuneralHome) {
+    return (
+      <div className="p-6 space-y-6">
+        {/* Header */}
+        <div className="flex items-center justify-between">
+          <div>
+            <h1 className="text-2xl md:text-3xl font-bold">Sprawy pogrzebowe</h1>
+            <p className="text-sm text-muted-foreground mt-1">
+              {selectedDepartment.name} - zarządzanie sprawami od zgłoszenia do rozliczenia
+            </p>
+          </div>
+          <Button onClick={() => navigate('/operations/funeral-cases/new')}>
+            <Plus className="h-4 w-4 mr-2" />
+            Nowa sprawa
+          </Button>
+        </div>
+
+        {/* Department Context */}
+        <Card className="border-purple-200 bg-purple-50 dark:bg-purple-950/20">
+          <CardContent className="p-4">
+            <div className="flex items-center gap-3">
+              <Heart className="h-5 w-5 text-purple-600" />
+              <div className="flex-1">
+                <div className="flex items-center gap-2">
+                  <h3 className="font-semibold">{selectedDepartment.name}</h3>
+                  <Badge variant="secondary" className="text-xs">
+                    Zakład pogrzebowy
+                  </Badge>
+                </div>
+                <p className="text-sm text-muted-foreground">
+                  Kompleksowa obsługa spraw pogrzebowych - ceremonie, dokumenty, rozliczenia
+                </p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Stats Cards */}
+        {funeralStats && (
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+            <Card>
+              <CardHeader className="pb-2">
+                <CardTitle className="text-sm font-medium text-muted-foreground flex items-center gap-2">
+                  <Clock className="h-4 w-4" />
+                  Aktywne sprawy
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold">{funeralStats.active_cases}</div>
+                <p className="text-xs text-muted-foreground mt-1">
+                  W trakcie realizacji
+                </p>
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardHeader className="pb-2">
+                <CardTitle className="text-sm font-medium text-muted-foreground flex items-center gap-2">
+                  <Calendar className="h-4 w-4" />
+                  Zaplanowane
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold">{funeralStats.scheduled_cases}</div>
+                <p className="text-xs text-muted-foreground mt-1">
+                  Z ustalonym terminem ceremonii
+                </p>
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardHeader className="pb-2">
+                <CardTitle className="text-sm font-medium text-muted-foreground flex items-center gap-2">
+                  <CheckCircle2 className="h-4 w-4" />
+                  Do rozliczenia
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold">{funeralStats.completed_cases}</div>
+                <p className="text-xs text-muted-foreground mt-1">
+                  Zakończone ceremonie
+                </p>
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardHeader className="pb-2">
+                <CardTitle className="text-sm font-medium text-muted-foreground flex items-center gap-2">
+                  <DollarSign className="h-4 w-4" />
+                  Przychód
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold">
+                  {new Intl.NumberFormat('pl-PL', {
+                    style: 'currency',
+                    currency: 'PLN',
+                    minimumFractionDigits: 0,
+                  }).format(funeralStats.total_revenue)}
+                </div>
+                <p className="text-xs text-muted-foreground mt-1">
+                  Łączna wartość spraw
+                </p>
+              </CardContent>
+            </Card>
+          </div>
+        )}
+
+        {/* Active Funeral Cases */}
+        <Card>
+          <CardHeader>
+            <div className="flex items-center justify-between">
+              <CardTitle>Aktywne sprawy pogrzebowe</CardTitle>
+              <Button variant="outline" size="sm" onClick={() => navigate('/operations/funeral-cases')}>
+                Zobacz wszystkie
+              </Button>
+            </div>
+          </CardHeader>
+          <CardContent>
+            {activeFuneralCases.length === 0 ? (
+              <div className="py-12 text-center">
+                <Heart className="h-12 w-12 mx-auto mb-4 text-muted-foreground opacity-50" />
+                <h3 className="text-lg font-semibold mb-2">Brak aktywnych spraw</h3>
+                <p className="text-muted-foreground mb-4">
+                  Nie ma obecnie żadnych aktywnych spraw pogrzebowych
+                </p>
+                <Button onClick={() => navigate('/operations/funeral-cases/new')}>
+                  <Plus className="h-4 w-4 mr-2" />
+                  Dodaj pierwszą sprawę
+                </Button>
+              </div>
+            ) : (
+              <div className="space-y-3">
+                {activeFuneralCases.slice(0, 5).map((funeralCase) => {
+                  const payment = funeralCase.payment as any;
+                  return (
+                    <div
+                      key={funeralCase.id}
+                      className="p-4 border rounded-lg hover:bg-muted/50 transition-colors cursor-pointer"
+                      onClick={() => navigate(`/operations/funeral-cases/${funeralCase.id}`)}
+                    >
+                      <div className="flex items-start justify-between">
+                        <div className="flex-1">
+                          <div className="flex items-center gap-3 mb-2">
+                            <span className="font-semibold">{funeralCase.case_number}</span>
+                            <Badge className={getStatusColor(funeralCase.status)}>
+                              {FUNERAL_CASE_STATUS_LABELS[funeralCase.status]}
+                            </Badge>
+                            <Badge variant="outline">
+                              {FUNERAL_SERVICE_TYPE_LABELS[funeralCase.service_type]}
+                            </Badge>
+                          </div>
+                          <div className="flex items-center gap-2 text-sm mb-2">
+                            <User className="h-4 w-4 text-muted-foreground" />
+                            <span className="font-medium">
+                              {funeralCase.deceased.first_name} {funeralCase.deceased.last_name}
+                            </span>
+                            <span className="text-muted-foreground">
+                              • {format(new Date(funeralCase.deceased.date_of_death), 'dd.MM.yyyy', { locale: pl })}
+                            </span>
+                          </div>
+                          <div className="flex items-center gap-4 text-sm text-muted-foreground">
+                            {funeralCase.ceremony_date && (
+                              <div className="flex items-center gap-1">
+                                <Calendar className="h-4 w-4" />
+                                <span>
+                                  Ceremonia: {format(new Date(funeralCase.ceremony_date), 'dd.MM.yyyy', { locale: pl })}
+                                  {funeralCase.ceremony_time && ` ${funeralCase.ceremony_time}`}
+                                </span>
+                              </div>
+                            )}
+                            <div className="flex items-center gap-1">
+                              <DollarSign className="h-4 w-4" />
+                              <span>
+                                {new Intl.NumberFormat('pl-PL', {
+                                  style: 'currency',
+                                  currency: 'PLN',
+                                }).format(payment?.total_amount || 0)}
+                              </span>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </CardContent>
+        </Card>
+
+        {/* Quick Actions */}
+        <Card>
+          <CardHeader>
+            <CardTitle>Szybkie akcje</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="grid grid-cols-2 gap-3">
+              <Button variant="outline" className="justify-start h-auto py-3" onClick={() => navigate('/operations/funeral-cases')}>
+                <div className="flex items-start gap-3 text-left">
+                  <FileText className="h-5 w-5 mt-0.5 flex-shrink-0" />
+                  <div>
+                    <p className="font-medium">Wszystkie sprawy</p>
+                    <p className="text-xs text-muted-foreground">
+                      Przeglądaj i zarządzaj sprawami pogrzebowymi
+                    </p>
+                  </div>
+                </div>
+              </Button>
+              <Button variant="outline" className="justify-start h-auto py-3" onClick={() => navigate('/operations/funeral-cases/new')}>
+                <div className="flex items-start gap-3 text-left">
+                  <Plus className="h-5 w-5 mt-0.5 flex-shrink-0" />
+                  <div>
+                    <p className="font-medium">Nowa sprawa</p>
+                    <p className="text-xs text-muted-foreground">
+                      Rozpocznij nową sprawę pogrzebową
+                    </p>
+                  </div>
+                </div>
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
+
+  // Standard Operations View (for other templates)
   return (
     <div className="p-6 space-y-6">
       {/* Header */}

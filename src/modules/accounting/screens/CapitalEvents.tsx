@@ -4,7 +4,7 @@ import { useBusinessProfile } from '@/shared/context/BusinessProfileContext';
 import { Card, CardContent, CardHeader, CardTitle } from '@/shared/ui/card';
 import { Button } from '@/shared/ui/button';
 import { Badge } from '@/shared/ui/badge';
-import { Plus, FileText, Wallet, BookOpen, AlertCircle, CheckCircle2, ExternalLink, Download } from 'lucide-react';
+import { Plus, FileText, Wallet, BookOpen, AlertCircle, CheckCircle2, ExternalLink, Download, FileCheck } from 'lucide-react';
 import { formatCurrency } from '@/shared/lib/invoice-utils';
 import type { CapitalEvent } from '@/modules/accounting/types/capital';
 import CapitalEventWizard from '@/modules/accounting/components/CapitalEventWizard';
@@ -244,6 +244,39 @@ const CapitalEvents = () => {
                     <span className="text-sm font-medium">Księga</span>
                   </div>
                 </div>
+
+                {/* Document Section for Cash Contributions */}
+                {event.links.payment_type === 'cash_document' && (event as any).signed_document_id && (
+                  <div className="mb-4 pb-4 border-b">
+                    <div className="flex items-center gap-2 text-sm font-medium text-muted-foreground mb-2">
+                      <FileCheck className="h-4 w-4" />
+                      <span>Oświadczenie wpłaty gotówkowej</span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <Badge variant="secondary" className="text-xs bg-green-50 text-green-700 border-green-200">
+                        Dokument podpisany
+                      </Badge>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="h-8 text-xs"
+                        onClick={async () => {
+                          try {
+                            const { getDocumentDownloadUrl } = await import('@/modules/accounting/services/documentStorageService');
+                            // TODO: Get document file path from database
+                            toast.info('Pobieranie dokumentu...');
+                          } catch (error) {
+                            console.error('Error downloading document:', error);
+                            toast.error('Błąd podczas pobierania dokumentu');
+                          }
+                        }}
+                      >
+                        <Download className="h-3 w-3 mr-1" />
+                        Pobierz PDF
+                      </Button>
+                    </div>
+                  </div>
+                )}
 
                 {/* Triple Links Row */}
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-3">

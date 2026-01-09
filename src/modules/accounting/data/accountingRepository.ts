@@ -267,6 +267,7 @@ export async function createEquityTransaction(transaction: Omit<EquityTransactio
   payment_method?: 'bank' | 'cash';
   cash_account_id?: string;
   bank_account_id?: string;
+  signed_document_id?: string;
 }): Promise<EquityTransaction> {
   const { data, error } = await supabase
     .from('equity_transactions')
@@ -276,28 +277,60 @@ export async function createEquityTransaction(transaction: Omit<EquityTransactio
 
   if (error) throw error;
 
-  // Create account movement if payment method is specified
-  if (data && transaction.payment_method) {
-    const paymentAccountId = transaction.payment_method === 'cash' 
-      ? transaction.cash_account_id 
-      : transaction.bank_account_id;
+  // Create cash transaction (KP) if payment method is cash
+  let kpDocumentId: string | undefined;
+  
+  if (data && transaction.payment_method === 'cash' && transaction.cash_account_id) {
+    // Import createCashTransaction dynamically to avoid circular dependency
+    const { createCashTransaction } = await import('./kasaRepository');
+    
+    try {
+      const kpDoc = await createCashTransaction({
+        business_profile_id: transaction.business_profile_id,
+        cash_account_id: transaction.cash_account_id,
+        type: transaction.transaction_type === 'capital_contribution' ? 'KP' : 'KW',
+        amount: transaction.amount,
+        date: transaction.transaction_date,
+        description: transaction.description || `Wniesienie kapitału - ${transaction.shareholder_name}`,
+        counterparty_name: transaction.shareholder_name,
+        category: 'capital_contribution',
+        is_tax_deductible: false,
+        accounting_origin: 'manual',
+      });
 
-    if (paymentAccountId) {
-      // Determine direction: capital_contribution is IN, withdrawals/dividends are OUT
+      kpDocumentId = kpDoc.id;
+
+      // Create account movement linked to cash transaction
+      const { data: { user } } = await supabase.auth.getUser();
       const direction = transaction.transaction_type === 'capital_contribution' ? 'IN' : 'OUT';
-
+      
       await supabase
         .from('account_movements')
         .insert({
           business_profile_id: transaction.business_profile_id,
-          payment_account_id: paymentAccountId,
+          payment_account_id: transaction.cash_account_id,
           direction,
           amount: transaction.amount,
           currency: 'PLN',
-          source_type: 'equity_transaction',
-          source_id: data.id,
+          source_type: 'cash_transaction',
+          source_id: kpDoc.id,
           description: transaction.description || `Zdarzenie kapitałowe: ${transaction.transaction_type}`,
+          created_by: user?.id,
         });
+      
+      // Link uploaded document to equity transaction and KP if document was uploaded
+      if (transaction.signed_document_id) {
+        const { linkDocumentToEquityTransaction } = await import('../services/documentStorageService');
+        try {
+          await linkDocumentToEquityTransaction(
+            transaction.signed_document_id,
+            data.id,
+            kpDoc.id
+          );
+        } catch (linkError) {
+          console.error('Failed to link document:', linkError);
+        }
+      }
       
       // Log event for equity transaction
       try {
@@ -306,7 +339,7 @@ export async function createEquityTransaction(transaction: Omit<EquityTransactio
           'capital_event',
           'equity_transaction',
           data.id,
-          `Zdarzenie kapitałowe: ${transaction.transaction_type} - ${transaction.amount} PLN przez ${transaction.payment_method === 'cash' ? 'kasę' : 'bank'}`,
+          `Zdarzenie kapitałowe: ${transaction.transaction_type} - ${transaction.amount} PLN przez kasę`,
           {
             entityReference: `${transaction.transaction_type}-${data.id.substring(0, 8)}`,
             amount: transaction.amount,
@@ -315,8 +348,9 @@ export async function createEquityTransaction(transaction: Omit<EquityTransactio
               transaction_type: transaction.transaction_type,
               amount: transaction.amount,
               payment_method: transaction.payment_method,
-              payment_account_id: paymentAccountId,
+              cash_account_id: transaction.cash_account_id,
               shareholder_name: transaction.shareholder_name,
+              kp_document_id: kpDoc.id,
             },
             metadata: {
               description: transaction.description,
@@ -326,6 +360,40 @@ export async function createEquityTransaction(transaction: Omit<EquityTransactio
         );
       } catch (eventError) {
         console.error('Failed to log equity transaction event:', eventError);
+      }
+    } catch (error) {
+      console.error('Failed to create cash transaction:', error);
+      throw new Error('Nie udało się utworzyć dokumentu KP');
+    }
+  } else if (data && transaction.payment_method === 'bank' && transaction.bank_account_id) {
+    // For bank transfers, just create account movement
+    const { data: { user } } = await supabase.auth.getUser();
+    const direction = transaction.transaction_type === 'capital_contribution' ? 'IN' : 'OUT';
+    
+    await supabase
+      .from('account_movements')
+      .insert({
+        business_profile_id: transaction.business_profile_id,
+        payment_account_id: transaction.bank_account_id,
+        direction,
+        amount: transaction.amount,
+        currency: 'PLN',
+        source_type: 'equity_transaction',
+        source_id: data.id,
+        description: transaction.description || `Zdarzenie kapitałowe: ${transaction.transaction_type}`,
+        created_by: user?.id,
+      });
+    
+    // Link uploaded document to equity transaction if document was uploaded
+    if (transaction.signed_document_id) {
+      const { linkDocumentToEquityTransaction } = await import('../services/documentStorageService');
+      try {
+        await linkDocumentToEquityTransaction(
+          transaction.signed_document_id,
+          data.id
+        );
+      } catch (linkError) {
+        console.error('Failed to link document:', linkError);
       }
     }
   }

@@ -124,7 +124,6 @@ const Kasa = () => {
   // Form states
   const [accountForm, setAccountForm] = useState({
     name: '',
-    opening_balance: 0,
     responsible_person: '',
     decision_id: '',
   });
@@ -217,7 +216,7 @@ const Kasa = () => {
       const input: CreateCashAccountInput = {
         business_profile_id: selectedProfileId,
         name: accountForm.name,
-        opening_balance: accountForm.opening_balance,
+        opening_balance: 0, // Always start with 0 for proper audit trail
         responsible_person: accountForm.responsible_person || null,
       };
       const newAccount = await createCashAccount(input);
@@ -234,15 +233,15 @@ const Kasa = () => {
           entityReference: accountForm.name,
           changes: {
             name: accountForm.name,
-            opening_balance: accountForm.opening_balance,
+            opening_balance: 0, // Always 0 for new accounts
             responsible_person: accountForm.responsible_person,
           },
         }
       );
       
-      toast.success('Kasa utworzona');
+      toast.success('Kasa utworzona z saldem 0 PLN. Wszystkie transakcje będą dokumentowane.');
       setAccountDialogOpen(false);
-      setAccountForm({ name: '', opening_balance: 0, responsible_person: '', decision_id: '' });
+      setAccountForm({ name: '', responsible_person: '', decision_id: '' });
       loadData();
     } catch (error) {
       console.error('Error creating account:', error);
@@ -260,7 +259,7 @@ const Kasa = () => {
       toast.success('Kasa zaktualizowana');
       setAccountDialogOpen(false);
       setEditingAccount(null);
-      setAccountForm({ name: '', opening_balance: 0, responsible_person: '', decision_id: '' });
+      setAccountForm({ name: '', responsible_person: '', decision_id: '' });
       loadData();
     } catch (error) {
       console.error('Error updating account:', error);
@@ -442,7 +441,6 @@ const Kasa = () => {
     setEditingAccount(account);
     setAccountForm({
       name: account.name,
-      opening_balance: account.opening_balance,
       responsible_person: account.responsible_person || '',
     });
     setAccountDialogOpen(true);
@@ -498,7 +496,7 @@ const Kasa = () => {
             size="sm"
             onClick={() => {
               setEditingAccount(null);
-              setAccountForm({ name: '', opening_balance: 0, responsible_person: '', decision_id: '' });
+              setAccountForm({ name: '', responsible_person: '', decision_id: '' });
               setAccountDialogOpen(true);
             }}
           >
@@ -860,18 +858,7 @@ const Kasa = () => {
                 placeholder="np. Kasa główna, Kasa kierowcy"
               />
             </div>
-            {!editingAccount && (
-              <div>
-                <Label htmlFor="opening-balance">Saldo początkowe (PLN)</Label>
-                <Input
-                  id="opening-balance"
-                  type="number"
-                  step="0.01"
-                  value={accountForm.opening_balance}
-                  onChange={e => setAccountForm(prev => ({ ...prev, opening_balance: parseFloat(e.target.value) || 0 }))}
-                />
-              </div>
-            )}
+            {/* Opening balance field removed - all cash registers start with 0 for proper audit trail */}
             <div>
               <Label htmlFor="responsible-person">Osoba odpowiedzialna</Label>
               <Input
