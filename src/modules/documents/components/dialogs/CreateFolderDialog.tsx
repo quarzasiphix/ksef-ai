@@ -39,7 +39,8 @@ export const CreateFolderDialog: React.FC<CreateFolderDialogProps> = ({
   const currentProfile = profiles.find(p => p.id === selectedProfileId);
   const { selectedDepartment } = useDepartment();
   const { departments } = useDepartments();
-  const { createFolder, isCreating } = useStorageFolders();
+  const storageFoldersHook = useStorageFolders();
+  const { createFolder, isCreating } = storageFoldersHook;
   const { toast } = useToast();
 
   // Initialize with current department when dialog opens
@@ -67,16 +68,26 @@ export const CreateFolderDialog: React.FC<CreateFolderDialogProps> = ({
       department_id: selectedDeptId && selectedDeptId !== '__company_wide__' ? selectedDeptId : undefined,
     };
 
-    createFolder(input, {
+    storageFoldersHook.createFolderMutation.mutate(input, {
       onSuccess: () => {
         setName('');
         setDescription('');
         setSelectedDeptId('__company_wide__');
+        setErrorMessage(null);
         toast({
           title: 'Folder utworzony',
           description: `Folder „${name.trim()}” jest już dostępny w repozytorium.`,
         });
         onOpenChange(false);
+      },
+      onError: (error: any) => {
+        const errorMsg = error?.message || 'Nie udało się utworzyć folderu';
+        setErrorMessage(errorMsg);
+        toast({
+          title: 'Błąd',
+          description: errorMsg,
+          variant: 'destructive',
+        });
       },
     });
   };

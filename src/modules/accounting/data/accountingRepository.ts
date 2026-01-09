@@ -247,6 +247,22 @@ export async function getEquityTransactions(businessProfileId: string): Promise<
   return data || [];
 }
 
+export async function getEquityTransactionsByShareholder(
+  businessProfileId: string,
+  shareholderName: string
+): Promise<EquityTransaction[]> {
+  const { data, error } = await supabase
+    .from('equity_transactions')
+    .select('*')
+    .eq('business_profile_id', businessProfileId)
+    .eq('shareholder_name', shareholderName)
+    .eq('transaction_type', 'capital_contribution')
+    .order('transaction_date', { ascending: false });
+
+  if (error) throw error;
+  return data || [];
+}
+
 export async function createEquityTransaction(transaction: Omit<EquityTransaction, 'id' | 'created_at' | 'updated_at'> & { 
   payment_method?: 'bank' | 'cash';
   cash_account_id?: string;

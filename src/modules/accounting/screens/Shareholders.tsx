@@ -1,16 +1,17 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useMemo } from 'react';
 import { useBusinessProfile } from '@/shared/context/BusinessProfileContext';
 import { Card, CardContent, CardHeader, CardTitle } from '@/shared/ui/card';
 import { Button } from '@/shared/ui/button';
 import { Input } from '@/shared/ui/input';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/shared/ui/dialog';
 import { Users, Plus, Edit, Building2 } from 'lucide-react';
-import { getShareholders, createShareholder, updateShareholder } from '@/modules/accounting/data/accountingRepository';
+import { getShareholders, createShareholder, updateShareholder, getEquityTransactionsByShareholder } from '@/modules/accounting/data/accountingRepository';
 import type { Shareholder } from '@/modules/accounting/accounting';
 import { toast } from 'sonner';
 import { format } from 'date-fns';
 import { pl } from 'date-fns/locale';
 import { Breadcrumbs } from "@/components/seo/Breadcrumbs";
+import CapitalContributionDialog from '@/modules/accounting/components/CapitalContributionDialog';
 
 interface ShareholdersProps {
   embedded?: boolean;
@@ -21,7 +22,10 @@ const Shareholders: React.FC<ShareholdersProps> = ({ embedded = false }) => {
   const [shareholders, setShareholders] = useState<Shareholder[]>([]);
   const [loading, setLoading] = useState(false);
   const [dialogOpen, setDialogOpen] = useState(false);
+  const [capitalWizardOpen, setCapitalWizardOpen] = useState(false);
+  const [selectedShareholderForCapital, setSelectedShareholderForCapital] = useState<Shareholder | null>(null);
   const [editingShareholder, setEditingShareholder] = useState<Shareholder | null>(null);
+  const [shareholderCapitalData, setShareholderCapitalData] = useState<Record<string, { paid: number; lastDate: string | null }>>({});
   const [formData, setFormData] = useState({
     name: '',
     tax_id: '',
@@ -48,6 +52,19 @@ const Shareholders: React.FC<ShareholdersProps> = ({ embedded = false }) => {
     try {
       const data = await getShareholders(selectedProfileId);
       setShareholders(data);
+      
+      // Load capital contribution data for each shareholder
+      const capitalData: Record<string, { paid: number; lastDate: string | null }> = {};
+      for (const shareholder of data) {
+        const transactions = await getEquityTransactionsByShareholder(selectedProfileId, shareholder.name);
+        const totalPaid = transactions.reduce((sum, t) => sum + t.amount, 0);
+        const lastTransaction = transactions[0];
+        capitalData[shareholder.id] = {
+          paid: totalPaid,
+          lastDate: lastTransaction ? lastTransaction.transaction_date : null
+        };
+      }
+      setShareholderCapitalData(capitalData);
     } catch (error) {
       console.error('Error loading shareholders:', error);
       toast.error('Błąd podczas ładowania wspólników');
@@ -107,16 +124,25 @@ const Shareholders: React.FC<ShareholdersProps> = ({ embedded = false }) => {
           business_profile_id: selectedProfileId
         });
         toast.success('Wspólnik zaktualizowany');
+        setDialogOpen(false);
+        loadShareholders();
       } else {
-        await createShareholder({
+        const newShareholder = await createShareholder({
           ...formData,
           business_profile_id: selectedProfileId,
           is_active: true
         });
         toast.success('Wspólnik dodany');
+        setDialogOpen(false);
+        
+        // Offer to add capital contribution
+        if (formData.initial_capital_contribution > 0) {
+          setSelectedShareholderForCapital(newShareholder);
+          setCapitalWizardOpen(true);
+        } else {
+          loadShareholders();
+        }
       }
-      setDialogOpen(false);
-      loadShareholders();
     } catch (error) {
       console.error('Error saving shareholder:', error);
       toast.error('Błąd podczas zapisywania wspólnika');
@@ -231,11 +257,11 @@ const Shareholders: React.FC<ShareholdersProps> = ({ embedded = false }) => {
           ) : (
             <div className="space-y-3">
               {shareholders.map((shareholder) => {
-                // Mock calculation - in real app, this would come from linked capital events
                 const declaredContribution = shareholder.initial_capital_contribution;
-                const paidAmount = declaredContribution * 0.7; // Mock: 70% paid
+                const capitalInfo = shareholderCapitalData[shareholder.id] || { paid: 0, lastDate: null };
+                const paidAmount = capitalInfo.paid;
                 const outstanding = declaredContribution - paidAmount;
-                const lastPaymentDate = '2025-01-15'; // Mock date
+                const lastPaymentDate = capitalInfo.lastDate;
                 
                 return (
                   <div
@@ -300,8 +326,18 @@ const Shareholders: React.FC<ShareholdersProps> = ({ embedded = false }) => {
 
                     {/* Warning for outstanding amounts */}
                     {outstanding > 0 && (
-                      <div className="mt-3 flex items-center gap-2 text-xs text-amber-600">
-                        <span className="font-medium">⚠️ Niespełnione zobowiązanie kapitałowe</span>
+                      <div className="mt-3 flex items-center justify-between gap-2">
+                        <span className="text-xs font-medium text-amber-600">⚠️ Niespełnione zobowiązanie kapitałowe</span>
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={() => {
+                            setSelectedShareholderForCapital(shareholder);
+                            setCapitalWizardOpen(true);
+                          }}
+                        >
+                          Dodaj wpłatę kapitału
+                        </Button>
                       </div>
                     )}
                   </div>
@@ -420,6 +456,24 @@ const Shareholders: React.FC<ShareholdersProps> = ({ embedded = false }) => {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* Capital Contribution Dialog */}
+      {selectedShareholderForCapital && (
+        <CapitalContributionDialog
+          open={capitalWizardOpen}
+          onOpenChange={(open) => {
+            setCapitalWizardOpen(open);
+            if (!open) {
+              setSelectedShareholderForCapital(null);
+              loadShareholders();
+            }
+          }}
+          businessProfileId={selectedProfileId!}
+          shareholderName={selectedShareholderForCapital.name}
+          shareholderId={selectedShareholderForCapital.id}
+          declaredAmount={selectedShareholderForCapital.initial_capital_contribution}
+        />
+      )}
     </div>
   );
 };

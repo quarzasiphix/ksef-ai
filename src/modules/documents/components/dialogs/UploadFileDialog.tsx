@@ -46,14 +46,15 @@ export const UploadFileDialog: React.FC<UploadFileDialogProps> = ({
   defaultRole,
   forceLink = false,
 }) => {
-  const [selectedFile, setSelectedFile] = useState<File | null>(null);
-  const [fileName, setFileName] = useState('');
+  const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
+  const [fileNames, setFileNames] = useState<string[]>([]);
   const [description, setDescription] = useState('');
   const [tags, setTags] = useState<string[]>([]);
   const [suggestedTags, setSuggestedTags] = useState<string[]>([]);
   const [selectedDeptId, setSelectedDeptId] = useState<string>('');
   const [isDragging, setIsDragging] = useState(false);
-  const [uploadedFileId, setUploadedFileId] = useState<string | null>(null);
+  const [uploadedFileIds, setUploadedFileIds] = useState<string[]>([]);
+  const [currentFileIndex, setCurrentFileIndex] = useState(0);
   
   // Attachment linking state
   const [linkAfterUpload, setLinkAfterUpload] = useState(forceLink);
@@ -85,12 +86,13 @@ export const UploadFileDialog: React.FC<UploadFileDialogProps> = ({
   // Reset state when dialog closes
   useEffect(() => {
     if (!open) {
-      setSelectedFile(null);
-      setFileName('');
+      setSelectedFiles([]);
+      setFileNames([]);
       setDescription('');
       setTags([]);
       setSuggestedTags([]);
-      setUploadedFileId(null);
+      setUploadedFileIds([]);
+      setCurrentFileIndex(0);
       setLinkAfterUpload(forceLink);
       setLinkEntityType(presetEntityType || '');
       setLinkEntityId(presetEntityId || '');
@@ -99,13 +101,17 @@ export const UploadFileDialog: React.FC<UploadFileDialogProps> = ({
     }
   }, [open, forceLink, presetEntityType, presetEntityId, defaultRole]);
 
-  const handleFileSelect = (file: File) => {
-    setSelectedFile(file);
-    setFileName(file.name);
+  const handleFileSelect = (files: File[] | File) => {
+    const filesArray = Array.isArray(files) ? files : [files];
+    setSelectedFiles(filesArray);
+    setFileNames(filesArray.map(f => f.name));
+    setCurrentFileIndex(0);
     
-    // Analyze file and suggest tags
-    const analysis = analyzeFile(file);
-    setSuggestedTags(analysis.suggestedTags);
+    // Analyze first file and suggest tags
+    if (filesArray.length > 0) {
+      const analysis = analyzeFile(filesArray[0]);
+      setSuggestedTags(analysis.suggestedTags);
+    }
   };
 
   const handleAddTag = (tag: string) => {
@@ -124,7 +130,7 @@ export const UploadFileDialog: React.FC<UploadFileDialogProps> = ({
     
     const files = Array.from(e.dataTransfer.files);
     if (files.length > 0) {
-      handleFileSelect(files[0]);
+      handleFileSelect(files);
     }
   }, []);
 
@@ -140,57 +146,82 @@ export const UploadFileDialog: React.FC<UploadFileDialogProps> = ({
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    if (!selectedFile || !currentProfile) return;
+    if (selectedFiles.length === 0 || !currentProfile) return;
 
-    const input: UploadFileInput = {
-      storage_folder_id: folderId,
-      business_profile_id: currentProfile.id,
-      department_id: selectedDeptId && selectedDeptId !== '__company_wide__' ? selectedDeptId : undefined,
-      file: selectedFile,
-      description: description.trim() || undefined,
-      tags: tags.length > 0 ? tags : undefined,
-    };
+    // Upload all files
+    const uploadPromises = selectedFiles.map(async (file, index) => {
+      const input: UploadFileInput = {
+        storage_folder_id: folderId,
+        business_profile_id: currentProfile.id,
+        department_id: selectedDeptId && selectedDeptId !== '__company_wide__' ? selectedDeptId : undefined,
+        file,
+        description: description.trim() || undefined,
+        tags: tags.length > 0 ? tags : undefined,
+      };
 
-    uploadFile(input, {
-      onSuccess: (uploadedFile) => {
-        setUploadedFileId(uploadedFile.id);
+      return new Promise<{ file: File; result?: any; error?: any }>((resolve) => {
+        uploadFile(input, {
+          onSuccess: (uploadedFile) => {
+            resolve({ file, result: uploadedFile });
+          },
+          onError: (error) => {
+            resolve({ file, error });
+          },
+        });
+      });
+    });
+
+    try {
+      const results = await Promise.all(uploadPromises);
+      const successful = results.filter(r => r.result);
+      const failed = results.filter(r => r.error);
+
+      if (successful.length > 0) {
+        setUploadedFileIds(successful.map(s => s.result.id));
         
-        // If linking is enabled and we have entity info, create attachment
+        // If linking is enabled and we have entity info, create attachments for all successful uploads
         if (linkAfterUpload && linkEntityType && linkEntityId && linkRole) {
-          // TODO: Call attachment creation API
-          console.log('Creating attachment:', {
-            fileId: uploadedFile.id,
-            entityType: linkEntityType,
-            entityId: linkEntityId,
-            role: linkRole,
-            note: linkNote,
+          successful.forEach(({ result }) => {
+            console.log('Creating attachment:', {
+              fileId: result.id,
+              entityType: linkEntityType,
+              entityId: linkEntityId,
+              role: linkRole,
+              note: linkNote,
+            });
           });
         }
-      },
-    });
+      }
+
+      if (failed.length > 0) {
+        console.error('Failed to upload files:', failed);
+      }
+    } catch (error) {
+      console.error('Upload error:', error);
+    }
   };
 
   const handleOpenFile = () => {
-    if (uploadedFileId) {
+    if (uploadedFileIds.length > 0) {
       // TODO: Navigate to file viewer or open in new tab
-      console.log('Open file:', uploadedFileId);
+      console.log('Open files:', uploadedFileIds);
       onOpenChange(false);
     }
   };
 
   const handleAttachNow = () => {
-    if (uploadedFileId) {
-      // TODO: Open AttachFileDialog with this file
-      console.log('Attach file:', uploadedFileId);
+    if (uploadedFileIds.length > 0) {
+      // TODO: Open AttachFileDialog with these files
+      console.log('Attach files:', uploadedFileIds);
       onOpenChange(false);
     }
   };
 
   const handleClose = () => {
-    if (!isUploading && !uploadedFileId) {
+    if (!isUploading && uploadedFileIds.length === 0) {
       onOpenChange(false);
-    } else if (uploadedFileId) {
-      // File uploaded successfully, allow close
+    } else if (uploadedFileIds.length > 0) {
+      // Files uploaded successfully, allow close
       onOpenChange(false);
     }
   };
@@ -283,47 +314,54 @@ export const UploadFileDialog: React.FC<UploadFileDialogProps> = ({
               onDragOver={handleDragOver}
               onDragLeave={handleDragLeave}
             >
-              {selectedFile ? (
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-3">
-                    <File className="h-8 w-8 text-primary" />
-                    <div className="text-left">
-                      <p className="font-medium">{selectedFile.name}</p>
-                      <p className="text-sm text-muted-foreground">
-                        {(selectedFile.size / 1024 / 1024).toFixed(2)} MB
-                      </p>
-                    </div>
+              {selectedFiles.length > 0 ? (
+                <div className="space-y-2">
+                  <div className="flex items-center justify-between mb-2">
+                    <p className="text-sm font-medium">{selectedFiles.length} plik(ów) wybranych</p>
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => setSelectedFiles([])}
+                      disabled={isUploading}
+                    >
+                      <X className="h-4 w-4 mr-1" />
+                      Wyczyść
+                    </Button>
                   </div>
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    size="icon"
-                    onClick={() => setSelectedFile(null)}
-                    disabled={isUploading}
-                  >
-                    <X className="h-4 w-4" />
-                  </Button>
+                  <div className="max-h-32 overflow-y-auto space-y-1">
+                    {selectedFiles.map((file, index) => (
+                      <div key={index} className="flex items-center gap-2 text-sm p-2 bg-muted/50 rounded">
+                        <File className="h-4 w-4 text-primary flex-shrink-0" />
+                        <span className="flex-1 truncate">{file.name}</span>
+                        <span className="text-xs text-muted-foreground">
+                          {(file.size / 1024 / 1024).toFixed(2)} MB
+                        </span>
+                      </div>
+                    ))}
+                  </div>
                 </div>
               ) : (
                 <>
                   <Upload className="h-12 w-12 mx-auto mb-4 text-muted-foreground" />
                   <p className="text-sm text-muted-foreground mb-2">
-                    Przeciągnij plik tutaj lub
+                    Przeciągnij pliki tutaj lub
                   </p>
                   <Button
                     type="button"
                     variant="outline"
                     onClick={() => document.getElementById('file-input')?.click()}
                   >
-                    Wybierz plik
+                    Wybierz pliki
                   </Button>
                   <input
                     id="file-input"
                     type="file"
+                    multiple
                     className="hidden"
                     onChange={(e) => {
-                      const file = e.target.files?.[0];
-                      if (file) handleFileSelect(file);
+                      const files = Array.from(e.target.files || []);
+                      if (files.length > 0) handleFileSelect(files);
                     }}
                   />
                 </>
@@ -559,7 +597,7 @@ export const UploadFileDialog: React.FC<UploadFileDialogProps> = ({
           </div>
 
           <DialogFooter className="px-4 sm:px-6 py-4 border-t bg-background sticky bottom-0">
-            {uploadedFileId ? (
+            {uploadedFileIds.length > 0 ? (
               // Post-upload actions
               <>
                 <Button
@@ -598,8 +636,8 @@ export const UploadFileDialog: React.FC<UploadFileDialogProps> = ({
                 >
                   Anuluj
                 </Button>
-                <Button type="submit" disabled={!selectedFile || isUploading}>
-                  {isUploading ? 'Przesyłanie...' : 'Dodaj plik'}
+                <Button type="submit" disabled={selectedFiles.length === 0 || isUploading}>
+                  {isUploading ? 'Przesyłanie...' : `Dodaj ${selectedFiles.length > 1 ? `${selectedFiles.length} plików` : 'plik'}`}
                 </Button>
               </>
             )}

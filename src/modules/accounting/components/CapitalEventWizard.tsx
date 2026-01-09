@@ -7,9 +7,13 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { RadioGroup, RadioGroupItem } from '@/shared/ui/radio-group';
 import { Badge } from '@/shared/ui/badge';
 import { toast } from 'sonner';
-import { ChevronRight, ChevronLeft, FileText, Wallet, BookOpen, Plus, X } from 'lucide-react';
+import { ChevronRight, ChevronLeft, FileText, Wallet, BookOpen, Plus, X, Building2 } from 'lucide-react';
 import type { CapitalEventWizardData, CapitalEventType } from '@/modules/accounting/types/capital';
 import { format } from 'date-fns';
+import { useQuery } from '@tanstack/react-query';
+import { getCashAccounts } from '@/modules/accounting/data/kasaRepository';
+import { getBankAccountsForProfile } from '@/modules/banking/data/bankAccountRepository';
+import { createCapitalEventFromWizard } from '@/modules/accounting/data/capitalEventsRepository';
 
 interface CapitalEventWizardProps {
   open: boolean;
@@ -64,12 +68,57 @@ const CapitalEventWizard: React.FC<CapitalEventWizardProps> = ({
     }
   };
 
+  const [loading, setLoading] = useState(false);
+
+  const { data: cashAccounts = [] } = useQuery({
+    queryKey: ['cash-accounts', businessProfileId],
+    queryFn: () => getCashAccounts(businessProfileId),
+    enabled: !!businessProfileId && open,
+  });
+
+  const { data: bankAccounts = [] } = useQuery({
+    queryKey: ['bank-accounts', businessProfileId],
+    queryFn: () => getBankAccountsForProfile(businessProfileId),
+    enabled: !!businessProfileId && open,
+  });
+
   const handleSubmit = async () => {
     try {
-      // TODO: Implement actual submission logic
-      console.log('Submitting capital event:', formData);
+      // Validate shareholders
+      const validShareholders = formData.shareholders.filter(
+        s => s.shareholder_name && s.amount > 0
+      );
+
+      if (validShareholders.length === 0) {
+        toast.error('Dodaj przynajmniej jednego wspólnika z kwotą większą od zera');
+        return;
+      }
+
+      // Validate payment method selection
+      if (formData.payment_option === 'link_existing') {
+        if (formData.payment_type === 'cash_document' && !formData.cash_account_id) {
+          toast.error('Wybierz kasę fiskalną');
+          return;
+        }
+        if (formData.payment_type === 'bank_transaction' && !formData.bank_account_id) {
+          toast.error('Wybierz konto bankowe');
+          return;
+        }
+      }
+
+      // Validate posting accounts if generating now
+      if (formData.posting_option === 'generate_now') {
+        if (!formData.debit_account || !formData.credit_account) {
+          toast.error('Podaj konta księgowe (Wn i Ma)');
+          return;
+        }
+      }
+
+      setLoading(true);
       
-      toast.success('Zdarzenie kapitałowe utworzone');
+      const events = await createCapitalEventFromWizard(formData, businessProfileId);
+      
+      toast.success(`Utworzono ${events.length} zdarzenie(ń) kapitałowe(ych)`);
       onOpenChange(false);
       
       // Reset form
@@ -88,7 +137,9 @@ const CapitalEventWizard: React.FC<CapitalEventWizardProps> = ({
       }
     } catch (error) {
       console.error('Error creating capital event:', error);
-      toast.error('Błąd podczas tworzenia zdarzenia');
+      toast.error('Błąd podczas tworzenia zdarzenia: ' + (error as Error).message);
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -344,26 +395,97 @@ const CapitalEventWizard: React.FC<CapitalEventWizardProps> = ({
                   <Select
                     value={formData.payment_type}
                     onValueChange={(value: 'bank_transaction' | 'cash_document') =>
-                      setFormData({ ...formData, payment_type: value })
+                      setFormData({ ...formData, payment_type: value, cash_account_id: undefined, bank_account_id: undefined })
                     }
                   >
                     <SelectTrigger>
                       <SelectValue placeholder="Wybierz typ" />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="bank_transaction">Transakcja bankowa</SelectItem>
-                      <SelectItem value="cash_document">Dokument kasowy (KP/KW)</SelectItem>
+                      <SelectItem value="cash_document">
+                        <div className="flex items-center gap-2">
+                          <Wallet className="h-4 w-4" />
+                          Dokument kasowy (KP)
+                        </div>
+                      </SelectItem>
+                      <SelectItem value="bank_transaction">
+                        <div className="flex items-center gap-2">
+                          <Building2 className="h-4 w-4" />
+                          Transakcja bankowa
+                        </div>
+                      </SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
-                <div>
-                  <Label className="text-xs">ID transakcji / dokumentu</Label>
-                  <Input
-                    placeholder="np. MT940 #18421 lub KP/12/2025"
-                    value={formData.payment_id || ''}
-                    onChange={(e) => setFormData({ ...formData, payment_id: e.target.value })}
-                  />
-                </div>
+                
+                {formData.payment_type === 'cash_document' && (
+                  <div>
+                    <Label className="text-xs">Kasa fiskalna *</Label>
+                    <Select
+                      value={formData.cash_account_id}
+                      onValueChange={(value) => setFormData({ ...formData, cash_account_id: value })}
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder="Wybierz kasę" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {cashAccounts.length === 0 ? (
+                          <SelectItem value="no-accounts" disabled>
+                            Brak aktywnych kas
+                          </SelectItem>
+                        ) : (
+                          cashAccounts
+                            .filter(acc => acc.status === 'active')
+                            .map((account) => (
+                              <SelectItem key={account.id} value={account.id}>
+                                <div className="flex items-center justify-between w-full gap-4">
+                                  <span>{account.name}</span>
+                                  <span className="text-xs text-muted-foreground">
+                                    {account.current_balance.toFixed(2)} {account.currency}
+                                  </span>
+                                </div>
+                              </SelectItem>
+                            ))
+                        )}
+                      </SelectContent>
+                    </Select>
+                    <p className="text-xs text-muted-foreground mt-1">
+                      Zostanie automatycznie wygenerowany dokument KP
+                    </p>
+                  </div>
+                )}
+                
+                {formData.payment_type === 'bank_transaction' && (
+                  <div>
+                    <Label className="text-xs">Konto bankowe *</Label>
+                    <Select
+                      value={formData.bank_account_id}
+                      onValueChange={(value) => setFormData({ ...formData, bank_account_id: value })}
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder="Wybierz konto" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {bankAccounts.length === 0 ? (
+                          <SelectItem value="no-accounts" disabled>
+                            Brak kont bankowych
+                          </SelectItem>
+                        ) : (
+                          bankAccounts.map((account) => (
+                            <SelectItem key={account.id} value={account.id}>
+                              <div className="flex flex-col">
+                                <span>{account.accountName || account.bankName}</span>
+                                <span className="text-xs text-muted-foreground">
+                                  {account.accountNumber}
+                                </span>
+                              </div>
+                            </SelectItem>
+                          ))
+                        )}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                )}
               </div>
             )}
 
@@ -516,13 +638,13 @@ const CapitalEventWizard: React.FC<CapitalEventWizardProps> = ({
               Anuluj
             </Button>
             {currentStepIndex < steps.length - 1 ? (
-              <Button onClick={handleNext}>
+              <Button onClick={handleNext} disabled={loading}>
                 Dalej
                 <ChevronRight className="h-4 w-4 ml-2" />
               </Button>
             ) : (
-              <Button onClick={handleSubmit}>
-                Utwórz zdarzenie
+              <Button onClick={handleSubmit} disabled={loading}>
+                {loading ? 'Tworzenie...' : 'Utwórz zdarzenie'}
               </Button>
             )}
           </div>

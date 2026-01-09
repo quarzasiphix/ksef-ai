@@ -106,6 +106,7 @@ export type LinkedDocumentType =
   | 'invoice'
   | 'receipt'
   | 'contract'
+  | 'capital_event'
   | 'other';
 
 export const CASH_CATEGORY_LABELS: Record<CashCategory, string> = {
@@ -130,6 +131,7 @@ export const LINKED_DOCUMENT_TYPE_LABELS: Record<LinkedDocumentType, string> = {
   invoice: 'Faktura',
   receipt: 'Paragon',
   contract: 'Umowa',
+  capital_event: 'Zdarzenie kapitałowe',
   other: 'Inny dokument',
 };
 

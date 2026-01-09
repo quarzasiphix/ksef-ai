@@ -68,17 +68,56 @@ export class StorageService {
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) throw new Error('Not authenticated');
 
+    // Check if folder with same name already exists at the same level
+    const { data: existingFolder } = await supabase
+      .from('storage_folders')
+      .select('id, name')
+      .eq('business_profile_id', input.business_profile_id)
+      .eq('name', input.name)
+      .eq('parent_folder_id', input.parent_folder_id || null)
+      .maybeSingle();
+
+    if (existingFolder) {
+      throw new Error(`Folder "${input.name}" already exists at this location`);
+    }
+
+    // Compute the path client-side to avoid database conflicts
+    let folderPath: string;
+    if (input.parent_folder_id) {
+      // Get parent folder path
+      const { data: parentFolder } = await supabase
+        .from('storage_folders')
+        .select('path')
+        .eq('id', input.parent_folder_id)
+        .single();
+      
+      if (parentFolder?.path) {
+        folderPath = `${parentFolder.path}/${input.name}`;
+      } else {
+        folderPath = `/${input.name}`;
+      }
+    } else {
+      // Root level folder
+      folderPath = `/${input.name}`;
+    }
+
     const { data, error } = await supabase
       .from('storage_folders')
       .insert({
         ...input,
         created_by: user.id,
-        path: '', // Will be computed by trigger
+        path: folderPath, // Pre-computed path
       })
       .select()
       .single();
 
-    if (error) throw error;
+    if (error) {
+      // Handle duplicate key error with a user-friendly message
+      if (error.code === '23505') {
+        throw new Error(`Folder "${input.name}" already exists at this location`);
+      }
+      throw error;
+    }
     return data;
   }
 

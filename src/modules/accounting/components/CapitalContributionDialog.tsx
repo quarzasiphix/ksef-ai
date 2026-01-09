@@ -20,6 +20,9 @@ interface CapitalContributionDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   businessProfileId: string;
+  shareholderName?: string;
+  shareholderId?: string;
+  declaredAmount?: number;
   onSuccess?: () => void;
 }
 
@@ -27,14 +30,17 @@ const CapitalContributionDialog: React.FC<CapitalContributionDialogProps> = ({
   open,
   onOpenChange,
   businessProfileId,
+  shareholderName,
+  shareholderId,
+  declaredAmount,
   onSuccess
 }) => {
   const descriptionId = useId();
   const navigate = useNavigate();
   const [formData, setFormData] = useState({
     transaction_type: 'capital_contribution' as EquityTransaction['transaction_type'],
-    amount: 0,
-    shareholder_name: '',
+    amount: declaredAmount || 0,
+    shareholder_name: shareholderName || '',
     description: '',
     transaction_date: format(new Date(), 'yyyy-MM-dd'),
     payment_method: 'bank' as 'bank' | 'cash',
@@ -42,6 +48,17 @@ const CapitalContributionDialog: React.FC<CapitalContributionDialogProps> = ({
     bank_account_id: ''
   });
   const [loading, setLoading] = useState(false);
+
+  // Update form when shareholder props change
+  React.useEffect(() => {
+    if (shareholderName) {
+      setFormData(prev => ({
+        ...prev,
+        shareholder_name: shareholderName,
+        amount: declaredAmount || prev.amount
+      }));
+    }
+  }, [shareholderName, declaredAmount]);
 
   const { data: cashAccounts = [] } = useQuery({
     queryKey: ['cash-accounts', businessProfileId],

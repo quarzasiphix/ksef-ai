@@ -63,6 +63,7 @@ const DocumentsSidebar: React.FC<DocumentsSidebarProps> = ({
   );
   const [expandedFolders, setExpandedFolders] = useState<Set<string>>(new Set());
   const [dragOverFolderId, setDragOverFolderId] = useState<string | null>(null);
+  const [contextMenuFolderId, setContextMenuFolderId] = useState<string | null>(null);
   const folders = currentSection ? getFoldersForSection(currentSection) : [];
   
   // Determine if we should show department grouping
@@ -111,34 +112,50 @@ const DocumentsSidebar: React.FC<DocumentsSidebarProps> = ({
     const isSelected = selectedStorageFolderId === folder.id;
     const hasChildren = folder.children && folder.children.length > 0;
     const isDragTarget = dragOverFolderId === folder.id;
+    const isContextMenuOpen = contextMenuFolderId === folder.id;
 
     return (
-      <ContextMenu key={folder.id}>
+      <ContextMenu key={folder.id} onOpenChange={(open) => {
+        if (open) {
+          setContextMenuFolderId(folder.id);
+        } else {
+          setContextMenuFolderId(null);
+        }
+      }}>
         <ContextMenuTrigger asChild>
           <div className="select-none">
             <div
               className={cn(
                 'flex items-center gap-1 py-1.5 px-2 rounded-md hover:bg-module-sidebar-hover cursor-pointer group',
-                isSelected && 'bg-module-sidebar-active'
+                isSelected && 'bg-module-sidebar-active',
+                isContextMenuOpen && 'bg-module-sidebar-active ring-2 ring-primary/20'
               )}
               style={{ paddingLeft: `${folder.level * 12 + 8}px` }}
               onDragOver={(e) => {
-                if (!draggedFileId) return;
+                // Support both file moves and external file drops
                 e.preventDefault();
-                e.dataTransfer.dropEffect = 'move';
+                e.dataTransfer.dropEffect = draggedFileId ? 'move' : 'copy';
                 setDragOverFolderId(folder.id);
               }}
               onDragLeave={(e) => {
-                if (!draggedFileId) return;
                 if ((e.relatedTarget as HTMLElement)?.closest('[data-folder-id]')?.getAttribute('data-folder-id') === folder.id) {
                   return;
                 }
                 setDragOverFolderId((prev) => (prev === folder.id ? null : prev));
               }}
               onDrop={(e) => {
-                if (!draggedFileId) return;
                 e.preventDefault();
-                onFileDropOnFolder?.(folder.id);
+                
+                // Check if it's a file move or external files
+                if (draggedFileId) {
+                  onFileDropOnFolder?.(folder.id);
+                } else if (e.dataTransfer.files.length > 0) {
+                  // External files dropped - trigger upload dialog
+                  const files = Array.from(e.dataTransfer.files);
+                  console.log('Files dropped on folder:', folder.id, files);
+                  // TODO: Open upload dialog with these files and target folder
+                }
+                
                 setDragOverFolderId(null);
               }}
               data-folder-id={folder.id}

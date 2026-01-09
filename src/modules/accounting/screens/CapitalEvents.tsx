@@ -4,19 +4,45 @@ import { useBusinessProfile } from '@/shared/context/BusinessProfileContext';
 import { Card, CardContent, CardHeader, CardTitle } from '@/shared/ui/card';
 import { Button } from '@/shared/ui/button';
 import { Badge } from '@/shared/ui/badge';
-import { Plus, FileText, Wallet, BookOpen, AlertCircle, CheckCircle2, ExternalLink } from 'lucide-react';
+import { Plus, FileText, Wallet, BookOpen, AlertCircle, CheckCircle2, ExternalLink, Download } from 'lucide-react';
 import { formatCurrency } from '@/shared/lib/invoice-utils';
 import type { CapitalEvent } from '@/modules/accounting/types/capital';
 import CapitalEventWizard from '@/modules/accounting/components/CapitalEventWizard';
 import { DecisionAuthorityBadge } from '@/modules/decisions/components/DecisionAuthorityBadge';
+import { useQuery } from '@tanstack/react-query';
+import { getCapitalEvents, generateKPReportForCapitalEvent } from '@/modules/accounting/data/capitalEventsRepository';
+import { toast } from 'sonner';
 
 const CapitalEvents = () => {
   const navigate = useNavigate();
   const { selectedProfileId } = useBusinessProfile();
-  const [events, setEvents] = useState<CapitalEvent[]>([]);
   const [wizardOpen, setWizardOpen] = useState(false);
 
-  // Mock data for demonstration
+  const { data: events = [], isLoading, refetch } = useQuery({
+    queryKey: ['capital-events', selectedProfileId],
+    queryFn: () => getCapitalEvents(selectedProfileId!),
+    enabled: !!selectedProfileId,
+  });
+
+  const handleGenerateKPReport = async (eventId: string) => {
+    try {
+      const report = await generateKPReportForCapitalEvent(eventId);
+      const blob = new Blob([report], { type: 'text/plain' });
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `KP-${eventId.substring(0, 8)}.txt`;
+      a.click();
+      window.URL.revokeObjectURL(url);
+      toast.success('Raport KP wygenerowany');
+    } catch (error) {
+      console.error('Error generating KP report:', error);
+      toast.error('Błąd podczas generowania raportu KP');
+    }
+  };
+
+  // Keep mock data for reference but commented out
+  /*
   const mockEvents: CapitalEvent[] = [
     {
       id: '1',
@@ -87,8 +113,7 @@ const CapitalEvents = () => {
       updated_at: '2025-01-28T09:00:00Z'
     }
   ];
-
-  const displayEvents = events.length > 0 ? events : mockEvents;
+  */
 
   const getEventTypeLabel = (type: CapitalEvent['event_type']) => {
     const labels = {
@@ -119,7 +144,13 @@ const CapitalEvents = () => {
       </div>
 
       {/* Events List */}
-      {displayEvents.length === 0 ? (
+      {isLoading ? (
+        <Card>
+          <CardContent className="py-12 text-center">
+            <p className="text-muted-foreground">Ładowanie zdarzeń kapitałowych...</p>
+          </CardContent>
+        </Card>
+      ) : events.length === 0 ? (
         <Card>
           <CardContent className="py-12 text-center">
             <FileText className="h-12 w-12 mx-auto mb-4 text-muted-foreground opacity-50" />
@@ -135,7 +166,7 @@ const CapitalEvents = () => {
         </Card>
       ) : (
         <div className="space-y-4">
-          {displayEvents.map((event) => (
+          {events.map((event) => (
             <Card key={event.id} className="border-l-4 border-l-emerald-400">
               <CardContent className="p-6">
                 {/* Top Row: Title, Shareholder, Date, Amount */}
@@ -263,18 +294,34 @@ const CapitalEvents = () => {
                         <Badge variant="secondary" className="text-xs">
                           {event.links.payment_type === 'bank_transaction' ? 'Bank' : 'Kasa'}: {event.links.payment_reference}
                         </Badge>
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          className="h-8 text-xs"
-                          onClick={() => {
-                            // Navigate to payment
-                            console.log('Open payment:', event.links.payment_id);
-                          }}
-                        >
-                          <ExternalLink className="h-3 w-3 mr-1" />
-                          Otwórz transakcję
-                        </Button>
+                        <div className="flex gap-1">
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            className="h-8 text-xs"
+                            onClick={() => {
+                              if (event.links.payment_type === 'cash_document') {
+                                navigate(`/accounting/kasa?doc=${event.links.payment_id}`);
+                              } else {
+                                navigate(`/banking?tx=${event.links.payment_id}`);
+                              }
+                            }}
+                          >
+                            <ExternalLink className="h-3 w-3 mr-1" />
+                            Otwórz
+                          </Button>
+                          {event.links.payment_type === 'cash_document' && (
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              className="h-8 text-xs"
+                              onClick={() => handleGenerateKPReport(event.id)}
+                            >
+                              <Download className="h-3 w-3 mr-1" />
+                              KP
+                            </Button>
+                          )}
+                        </div>
                       </>
                     ) : (
                       <>
@@ -341,8 +388,7 @@ const CapitalEvents = () => {
         onOpenChange={setWizardOpen}
         businessProfileId={selectedProfileId || ''}
         onSuccess={() => {
-          // Refresh events list
-          // In real implementation, this would refetch from API
+          refetch();
         }}
       />
     </div>

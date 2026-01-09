@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Search, Grid, List, Upload, FolderPlus, Pencil, Trash2, Copy, ArrowRightLeft, ExternalLink, Folder, Building2, AlertCircle, Link as LinkIcon } from 'lucide-react';
+import { Search, Grid, List, Upload, FolderPlus, Pencil, Trash2, Copy, ArrowRightLeft, ExternalLink, Folder, Building2, AlertCircle, Link as LinkIcon, Eye, EyeOff } from 'lucide-react';
 import { Button } from '@/shared/ui/button';
 import { Input } from '@/shared/ui/input';
 import { Badge } from '@/shared/ui/badge';
@@ -41,6 +41,9 @@ interface FileBrowserProps {
   onFileCopy?: (fileId: string) => void;
   onFileDelete?: (fileId: string) => void;
   onAttachFile?: (fileId: string) => void;
+  onToggleFileViewer?: () => void;
+  showFileViewer?: boolean;
+  selectedFileId?: string;
   departmentColors?: Map<string, string>;
   departmentNames?: Map<string, string>;
   className?: string;
@@ -66,6 +69,9 @@ export const FileBrowser: React.FC<FileBrowserProps> = ({
   onFileCopy,
   onFileDelete,
   onAttachFile,
+  onToggleFileViewer,
+  showFileViewer,
+  selectedFileId,
   departmentColors,
   departmentNames,
   className,
@@ -430,6 +436,29 @@ export const FileBrowser: React.FC<FileBrowserProps> = ({
             <Grid className="h-4 w-4" />
           </Button>
         </div>
+
+        {selectedFileId && onToggleFileViewer && (
+          <div className="flex items-center gap-1 border-l pl-3">
+            <Button
+              variant={showFileViewer ? 'default' : 'ghost'}
+              size="sm"
+              onClick={onToggleFileViewer}
+              title={showFileViewer ? 'Ukryj podgląd pliku' : 'Pokaż podgląd pliku'}
+            >
+              {showFileViewer ? (
+                <>
+                  <EyeOff className="h-4 w-4 mr-2" />
+                  Ukryj podgląd
+                </>
+              ) : (
+                <>
+                  <Eye className="h-4 w-4 mr-2" />
+                  Pokaż podgląd
+                </>
+              )}
+            </Button>
+          </div>
+        )}
       </div>
 
       {/* Content */}

@@ -14,19 +14,19 @@ const activeQueries = new Map<string, AbortController>();
 export const queryClient = new QueryClient({
   defaultOptions: {
     queries: {
-      // OFFLINE-FIRST STRATEGY: Always show cached data immediately
-      refetchOnWindowFocus: false,
-      refetchOnMount: false,
-      refetchOnReconnect: true, // Do refetch when connection restored
+      // STALE-WHILE-REVALIDATE STRATEGY: Show cached data immediately, refetch in background
+      refetchOnWindowFocus: true,  // Refetch when user returns to tab
+      refetchOnMount: 'always',    // Always refetch on mount, but show cache first
+      refetchOnReconnect: true,    // Refetch when connection restored
       
-      // Aggressive caching - data stays fresh for 10 minutes
-      staleTime: 10 * 60 * 1000, // 10 min
-      gcTime: 30 * 60 * 1000,    // 30 min - keep in memory
+      // Aggressive caching - data stays fresh for 5 minutes
+      staleTime: 5 * 60 * 1000,    // 5 min - data considered fresh
+      gcTime: 30 * 60 * 1000,      // 30 min - keep in memory/cache
       
       // Background refetch controlled by sync manager
-      refetchInterval: false, // Disabled - sync manager handles this
+      refetchInterval: false,       // Disabled - sync manager handles this
       
-      // Network mode: prefer cache over network
+      // Network mode: prefer cache over network for instant UI
       networkMode: 'offlineFirst',
       
       // Retry failed requests with exponential backoff
@@ -49,8 +49,12 @@ export const queryClient = new QueryClient({
       // Detect infinite loads and force cache fallback
       queryFn: undefined, // Will be set per-query
       
-      // Use placeholder data to show cached data while refetching
-      placeholderData: (previousData: any) => previousData
+      // CRITICAL: Use placeholder data to show cached data while refetching
+      // This prevents loading spinners when switching tabs
+      placeholderData: (previousData: any) => previousData,
+      
+      // Enable initial data from cache
+      initialDataUpdatedAt: () => Date.now(),
     },
   },
 });

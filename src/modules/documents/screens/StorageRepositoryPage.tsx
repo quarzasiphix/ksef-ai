@@ -32,6 +32,7 @@ export const StorageRepositoryPage: React.FC<StorageRepositoryPageProps> = ({
   const [fileToAttach, setFileToAttach] = useState<string | undefined>();
   const [fileViewUrl, setFileViewUrl] = useState<string | undefined>();
   const [isLoadingFileUrl, setIsLoadingFileUrl] = useState(false);
+  const [showFileViewer, setShowFileViewer] = useState(true);
   
   const selectedFolderId = externalSelectedFolderId ?? internalSelectedFolderId;
   const setSelectedFolderId = externalOnFolderSelect ?? setInternalSelectedFolderId;
@@ -113,14 +114,19 @@ export const StorageRepositoryPage: React.FC<StorageRepositoryPageProps> = ({
       externalOnFileOpen(fileId);
     } else {
       setSelectedFileId(fileId);
+      setShowFileViewer(true);
     }
+  };
+
+  const toggleFileViewer = () => {
+    setShowFileViewer(!showFileViewer);
   };
 
   return (
     <div className="h-full">
       <ResizablePanelGroup direction="horizontal">
         {/* File Browser */}
-        <ResizablePanel defaultSize={selectedFileId ? 60 : 100} minSize={40}>
+        <ResizablePanel defaultSize={selectedFileId && showFileViewer ? 60 : 100} minSize={40}>
           <FileBrowser
             files={realFiles}
             currentFolderId={selectedFolderId}
@@ -134,6 +140,9 @@ export const StorageRepositoryPage: React.FC<StorageRepositoryPageProps> = ({
             onFileDragEnd={handleFileDragEnd}
             onFileOpen={handleFileOpen}
             onAttachFile={handleAttachFile}
+            onToggleFileViewer={toggleFileViewer}
+            showFileViewer={showFileViewer}
+            selectedFileId={selectedFileId}
             departmentColors={departmentColors}
             departmentNames={departmentNames}
             className="h-full"
@@ -141,7 +150,7 @@ export const StorageRepositoryPage: React.FC<StorageRepositoryPageProps> = ({
         </ResizablePanel>
 
         {/* File Viewer */}
-        {selectedFileId && selectedFile && (
+        {selectedFileId && selectedFile && showFileViewer && (
           <>
             <ResizableHandle />
             <ResizablePanel defaultSize={40} minSize={30}>

@@ -10,6 +10,7 @@ import { DepartmentProvider } from '@/shared/context/DepartmentContext';
 import { queryClient } from '@/shared/lib/queryClient';
 import { RouteRenderer } from '@/pages/routing/RouteRenderer';
 import { routeChangeHandler } from '@/shared/lib/routeChangeHandler';
+import { initializeQueryPersistence, restoreAllCachedQueries } from '@/shared/lib/queryPersistence';
 
 /**
  * New App.tsx with route config system
@@ -22,11 +23,18 @@ import { routeChangeHandler } from '@/shared/lib/routeChangeHandler';
  * - No navigation side-effects during render (all in useEffect)
  * - Preserves existing provider order and behaviors
  * - Route change handler cancels queries on navigation to prevent infinite loads
+ * - Cache persistence: Restores cached data from localStorage for instant UI
  */
 const App = () => {
-  // Initialize route change handler (imported for side effects)
+  // Initialize cache persistence and restore cached queries
   useEffect(() => {
-    console.log('[App] Route change handler initialized');
+    console.log('[App] Initializing cache persistence and route change handler');
+    
+    // Restore cached queries from localStorage for instant UI
+    restoreAllCachedQueries();
+    
+    // Initialize automatic cache persistence for future queries
+    initializeQueryPersistence();
   }, []);
 
   return (
