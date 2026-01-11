@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { NavLink, useNavigate, useLocation } from 'react-router-dom';
-import { Home, FolderTree, FileText, ChevronRight, ChevronDown, Folder, FolderOpen, FolderPlus, Pencil, Trash2, Copy, ArrowRightLeft, Building2, Link as LinkIcon, FileCheck, Scale } from 'lucide-react';
+import { Home, FolderTree, FileText, ChevronRight, ChevronDown, Folder, FolderOpen, FolderPlus, Pencil, Trash2, Copy, ArrowRightLeft, Building2, Link as LinkIcon, FileCheck, Scale, DollarSign, TrendingUp } from 'lucide-react';
 import { Button } from '@/shared/ui/button';
 import { Badge } from '@/shared/ui/badge';
 import { cn } from '@/shared/lib/utils';
@@ -113,6 +113,8 @@ const DocumentsSidebar: React.FC<DocumentsSidebarProps> = ({
     const hasChildren = folder.children && folder.children.length > 0;
     const isDragTarget = dragOverFolderId === folder.id;
     const isContextMenuOpen = contextMenuFolderId === folder.id;
+    const isVirtual = (folder as any).is_virtual;
+    const virtualIcon = (folder as any).icon;
 
     return (
       <ContextMenu key={folder.id} onOpenChange={(open) => {
@@ -181,16 +183,31 @@ const DocumentsSidebar: React.FC<DocumentsSidebarProps> = ({
               <div
                 className={cn(
                   'flex items-center gap-2 flex-1 min-w-0 border border-transparent rounded-md px-1 py-0.5 transition-colors',
-                  isDragTarget && draggedFileId && 'border-primary/40 bg-primary/5'
+                  isDragTarget && draggedFileId && 'border-primary/40 bg-primary/5',
+                  isVirtual && 'bg-blue-500/5 border-blue-200'
                 )}
                 onClick={() => onStorageFolderSelect?.(folder.id)}
               >
-                {isExpanded ? (
+                {/* Virtual folder icon */}
+                {isVirtual ? (
+                  virtualIcon === 'DollarSign' ? (
+                    <DollarSign className="h-3.5 w-3.5 text-blue-600 flex-shrink-0" />
+                  ) : virtualIcon === 'TrendingUp' ? (
+                    <TrendingUp className="h-3.5 w-3.5 text-green-600 flex-shrink-0" />
+                  ) : (
+                    <FileText className="h-3.5 w-3.5 text-purple-600 flex-shrink-0" />
+                  )
+                ) : isExpanded ? (
                   <FolderOpen className="h-3.5 w-3.5 text-amber-500 flex-shrink-0" />
                 ) : (
                   <Folder className="h-3.5 w-3.5 text-amber-500 flex-shrink-0" />
                 )}
                 <span className="text-sm truncate">{folder.name}</span>
+                {isVirtual && (
+                  <Badge variant="secondary" className="text-xs ml-auto">
+                    Wirtualny
+                  </Badge>
+                )}
                 {folder.file_count !== undefined && folder.file_count > 0 && (
                   <span className="text-xs text-module-sidebar-muted">({folder.file_count})</span>
                 )}

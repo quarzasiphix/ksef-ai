@@ -501,3 +501,33 @@ export async function updateShareholder(id: string, updates: Partial<Shareholder
   if (error) throw error;
   return data;
 }
+
+export async function getEquityTransactionWithDocument(transactionId: string): Promise<EquityTransaction & { documents?: any[] } | null> {
+  const { data: transaction, error: transactionError } = await supabase
+    .from('equity_transactions')
+    .select('*')
+    .eq('id', transactionId)
+    .single();
+
+  if (transactionError) {
+    console.error('Error fetching equity transaction:', transactionError);
+    return null;
+  }
+
+  // Fetch associated documents
+  const { data: documents, error: documentsError } = await supabase
+    .from('documents')
+    .select('*')
+    .eq('equity_transaction_id', transactionId)
+    .order('created_at', { ascending: false });
+
+  if (documentsError) {
+    console.error('Error fetching documents:', documentsError);
+    return transaction;
+  }
+
+  return {
+    ...transaction,
+    documents: documents || []
+  };
+}

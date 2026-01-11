@@ -4,8 +4,9 @@ import { FileViewer } from '../components/viewers/FileViewer';
 import type { StorageFolderTreeNode, StorageFile } from '../types/storage';
 import { ResizableHandle, ResizablePanel, ResizablePanelGroup } from '@/shared/ui/resizable';
 import { UploadFileDialog } from '../components/dialogs/UploadFileDialog';
-import { useStorageFilesWithStats } from '../hooks/useStorageFilesWithStats';
+import { useAllDocuments, getAccountingVirtualFolders } from '../hooks/useAllDocuments';
 import { StorageService } from '@/shared/services/storageService';
+import { DocumentUrlService } from '@/shared/services/documentUrlService';
 import { useDepartments } from '../hooks/useDepartments';
 import { AttachFileDialog } from '@/modules/decisions/components/AttachFileDialog';
 
@@ -37,8 +38,8 @@ export const StorageRepositoryPage: React.FC<StorageRepositoryPageProps> = ({
   const selectedFolderId = externalSelectedFolderId ?? internalSelectedFolderId;
   const setSelectedFolderId = externalOnFolderSelect ?? setInternalSelectedFolderId;
   
-  // Fetch files with attachment stats for selected folder
-  const { data: realFiles = [] } = useStorageFilesWithStats(selectedFolderId);
+  // Fetch all files (storage + accounting documents) for selected folder
+  const { data: realFiles = [] } = useAllDocuments(selectedFolderId);
   const { departments } = useDepartments();
 
   // Build department maps for file browser
@@ -49,23 +50,30 @@ export const StorageRepositoryPage: React.FC<StorageRepositoryPageProps> = ({
     departmentNames.set(dept.id, dept.name);
   });
 
-  // Fetch file URL when file is selected
+  // Fetch file URL when file is selected - using secure edge function
   useEffect(() => {
     if (selectedFileId) {
       setIsLoadingFileUrl(true);
-      StorageService.getFileViewUrl(selectedFileId)
+      
+      const selectedFile = realFiles.find(f => f.id === selectedFileId);
+      
+      if (!selectedFile) {
+        setFileViewUrl(undefined);
+        setIsLoadingFileUrl(false);
+        return;
+      }
+
+      // Use secure DocumentUrlService for all files (accounting and storage)
+      const source = selectedFile.source === 'accounting' ? 'accounting' : 'storage';
+      
+      DocumentUrlService.getViewUrl(selectedFileId, source)
         .then(url => {
-          console.log('File URL fetched:', url);
-          // The signed URL is relative, need to prepend Supabase URL
-          const fullUrl = url.startsWith('http') 
-            ? url 
-            : `${import.meta.env.VITE_SUPABASE_URL}${url}`;
-          console.log('Full URL:', fullUrl);
-          setFileViewUrl(fullUrl);
+          console.log('Secure file URL fetched:', url);
+          setFileViewUrl(url);
           setIsLoadingFileUrl(false);
         })
         .catch(err => {
-          console.error('Failed to get file URL:', err);
+          console.error('Failed to get secure file URL:', err);
           setFileViewUrl(undefined);
           setIsLoadingFileUrl(false);
         });
@@ -73,13 +81,22 @@ export const StorageRepositoryPage: React.FC<StorageRepositoryPageProps> = ({
       setFileViewUrl(undefined);
       setIsLoadingFileUrl(false);
     }
-  }, [selectedFileId]);
+  }, [selectedFileId, realFiles]);
+
+  // Get virtual folders for accounting documents
+  const virtualFolders = getAccountingVirtualFolders();
+  
+  // Combine real and virtual folders
+  const allFolders = [
+    ...(externalFolders || []),
+    ...virtualFolders
+  ];
 
   // Use only real data - no mock fallbacks
   const selectedFile = realFiles.find(f => f.id === selectedFileId);
-  const selectedFolder = externalFolders?.find(f => f.id === selectedFolderId);
+  const selectedFolder = allFolders.find(f => f.id === selectedFolderId);
   
-  const storageFolders = externalFolders || [];
+  const storageFolders = allFolders;
 
   const handleCreateFolder = () => {
     if (externalOnCreateFolder) {

@@ -18,10 +18,17 @@ import { Breadcrumbs } from '@/components/seo/Breadcrumbs';
 import { SECTION_VIEWS, type DocumentSection } from '@/modules/documents/types/sections';
 import { useDocumentStats } from '../hooks/useDocumentStats';
 import { cn } from '@/shared/lib/utils';
+import SectionsView from '../components/SectionsView';
+import { useFileWorkspace } from '../hooks/useFileWorkspace';
 
 const DocumentsHubRedesigned: React.FC = () => {
   const navigate = useNavigate();
   const { data: stats, isLoading, error } = useDocumentStats();
+  const { openFileById } = useFileWorkspace();
+
+  const handleFileOpen = (fileId: string) => {
+    openFileById(fileId);
+  };
   
   if (isLoading) {
     return (
@@ -271,6 +278,13 @@ const DocumentsHubRedesigned: React.FC = () => {
                 </div>
               </CardContent>
             </Card>
+          </div>
+
+          {/* Accounting Documents by Sections */}
+          <div>
+            <h2 className="text-lg font-semibold mb-3">Dokumenty księgowe</h2>
+            <p className="text-sm text-muted-foreground mb-4">Dokumenty księgowe pogrupowane według sekcji</p>
+            <SectionsView onFileOpen={handleFileOpen} />
           </div>
         </div>
       </div>

@@ -183,15 +183,20 @@ const Shareholders: React.FC<ShareholdersProps> = ({ embedded = false }) => {
 
     if (file.type !== 'application/pdf') {
       toast.error('Proszę przesłać plik PDF');
+      event.target.value = '';
       return;
     }
 
     setUploadingFile(true);
     try {
       const transaction = shareholderTransactions.find(t => t.id === transactionId);
-      if (!transaction) return;
+      if (!transaction) {
+        toast.error('Nie znaleziono transakcji');
+        return;
+      }
 
       // Upload document
+      console.log('Uploading document for transaction:', transactionId);
       const uploadedDoc = await uploadCapitalContributionDocument(
         file,
         selectedProfileId!,
@@ -199,23 +204,30 @@ const Shareholders: React.FC<ShareholdersProps> = ({ embedded = false }) => {
           shareholderName: selectedShareholder!.name,
           amount: transaction.amount,
           contributionDate: transaction.transaction_date,
-          documentType: 'capital_contribution_statement',
+          documentType: 'cash_contribution_declaration',
         }
       );
+      console.log('Document uploaded:', uploadedDoc);
 
       // Link document to transaction
+      console.log('Linking document to transaction...');
       await linkDocumentToEquityTransaction(
         uploadedDoc.id,
         transactionId
       );
+      console.log('Document linked successfully');
 
       toast.success('Dokument przesłany i połączony z transakcją');
+      
+      // Clear file input
+      event.target.value = '';
       
       // Reload transactions
       await handleOpenDetailDialog(selectedShareholder!);
     } catch (error) {
       console.error('Error uploading file:', error);
-      toast.error('Błąd podczas przesyłania dokumentu');
+      toast.error(`Błąd podczas przesyłania dokumentu: ${error instanceof Error ? error.message : 'Nieznany błąd'}`);
+      event.target.value = '';
     } finally {
       setUploadingFile(false);
     }
@@ -780,6 +792,45 @@ const Shareholders: React.FC<ShareholdersProps> = ({ embedded = false }) => {
                             </Button>
                           </div>
                         </div>
+
+                        {/* Attached Documents */}
+                        {(transaction as any).documents && (transaction as any).documents.length > 0 && (
+                          <div className="border-t pt-3 mt-3">
+                            <div className="flex items-center gap-2 mb-2">
+                              <FileText className="h-4 w-4" />
+                              <span className="text-sm font-medium">Załączone dokumenty</span>
+                            </div>
+                            <div className="space-y-2">
+                              {(transaction as any).documents.map((doc: any) => (
+                                <div key={doc.id} className="flex items-center justify-between p-2 bg-muted/50 rounded-md">
+                                  <div className="flex items-center gap-2">
+                                    <FileText className="h-4 w-4 text-muted-foreground" />
+                                    <span className="text-sm">{doc.file_name}</span>
+                                  </div>
+                                  <div className="flex items-center gap-2">
+                                    <a 
+                                      href={doc.public_url} 
+                                      target="_blank" 
+                                      rel="noopener noreferrer"
+                                      className="text-sm text-blue-600 hover:underline flex items-center gap-1"
+                                    >
+                                      <Eye className="h-3 w-3" />
+                                      Podgląd
+                                    </a>
+                                    <a 
+                                      href={doc.public_url} 
+                                      download={doc.file_name}
+                                      className="text-sm text-blue-600 hover:underline flex items-center gap-1"
+                                    >
+                                      <Download className="h-3 w-3" />
+                                      Pobierz
+                                    </a>
+                                  </div>
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+                        )}
 
                         {/* File Upload */}
                         <div className="border-t pt-3 mt-3">

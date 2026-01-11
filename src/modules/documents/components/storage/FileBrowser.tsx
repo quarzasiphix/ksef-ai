@@ -81,20 +81,20 @@ export const FileBrowser: React.FC<FileBrowserProps> = ({
   const [searchQuery, setSearchQuery] = useState('');
 
   const filteredFiles = files.filter(file =>
-    file.file_name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    file.tags.some(tag => tag.toLowerCase().includes(searchQuery.toLowerCase()))
+    (file.file_name?.toLowerCase().includes(searchQuery.toLowerCase()) || false) ||
+    (file.tags?.some?.(tag => tag.toLowerCase().includes(searchQuery.toLowerCase())) || false)
   );
 
   const sortedFiles = [...filteredFiles].sort((a, b) => {
     switch (sortBy) {
       case 'name':
-        return a.file_name.localeCompare(b.file_name);
+        return (a.file_name || '').localeCompare(b.file_name || '');
       case 'date':
-        return new Date(b.uploaded_at).getTime() - new Date(a.uploaded_at).getTime();
+        return new Date(b.uploaded_at || 0).getTime() - new Date(a.uploaded_at || 0).getTime();
       case 'size':
-        return b.file_size - a.file_size;
+        return (b.file_size || 0) - (a.file_size || 0);
       case 'type':
-        return a.file_extension.localeCompare(b.file_extension);
+        return (a.file_extension || '').localeCompare(b.file_extension || '');
       default:
         return 0;
     }
@@ -137,8 +137,8 @@ export const FileBrowser: React.FC<FileBrowserProps> = ({
             </div>
             <div className="text-center">
               <div className="flex items-center justify-center gap-1.5 mb-1">
-                <p className="text-sm font-medium truncate" title={file.file_name}>
-                  {file.file_name}
+                <p className="text-sm font-medium truncate" title={file.file_name || 'Untitled'}>
+                  {file.file_name || 'Untitled'}
                 </p>
                 {file.department_id && departmentColors && (
                   <div 
@@ -149,7 +149,7 @@ export const FileBrowser: React.FC<FileBrowserProps> = ({
                 )}
               </div>
               <p className="text-xs text-muted-foreground mt-1">
-                {formatFileSize(file.file_size)}
+                {formatFileSize(file.file_size || 0)}
               </p>
             </div>
           </div>
@@ -211,7 +211,7 @@ export const FileBrowser: React.FC<FileBrowserProps> = ({
             <Icon className="h-5 w-5 text-muted-foreground flex-shrink-0" />
             <div className="flex-1 min-w-0">
               <div className="flex items-center gap-2">
-                <p className="text-sm font-medium truncate">{file.file_name}</p>
+                <p className="text-sm font-medium truncate">{file.file_name || 'Untitled'}</p>
                 {file.department_id && departmentColors && (
                   <div 
                     className="w-2 h-2 rounded-full flex-shrink-0"
@@ -254,10 +254,10 @@ export const FileBrowser: React.FC<FileBrowserProps> = ({
               </div>
             </div>
             <div className="flex items-center gap-4 text-xs text-muted-foreground">
-              <span className="w-16 text-right">{file.file_extension.toUpperCase()}</span>
-              <span className="w-20 text-right">{formatFileSize(file.file_size)}</span>
+              <span className="w-16 text-right">{file.file_extension?.toUpperCase() || '—'}</span>
+              <span className="w-20 text-right">{formatFileSize(file.file_size || 0)}</span>
               <span className="w-32 text-right">
-                {new Date(file.uploaded_at).toLocaleDateString('pl-PL')}
+                {file.uploaded_at ? new Date(file.uploaded_at).toLocaleDateString('pl-PL') : '—'}
               </span>
             </div>
           </div>

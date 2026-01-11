@@ -202,16 +202,20 @@ export function getFileCategory(extension: string): string {
 /**
  * Get icon for file type
  */
-export function getFileIcon(mimeType: string, extension: string): string {
-  const ext = extension.toLowerCase().replace('.', '');
+export function getFileIcon(mimeType?: string, extension?: string): string {
+  // Handle undefined values
+  if (!mimeType && !extension) return 'File';
   
-  if (mimeType.startsWith('image/')) return 'Image';
-  if (mimeType === 'application/pdf') return 'FileText';
-  if (mimeType.includes('xml') || ext === 'xml') return 'Code';
-  if (mimeType.includes('json') || ext === 'json') return 'Braces';
-  if (mimeType.includes('spreadsheet') || ['xls', 'xlsx', 'csv'].includes(ext)) return 'Table';
-  if (mimeType.includes('zip') || mimeType.includes('archive')) return 'Archive';
-  if (mimeType.includes('text')) return 'FileText';
+  const ext = extension?.toLowerCase().replace('.', '') || '';
+  const mime = mimeType?.toLowerCase() || '';
+  
+  if (mime.startsWith('image/')) return 'Image';
+  if (mime === 'application/pdf') return 'FileText';
+  if (mime.includes('xml') || ext === 'xml') return 'Code';
+  if (mime.includes('json') || ext === 'json') return 'Braces';
+  if (mime.includes('spreadsheet') || ['xls', 'xlsx', 'csv'].includes(ext)) return 'Table';
+  if (mime.includes('zip') || mime.includes('archive')) return 'Archive';
+  if (mime.includes('text')) return 'FileText';
   
   return 'File';
 }

@@ -61,6 +61,10 @@ export interface EquityTransaction {
   shareholder_name?: string;
   description?: string;
   journal_entry_id?: string | null;
+  payment_method?: 'bank' | 'cash' | null;
+  cash_account_id?: string | null;
+  bank_account_id?: string | null;
+  signed_document_id?: string | null;
   created_at?: string;
   updated_at?: string;
 }
