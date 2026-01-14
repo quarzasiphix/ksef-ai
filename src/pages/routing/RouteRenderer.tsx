@@ -9,6 +9,9 @@ import ShareDocuments from '@/pages/public/ShareDocuments';
 import Login from '@/pages/auth/Login';
 import Register from '@/pages/auth/Register';
 import AuthCallback from '@/pages/auth/AuthCallback';
+import TokenTest from '@/modules/auth/screens/TokenTest';
+import CrmLinking from '@/modules/settings/screens/CrmLinking';
+import TokenHandler from '@/modules/auth/screens/TokenHandler';
 import { routes, flattenRoutes, type RouteConfig } from '@/shared/config/routes';
 import { AppGate, ProtectedGate, PremiumGate, PublicGate } from './AppGate';
 import { useAuth } from '@/shared/hooks/useAuth';
@@ -153,64 +156,102 @@ const RootRedirect = () => {
 export const RouteRenderer: React.FC = () => {
   const flatRoutes = flattenRoutes(routes);
 
+  console.log('RouteRenderer loaded!');
+  console.log('Current path:', window.location.pathname);
+
   return (
     <Routes>
+      {/* SIMPLE TEST ROUTE - First priority */}
+      <Route path="/test" element={
+        (() => {
+          console.log('Test route matched!');
+          return <div style={{background: 'blue', color: 'white', padding: '20px'}}>TEST ROUTE WORKS!</div>;
+        })()
+      } />
+      
+      {/* CRM Token Handler - Support both formats */}
+      <Route
+        path="/settings/token=*"
+        element={
+          (() => {
+            console.log('Settings token route with = matched!');
+            console.log('About to render CrmLinking');
+            const result = <CrmLinking />;
+            console.log('CrmLinking element created:', result);
+            return result;
+          })()
+        }
+      />
+      <Route
+        path="/settings/token/*"
+        element={
+          (() => {
+            console.log('Settings token route with / matched!');
+            console.log('About to render CrmLinking');
+            const result = <CrmLinking />;
+            console.log('CrmLinking element created:', result);
+            return result;
+          })()
+        }
+      />
+
       {/* Root redirect */}
       <Route path="/" element={<RootRedirect />} />
 
-      {/* Auth routes */}
-      <Route
-        path="/auth/login"
-        element={
-          <PublicGate>
-            <Login />
-          </PublicGate>
-        }
-      />
-      <Route
-        path="/auth/register"
-        element={
-          <PublicGate>
-            <Register />
-          </PublicGate>
-        }
-      />
-      <Route path="/auth/callback" element={<AuthCallback />} />
-
-      {/* Onboarding */}
-      <Route
-        path="/welcome"
-        element={
-          <ProtectedGate>
-            <BusinessProfileProvider>
-              <Welcome />
-            </BusinessProfileProvider>
-          </ProtectedGate>
-        }
-      />
-
-      {/* Public shared documents */}
-      <Route
-        path="/share/:slug"
-        element={
-          <PublicLayout>
-            <ShareDocuments />
-          </PublicLayout>
-        }
-      />
-
-      {/* All protected routes wrapped in persistent Layout */}
+      {/* All other routes - wrapped in protected system */}
       <Route
         element={
-          <ProtectedGate>
+          <AppGate requireAuth>
             <SidebarProvider>
               <BusinessProfileProvider>
                 <Layout />
               </BusinessProfileProvider>
             </SidebarProvider>
-          </ProtectedGate>
+          </AppGate>
         }
       >
+        {/* Auth routes */}
+        <Route
+          path="/auth/login"
+          element={
+            <PublicGate>
+              <Login />
+            </PublicGate>
+          }
+        />
+        <Route
+          path="/auth/register"
+          element={
+            <PublicGate>
+              <Register />
+            </PublicGate>
+          }
+        />
+        <Route path="/auth/callback" element={<AuthCallback />} />
+
+        {/* Onboarding */}
+        <Route
+          path="/welcome"
+          element={
+            <ProtectedGate>
+              <BusinessProfileProvider>
+                <Welcome />
+              </BusinessProfileProvider>
+            </ProtectedGate>
+          }
+        />
+
+        {/* Public shared documents */}
+        <Route
+          path="/share/:slug"
+          element={
+            <PublicLayout>
+              <ShareDocuments />
+            </PublicLayout>
+          }
+        />
+
+        {/* All protected routes from config */}
         {flatRoutes.map(route => renderRoute(route))}
       </Route>
     </Routes>
