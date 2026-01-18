@@ -6,7 +6,7 @@ import { Label } from '@/shared/ui/label';
 import { Textarea } from '@/shared/ui/textarea';
 import { Badge } from '@/shared/ui/badge';
 import { Switch } from '@/shared/ui/switch';
-import { Upload, X, File, Building2, Folder, ChevronRight, ExternalLink, Link as LinkIcon, AlertCircle } from 'lucide-react';
+import { Upload, X, File, Building2, Folder, ChevronRight, ExternalLink, Link as LinkIcon, AlertCircle, Loader2 } from 'lucide-react';
 import {
   Select,
   SelectContent,
@@ -25,6 +25,7 @@ import type { AttachmentEntityType, AttachmentRole } from '@/shared/types/attach
 import { ENTITY_TYPE_LABELS, ATTACHMENT_ROLE_LABELS } from '@/shared/types/attachment';
 import { EntitySearchPicker, type LinkableEntity } from '@/shared/components/EntitySearchPicker';
 import { ContextBar } from '@/shared/components/ContextBar';
+import { useToast } from '@/shared/hooks/use-toast';
 
 interface UploadFileDialogProps {
   open: boolean;
@@ -35,6 +36,7 @@ interface UploadFileDialogProps {
   entityId?: string;
   defaultRole?: AttachmentRole;
   forceLink?: boolean; // Force attachment linking (audit-critical flows)
+  onUploadComplete?: () => void; // Callback to refresh file viewer after upload
 }
 
 export const UploadFileDialog: React.FC<UploadFileDialogProps> = ({
@@ -45,6 +47,7 @@ export const UploadFileDialog: React.FC<UploadFileDialogProps> = ({
   entityId: presetEntityId,
   defaultRole,
   forceLink = false,
+  onUploadComplete,
 }) => {
   const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
   const [fileNames, setFileNames] = useState<string[]>([]);
@@ -69,6 +72,7 @@ export const UploadFileDialog: React.FC<UploadFileDialogProps> = ({
   const { departments } = useDepartments();
   const { uploadFile, isUploading } = useStorageFiles(folderId);
   const { data: folder } = useStorageFolder(folderId);
+  const { toast } = useToast();
 
   // Initialize with folder's department when dialog opens (auto-lock)
   useEffect(() => {
@@ -179,6 +183,15 @@ export const UploadFileDialog: React.FC<UploadFileDialogProps> = ({
       if (successful.length > 0) {
         setUploadedFileIds(successful.map(s => s.result.id));
         
+        // Call the callback to refresh file viewer
+        onUploadComplete?.();
+        
+        // Show success toast
+        toast({
+          title: "Pliki przesłane pomyślnie",
+          description: `Dodano ${successful.length} ${successful.length === 1 ? 'plik' : 'plików'}`,
+        });
+        
         // If linking is enabled and we have entity info, create attachments for all successful uploads
         if (linkAfterUpload && linkEntityType && linkEntityId && linkRole) {
           successful.forEach(({ result }) => {
@@ -195,6 +208,11 @@ export const UploadFileDialog: React.FC<UploadFileDialogProps> = ({
 
       if (failed.length > 0) {
         console.error('Failed to upload files:', failed);
+        toast({
+          title: "Błąd przesyłania",
+          description: `Nie udało się przesłać ${failed.length} ${failed.length === 1 ? 'pliku' : 'plików'}`,
+          variant: "destructive",
+        });
       }
     } catch (error) {
       console.error('Upload error:', error);
@@ -637,7 +655,17 @@ export const UploadFileDialog: React.FC<UploadFileDialogProps> = ({
                   Anuluj
                 </Button>
                 <Button type="submit" disabled={selectedFiles.length === 0 || isUploading}>
-                  {isUploading ? 'Przesyłanie...' : `Dodaj ${selectedFiles.length > 1 ? `${selectedFiles.length} plików` : 'plik'}`}
+                  {isUploading ? (
+                    <>
+                      <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                      Przesyłanie...
+                    </>
+                  ) : (
+                    <>
+                      <Upload className="h-4 w-4 mr-2" />
+                      Dodaj {selectedFiles.length > 1 ? `${selectedFiles.length} plików` : 'plik'}
+                    </>
+                  )}
                 </Button>
               </>
             )}

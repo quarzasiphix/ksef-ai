@@ -128,9 +128,9 @@ const DocumentsSidebar: React.FC<DocumentsSidebarProps> = ({
           <div className="select-none">
             <div
               className={cn(
-                'flex items-center gap-1 py-1.5 px-2 rounded-md hover:bg-module-sidebar-hover cursor-pointer group',
-                isSelected && 'bg-module-sidebar-active',
-                isContextMenuOpen && 'bg-module-sidebar-active ring-2 ring-primary/20'
+                'flex items-center gap-1 py-1.5 px-2 rounded-md hover:bg-accent/50 cursor-pointer group transition-colors duration-200',
+                isSelected && 'bg-primary/10 border border-primary/30 text-primary font-medium',
+                isContextMenuOpen && 'bg-primary/10 ring-2 ring-primary/20'
               )}
               style={{ paddingLeft: `${folder.level * 12 + 8}px` }}
               onDragOver={(e) => {
@@ -167,13 +167,16 @@ const DocumentsSidebar: React.FC<DocumentsSidebarProps> = ({
                   e.stopPropagation();
                   toggleFolder(folder.id);
                 }}
-                className="p-0.5 hover:bg-module-sidebar-hover rounded"
+                className={cn(
+                  "p-0.5 hover:bg-accent/50 rounded transition-colors duration-200",
+                  isSelected && "text-primary"
+                )}
               >
                 {hasChildren ? (
                   isExpanded ? (
-                    <ChevronDown className="h-3.5 w-3.5 text-module-sidebar-muted" />
+                    <ChevronDown className={cn("h-3.5 w-3.5", isSelected ? "text-primary" : "text-module-sidebar-muted")} />
                   ) : (
-                    <ChevronRight className="h-3.5 w-3.5 text-module-sidebar-muted" />
+                    <ChevronRight className={cn("h-3.5 w-3.5", isSelected ? "text-primary" : "text-module-sidebar-muted")} />
                   )
                 ) : (
                   <span className="w-3.5" />
@@ -198,9 +201,9 @@ const DocumentsSidebar: React.FC<DocumentsSidebarProps> = ({
                     <FileText className="h-3.5 w-3.5 text-purple-600 flex-shrink-0" />
                   )
                 ) : isExpanded ? (
-                  <FolderOpen className="h-3.5 w-3.5 text-amber-500 flex-shrink-0" />
+                  <FolderOpen className={cn("h-3.5 w-3.5 flex-shrink-0", isSelected ? "text-primary" : "text-amber-500")} />
                 ) : (
-                  <Folder className="h-3.5 w-3.5 text-amber-500 flex-shrink-0" />
+                  <Folder className={cn("h-3.5 w-3.5 flex-shrink-0", isSelected ? "text-primary" : "text-amber-500")} />
                 )}
                 <span className="text-sm truncate">{folder.name}</span>
                 {isVirtual && (

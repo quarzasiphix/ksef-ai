@@ -75,12 +75,15 @@ serve(async (req) => {
     } else if (fileId) {
       const { data: file, error: fileError } = await supabaseClient
         .from('storage_files')
-        .select('file_path, file_name, business_profile_id')
+        .select('storage_path, file_name, business_profile_id')
         .eq('id', fileId)
         .single()
 
+      console.log('File query result:', { file, error: fileError, fileId })
+
       if (fileError || !file) {
-        return new Response(JSON.stringify({ error: 'File not found' }), {
+        console.log('File not found error:', { fileError, fileId })
+        return new Response(JSON.stringify({ error: 'File not found', details: fileError?.message }), {
           headers: { ...corsHeaders, 'Content-Type': 'application/json' },
           status: 404,
         })
@@ -100,7 +103,7 @@ serve(async (req) => {
         })
       }
 
-      filePath = file.file_path
+      filePath = file.storage_path
       fileName = file.file_name
     }
 

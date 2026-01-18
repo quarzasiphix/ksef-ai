@@ -19,6 +19,8 @@ const DocumentRepository: React.FC = () => {
     selectedStorageFolderId, 
     setSelectedStorageFolderId, 
     storageFolders,
+    setDraggedFileId,
+    handleFileDropOnFolder,
   } = useOutletContext<DocumentsOutletContext>();
   
   const { openFileById } = useFileWorkspace();
@@ -47,6 +49,8 @@ const DocumentRepository: React.FC = () => {
       selectedFolderId={selectedStorageFolderId}
       onFolderSelect={setSelectedStorageFolderId}
       onFileOpen={handleFileOpen}
+      setDraggedFileId={setDraggedFileId}
+      onFileDropOnFolder={handleFileDropOnFolder}
     />
   );
 };

@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { ChevronLeft, ChevronRight, ZoomIn, ZoomOut, Download, Maximize2, Minimize2 } from 'lucide-react';
+import { ChevronLeft, ChevronRight, ZoomIn, ZoomOut, Download, Maximize2, Minimize2, X } from 'lucide-react';
 import { Button } from '@/shared/ui/button';
 import { cn } from '@/shared/lib/utils';
 
@@ -7,14 +7,27 @@ interface PDFViewerProps {
   fileUrl: string;
   fileName: string;
   className?: string;
+  onClose?: () => void;
 }
 
-export const PDFViewer: React.FC<PDFViewerProps> = ({ fileUrl, fileName, className }) => {
+export const PDFViewer: React.FC<PDFViewerProps> = ({ fileUrl, fileName, className, onClose }) => {
   const [currentPage, setCurrentPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
   const [zoom, setZoom] = useState(100);
   const [isFullscreen, setIsFullscreen] = useState(false);
   const iframeRef = React.useRef<HTMLIFrameElement>(null);
+
+  // Handle Escape key to close viewer
+  React.useEffect(() => {
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape' && onClose) {
+        onClose();
+      }
+    };
+
+    document.addEventListener('keydown', handleKeyDown);
+    return () => document.removeEventListener('keydown', handleKeyDown);
+  }, [onClose]);
 
   const handleZoomIn = () => {
     setZoom(prev => Math.min(prev + 25, 200));
@@ -52,53 +65,98 @@ export const PDFViewer: React.FC<PDFViewerProps> = ({ fileUrl, fileName, classNa
       className
     )}>
       {/* Toolbar */}
-      <div className="flex items-center justify-between gap-2 p-3 border-b bg-background">
-        <div className="flex items-center gap-2">
-          <span className="text-sm font-medium truncate max-w-[200px]">{fileName}</span>
-        </div>
+      <div className="p-3 border-b bg-background">
+        {/* Mobile-optimized toolbar */}
+        <div className="space-y-3">
+          {/* Top Row: Action Buttons (left) + Zoom Controls (right) */}
+          <div className="flex items-center justify-between px-4 gap-4">
+            {/* Action Buttons - Left side */}
+            <div className="flex items-center gap-1">
+              {onClose && (
+                <Button 
+                  variant="outline" 
+                  size="lg" 
+                  onClick={onClose} 
+                  className="h-12 w-12 p-0 sm:h-8 sm:w-8 sm:p-0"
+                  title="Zamknij"
+                >
+                  <X className="h-5 w-5 sm:h-4 sm:w-4" />
+                </Button>
+              )}
+              <Button 
+                variant="outline" 
+                size="lg" 
+                onClick={handleDownload} 
+                className="h-12 w-12 p-0 sm:h-8 sm:w-8 sm:p-0"
+                title="Pobierz"
+              >
+                <Download className="h-5 w-5 sm:h-4 sm:w-4" />
+              </Button>
+              <Button 
+                variant="outline" 
+                size="lg" 
+                onClick={toggleFullscreen} 
+                className="h-12 w-12 p-0 sm:h-8 sm:w-8 sm:p-0"
+                title={isFullscreen ? "Zamknij pełny ekran" : "Pełny ekran"}
+              >
+                {isFullscreen ? <Minimize2 className="h-5 w-5 sm:h-4 sm:w-4" /> : <Maximize2 className="h-5 w-5 sm:h-4 sm:w-4" />}
+              </Button>
+            </div>
 
-        <div className="flex items-center gap-1">
-          {/* Page Navigation */}
-          <div className="flex items-center gap-1 px-2 border-r">
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={handlePrevPage}
-              disabled={currentPage === 1}
-            >
-              <ChevronLeft className="h-4 w-4" />
-            </Button>
-            <span className="text-sm px-2">
-              {currentPage} / {totalPages}
-            </span>
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={handleNextPage}
-              disabled={currentPage === totalPages}
-            >
-              <ChevronRight className="h-4 w-4" />
-            </Button>
+            {/* Zoom Controls - Right side */}
+            <div className="flex items-center gap-1 bg-muted rounded-lg p-1 flex-shrink-0">
+              <Button 
+                variant="ghost" 
+                size="sm" 
+                onClick={handleZoomOut} 
+                className="h-10 w-10 p-0 sm:h-8 sm:w-8 sm:p-0"
+              >
+                <ZoomOut className="h-4 w-4" />
+              </Button>
+              <span className="text-sm font-medium px-2 min-w-[50px] text-center">{zoom}%</span>
+              <Button 
+                variant="ghost" 
+                size="sm" 
+                onClick={handleZoomIn} 
+                className="h-10 w-10 p-0 sm:h-8 sm:w-8 sm:p-0"
+              >
+                <ZoomIn className="h-4 w-4" />
+              </Button>
+            </div>
           </div>
 
-          {/* Zoom Controls */}
-          <div className="flex items-center gap-1 px-2 border-r">
-            <Button variant="ghost" size="sm" onClick={handleZoomOut}>
-              <ZoomOut className="h-4 w-4" />
-            </Button>
-            <span className="text-sm px-2 min-w-[60px] text-center">{zoom}%</span>
-            <Button variant="ghost" size="sm" onClick={handleZoomIn}>
-              <ZoomIn className="h-4 w-4" />
-            </Button>
+          {/* Bottom Row: Filename (left) + Page Navigation (right) */}
+          <div className="flex items-center justify-between px-4 gap-4">
+            {/* Document Name - Left side */}
+            <div className="flex-1 min-w-0">
+              <span className="text-sm font-medium truncate block">{fileName}</span>
+            </div>
+            
+            {/* Page Navigation - Right side */}
+            <div className="flex items-center gap-1 flex-shrink-0">
+              <Button
+                variant="outline"
+                size="lg"
+                onClick={handlePrevPage}
+                disabled={currentPage === 1}
+                className="h-12 w-12 p-0 sm:h-8 sm:w-8 sm:p-0"
+              >
+                <ChevronLeft className="h-5 w-5 sm:h-4 sm:w-4" />
+              </Button>
+              <span className="text-sm font-medium px-3 min-w-[70px] text-center bg-muted rounded py-2">
+                {currentPage} / {totalPages}
+              </span>
+              <Button
+                variant="outline"
+                size="lg"
+                onClick={handleNextPage}
+                disabled={currentPage === totalPages}
+                className="h-12 w-12 p-0 sm:h-8 sm:w-8 sm:p-0"
+              >
+                <ChevronRight className="h-5 w-5 sm:h-4 sm:w-4" />
+              </Button>
+            </div>
           </div>
-
-          {/* Actions */}
-          <Button variant="ghost" size="sm" onClick={handleDownload}>
-            <Download className="h-4 w-4" />
-          </Button>
-          <Button variant="ghost" size="sm" onClick={toggleFullscreen}>
-            {isFullscreen ? <Minimize2 className="h-4 w-4" /> : <Maximize2 className="h-4 w-4" />}
-          </Button>
         </div>
       </div>
 
@@ -114,6 +172,10 @@ export const PDFViewer: React.FC<PDFViewerProps> = ({ fileUrl, fileName, classNa
               // Note: Getting page count from iframe is complex and requires PDF.js
               // For now, we'll use a placeholder
               setTotalPages(1);
+            }}
+            onError={(e) => {
+              console.error('PDF iframe error:', e);
+              // Could show error message here
             }}
           />
         </div>

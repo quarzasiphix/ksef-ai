@@ -97,7 +97,7 @@ const MonthlySummaryBar: React.FC<MonthlySummaryBarProps> = ({
             };
 
             return (
-              <React.Fragment key={kpi.label}>
+              <div key={kpi.label} className="flex items-center gap-4">
                 {index > 0 && (
                   <div className="hidden md:block h-10 w-px bg-white/10" aria-hidden />
                 )}
@@ -118,7 +118,7 @@ const MonthlySummaryBar: React.FC<MonthlySummaryBarProps> = ({
                   </div>
                   <span className="text-xs uppercase tracking-wide text-white/60">{kpi.label}</span>
                 </button>
-              </React.Fragment>
+              </div>
             );
           })}
         </div>

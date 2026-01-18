@@ -323,14 +323,20 @@ export class StorageService {
 
     // Generate new storage path
     const timestamp = Date.now();
-    const newPath = `${file.business_profile_id}${targetFolder.path}/${timestamp}_${file.file_name}`;
+    const sanitizedName = file.file_name.replace(/[^a-zA-Z0-9._-]/g, '_');
+    const newPath = `${file.business_profile_id}${targetFolder.path}/${timestamp}_${sanitizedName}`;
 
     // Move file in storage
+    console.log('Moving file:', { from: file.storage_path, to: newPath });
     const { error: moveError } = await supabase.storage
       .from(this.BUCKET_NAME)
       .move(file.storage_path, newPath);
 
-    if (moveError) throw moveError;
+    if (moveError) {
+      console.error('Storage move error:', moveError);
+      throw moveError;
+    }
+    console.log('File moved successfully');
 
     // Update metadata
     const { data, error } = await supabase
@@ -432,6 +438,68 @@ export class StorageService {
       by_tag: byTag,
       recent_uploads: recentUploads,
     };
+  }
+
+  /**
+   * Copy file to same or different folder
+   */
+  static async copyFile(fileId: string, targetFolderId?: string, newName?: string): Promise<StorageFile> {
+    const file = await this.getFile(fileId);
+    if (!file) throw new Error('File not found');
+
+    const targetFolder = targetFolderId ? await this.getFolder(targetFolderId) : await this.getFolder(file.storage_folder_id);
+    if (!targetFolder) throw new Error('Target folder not found');
+
+    // Generate new storage path
+    const timestamp = Date.now();
+    const finalName = newName || `${file.file_name}_kopia`;
+    const sanitizedName = finalName.replace(/[^a-zA-Z0-9._-]/g, '_');
+    const newPath = `${file.business_profile_id}${targetFolder.path}/${timestamp}_${sanitizedName}`;
+
+    // Copy file in storage (download and re-upload)
+    const { data: fileData } = await supabase.storage
+      .from(this.BUCKET_NAME)
+      .createSignedUrl(file.storage_path, 3600);
+
+    if (!fileData?.signedUrl) throw new Error('Could not get file URL');
+
+    const response = await fetch(fileData.signedUrl);
+    const blob = await response.blob();
+
+    const { error: uploadError } = await supabase.storage
+      .from(this.BUCKET_NAME)
+      .upload(newPath, blob, {
+        cacheControl: '3600',
+        upsert: false,
+      });
+
+    if (uploadError) throw uploadError;
+
+    // Create new file metadata
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) throw new Error('Not authenticated');
+
+    const { data, error } = await supabase
+      .from('storage_files')
+      .insert({
+        storage_folder_id: targetFolderId || file.storage_folder_id,
+        business_profile_id: file.business_profile_id,
+        department_id: file.department_id,
+        file_name: finalName,
+        storage_path: newPath,
+        file_size: file.file_size,
+        mime_type: file.mime_type,
+        file_extension: file.file_extension,
+        description: file.description,
+        tags: file.tags,
+        document_id: file.document_id,
+        uploaded_by: user.id,
+      })
+      .select()
+      .single();
+
+    if (error) throw error;
+    return data;
   }
 
   /**

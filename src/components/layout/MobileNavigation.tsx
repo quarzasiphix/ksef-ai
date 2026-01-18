@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { NavLink, useLocation, useNavigate } from 'react-router-dom';
 
 import { 
@@ -23,7 +23,17 @@ import {
   UserCheck,
   Boxes,
   Signature,
-  Banknote
+  Banknote,
+  BookOpen,
+  Inbox,
+  Landmark,
+  Wallet,
+  TrendingUp,
+  Scale,
+  DollarSign,
+  FolderKanban,
+  Truck,
+  Activity
 } from 'lucide-react';
 import { useTheme } from '@/components/theme/ThemeProvider';
 import { cn } from '@/shared/lib/utils';
@@ -32,13 +42,15 @@ import { Button } from '@/shared/ui/button';
 import { useAuth } from '@/shared/hooks/useAuth';
 import { BusinessProfileSwitcher } from './BusinessProfileSwitcher';
 import { useBusinessProfile } from '@/shared/context/BusinessProfileContext';
+import { buildNavGroups } from './sidebar/navConfig';
+import type { NavContext } from './sidebar/navConfig';
 
 const MobileNavigation = () => {
   const [menuOpen, setMenuOpen] = useState(false);
   const [pendingNavigation, setPendingNavigation] = useState<string | null>(null);
   const { theme, setTheme } = useTheme();
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
-  const { isPremium, openPremiumDialog } = useAuth();
+  const { isPremium, openPremiumDialog, user, logout } = useAuth();
   const { profiles, selectedProfileId } = useBusinessProfile();
   const navigate = useNavigate();
 
@@ -46,7 +58,17 @@ const MobileNavigation = () => {
   const isSpZoo = selectedProfile?.entityType === 'sp_zoo' || selectedProfile?.entityType === 'sa';
   const bankPath = isSpZoo ? '/accounting/bank' : '/bank';
 
-  // Main bottom navigation items - most used features
+  // Build navigation context for dynamic navigation
+  const navContext: NavContext = React.useMemo(() => ({
+    entityType: isSpZoo ? 'spoolka' : 'jdg',
+    bankPath,
+    hasPremium: isPremium || false,
+  }), [isSpZoo, bankPath, isPremium]);
+
+  // Get navigation groups from the same configuration as desktop
+  const navGroups = React.useMemo(() => buildNavGroups(navContext), [navContext]);
+
+  // Main bottom navigation items - most used features (keep for bottom nav)
   const mainNavItems = [
     { title: "Dashboard", path: "/", icon: BarChart },
     { title: "Faktury", path: "/income", icon: FileText },
@@ -58,54 +80,6 @@ const MobileNavigation = () => {
     { title: "Nowa Faktura", path: "/income/new", icon: Plus, color: "text-blue-600" },
     { title: "Nowy Wydatek", path: "/expense/new", icon: Plus, color: "text-green-600" },
   ];
-
-  // Management items for the side menu (inventory is premium gated)
-  const managementItems = [
-    { title: "Klienci", path: "/customers", icon: Users, premium: false },
-    { title: "Umowy", path: "/contracts", icon: Signature, premium: false },
-    { title: "Pracownicy", path: "/employees", icon: UserCheck, premium: false },
-    { title: "Produkty", path: "/products", icon: Package, premium: false },
-    { title: "Magazyn", path: "/inventory", icon: Boxes, premium: true },
-    { title: "Ustawienia", path: "/settings", icon: Settings, premium: false },
-  ];
-
-  // Premium features
-  const premiumFeatures = [
-    { title: "Księgowość", path: "/accounting", icon: Calculator, premium: true, group: "finanse" },
-    { title: "KSeF", path: "/ksef", icon: Building, premium: true, group: "zarzadzanie" },
-  ];
-
-  // Finanse group (updated to match desktop)
-  const finanseItems = [
-    { title: "Faktury", path: "/income", icon: FileText },
-    { title: "Wydatki", path: "/expense", icon: CreditCard },
-    { title: "Bankowość", path: bankPath, icon: Banknote },
-    { title: "Księgowość", path: "/accounting", icon: Calculator, premium: true },
-  ];
-
-  // Zarządzanie group (updated to match desktop)
-  const isSpoolka = selectedProfile?.entityType === 'sp_zoo' || selectedProfile?.entityType === 'sa';
-  const zarzadzanieItems = [
-    { title: "Klienci", path: "/customers", icon: Users },
-    { title: "Produkty", path: "/products", icon: Package },
-    { title: isSpoolka ? "Dokumenty" : "Umowy", path: "/contracts", icon: Signature },
-    { title: "Pracownicy", path: "/employees", icon: UserCheck },
-    { title: "Magazyn", path: "/inventory", icon: Boxes, premium: true },
-  ];
-
-  // If premium, add Księgowość to Finanse and KSeF to Zarządzanie
-  if (isPremium) {
-    // Księgowość is already included as premium in Finanse
-    zarzadzanieItems.push({ title: "KSeF", path: "/ksef", icon: Building, premium: true });
-  }
-
-  // Ustawienia group
-  const ustawieniaItems = [
-    { title: "Ustawienia", path: "/settings", icon: Settings },
-  ];
-
-  // For non-premium users, show premium features in a separate section
-  const showPremiumSection = !isPremium;
 
   const location = useLocation();
   const handleSheetNavigation = (path: string) => {
@@ -202,47 +176,18 @@ const MobileNavigation = () => {
                   ))}
                 </div>
               </div>
-              {/* Finanse Section */}
-              <div>
-                <h3 className="text-sm font-semibold text-muted-foreground mb-3 px-2">FINANSE</h3>
-                <div className="space-y-1">
-                  {finanseItems.map((item) => (
-                    <button
-                      type="button"
-                      key={item.path}
-                      onClick={() => handleSheetNavigation(item.path)}
-                      className={cn(
-                        "flex w-full items-center gap-3 px-3 py-2 rounded-lg transition-colors text-left",
-                        isPathActive(item.path)
-                          ? "bg-primary/10 text-primary font-medium"
-                          : "text-foreground hover:bg-muted"
-                      )}
-                    >
-                      <item.icon className="h-5 w-5" />
-                      <span>{item.title}</span>
-                    </button>
-                  ))}
-                </div>
-              </div>
-              {/* Zarządzanie Section */}
-              <div>
-                <h3 className="text-sm font-semibold text-muted-foreground mb-3 px-2">ZARZĄDZANIE</h3>
-                <div className="space-y-1">
-                  {zarzadzanieItems.map((item) => (
-                    item.premium && !isPremium ? (
-                      <div
-                        key={item.title}
-                        className="flex items-center gap-3 px-3 py-2 rounded-lg bg-amber-50 border border-amber-200 cursor-pointer"
-                        onClick={openPremiumDialog}
-                      >
-                        <item.icon className="h-5 w-5 text-amber-600" />
-                        <span className="text-amber-900 font-medium flex-1">{item.title}</span>
-                        <Crown className="h-4 w-4 text-amber-600" />
-                      </div>
-                    ) : (
+              {/* Dynamic Navigation Groups */}
+              {navGroups.map((group) => (
+                <div key={group.id}>
+                  <h3 className="text-sm font-semibold text-muted-foreground mb-3 px-2">{group.label}</h3>
+                  {group.subtitle && (
+                    <p className="text-xs text-muted-foreground mb-3 px-2">{group.subtitle}</p>
+                  )}
+                  <div className="space-y-1">
+                    {group.items.map((item) => (
                       <button
                         type="button"
-                        key={item.path}
+                        key={item.id}
                         onClick={() => handleSheetNavigation(item.path)}
                         className={cn(
                           "flex w-full items-center gap-3 px-3 py-2 rounded-lg transition-colors text-left",
@@ -252,32 +197,15 @@ const MobileNavigation = () => {
                         )}
                       >
                         <item.icon className="h-5 w-5" />
-                        <span>{item.title}</span>
-                      </button>
-                    )
-                  ))}
-                </div>
-              </div>
-              {/* Premium Section for non-premium users */}
-              {showPremiumSection && (
-                <div>
-                  <h3 className="text-sm font-semibold text-muted-foreground mb-3 px-2">PREMIUM</h3>
-                  <div className="space-y-1">
-                    {premiumFeatures.map((feature) => (
-                      <button
-                        type="button"
-                        key={feature.title}
-                        onClick={openPremiumDialog}
-                        className="flex w-full items-center gap-3 px-3 py-2 rounded-lg bg-amber-50 border border-amber-200 cursor-pointer text-left"
-                      >
-                        <feature.icon className="h-5 w-5 text-amber-600" />
-                        <span className="text-amber-900 font-medium flex-1">{feature.title}</span>
-                        <Crown className="h-4 w-4 text-amber-600" />
+                        <span>{item.label}</span>
+                        {item.emphasis && (
+                          <div className="w-2 h-2 rounded-full bg-primary" />
+                        )}
                       </button>
                     ))}
                   </div>
                 </div>
-              )}
+              ))}
               {/* Theme Toggle */}
               <div className="border-t pt-4">
                 <div className="px-3">

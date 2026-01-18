@@ -9,6 +9,7 @@ interface FileViewerProps {
   mimeType: string;
   fileSize?: number;
   className?: string;
+  onClose?: () => void;
 }
 
 export const FileViewer: React.FC<FileViewerProps> = ({
@@ -17,10 +18,11 @@ export const FileViewer: React.FC<FileViewerProps> = ({
   mimeType,
   fileSize,
   className,
+  onClose,
 }) => {
   // Determine which viewer to use based on mime type
   if (mimeType === 'application/pdf') {
-    return <PDFViewer fileUrl={fileUrl} fileName={fileName} className={className} />;
+    return <PDFViewer fileUrl={fileUrl} fileName={fileName} className={className} onClose={onClose} />;
   }
 
   if (mimeType.includes('xml') || fileName.toLowerCase().endsWith('.xml')) {

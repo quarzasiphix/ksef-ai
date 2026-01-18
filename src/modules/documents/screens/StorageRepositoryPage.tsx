@@ -1,4 +1,5 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useContext, useEffect } from 'react';
+import { useParams, useOutletContext } from 'react-router-dom';
 import { FileBrowser } from '../components/storage/FileBrowser';
 import { FileViewer } from '../components/viewers/FileViewer';
 import type { StorageFolderTreeNode, StorageFile } from '../types/storage';
@@ -9,6 +10,8 @@ import { StorageService } from '@/shared/services/storageService';
 import { DocumentUrlService } from '@/shared/services/documentUrlService';
 import { useDepartments } from '../hooks/useDepartments';
 import { AttachFileDialog } from '@/modules/decisions/components/AttachFileDialog';
+import { supabase } from '@/integrations/supabase/client';
+import { Loader2 } from 'lucide-react';
 
 interface StorageRepositoryPageProps {
   storageFolders?: StorageFolderTreeNode[];
@@ -16,6 +19,8 @@ interface StorageRepositoryPageProps {
   onFolderSelect?: (folderId: string) => void;
   onCreateFolder?: () => void;
   onFileOpen?: (fileId: string) => void;
+  setDraggedFileId?: (fileId: string | null) => void;
+  onFileDropOnFolder?: (folderId: string) => void;
 }
 
 export const StorageRepositoryPage: React.FC<StorageRepositoryPageProps> = ({
@@ -24,23 +29,46 @@ export const StorageRepositoryPage: React.FC<StorageRepositoryPageProps> = ({
   onFolderSelect: externalOnFolderSelect,
   onCreateFolder: externalOnCreateFolder,
   onFileOpen: externalOnFileOpen,
+  setDraggedFileId: externalSetDraggedFileId,
+  onFileDropOnFolder: externalOnFileDropOnFolder,
 }) => {
   const [internalSelectedFolderId, setInternalSelectedFolderId] = useState<string | undefined>();
   const [selectedFileId, setSelectedFileId] = useState<string | undefined>();
-  const [draggedFileId, setDraggedFileId] = useState<string | null>(null);
   const [uploadFileDialogOpen, setUploadFileDialogOpen] = useState(false);
   const [attachFileDialogOpen, setAttachFileDialogOpen] = useState(false);
   const [fileToAttach, setFileToAttach] = useState<string | undefined>();
   const [fileViewUrl, setFileViewUrl] = useState<string | undefined>();
   const [isLoadingFileUrl, setIsLoadingFileUrl] = useState(false);
   const [showFileViewer, setShowFileViewer] = useState(true);
+  const [refreshKey, setRefreshKey] = useState(0); // Add refresh key
+  const [isUploading, setIsUploading] = useState(false); // Track upload state
+  // Get mobile sidebar state from DocumentsShell context
+  const context = useOutletContext<{
+    selectedStorageFolderId?: string;
+    setSelectedStorageFolderId?: (id: string | undefined) => void;
+    storageFolders?: StorageFolderTreeNode[];
+    setDraggedFileId?: (id: string | null) => void;
+    onFileDropOnFolder?: (folderId: string) => void;
+    draggedFileId?: string | null;
+    mobileSidebarOpen: boolean;
+    setMobileSidebarOpen: (open: boolean) => void;
+  }>();
+  
+  const { mobileSidebarOpen, setMobileSidebarOpen } = context || {};
   
   const selectedFolderId = externalSelectedFolderId ?? internalSelectedFolderId;
   const setSelectedFolderId = externalOnFolderSelect ?? setInternalSelectedFolderId;
   
   // Fetch all files (storage + accounting documents) for selected folder
-  const { data: realFiles = [] } = useAllDocuments(selectedFolderId);
+  const { data: realFiles = [], refetch } = useAllDocuments(selectedFolderId);
   const { departments } = useDepartments();
+
+  // Add refresh key to trigger refetch
+  React.useEffect(() => {
+    if (refreshKey > 0) {
+      refetch();
+    }
+  }, [refreshKey, refetch]);
 
   // Build department maps for file browser
   const departmentColors = new Map<string, string>();
@@ -69,11 +97,13 @@ export const StorageRepositoryPage: React.FC<StorageRepositoryPageProps> = ({
       DocumentUrlService.getViewUrl(selectedFileId, source)
         .then(url => {
           console.log('Secure file URL fetched:', url);
+          console.log('File details:', { selectedFileId, source, fileName: selectedFile?.file_name });
           setFileViewUrl(url);
           setIsLoadingFileUrl(false);
         })
         .catch(err => {
           console.error('Failed to get secure file URL:', err);
+          console.error('Error details:', { selectedFileId, source, fileName: selectedFile?.file_name, error: err });
           setFileViewUrl(undefined);
           setIsLoadingFileUrl(false);
         });
@@ -119,11 +149,11 @@ export const StorageRepositoryPage: React.FC<StorageRepositoryPageProps> = ({
   };
 
   const handleFileDragStart = (fileId: string) => {
-    setDraggedFileId(fileId);
+    externalSetDraggedFileId?.(fileId);
   };
 
   const handleFileDragEnd = () => {
-    setDraggedFileId(null);
+    externalSetDraggedFileId?.(null);
   };
 
   const handleFileOpen = (fileId: string) => {
@@ -135,43 +165,135 @@ export const StorageRepositoryPage: React.FC<StorageRepositoryPageProps> = ({
     }
   };
 
+  const handleFileRename = async (fileId: string) => {
+    try {
+      const file = realFiles.find(f => f.id === fileId);
+      if (!file) return;
+
+      const newName = prompt('Nowa nazwa pliku:', file.file_name);
+      if (!newName || newName === file.file_name) return;
+
+      // Update file name in database
+      const { error } = await supabase
+        .from('storage_files')
+        .update({ file_name: newName })
+        .eq('id', fileId);
+
+      if (error) throw error;
+      
+      // Refresh files list
+      setRefreshKey(prev => prev + 1);
+    } catch (error) {
+      console.error('Failed to rename file:', error);
+      alert('Nie udało się zmienić nazwy pliku');
+    }
+  };
+
+  const handleFileMove = async (fileId: string) => {
+    try {
+      // For now, just show a message - move dialog would need folder selection
+      alert('Funkcja przenoszenia plików będzie dostępna w przyszłej wersji');
+    } catch (error) {
+      console.error('Failed to move file:', error);
+    }
+  };
+
+  const handleFileCopy = async (fileId: string) => {
+    try {
+      const file = realFiles.find(f => f.id === fileId);
+      if (!file) return;
+
+      // Create a copy with new name
+      const copyName = prompt('Nazwa kopii:', `${file.file_name}_kopia`);
+      if (!copyName) return;
+
+      await StorageService.copyFile(fileId, undefined, copyName);
+      
+      // Refresh files list
+      setRefreshKey(prev => prev + 1);
+    } catch (error) {
+      console.error('Failed to copy file:', error);
+      alert('Nie udało się skopiować pliku');
+    }
+  };
+
+  const handleFileDelete = async (fileId: string) => {
+    try {
+      const file = realFiles.find(f => f.id === fileId);
+      if (!file) return;
+
+      const confirmed = confirm(`Czy na pewno chcesz usunąć plik "${file.file_name}"?`);
+      if (!confirmed) return;
+
+      await StorageService.deleteFile(fileId);
+      
+      // Clear selection and refresh
+      setSelectedFileId(undefined);
+      setRefreshKey(prev => prev + 1);
+    } catch (error) {
+      console.error('Failed to delete file:', error);
+      alert('Nie udało się usunąć pliku');
+    }
+  };
+
   const toggleFileViewer = () => {
     setShowFileViewer(!showFileViewer);
+  };
+
+  const toggleMobileSidebar = () => {
+    setMobileSidebarOpen(!mobileSidebarOpen);
   };
 
   return (
     <div className="h-full">
       <ResizablePanelGroup direction="horizontal">
-        {/* File Browser */}
-        <ResizablePanel defaultSize={selectedFileId && showFileViewer ? 60 : 100} minSize={40}>
+        {/* File Browser - hidden on mobile when file is selected */}
+        <ResizablePanel 
+          defaultSize={selectedFileId && showFileViewer ? 60 : 100} 
+          minSize={40}
+          className={selectedFileId && showFileViewer ? 'hidden lg:block' : ''}
+        >
           <FileBrowser
             files={realFiles}
             currentFolderId={selectedFolderId}
-            currentFolderName={selectedFolder?.name}
-            currentFolderPath={selectedFolder?.path}
-            currentDepartmentId={selectedFolder?.department_id}
             onFileSelect={setSelectedFileId}
-            onUploadFile={() => handleUploadFile()}
+            onUploadFile={() => {
+              handleUploadFile();
+              setIsUploading(true);
+            }}
             onCreateFolder={handleCreateFolder}
             onFileDragStart={handleFileDragStart}
             onFileDragEnd={handleFileDragEnd}
             onFileOpen={handleFileOpen}
+            onFileRename={handleFileRename}
+            onFileMove={handleFileMove}
+            onFileCopy={handleFileCopy}
+            onFileDelete={handleFileDelete}
             onAttachFile={handleAttachFile}
             onToggleFileViewer={toggleFileViewer}
             showFileViewer={showFileViewer}
             selectedFileId={selectedFileId}
             departmentColors={departmentColors}
             departmentNames={departmentNames}
-            className="h-full"
+            isUploading={isUploading}
+            onToggleMobileSidebar={toggleMobileSidebar}
           />
         </ResizablePanel>
 
-        {/* File Viewer */}
+        {/* File Viewer - fullscreen on mobile, side panel on desktop */}
         {selectedFileId && selectedFile && showFileViewer && (
           <>
-            <ResizableHandle />
-            <ResizablePanel defaultSize={40} minSize={30}>
-              <div className="h-full p-4 overflow-auto">
+            <ResizableHandle className="hidden lg:block" />
+            <ResizablePanel 
+              defaultSize={40} 
+              minSize={30}
+              className="fixed inset-0 z-50 lg:relative lg:z-auto transition-all duration-300 ease-in-out transform"
+              style={{
+                transform: showFileViewer ? 'translateX(0)' : 'translateX(100%)',
+                opacity: showFileViewer ? '1' : '0'
+              }}
+            >
+              <div className="h-full overflow-auto bg-background">
                 {isLoadingFileUrl ? (
                   <div className="flex items-center justify-center h-full">
                     <div className="text-center space-y-3">
@@ -180,12 +302,18 @@ export const StorageRepositoryPage: React.FC<StorageRepositoryPageProps> = ({
                     </div>
                   </div>
                 ) : fileViewUrl ? (
-                  <FileViewer
-                    fileUrl={fileViewUrl}
-                    fileName={selectedFile.file_name}
-                    mimeType={selectedFile.mime_type}
-                    fileSize={selectedFile.file_size}
-                  />
+                  <div className="animate-in fade-in duration-300">
+                    <FileViewer
+                      fileUrl={fileViewUrl}
+                      fileName={selectedFile.file_name}
+                      mimeType={selectedFile.mime_type}
+                      fileSize={selectedFile.file_size}
+                      onClose={() => {
+                        setSelectedFileId(undefined);
+                        setShowFileViewer(false);
+                      }}
+                    />
+                  </div>
                 ) : (
                   <div className="flex items-center justify-center h-full">
                     <p className="text-sm text-muted-foreground">Nie udało się załadować pliku</p>
@@ -202,6 +330,12 @@ export const StorageRepositoryPage: React.FC<StorageRepositoryPageProps> = ({
           open={uploadFileDialogOpen}
           onOpenChange={setUploadFileDialogOpen}
           folderId={selectedFolderId}
+          onUploadComplete={() => {
+            // Refresh the file list after upload
+            setRefreshKey(prev => prev + 1);
+            // Reset upload state
+            setIsUploading(false);
+          }}
         />
       )}
 
