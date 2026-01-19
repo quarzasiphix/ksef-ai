@@ -2,14 +2,9 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useBusinessProfile } from '@/shared/context/BusinessProfileContext';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/shared/ui/card';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/shared/ui/tabs';
 import { Badge } from '@/shared/ui/badge';
 import { Alert, AlertDescription } from '@/shared/ui/alert';
-import { Calendar, TrendingUp, FileText, AlertCircle, CheckCircle2 } from 'lucide-react';
-import { KPiRView } from '../components/KPiRView';
-import { ZusPaymentTracker } from '../components/ZusPaymentTracker';
-import { PitAdvancesTracker } from '../components/PitAdvancesTracker';
-import { TaxObligationsTimeline } from '../components/TaxObligationsTimeline';
+import { FileText, Calculator, CreditCard, Shield, CheckCircle2 } from 'lucide-react';
 import { EmptyStateAccounting } from '../components/EmptyStateAccounting';
 import { getAccountingSetupState, SetupState } from '../domain/setupState';
 import type { BusinessProfile } from '@/shared/types';
@@ -17,7 +12,6 @@ import type { BusinessProfile } from '@/shared/types';
 export default function JdgAccounting() {
   const { profiles, selectedProfileId } = useBusinessProfile();
   const selectedProfile = profiles?.find((p) => p.id === selectedProfileId);
-  const [activeTab, setActiveTab] = useState('ewidencja');
   const [setupState, setSetupState] = useState<SetupState | null>(null);
   const [isLoadingSetup, setIsLoadingSetup] = useState(true);
   const navigate = useNavigate();
@@ -44,7 +38,7 @@ export default function JdgAccounting() {
     return (
       <div className="p-6">
         <Alert>
-          <AlertCircle className="h-4 w-4" />
+          <FileText className="h-4 w-4" />
           <AlertDescription>
             Wybierz profil działalności gospodarczej, aby zobaczyć księgowość.
           </AlertDescription>
@@ -134,50 +128,90 @@ export default function JdgAccounting() {
         </CardContent>
       </Card>
 
-      {/* Main Content Tabs */}
-      <Tabs value={activeTab} onValueChange={setActiveTab}>
-        <TabsList className="grid w-full grid-cols-4">
-          <TabsTrigger value="ewidencja">
-            {isRyczalt ? 'Ewidencja' : 'KPiR'}
-          </TabsTrigger>
-          <TabsTrigger value="obowiazki">Obowiązki podatkowe</TabsTrigger>
-          <TabsTrigger value="zus">ZUS</TabsTrigger>
-          <TabsTrigger value="pit">PIT</TabsTrigger>
-        </TabsList>
+      {/* Ryczałt Accounts Management Card - Only for ryczał users */}
+      {isRyczalt && (
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <CreditCard className="h-5 w-5 text-amber-600" />
+              Konta ryczałtowe
+            </CardTitle>
+            <CardDescription>
+              Zarządzaj swoimi kontami ryczałtowymi do grupowania przychodów
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="flex gap-3">
+              <Badge 
+                className="cursor-pointer hover:bg-amber-100"
+                onClick={() => navigate('/accounting/ryczalt-accounts')}
+              >
+                <CreditCard className="h-4 w-4 mr-2" />
+                Zarządzaj kontami
+              </Badge>
+              <Badge 
+                variant="outline"
+                className="cursor-pointer hover:bg-gray-100"
+                onClick={() => navigate('/accounting/ewidencja')}
+              >
+                <FileText className="h-4 w-4 mr-2" />
+                Ewidencja przychodów
+              </Badge>
+            </div>
+            <p className="text-xs text-muted-foreground mt-3">
+              Stwórz konta dla różnych usług (np. "Usługi IT", "Konsulting") i grupuj przychody według Twoich potrzeb.
+            </p>
+          </CardContent>
+        </Card>
+      )}
 
-        <TabsContent value="ewidencja" className="space-y-4">
-          <KPiRView 
-            businessProfileId={selectedProfile.id}
-            isRyczalt={isRyczalt}
-          />
-        </TabsContent>
+      {/* Quick Actions Grid */}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+        <Card className="cursor-pointer hover:shadow-md transition-shadow" onClick={() => navigate('/accounting/ewidencja')}>
+          <CardContent className="p-4 text-center">
+            <FileText className="h-8 w-8 mx-auto mb-2 text-blue-600" />
+            <h3 className="font-medium">{isRyczalt ? 'Ewidencja' : 'KPiR'}</h3>
+            <p className="text-sm text-muted-foreground">
+              {isRyczalt ? 'Ewidencja przychodów' : 'Podatkowa księga przychodów'}
+            </p>
+          </CardContent>
+        </Card>
 
-        <TabsContent value="obowiazki" className="space-y-4">
-          <TaxObligationsTimeline
-            businessProfileId={selectedProfile.id}
-            entityType="jdg"
-            isVatExempt={isVatExempt}
-            taxType={selectedProfile.tax_type}
-          />
-        </TabsContent>
+        <Card className="cursor-pointer hover:shadow-md transition-shadow" onClick={() => navigate('/accounting/vat')}>
+          <CardContent className="p-4 text-center">
+            <Calculator className="h-8 w-8 mx-auto mb-2 text-violet-600" />
+            <h3 className="font-medium">VAT</h3>
+            <p className="text-sm text-muted-foreground">
+              Podatek od towarów i usług
+            </p>
+          </CardContent>
+        </Card>
 
-        <TabsContent value="zus" className="space-y-4">
-          <ZusPaymentTracker businessProfileId={selectedProfile.id} />
-        </TabsContent>
+        <Card className="cursor-pointer hover:shadow-md transition-shadow" onClick={() => navigate('/accounting/pit')}>
+          <CardContent className="p-4 text-center">
+            <FileText className="h-8 w-8 mx-auto mb-2 text-green-600" />
+            <h3 className="font-medium">PIT</h3>
+            <p className="text-sm text-muted-foreground">
+              Podatek dochodowy
+            </p>
+          </CardContent>
+        </Card>
 
-        <TabsContent value="pit" className="space-y-4">
-          <PitAdvancesTracker 
-            businessProfileId={selectedProfile.id}
-            taxType={selectedProfile.tax_type}
-            ryczaltRate={ryczaltRate}
-          />
-        </TabsContent>
-      </Tabs>
+        <Card className="cursor-pointer hover:shadow-md transition-shadow" onClick={() => navigate('/accounting/zus')}>
+          <CardContent className="p-4 text-center">
+            <Shield className="h-8 w-8 mx-auto mb-2 text-blue-600" />
+            <h3 className="font-medium">ZUS</h3>
+            <p className="text-sm text-muted-foreground">
+              Składki ubezpieczeniowe
+            </p>
+          </CardContent>
+        </Card>
+      </div>
 
       {/* Info Alert for VAT Exempt */}
       {isVatExempt && (
         <Alert>
-          <AlertCircle className="h-4 w-4" />
+          <FileText className="h-4 w-4" />
           <AlertDescription>
             Jesteś zwolniony z VAT (art. 113). Nie musisz składać deklaracji JPK_V7M.
             System będzie monitorował zbliżanie się do limitu 200 000 PLN.

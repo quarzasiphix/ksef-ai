@@ -62,10 +62,10 @@ const jdgNavSections: NavSection[] = [
         color: 'text-violet-500',
       },
       {
-        label: 'Ryczałt - kategorie',
-        href: '/accounting/ryczalt-categories',
+        label: 'Konta ryczałtowe',
+        href: '/accounting/ryczalt-accounts',
         icon: <Percent className="h-5 w-5" />,
-        description: 'Stawki ryczałtowe',
+        description: 'Zarządzaj kontami ryczałtowymi',
         color: 'text-amber-500',
       },
     ],
@@ -168,6 +168,13 @@ const spolkaNavSections: NavSection[] = [
   {
     title: 'PODATKI',
     items: [
+      {
+        label: 'Ewidencja VAT',
+        href: '/accounting/vat',
+        icon: <Calculator className="h-5 w-5" />,
+        description: 'Ewidencja VAT',
+        color: 'text-violet-500',
+      },
       {
         label: 'Zaliczki CIT',
         href: '/accounting/cit',

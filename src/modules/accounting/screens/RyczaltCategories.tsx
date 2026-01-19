@@ -5,7 +5,6 @@ import { Button } from '@/shared/ui/button';
 import { Badge } from '@/shared/ui/badge';
 import { Plus, Percent, Edit, Trash2 } from 'lucide-react';
 import { formatCurrency } from '@/shared/lib/invoice-utils';
-import { listRyczaltRevenueCategories, createRyczaltCategory, type RyczaltRevenueCategory } from '../data/ryczaltCategoriesRepository';
 import { listRyczaltAccounts, createDefaultRyczaltAccounts, getRyczaltAccountsSummary, createRyczaltAccount, type RyczaltAccount } from '../data/ryczaltAccountsRepository';
 import { toast } from 'sonner';
 

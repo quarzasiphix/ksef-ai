@@ -139,7 +139,7 @@ async function querySignals(businessProfileId: string) {
     supabase.from('jdg_revenue_register_lines').select('id', { count: 'exact', head: true }).eq('business_profile_id', businessProfileId),
     supabase.from('journal_entries').select('id', { count: 'exact', head: true }).eq('business_profile_id', businessProfileId),
     supabase.from('events').select('id', { count: 'exact', head: true }).eq('business_profile_id', businessProfileId),
-    supabase.from('ryczalt_revenue_categories').select('id', { count: 'exact', head: true }),
+    supabase.from('ryczalt_categories').select('id', { count: 'exact', head: true }),
     supabase.from('accounting_periods').select('id, is_locked', { count: 'exact' }).eq('business_profile_id', businessProfileId),
   ]);
 

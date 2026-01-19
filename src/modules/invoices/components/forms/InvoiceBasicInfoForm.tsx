@@ -15,7 +15,7 @@ import { BankAccount } from "@/modules/banking/bank";
 import { InvoiceItem } from "@/shared/types";
 import type { CashAccount } from "@/modules/accounting/kasa";
 import { cn } from "@/shared/lib/utils";
-import { listRyczaltRevenueCategories, type RyczaltRevenueCategory } from "@/modules/accounting/data/ryczaltCategoriesRepository";
+import { listRyczaltCategories, type RyczaltCategory } from "@/modules/accounting/data/ryczaltRepository";
 import { TransactionType } from "@/shared/types/common";
 
 interface InvoiceBasicInfoFormProps {
@@ -57,7 +57,7 @@ export const InvoiceBasicInfoForm: React.FC<InvoiceBasicInfoFormProps> = ({
 }) => {
   const currency = form.watch('currency') || 'PLN';
   const paymentMethod = form.watch('paymentMethod');
-  const [ryczaltCategories, setRyczaltCategories] = useState<RyczaltRevenueCategory[]>([]);
+  const [ryczaltCategories, setRyczaltCategories] = useState<RyczaltCategory[]>([]);
   const [isLoadingCategories, setIsLoadingCategories] = useState(false);
 
   // Determine if ryczałt category is required
@@ -73,7 +73,7 @@ export const InvoiceBasicInfoForm: React.FC<InvoiceBasicInfoFormProps> = ({
       
       setIsLoadingCategories(true);
       try {
-        const categories = await listRyczaltRevenueCategories(businessProfileId);
+        const categories = await listRyczaltCategories();
         setRyczaltCategories(categories);
       } catch (error) {
         console.error('Failed to load ryczałt categories:', error);

@@ -3,13 +3,32 @@ import { useBusinessProfile } from '@/shared/context/BusinessProfileContext';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/shared/ui/card';
 import { Button } from '@/shared/ui/button';
 import { Badge } from '@/shared/ui/badge';
-import { Plus, Edit, Trash2, CreditCard, TrendingUp, Calendar } from 'lucide-react';
+import { Plus, Trash2, CreditCard, TrendingUp, Calendar, Calculator, MoreHorizontal, FileText } from 'lucide-react';
 import { formatCurrency } from '@/shared/lib/invoice-utils';
-import { listRyczaltAccounts, getRyczaltAccountsSummary, createRyczaltAccount, deleteRyczaltAccount, getNextAccountNumber, type RyczaltAccount } from '../data/ryczaltRepository';
-import { listRyczaltCategories, type RyczaltCategory } from '../data/ryczaltRepository';
+import { format } from 'date-fns';
+import { pl } from 'date-fns/locale';
+import { 
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@/shared/ui/dropdown-menu';
+import { 
+  listRyczaltAccounts, 
+  getRyczaltAccountsSummary, 
+  createRyczaltAccount, 
+  deleteRyczaltAccount, 
+  getNextAccountNumber, 
+  listRyczaltCategories,
+  type RyczaltAccount,
+  type RyczaltCategory 
+} from '../data/ryczaltRepository';
+import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
+import { getContractsByBusinessProfile } from '@/modules/contracts/data/contractRepository';
+import { type Contract } from '@/shared/types';
 
-export default function RyczaltAccounts() {
+function RyczaltAccounts() {
   const { profiles, selectedProfileId } = useBusinessProfile();
   const selectedProfile = profiles?.find((p) => p.id === selectedProfileId);
   const [accounts, setAccounts] = useState<RyczaltAccount[]>([]);
@@ -17,10 +36,11 @@ export default function RyczaltAccounts() {
   const [summary, setSummary] = useState<any>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [showAddForm, setShowAddForm] = useState(false);
+  const [accountTaxInfo, setAccountTaxInfo] = useState<Record<string, any>>({});
+  const [contracts, setContracts] = useState<Contract[]>([]);
 
   useEffect(() => {
     if (!selectedProfile?.id) return;
-    
     loadData();
   }, [selectedProfile?.id]);
 
@@ -29,18 +49,36 @@ export default function RyczaltAccounts() {
     
     setIsLoading(true);
     try {
-      const [accountsData, categoriesData, summaryData] = await Promise.all([
+      const [accountsData, categoriesData, summaryData, contractsData] = await Promise.all([
         listRyczaltAccounts(selectedProfile.id),
         listRyczaltCategories(),
-        getRyczaltAccountsSummary(selectedProfile.id)
+        getRyczaltAccountsSummary(selectedProfile.id),
+        getContractsByBusinessProfile(selectedProfile.id)
       ]);
       
       setAccounts(accountsData);
       setCategories(categoriesData);
       setSummary(summaryData);
+      setContracts(contractsData);
+
+      // Load tax info for each account
+      const taxInfoPromises = accountsData.map(async (account) => {
+        try {
+          const invoices = await getAccountInvoices(account.id);
+          const taxInfo = calculateTaxInfo(invoices, account.category_rate);
+          return [account.id, taxInfo];
+        } catch (error) {
+          console.error(`Failed to load tax info for account ${account.id}:`, error);
+          return [account.id, { totalAmount: 0, taxAmount: 0, invoiceCount: 0 }];
+        }
+      });
+
+      const taxInfoResults = await Promise.all(taxInfoPromises);
+      const taxInfoMap = Object.fromEntries(taxInfoResults);
+      setAccountTaxInfo(taxInfoMap);
     } catch (error) {
-      console.error('Failed to load ryczałt data:', error);
-      toast.error('Błąd podczas ładowania danych ryczałtu');
+      console.error('Failed to load data:', error);
+      toast.error('Błąd podczas ładowania danych');
     } finally {
       setIsLoading(false);
     }
@@ -88,6 +126,104 @@ export default function RyczaltAccounts() {
     }
   };
 
+  const handleRemoveInvoiceFromAccount = async (invoiceId: string) => {
+    try {
+      console.log('Removing invoice from ryczalt account:', invoiceId);
+      
+      // Remove from register lines first (this is what the UI displays)
+      const { error: registerError } = await supabase
+        .from('jdg_revenue_register_lines')
+        .delete()
+        .eq('invoice_id', invoiceId);
+
+      if (registerError) {
+        console.error('Failed to delete from register lines:', registerError);
+        throw registerError;
+      }
+
+      // Remove ryczałt account link from invoice
+      const { error: invoiceError } = await supabase
+        .from('invoices')
+        .update({ ryczalt_account_id: null })
+        .eq('id', invoiceId);
+
+      if (invoiceError) {
+        console.error('Failed to update invoice:', invoiceError);
+        throw invoiceError;
+      }
+
+      // Update invoice status
+      const { error: statusError } = await supabase
+        .from('invoices')
+        .update({ 
+          accounting_status: 'unposted',
+          accounting_locked_at: null,
+          accounting_locked_by: null
+        })
+        .eq('id', invoiceId);
+
+      if (statusError) {
+        console.error('Failed to update invoice status:', statusError);
+        throw statusError;
+      }
+
+      console.log('Successfully removed invoice, reloading data...');
+      await loadData();
+      toast.success('Faktura usunięta z konta ryczałtowego');
+    } catch (error) {
+      console.error('Failed to remove invoice from ryczałt account:', error);
+      toast.error('Błąd podczas usuwania faktury z konta');
+    }
+  };
+
+  const getAccountInvoices = async (accountId: string) => {
+    const { data, error } = await supabase
+      .from('jdg_revenue_register_lines')
+      .select(`
+        *,
+        invoices!inner(
+          number,
+          customer_name,
+          total_gross_value,
+          currency,
+          exchange_rate,
+          sell_date
+        )
+      `)
+      .eq('ryczalt_account_id', accountId)
+      .order('occurred_at', { ascending: false });
+
+    if (error) throw error;
+    return data || [];
+  };
+
+  const calculateTaxInfo = (invoices: any[], rate: number) => {
+    // Calculate total with currency conversion
+    let totalAmount = 0;
+    invoices.forEach((inv) => {
+      const amount = parseFloat(inv.tax_base_amount) || 0;
+      const exchangeRate = inv.invoices?.exchange_rate || 1;
+      const currency = inv.invoices?.currency || 'PLN';
+      
+      if (currency === 'PLN' || exchangeRate === 1) {
+        totalAmount += amount;
+      } else {
+        totalAmount += amount * exchangeRate;
+      }
+    });
+    
+    const taxAmount = totalAmount * (rate / 100);
+    
+    return {
+      totalAmount,
+      taxAmount,
+      invoiceCount: invoices.length,
+      currentMonth: new Date().getMonth() + 1,
+      currentYear: new Date().getFullYear(),
+      deadlineDate: new Date(new Date().getFullYear(), new Date().getMonth() + 1, 20) // 20th of next month
+    };
+  };
+
   if (!selectedProfile) {
     return (
       <div className="p-6">
@@ -108,61 +244,76 @@ export default function RyczaltAccounts() {
             Zarządzaj kontami ryczałtowymi dla {selectedProfile.name}
           </p>
         </div>
-        <Button onClick={() => setShowAddForm(true)}>
-          <Plus className="h-4 w-4 mr-2" />
-          Dodaj konto
-        </Button>
+        <div className="flex gap-2">
+          <Button variant="outline" onClick={loadData} disabled={isLoading}>
+            {isLoading ? 'Odświeżanie...' : 'Odśwież'}
+          </Button>
+          <Button onClick={() => setShowAddForm(true)}>
+            <Plus className="h-4 w-4 mr-2" />
+            Dodaj konto
+          </Button>
+        </div>
       </div>
 
       {/* Summary Cards */}
-      {summary && (
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-          <Card>
-            <CardHeader className="pb-3">
-              <CardTitle className="text-base flex items-center gap-2">
-                <TrendingUp className="h-4 w-4 text-green-600" />
-                Łączne saldo
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold text-green-600">
-                {formatCurrency(summary.totalBalance)}
-              </div>
-              <p className="text-xs text-muted-foreground mt-1">
-                Wszystkie konta ryczałtowe
-              </p>
-            </CardContent>
-          </Card>
-          
-          <Card>
-            <CardHeader className="pb-3">
-              <CardTitle className="text-base flex items-center gap-2">
-                <Calendar className="h-4 w-4 text-blue-600" />
-                Saldo okresu
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold text-blue-600">
-                {formatCurrency(summary.periodBalance)}
-              </div>
-              <p className="text-xs text-muted-foreground mt-1">
-                Bieżący okres rozliczeniowy
-              </p>
-                {accounts.length}
-              </div>
-              <p className="text-xs text-muted-foreground mt-1">
-                Aktywne konta ryczałtowe
-              </p>
-            </CardContent>
-          </Card>
-        </div>
-      )}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <Card>
+          <CardHeader className="pb-3">
+            <CardTitle className="text-base flex items-center gap-2">
+              <TrendingUp className="h-4 w-4 text-green-600" />
+              Łączne przychody
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold text-green-600">
+              {formatCurrency(Object.values(accountTaxInfo).reduce((sum, info) => sum + (info.totalAmount || 0), 0))}
+            </div>
+            <p className="text-xs text-muted-foreground mt-1">
+              Wszystkie konta ryczałtowe
+            </p>
+          </CardContent>
+        </Card>
+        
+        <Card>
+          <CardHeader className="pb-3">
+            <CardTitle className="text-base flex items-center gap-2">
+              <Calculator className="h-4 w-4 text-blue-600" />
+              Łączny podatek
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold text-blue-600">
+              {formatCurrency(Object.values(accountTaxInfo).reduce((sum, info) => sum + (info.taxAmount || 0), 0))}
+            </div>
+            <p className="text-xs text-muted-foreground mt-1">
+              Podatek ryczałtowy do zapłaty
+            </p>
+          </CardContent>
+        </Card>
+        
+        <Card>
+          <CardHeader className="pb-3">
+            <CardTitle className="text-base flex items-center gap-2">
+              <CreditCard className="h-4 w-4 text-purple-600" />
+              Liczba faktur
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold text-purple-600">
+              {Object.values(accountTaxInfo).reduce((sum, info) => sum + (info.invoiceCount || 0), 0)}
+            </div>
+            <p className="text-xs text-muted-foreground mt-1">
+              Wszystkie zaksięgowane faktury
+            </p>
+          </CardContent>
+        </Card>
+      </div>
 
       {/* Accounts List */}
       {accounts.length === 0 ? (
         <Card>
           <CardContent className="text-center py-8">
-            <Account className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
+            <CreditCard className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
             <h3 className="text-lg font-semibold mb-2">Brak kont ryczałtowych</h3>
             <p className="text-muted-foreground mb-4">
               Nie masz jeszcze żadnych kont ryczałtowych. Dodaj pierwsze konto, aby rozpocząć.
@@ -180,7 +331,7 @@ export default function RyczaltAccounts() {
               <CardHeader>
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-3">
-                    <Account className="h-5 w-5 text-blue-600" />
+                    <CreditCard className="h-5 w-5 text-blue-600" />
                     <div>
                       <CardTitle className="text-lg">{account.account_name}</CardTitle>
                       <CardDescription className="flex items-center gap-2">
@@ -195,10 +346,10 @@ export default function RyczaltAccounts() {
                   </div>
                   <div className="text-right">
                     <div className="text-lg font-bold text-green-600">
-                      {formatCurrency(account.current_balance)}
+                      {formatCurrency(accountTaxInfo[account.id]?.totalAmount || 0)}
                     </div>
                     <div className="text-xs text-muted-foreground">
-                      Saldo bieżące
+                      Suma faktur ({accountTaxInfo[account.id]?.invoiceCount || 0})
                     </div>
                   </div>
                 </div>
@@ -209,6 +360,79 @@ export default function RyczaltAccounts() {
                     {account.description}
                   </p>
                 )}
+                
+                {/* Tax Calculations */}
+                {accountTaxInfo[account.id] && (
+                  <div className="bg-muted border border-border rounded-lg p-3 mb-3">
+                    <div className="flex items-center gap-2 mb-2">
+                      <Calculator className="h-4 w-4 text-primary" />
+                      <span className="text-sm font-medium text-foreground">Podsumowanie ryczałtu</span>
+                    </div>
+                    <div className="grid grid-cols-2 gap-4 text-sm">
+                      <div>
+                        <div className="text-muted-foreground">Liczba faktur:</div>
+                        <div className="font-medium">{accountTaxInfo[account.id].invoiceCount}</div>
+                      </div>
+                      <div>
+                        <div className="text-muted-foreground">Przychód:</div>
+                        <div className="font-medium">{formatCurrency(accountTaxInfo[account.id].totalAmount)}</div>
+                      </div>
+                      <div>
+                        <div className="text-muted-foreground">Podatek ({account.category_rate}%):</div>
+                        <div className="font-medium text-red-600">{formatCurrency(accountTaxInfo[account.id].taxAmount)}</div>
+                      </div>
+                      <div>
+                        <div className="text-muted-foreground">Termin płatności:</div>
+                        <div className="font-medium">
+                          {format(accountTaxInfo[account.id].deadlineDate, 'dd MMMM yyyy', { locale: pl })}
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {/* Contracts Section */}
+                <div className="bg-muted border border-border rounded-lg p-3">
+                  <div className="flex items-center justify-between mb-2">
+                    <div className="flex items-center gap-2">
+                      <FileText className="h-4 w-4 text-primary" />
+                      <span className="text-sm font-medium text-foreground">Powiązane umowy</span>
+                    </div>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="h-6 px-2 text-xs"
+                      onClick={() => window.location.href = '/contracts'}
+                    >
+                      Zarządzaj
+                    </Button>
+                  </div>
+                  <div className="space-y-1">
+                    {contracts.filter(contract => 
+                      contract.contract_type === 'service' || 
+                      contract.contract_type === 'general'
+                    ).slice(0, 3).map((contract) => (
+                      <div key={contract.id} className="flex items-center justify-between text-xs">
+                        <div className="flex items-center gap-2">
+                          <span className="font-medium">{contract.number}</span>
+                          <span className="text-muted-foreground">{contract.subject}</span>
+                        </div>
+                        <span className="text-muted-foreground">
+                          {format(new Date(contract.issueDate), 'dd.MM.yyyy', { locale: pl })}
+                        </span>
+                      </div>
+                    ))}
+                    {contracts.filter(contract => 
+                      contract.contract_type === 'service' || 
+                      contract.contract_type === 'general'
+                    ).length === 0 && (
+                      <div className="text-xs text-muted-foreground text-center py-2">
+                        Brak powiązanych umów
+                      </div>
+                    )}
+                  </div>
+                </div>
+
                 <div className="flex justify-between items-center">
                   <div className="text-sm text-muted-foreground">
                     Stawka podatku: <strong>{account.category_rate}%</strong>
@@ -218,15 +442,31 @@ export default function RyczaltAccounts() {
                       </span>
                     )}
                   </div>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => handleDeleteAccount(account.id)}
-                    className="text-red-600 hover:text-red-700"
-                  >
-                    <Trash2 className="h-4 w-4 mr-1" />
-                    Usuń
-                  </Button>
+                  <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="text-gray-600 hover:text-gray-700"
+                      >
+                        <MoreHorizontal className="h-4 w-4" />
+                      </Button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="end">
+                      <DropdownMenuItem
+                        onClick={() => window.location.href = '/accounting/ewidencja'}
+                      >
+                        Zobacz faktury
+                      </DropdownMenuItem>
+                      <DropdownMenuItem
+                        className="text-red-600"
+                        onClick={() => handleDeleteAccount(account.id)}
+                      >
+                        <Trash2 className="h-4 w-4 mr-2" />
+                        Usuń konto
+                      </DropdownMenuItem>
+                    </DropdownMenuContent>
+                  </DropdownMenu>
                 </div>
               </CardContent>
             </Card>
@@ -271,10 +511,10 @@ function AddRyczaltAccountForm({ categories, onSubmit, onCancel }: AddRyczaltAcc
   const selectedCategory = categories.find(c => c.id === formData.categoryId);
 
   return (
-    <Card className="border-2 border-blue-200 bg-blue-50">
+    <Card>
       <CardHeader>
         <CardTitle className="flex items-center gap-2">
-          <Plus className="h-5 w-5 text-blue-600" />
+          <Plus className="h-5 w-5" />
           Dodaj konto ryczałtowe
         </CardTitle>
         <CardDescription>
@@ -333,7 +573,7 @@ function AddRyczaltAccountForm({ categories, onSubmit, onCancel }: AddRyczaltAcc
           </div>
           
           <div className="flex gap-2 pt-4">
-            <Button type="submit" className="bg-blue-600 hover:bg-blue-700">
+            <Button type="submit">
               <Plus className="h-4 w-4 mr-2" />
               Dodaj konto
             </Button>
@@ -346,3 +586,5 @@ function AddRyczaltAccountForm({ categories, onSubmit, onCancel }: AddRyczaltAcc
     </Card>
   );
 }
+
+export default RyczaltAccounts;

@@ -18,14 +18,14 @@ const AccountingShell = () => {
   
   if (isRootPath && selectedProfile) {
     return (
-      <AccountingLayout showSidebar={isSpZoo}>
+      <AccountingLayout showSidebar={true}>
         {isJdg ? <JdgAccounting /> : <SpzooAccounting />}
       </AccountingLayout>
     );
   }
 
   return (
-    <AccountingLayout showSidebar={isSpZoo}>
+    <AccountingLayout showSidebar={true}>
       <Outlet />
     </AccountingLayout>
   );

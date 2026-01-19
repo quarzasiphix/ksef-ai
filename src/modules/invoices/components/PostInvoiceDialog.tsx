@@ -14,7 +14,7 @@ import { Label } from '@/shared/ui/label';
 import { AlertCircle, Lock, Calendar, Tag } from 'lucide-react';
 import { format } from 'date-fns';
 import { pl } from 'date-fns/locale';
-import { listRyczaltRevenueCategories, type RyczaltRevenueCategory } from '@/modules/accounting/data/ryczaltCategoriesRepository';
+import { listRyczaltAccounts, type RyczaltAccount } from '@/modules/accounting/data/ryczaltRepository';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import type { Invoice } from '@/shared/types';
@@ -39,9 +39,9 @@ export function PostInvoiceDialog({
   onSuccess
 }: PostInvoiceDialogProps) {
   const [isPosting, setIsPosting] = useState(false);
-  const [selectedCategoryId, setSelectedCategoryId] = useState<string>('');
-  const [ryczaltCategories, setRyczaltCategories] = useState<RyczaltRevenueCategory[]>([]);
-  const [isLoadingCategories, setIsLoadingCategories] = useState(false);
+  const [selectedAccountId, setSelectedAccountId] = useState<string>('');
+  const [ryczaltAccounts, setRyczaltAccounts] = useState<RyczaltAccount[]>([]);
+  const [isLoadingAccounts, setIsLoadingAccounts] = useState(false);
   const [periodInfo, setPeriodInfo] = useState<{ year: number; month: number; label: string } | null>(null);
 
   const isJdg = businessProfile.entityType === 'dzialalnosc';
@@ -78,51 +78,57 @@ export function PostInvoiceDialog({
     }
   }, [invoice.issueDate]);
 
-  // Fetch ryczałt categories if needed
+  // Fetch ryczałt accounts if needed
   useEffect(() => {
-    async function fetchCategories() {
+    async function fetchAccounts() {
       if (!needsRyczaltCategory || !businessProfile.id) return;
       
-      setIsLoadingCategories(true);
+      setIsLoadingAccounts(true);
       try {
-        const categories = await listRyczaltRevenueCategories(businessProfile.id);
-        setRyczaltCategories(categories);
+        const accounts = await listRyczaltAccounts(businessProfile.id);
+        setRyczaltAccounts(accounts);
         
-        // Pre-select if invoice already has a category
-        if ((invoice as any).ryczalt_category_id) {
-          setSelectedCategoryId((invoice as any).ryczalt_category_id);
+        // Pre-select if invoice already has an account
+        if ((invoice as any).ryczalt_account_id) {
+          setSelectedAccountId((invoice as any).ryczalt_account_id);
         }
       } catch (error) {
-        console.error('Failed to load ryczałt categories:', error);
-        toast.error('Nie udało się załadować kategorii ryczałtu');
+        console.error('Failed to load ryczałt accounts:', error);
+        toast.error('Nie udało się załadować kont ryczałtowych');
       } finally {
-        setIsLoadingCategories(false);
+        setIsLoadingAccounts(false);
       }
     }
     
     if (open) {
-      fetchCategories();
+      fetchAccounts();
     }
   }, [open, needsRyczaltCategory, businessProfile.id, invoice]);
 
   const handlePost = async () => {
-    if (needsRyczaltCategory && !selectedCategoryId) {
-      toast.error('Musisz wybrać kategorię ryczałtu');
+    if (needsRyczaltCategory && !selectedAccountId) {
+      toast.error('W ryczałcie musisz wybrać konto ryczałtowe');
+      return;
+    }
+
+    // Check if invoice is already posted
+    if (invoice.accountingStatus === 'posted') {
+      toast.error('Ta faktura została już zaksięgowana');
       return;
     }
 
     setIsPosting(true);
     try {
-      // Update invoice with ryczałt category if needed - MUST complete before posting
-      if (needsRyczaltCategory && selectedCategoryId) {
+      // Update invoice with ryczałt account if needed - MUST complete before posting
+      if (needsRyczaltCategory && selectedAccountId) {
         const { error: updateError } = await supabase
           .from('invoices')
-          .update({ ryczalt_category_id: selectedCategoryId })
+          .update({ ryczalt_account_id: selectedAccountId })
           .eq('id', invoice.id);
 
         if (updateError) {
-          console.error('Failed to update ryczałt category:', updateError);
-          throw new Error('Nie udało się zapisać kategorii ryczałtu');
+          console.error('Failed to update ryczałt account:', updateError);
+          throw new Error('Nie udało się zapisać konta ryczałtowego');
         }
 
         // Wait a moment to ensure database consistency
@@ -160,7 +166,7 @@ export function PostInvoiceDialog({
     }
   };
 
-  const selectedCategory = ryczaltCategories.find(c => c.id === selectedCategoryId);
+  const selectedAccount = ryczaltAccounts.find(a => a.id === selectedAccountId);
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -187,39 +193,39 @@ export function PostInvoiceDialog({
             </div>
           )}
 
-          {/* Ryczałt Category Selection (JDG + ryczałt + income only) */}
+          {/* Ryczałt Account Selection (JDG + ryczałt + income only) */}
           {needsRyczaltCategory && (
             <div className="space-y-2">
-              <Label htmlFor="ryczalt-category" className="flex items-center gap-2">
+              <Label htmlFor="ryczalt-account" className="flex items-center gap-2">
                 <Tag className="h-4 w-4" />
-                Kategoria ryczałtu *
+                Konto ryczałtowe *
               </Label>
-              {isLoadingCategories ? (
-                <div className="text-sm text-muted-foreground">Ładowanie kategorii...</div>
-              ) : ryczaltCategories.length === 0 ? (
+              {isLoadingAccounts ? (
+                <div className="text-sm text-muted-foreground">Ładowanie kont...</div>
+              ) : ryczaltAccounts.length === 0 ? (
                 <Alert variant="destructive">
                   <AlertCircle className="h-4 w-4" />
                   <AlertDescription>
-                    Nie masz żadnych kategorii ryczałtu. Musisz najpierw dodać kategorię w ustawieniach.
+                    Nie masz żadnych kont ryczałtowych. Przejdź do Księgowość → Konta ryczałtowe, aby dodać konto.
                   </AlertDescription>
                 </Alert>
               ) : (
                 <>
-                  <Select value={selectedCategoryId} onValueChange={setSelectedCategoryId}>
-                    <SelectTrigger id="ryczalt-category">
-                      <SelectValue placeholder="Wybierz kategorię przychodu" />
+                  <Select value={selectedAccountId} onValueChange={setSelectedAccountId}>
+                    <SelectTrigger id="ryczalt-account">
+                      <SelectValue placeholder="Wybierz konto ryczałtowe" />
                     </SelectTrigger>
                     <SelectContent>
-                      {ryczaltCategories.map((category) => (
-                        <SelectItem key={category.id} value={category.id}>
-                          {category.name} ({category.rate}%)
+                      {ryczaltAccounts.map((account) => (
+                        <SelectItem key={account.id} value={account.id}>
+                          {account.account_name} - {account.category_name} ({account.category_rate}%)
                         </SelectItem>
                       ))}
                     </SelectContent>
                   </Select>
-                  {selectedCategory && (
+                  {selectedAccount && (
                     <div className="text-xs text-muted-foreground">
-                      Stawka podatku: {selectedCategory.rate}%
+                      Konto: {selectedAccount.account_number} • Stawka: {selectedAccount.category_rate}%
                     </div>
                   )}
                 </>
@@ -236,7 +242,7 @@ export function PostInvoiceDialog({
                 <li>Dat (wystawienia, sprzedaży, płatności)</li>
                 <li>Kwot i stawek VAT</li>
                 <li>Danych kontrahenta</li>
-                {needsRyczaltCategory && <li>Kategorii ryczałtu</li>}
+                {needsRyczaltCategory && <li>Konta ryczałtowego</li>}
               </ul>
             </AlertDescription>
           </Alert>
@@ -261,9 +267,9 @@ export function PostInvoiceDialog({
           </Button>
           <Button
             onClick={handlePost}
-            disabled={isPosting || (needsRyczaltCategory && (!selectedCategoryId || ryczaltCategories.length === 0))}
+            disabled={isPosting || invoice.accountingStatus === 'posted' || (needsRyczaltCategory && (!selectedAccountId || ryczaltAccounts.length === 0))}
           >
-            {isPosting ? 'Księgowanie...' : 'Zaksięguj'}
+            {invoice.accountingStatus === 'posted' ? 'Już zaksięgowano' : isPosting ? 'Księgowanie...' : 'Zaksięguj'}
           </Button>
         </DialogFooter>
       </DialogContent>
