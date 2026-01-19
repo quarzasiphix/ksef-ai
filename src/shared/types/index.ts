@@ -17,7 +17,11 @@ export interface BusinessProfile {
   logo?: string;
   isDefault?: boolean;
   entityType?: 'dzialalnosc' | 'sp_zoo' | 'sa'; // Forma prawna: DG (default), Sp. z o.o., S.A.
-  tax_type?: "skala" | "liniowy" | "ryczalt" | null;
+  taxType?: "skala" | "liniowy" | "ryczalt" | "karta" | null; // Camel case alias
+  tax_type?: "skala" | "liniowy" | "ryczalt" | "karta" | null; // Snake case (database)
+  ryczaltRates?: Record<string, number>; // Ryczałt rates by activity type
+  defaultRyczaltRate?: number; // Default ryczałt rate
+  linearTaxRate?: number; // Linear tax rate (14% or 19%)
   monthlySocialSecurity?: number; // Monthly social security contribution amount
   monthlyHealthInsurance?: number; // Monthly health insurance contribution amount
   accountant_email?: string; // Email for accountant
@@ -297,6 +301,20 @@ export interface Invoice {
   bankAccountId?: string | null;
   bankAccountNumber?: string;
   decisionId?: string;
+  // Expense acceptance workflow
+  acceptanceStatus?: 'pending' | 'accepted' | 'rejected' | 'auto_accepted';
+  acceptedAt?: string;
+  acceptedBy?: string;
+  // Payment tracking
+  paymentDate?: string;
+  paymentMethodUsed?: 'cash' | 'bank' | 'card' | 'other';
+  paymentAccountId?: string;
+  cashTransactionId?: string;
+  accountMovementId?: string;
+  // Accounting status
+  accountingStatus?: 'unposted' | 'posted' | 'needs_review' | 'rejected';
+  postedAt?: string;
+  journalEntryId?: string;
   decisionReference?: string;
   projectId?: string; // Project assignment
   currency?: string;

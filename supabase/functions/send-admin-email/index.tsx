@@ -18,6 +18,7 @@ interface AdminEmailRequest {
   templateKey: string;
   recipientEmail: string;
   variables?: Record<string, any>;
+  invoiceId?: string; // Optional invoice ID for standardized variables
 }
 
 serve(async (req) => {
@@ -90,7 +91,7 @@ serve(async (req) => {
       );
     }
 
-    const { templateKey, recipientEmail, variables } = requestPayload;
+    const { templateKey, recipientEmail, variables, invoiceId } = requestPayload;
 
     if (!templateKey || !recipientEmail) {
       return new Response(
@@ -159,11 +160,143 @@ serve(async (req) => {
       });
     }
 
-    // Merge variables with email
-    const allVariables: Record<string, any> = {
+    // Check if template uses standardized invoice variables
+    let allVariables: Record<string, any> = {
       ...(variables || {}),
       email: recipientEmail,
     };
+    
+    if (template.invoice_variables?.use_standardized && invoiceId) {
+      try {
+        const { data: standardizedVars, error: varsError } = await serviceSupabase
+          .rpc('get_standardized_invoice_variables', { p_invoice_id: invoiceId });
+
+        console.log("RPC call result:", { data: standardizedVars, error: varsError });
+
+        if (varsError) {
+          console.error("RPC error for standardized variables:", varsError);
+          // For mock invoice IDs, provide mock standardized data
+          if (invoiceId === 'mock-invoice-id-for-testing') {
+            const mockStandardizedVars = [{
+              // Basic invoice info
+              invoice_id: 'mock-invoice-id-for-testing',
+              invoice_number: 'FV/2024/001',
+              invoice_date: '15.01.2024',
+              issue_date: '15.01.2024',
+              due_date: '30.01.2024',
+              payment_date: '',
+              created_at: '2024-01-15T10:00:00Z',
+              status: 'pending',
+              
+              // Financial data
+              currency: 'PLN',
+              subtotal_amount: '200,00',
+              tax_amount: '46,00',
+              total_amount: '246,00',
+              paid_amount: '0,00',
+              remaining_amount: '246,00',
+              total_amount_formatted: '246,00 PLN',
+              subtotal_amount_formatted: '200,00 PLN',
+              tax_amount_formatted: '46,00 PLN',
+              remaining_amount_formatted: '246,00 PLN',
+              
+              // Customer information
+              customer_id: 'mock-customer-id',
+              customer_name: 'Test Client',
+              customer_email: 'client@example.com',
+              customer_tax_id: '123456789',
+              customer_address: 'Test Address 123',
+              customer_city: 'Warsaw',
+              customer_postal_code: '00-001',
+              customer_country: 'Poland',
+              customer_phone: '+48 123 456 789',
+              
+              // Business profile (issuer) information
+              business_id: 'mock-business-id',
+              business_name: 'Test Business',
+              business_email: 'business@example.com',
+              business_phone: '+48 987 654 321',
+              business_tax_id: '987654321',
+              business_address: 'Business Address 456',
+              business_city: 'Krakow',
+              business_postal_code: '30-001',
+              business_country: 'Poland',
+              business_bank_account: '12 3456 7890 1234 5678 9012 3456',
+              
+              // Invoice items (will be overridden by custom variables)
+              items: [],
+              items_count: 0,
+              
+              // Calculated fields
+              is_paid: false,
+              is_overdue: false,
+              days_until_due: 15,
+              
+              // Additional fields
+              notes: '',
+              description: 'Test invoice',
+              payment_terms: 'Payment due within 14 days',
+              invoice_url: 'https://example.com/invoice/mock-invoice-id-for-testing',
+              download_pdf_url: 'https://example.com/invoice/mock-invoice-id-for-testing/pdf',
+              payment_url: 'https://example.com/pay/mock-invoice-id-for-testing',
+            }];
+            
+            const standardizedObject = mockStandardizedVars[0] || {};
+            
+            // Merge standardized variables with custom variables
+            // Custom variables take precedence over standardized ones
+            allVariables = {
+              ...standardizedObject,
+              ...variables, // Custom variables override standardized ones
+              email: recipientEmail,
+            };
+            
+            console.log("Using mock standardized variables with custom variables:", {
+              standardized: standardizedObject,
+              custom: variables,
+              merged: allVariables
+            });
+          } else {
+            // For real invoice IDs, if RPC fails, continue with custom variables only
+            console.warn("Failed to get standardized variables, using custom variables only");
+            allVariables = {
+              ...(variables || {}),
+              email: recipientEmail,
+            };
+          }
+        } else if (standardizedVars && standardizedVars.length > 0) {
+          // Convert standardized variables to proper format
+          const standardizedObject = standardizedVars[0] || {};
+          
+          // Merge standardized variables with custom variables
+          // Custom variables take precedence over standardized ones
+          allVariables = {
+            ...standardizedObject,
+            ...variables, // Custom variables override standardized ones
+            email: recipientEmail,
+          };
+          
+          console.log("Variable merge:", {
+            standardized: standardizedObject,
+            custom: variables,
+            merged: allVariables
+          });
+        } else {
+          console.warn("No standardized variables returned, using custom variables only");
+          allVariables = {
+            ...(variables || {}),
+            email: recipientEmail,
+          };
+        }
+      } catch (error) {
+        console.error("Exception while getting standardized variables:", error);
+        // Continue with custom variables only
+        allVariables = {
+          ...(variables || {}),
+          email: recipientEmail,
+        };
+      }
+    }
 
     // Apply variable replacements in edge function
     const subjectTemplate = template.subject_pl || template.subject || '';
@@ -185,17 +318,35 @@ serve(async (req) => {
       templateName: template.name,
     };
 
+    console.log("Sending to n8n:", {
+      url: n8nWebhookUrl,
+      body: n8nBody
+    });
+
     const n8nResponse = await fetch(n8nWebhookUrl, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(n8nBody),
     });
 
+    console.log("n8n response status:", n8nResponse.status);
+    console.log("n8n response headers:", Object.fromEntries(n8nResponse.headers.entries()));
+
     if (!n8nResponse.ok) {
       const errorText = await n8nResponse.text();
-      console.error("N8N webhook error:", errorText);
+      console.error("N8N webhook error:", {
+        status: n8nResponse.status,
+        statusText: n8nResponse.statusText,
+        body: errorText,
+        url: n8nWebhookUrl
+      });
       return new Response(
-        JSON.stringify({ error: "Failed to trigger email send", details: errorText }),
+        JSON.stringify({ 
+          error: "Failed to trigger email send", 
+          details: errorText,
+          status: n8nResponse.status,
+          url: n8nWebhookUrl
+        }),
         { status: 502, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }

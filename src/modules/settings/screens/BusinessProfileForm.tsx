@@ -45,9 +45,11 @@ const formSchema = z.object({
   isDefault: z.boolean().default(false),
   entityType: z.enum(["dzialalnosc", "sp_zoo", "sa"]).default("dzialalnosc"),
   taxType: z.enum(["skala", "liniowy", "ryczalt", "karta"]).default("skala"),
+  defaultRyczaltRate: z.number().min(0).max(100).optional(),
   pkdCodes: z.array(z.string()).optional(),
   is_vat_exempt: z.boolean().optional().default(false),
   vat_exemption_reason: z.string().optional().or(z.literal("")),
+  vat_threshold_pln: z.number().optional(),
   // Spółka z o.o. specific fields
   share_capital: z.number().optional(),
   krs_number: z.string().optional(),
@@ -57,6 +59,8 @@ const formSchema = z.object({
   headquarters_postal_code: z.string().optional(),
   headquarters_city: z.string().optional(),
   pkd_main: z.string().optional(),
+  business_start_date: z.string().optional(),
+  accounting_start_date: z.string().optional(),
 });
 
 interface BusinessProfileFormProps {
@@ -94,9 +98,11 @@ const BusinessProfileForm = ({
       isDefault: initialData?.isDefault || false,
       entityType: lockedEntityType || initialData?.entityType || "dzialalnosc",
       taxType: (initialData as any)?.taxType || "skala",
+      defaultRyczaltRate: initialData?.defaultRyczaltRate || undefined,
       pkdCodes: (initialData as any)?.pkdCodes || [],
       is_vat_exempt: initialData?.is_vat_exempt || false,
       vat_exemption_reason: initialData?.vat_exemption_reason || "",
+      vat_threshold_pln: initialData?.vat_threshold_pln || undefined,
       share_capital: initialData?.share_capital || undefined,
       krs_number: initialData?.krs_number || "",
       court_registry: initialData?.court_registry || "",
@@ -105,6 +111,8 @@ const BusinessProfileForm = ({
       headquarters_postal_code: initialData?.headquarters_postal_code || "",
       headquarters_city: initialData?.headquarters_city || "",
       pkd_main: initialData?.pkd_main || "",
+      business_start_date: (initialData as any)?.business_start_date || "",
+      accounting_start_date: (initialData as any)?.accounting_start_date || "",
     },
   });
 
@@ -589,30 +597,153 @@ const BusinessProfileForm = ({
 
           {/* Only show tax type for JDG (działalność gospodarcza) */}
           {form.watch("entityType") === "dzialalnosc" && (
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <FormField
-                control={form.control}
-                name="taxType"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Forma opodatkowania</FormLabel>
-                    <Select onValueChange={field.onChange} value={field.value}>
-                      <FormControl>
-                        <SelectTrigger>
-                          <SelectValue placeholder="Wybierz formę opodatkowania" />
-                        </SelectTrigger>
-                      </FormControl>
-                      <SelectContent>
-                        <SelectItem value="skala">Skala podatkowa</SelectItem>
-                        <SelectItem value="liniowy">Podatek liniowy 19%</SelectItem>
-                        <SelectItem value="ryczalt">Ryczałt od przychodów ewidencjonowanych</SelectItem>
-                        <SelectItem value="karta">Karta podatkowa</SelectItem>
-                      </SelectContent>
-                    </Select>
-                    <FormMessage />
-                  </FormItem>
+            <div className="space-y-4 p-4 border rounded-lg bg-amber-50 dark:bg-amber-950">
+              <h3 className="font-semibold text-lg">Podatki i rozliczenia</h3>
+              
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <FormField
+                  control={form.control}
+                  name="taxType"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Forma opodatkowania</FormLabel>
+                      <Select onValueChange={field.onChange} value={field.value}>
+                        <FormControl>
+                          <SelectTrigger>
+                            <SelectValue placeholder="Wybierz formę opodatkowania" />
+                          </SelectTrigger>
+                        </FormControl>
+                        <SelectContent>
+                          <SelectItem value="skala">Skala podatkowa (PIT)</SelectItem>
+                          <SelectItem value="liniowy">Podatek liniowy 19%</SelectItem>
+                          <SelectItem value="ryczalt">Ryczałt od przychodów ewidencjonowanych</SelectItem>
+                          <SelectItem value="karta">Karta podatkowa</SelectItem>
+                        </SelectContent>
+                      </Select>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                
+                {form.watch("taxType") === "ryczalt" && (
+                  <div className="col-span-2 p-4 bg-blue-50 dark:bg-blue-950 rounded-lg">
+                    <h4 className="font-semibold mb-2 text-blue-900 dark:text-blue-100">
+                      Stawki ryczałtu przypisane do produktów/usług
+                    </h4>
+                    <p className="text-sm text-blue-800 dark:text-blue-200">
+                      W ryczałcie stawka zależy od rodzaju przychodu (produktu/usługi), nie od firmy.
+                    </p>
+                    <p className="text-sm text-blue-800 dark:text-blue-200 mt-2">
+                      Przykład: Firma budowlana może mieć:
+                    </p>
+                    <ul className="text-sm text-blue-800 dark:text-blue-200 list-disc list-inside mt-1 space-y-1">
+                      <li>Budowa mieszkalna → 5.5%</li>
+                      <li>Prace ogrodowe → 8%</li>
+                      <li>Handel materiałami → 3%</li>
+                    </ul>
+                    <p className="text-sm text-blue-800 dark:text-blue-200 mt-3 font-medium">
+                      Stawkę przypisujesz do każdej faktury podczas wystawiania.
+                    </p>
+                  </div>
                 )}
-              />
+              </div>
+              
+              {/* Business Dates */}
+              <div className="space-y-4">
+                <h3 className="text-lg font-semibold">Daty działalności</h3>
+                
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <FormField
+                    control={form.control}
+                    name="business_start_date"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Data rozpoczęcia działalności</FormLabel>
+                        <FormControl>
+                          <Input 
+                            type="date" 
+                            {...field}
+                            value={field.value || ''}
+                          />
+                        </FormControl>
+                        <p className="text-xs text-muted-foreground">
+                          Używamy tej daty do osi czasu obowiązków i okresów księgowych
+                        </p>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+
+                  <FormField
+                    control={form.control}
+                    name="accounting_start_date"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Data rozpoczęcia księgowości w systemie (opcjonalnie)</FormLabel>
+                        <FormControl>
+                          <Input 
+                            type="date" 
+                            {...field}
+                            value={field.value || ''}
+                          />
+                        </FormControl>
+                        <p className="text-xs text-muted-foreground">
+                          Jeśli przenosisz księgowość, wybierz datę od której chcesz prowadzić ewidencję tutaj
+                        </p>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <FormField
+                  control={form.control}
+                  name="is_vat_exempt"
+                  render={({ field }) => (
+                    <FormItem className="flex flex-row items-start space-x-3 space-y-0 rounded-md border p-4">
+                      <FormControl>
+                        <Checkbox
+                          checked={field.value}
+                          onCheckedChange={field.onChange}
+                        />
+                      </FormControl>
+                      <div className="space-y-1 leading-none">
+                        <FormLabel>Zwolniony z VAT (art. 113)</FormLabel>
+                        <p className="text-xs text-muted-foreground">
+                          Przychody poniżej 200 000 PLN rocznie
+                        </p>
+                      </div>
+                    </FormItem>
+                  )}
+                />
+                
+                {form.watch("is_vat_exempt") && (
+                  <FormField
+                    control={form.control}
+                    name="vat_threshold_pln"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Limit VAT (PLN)</FormLabel>
+                        <FormControl>
+                          <Input 
+                            type="number" 
+                            step="1000"
+                            placeholder="200000"
+                            {...field}
+                            onChange={(e) => field.onChange(e.target.value ? parseFloat(e.target.value) : undefined)}
+                          />
+                        </FormControl>
+                        <p className="text-xs text-muted-foreground">
+                          System będzie monitorował zbliżanie się do limitu
+                        </p>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                )}
+              </div>
             </div>
           )}
 
