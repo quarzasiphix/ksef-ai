@@ -105,13 +105,13 @@ const Dashboard = () => {
   const showOnboardingWidget = dataReady && invoices.length === 0;
 
   return (
-    <div className="space-y-6 pb-20 px-4 md:px-6">
+    <div className="space-y-6 pb-20 px-4 md:px-6 w-full max-w-full overflow-x-hidden">
       {showOnboardingWidget && (
         <AccountOnboardingWidget mode="inline" />
       )}
       
       {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 w-full">
         <div>
           <h1 className="text-2xl md:text-3xl font-bold">
             {isSpoolka ? 'Przegląd Spółki' : 'Dashboard'}

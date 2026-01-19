@@ -143,8 +143,8 @@ const InvoiceList = () => {
   }
   
   return (
-    <div className="space-y-6 px-2">
-      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+    <div className="space-y-6 px-2 w-full max-w-full overflow-x-hidden">
+      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 w-full">
         <div>
           <h1 className="text-3xl font-bold">Faktury</h1>
           <p className="text-muted-foreground">
@@ -186,7 +186,7 @@ const InvoiceList = () => {
       </div>
       
       {/* Smart Filters - Accounting Views */}
-      <Card className="bg-blue-50 dark:bg-blue-900/20 border-blue-200 dark:border-blue-800">
+      <Card className="bg-blue-50 dark:bg-blue-900/20 border-blue-200 dark:border-blue-800 w-full">
         <CardHeader className="pb-3">
           <div className="flex items-center gap-2">
             <Filter className="h-4 w-4 text-blue-600" />
@@ -195,7 +195,7 @@ const InvoiceList = () => {
             </CardTitle>
           </div>
         </CardHeader>
-        <CardContent className="flex flex-wrap gap-2">
+        <CardContent className="flex flex-wrap gap-2 w-full overflow-x-auto">
           <Button
             variant={smartFilter === 'all' ? 'default' : 'outline'}
             size="sm"
@@ -243,7 +243,7 @@ const InvoiceList = () => {
       </Card>
 
       {/* Document Type Filter */}
-      <div className="flex items-center gap-2 overflow-x-hidden">
+      <div className="flex items-center gap-2 w-full overflow-x-auto">
         {mainTypes.map((type) => (
           <Button
             key={type}
@@ -278,9 +278,9 @@ const InvoiceList = () => {
         )}
       </div>
       
-      <Card>
+      <Card className="w-full">
         <CardHeader className="pb-3">
-          <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+          <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 w-full">
             <div>
               <CardTitle>
                 {selectedType === "all" 
@@ -312,7 +312,7 @@ const InvoiceList = () => {
               {searchTerm.length > 0 ? "Brak wyników wyszukiwania" : "Brak dokumentów"}
             </div>
           ) : (
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 w-full">
               {filteredInvoices.map(invoice => {
                 // Debug - sprawdź pierwszą fakturę
                 if (invoice.number === 'F/16') {

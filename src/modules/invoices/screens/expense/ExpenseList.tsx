@@ -185,9 +185,9 @@ export default function ExpenseList() {
   }
 
   return (
-    <div className="container mx-auto py-6 space-y-6">
+    <div className="w-full max-w-full overflow-x-hidden py-6 space-y-6 px-2 sm:px-4">
       {/* Header */}
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 w-full">
         <div>
           <h1 className="text-3xl font-bold flex items-center gap-3">
             <ArrowDownCircle className="h-8 w-8 text-red-500" />
@@ -228,7 +228,7 @@ export default function ExpenseList() {
       </div>
 
       {/* Stats Cards */}
-      <div className="grid gap-4 md:grid-cols-4">
+      <div className="grid gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 w-full">
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">Wszystkie wydatki</CardTitle>
@@ -277,7 +277,7 @@ export default function ExpenseList() {
       </div>
 
       {/* Tabs and View Toggle */}
-      <div className="flex items-center justify-between gap-4 flex-wrap">
+      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 w-full">
         <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as any)} className="flex-1">
           <TabsList>
             <TabsTrigger value="all">

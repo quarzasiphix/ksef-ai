@@ -26,6 +26,7 @@ import {
   BookOpen,
 } from 'lucide-react';
 import { Invoice } from '@/shared/types';
+import { useBusinessProfile } from '@/shared/context/BusinessProfileContext';
 
 interface ProfessionalInvoiceRowMobileProps {
   invoice: Invoice;
@@ -52,12 +53,19 @@ const ProfessionalInvoiceRowMobile: React.FC<ProfessionalInvoiceRowMobileProps> 
   onDuplicate,
   onTogglePaid,
 }) => {
+  // Get business profile context
+  const { profiles: businessProfiles } = useBusinessProfile();
+  
   // Calculate state
   const isPaid = invoice.isPaid || invoice.paid;
   const isBooked = (invoice as any).booked_to_ledger;
   const hasDecision = !!invoice.decisionId;
   const isOverdue = invoice.dueDate && !isPaid && new Date(invoice.dueDate) < new Date();
   const isVatExempt = invoice.fakturaBezVAT || invoice.vat === false;
+  
+  // Check if this is a JDG entity
+  const businessProfile = businessProfiles.find(p => p.id === invoice.businessProfileId);
+  const isJDG = businessProfile?.entityType === 'dzialalnosc';
   
   // Calculate time pressure
   const getDueDateStatus = () => {
@@ -152,7 +160,7 @@ const ProfessionalInvoiceRowMobile: React.FC<ProfessionalInvoiceRowMobileProps> 
           {isPaid && !isBooked && (
             <span className="flex items-center gap-1 text-yellow-700 dark:text-yellow-400 text-xs">
               <Clock className="h-3 w-3" />
-              <span>Oczekuje</span>
+              <span>Niezaksięgowana</span>
             </span>
           )}
           {isBooked && (
@@ -161,7 +169,7 @@ const ProfessionalInvoiceRowMobile: React.FC<ProfessionalInvoiceRowMobileProps> 
               <span>Zaksięgowane</span>
             </span>
           )}
-          {!hasDecision && (invoice.totalGrossValue || 0) >= 3500 && (
+          {!hasDecision && (invoice.totalGrossValue || 0) >= 3500 && !isJDG && (
             <span className="flex items-center gap-1 text-orange-700 dark:text-orange-400 text-xs">
               <AlertCircle className="h-3 w-3" />
               <span>Wymaga decyzji</span>

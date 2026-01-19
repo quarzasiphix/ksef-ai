@@ -204,8 +204,8 @@ const CustomerList = () => {
   }, [contextMenu]);
 
   return (
-    <div className="space-y-6 relative">
-      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+    <div className="space-y-6 relative w-full max-w-full overflow-x-hidden px-2 sm:px-4">
+      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 w-full">
         <div>
           <h1 className="text-3xl font-bold flex items-center gap-2">
             Klienci {isUpdating && <Loader2 className="animate-spin h-5 w-5 text-muted-foreground" />}
@@ -214,7 +214,7 @@ const CustomerList = () => {
             Zarządzaj bazą klientów wszystkich firm
           </p>
         </div>
-        <div className="flex gap-2">
+        <div className="flex flex-wrap gap-2 w-full sm:w-auto">
           <Button variant="outline" onClick={() => setShowGroupManager(true)}>
             <FolderKanban className="mr-2 h-4 w-4" />
             Zarządzaj grupami
@@ -228,9 +228,9 @@ const CustomerList = () => {
         </div>
       </div>
       
-      <Card>
+      <Card className="w-full">
         <CardHeader className="pb-3">
-          <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+          <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 w-full">
             <div>
               <CardTitle>Wszyscy klienci</CardTitle>
               <CardDescription>
@@ -250,7 +250,7 @@ const CustomerList = () => {
           {/* Tabs for client type */}
           <div className="mt-4">
             <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-              <TabsList className="grid w-full grid-cols-3">
+              <TabsList className="grid w-full grid-cols-1 sm:grid-cols-3 gap-2 sm:gap-0 h-auto sm:h-10">
                 <TabsTrigger value="all">Wszyscy</TabsTrigger>
                 <TabsTrigger value="odbiorca">Odbiorcy (sprzedaż)</TabsTrigger>
                 <TabsTrigger value="sprzedawca">Dostawcy (zakup)</TabsTrigger>

@@ -55,9 +55,9 @@ const JDGDashboard: React.FC<JDGDashboardProps> = ({
   const vatRemaining = vatThreshold - totalRevenue;
 
   return (
-    <div className="space-y-5">
+    <div className="space-y-5 w-full max-w-full overflow-x-hidden">
       {/* Quick Actions */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 w-full">
         <Link to="/income/new">
           <Card className="hover:shadow-xl transition-all cursor-pointer border-0 bg-gradient-to-r from-blue-500 to-blue-600 text-white">
             <CardContent className="p-4">
@@ -92,7 +92,7 @@ const JDGDashboard: React.FC<JDGDashboardProps> = ({
       </div>
 
       {/* Key Metrics */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 w-full">
         <Card className="border-0 bg-gradient-to-br from-green-50 to-green-100/50 dark:from-green-950/50 dark:to-green-900/30">
           <CardContent className="p-4">
             <div className="flex items-center gap-3 mb-2">
@@ -199,19 +199,19 @@ const JDGDashboard: React.FC<JDGDashboardProps> = ({
       )}
 
       {/* Monthly Revenue Chart */}
-      <Card className="border-0">
+      <Card className="border-0 w-full overflow-hidden">
         <CardHeader className="pb-3">
           <CardTitle className="flex items-center gap-2 text-base">
             <BarChart3 className="h-4 w-4" />
             Miesięczne przychody
           </CardTitle>
         </CardHeader>
-        <CardContent>
-          <div className="h-56">
+        <CardContent className="w-full overflow-x-auto">
+          <div className="h-56 min-w-full">
             <ResponsiveContainer width="100%" height="100%">
               <BarChart
                 data={monthlySummaries}
-                margin={{ top: 5, right: 10, left: -20, bottom: 0 }}
+                margin={{ top: 5, right: 5, left: -25, bottom: 0 }}
               >
                 <XAxis
                   dataKey="monthLabel"
@@ -238,7 +238,7 @@ const JDGDashboard: React.FC<JDGDashboardProps> = ({
       </Card>
 
       {/* Invoice Status */}
-      <Card className="border-0">
+      <Card className="border-0 w-full">
         <CardHeader className="pb-3">
           <CardTitle className="flex items-center gap-2 text-base">
             <FileText className="h-4 w-4" />
@@ -246,7 +246,7 @@ const JDGDashboard: React.FC<JDGDashboardProps> = ({
           </CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="grid grid-cols-3 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 w-full">
             <div className="p-4 rounded-lg bg-blue-50 dark:bg-blue-950/30 border border-blue-200 dark:border-blue-800">
               <div className="flex items-center justify-between mb-2">
                 <Calendar className="h-5 w-5 text-blue-600" />
