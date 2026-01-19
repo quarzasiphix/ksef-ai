@@ -23,6 +23,13 @@ export const BusinessProfileSwitcher: React.FC<BusinessProfileSwitcherProps> = (
   const { isPremium, openPremiumDialog } = useAuth();
 
   const selectedProfile = profiles.find(p => p.id === selectedProfileId);
+  
+  // Debug logging
+  console.log('BusinessProfileSwitcher:', {
+    selectedProfileId,
+    profiles: profiles.map(p => ({ id: p.id, name: p.name, is_vat_exempt: p.is_vat_exempt })),
+    selectedProfile: selectedProfile ? { id: selectedProfile.id, name: selectedProfile.name, is_vat_exempt: selectedProfile.is_vat_exempt } : null
+  });
 
   const handleAddProfile = () => {
     if (!isPremium) {
@@ -72,17 +79,19 @@ export const BusinessProfileSwitcher: React.FC<BusinessProfileSwitcherProps> = (
             <div className={cn("flex items-center min-w-0", isCollapsed ? "" : "gap-2")}>
               <Building2 className="h-4 w-4 flex-shrink-0" />
               {!isCollapsed && selectedProfile && (
-                <span className="truncate text-sm flex items-center gap-1">
-                  {selectedProfile.name}
-                  <span className="ml-1 bg-slate-200 dark:bg-slate-700 rounded px-1.5 text-[10px] font-medium text-slate-700 dark:text-slate-300">
+                <div className="flex items-center gap-2 min-w-0">
+                  <span className="truncate text-sm">
+                    {selectedProfile.name}
+                  </span>
+                  <span className="bg-slate-200 dark:bg-slate-700 rounded px-1.5 text-[10px] font-medium text-slate-700 dark:text-slate-300 flex-shrink-0">
                     {selectedProfile.entityType === 'sp_zoo' ? 'Sp. z o.o.' : selectedProfile.entityType === 'sa' ? 'S.A.' : 'DG'}
                   </span>
                   {selectedProfile.is_vat_exempt && (
-                    <span className="ml-1 bg-amber-100 dark:bg-amber-900/30 text-amber-800 dark:text-amber-300 rounded px-1.5 text-[10px] font-semibold" title="Zwolniony z VAT">
+                    <span className="bg-amber-100 dark:bg-amber-900/30 text-amber-800 dark:text-amber-300 rounded px-1.5 text-[10px] font-semibold flex-shrink-0" title="Zwolniony z VAT">
                       ZW
                     </span>
                   )}
-                </span>
+                </div>
               )}
             </div>
             {!isCollapsed && <ChevronDown className="h-4 w-4 flex-shrink-0" />}
@@ -100,10 +109,12 @@ export const BusinessProfileSwitcher: React.FC<BusinessProfileSwitcherProps> = (
             >
               <Building2 className="h-4 w-4" />
               <div className="flex-1 min-w-0">
-                <div className="truncate font-medium flex items-center gap-1">
-                  {profile.name}
+                <div className="flex items-center gap-2">
+                  <span className="truncate font-medium">
+                    {profile.name}
+                  </span>
                   {profile.is_vat_exempt && (
-                    <span className="bg-amber-100 dark:bg-amber-900/30 text-amber-800 dark:text-amber-300 rounded px-1.5 text-[9px] font-semibold" title="Zwolniony z VAT">
+                    <span className="bg-amber-100 dark:bg-amber-900/30 text-amber-800 dark:text-amber-300 rounded px-1.5 text-[9px] font-semibold flex-shrink-0" title="Zwolniony z VAT">
                       ZW
                     </span>
                   )}

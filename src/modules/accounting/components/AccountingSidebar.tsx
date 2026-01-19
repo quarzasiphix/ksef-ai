@@ -3,6 +3,7 @@ import { useNavigate, useLocation } from 'react-router-dom';
 import { cn } from '@/shared/lib/utils';
 import { Button } from '@/shared/ui/button';
 import { ScrollArea } from '@/shared/ui/scroll-area';
+import { useBusinessProfile } from '@/shared/context/BusinessProfileContext';
 import {
   Calculator,
   Building2,
@@ -18,6 +19,8 @@ import {
   PanelLeftOpen,
   Shield,
   Book,
+  Receipt,
+  Percent,
 } from 'lucide-react';
 
 interface NavItem {
@@ -32,6 +35,87 @@ interface NavSection {
   title: string;
   items: NavItem[];
 }
+
+const jdgNavSections: NavSection[] = [
+  {
+    title: 'KSIĘGOWOŚĆ',
+    items: [
+      {
+        label: 'Panel główny',
+        href: '/accounting',
+        icon: <LayoutDashboard className="h-5 w-5" />,
+        description: 'Przegląd finansów',
+        color: 'text-blue-500',
+      },
+      {
+        label: 'Ewidencja przychodów',
+        href: '/accounting/ewidencja',
+        icon: <Receipt className="h-5 w-5" />,
+        description: 'Księga przychodów zgrupowana wg kategorii',
+        color: 'text-emerald-500',
+      },
+      {
+        label: 'KPiR',
+        href: '/accounting/kpir',
+        icon: <Book className="h-5 w-5" />,
+        description: 'Podatkowa księga przychodów',
+        color: 'text-violet-500',
+      },
+      {
+        label: 'Ryczałt - kategorie',
+        href: '/accounting/ryczalt-categories',
+        icon: <Percent className="h-5 w-5" />,
+        description: 'Stawki ryczałtowe',
+        color: 'text-amber-500',
+      },
+    ],
+  },
+  {
+    title: 'OBOWIĄZKI',
+    items: [
+      {
+        label: 'ZUS',
+        href: '/accounting/zus',
+        icon: <Shield className="h-5 w-5" />,
+        description: 'Składki ZUS',
+        color: 'text-blue-600',
+      },
+      {
+        label: 'PIT',
+        href: '/accounting/pit',
+        icon: <FileText className="h-5 w-5" />,
+        description: 'Zaliczki PIT',
+        color: 'text-emerald-600',
+      },
+      {
+        label: 'VAT',
+        href: '/accounting/vat',
+        icon: <Calculator className="h-5 w-5" />,
+        description: 'Podatek VAT',
+        color: 'text-violet-600',
+      },
+    ],
+  },
+  {
+    title: 'PIENIĄDZE',
+    items: [
+      {
+        label: 'Bankowość',
+        href: '/accounting/bank',
+        icon: <Landmark className="h-5 w-5" />,
+        description: 'Konta bankowe',
+        color: 'text-teal-500',
+      },
+      {
+        label: 'Kasa',
+        href: '/accounting/kasa',
+        icon: <Wallet className="h-5 w-5" />,
+        description: 'Gotówka KP/KW',
+        color: 'text-orange-500',
+      },
+    ],
+  },
+];
 
 const spolkaNavSections: NavSection[] = [
   {
@@ -48,15 +132,36 @@ const spolkaNavSections: NavSection[] = [
         label: 'Księga główna',
         href: '/accounting/general-ledger',
         icon: <Book className="h-5 w-5" />,
-        description: 'Zapisy księgowe i bilans próbny',
-        color: 'text-indigo-500',
+        description: 'Wszystkie zapisy',
+        color: 'text-emerald-500',
       },
       {
-        label: 'Plan kont',
-        href: '/accounting/coa',
-        icon: <FileText className="h-5 w-5" />,
-        description: 'Zarządzanie kontami księgowymi',
-        color: 'text-slate-500',
+        label: 'Ewidencja VAT',
+        href: '/accounting/vat-ledger',
+        icon: <Calculator className="h-5 w-5" />,
+        description: 'Sprawozdania VAT',
+        color: 'text-violet-500',
+      },
+      {
+        label: 'Bilans',
+        href: '/accounting/balance-sheet',
+        icon: <TrendingUp className="h-5 w-5" />,
+        description: 'Aktywa i pasywa',
+        color: 'text-sky-500',
+      },
+      {
+        label: 'Kapitał',
+        href: '/accounting/capital-events',
+        icon: <DollarSign className="h-5 w-5" />,
+        description: 'Transakcje kapitałowe',
+        color: 'text-emerald-500',
+      },
+      {
+        label: 'Wspólnicy',
+        href: '/accounting/shareholders',
+        icon: <Users className="h-5 w-5" />,
+        description: 'Struktura kapitałowa',
+        color: 'text-violet-500',
       },
     ],
   },
@@ -159,6 +264,12 @@ export const AccountingSidebar: React.FC<AccountingSidebarProps> = ({
 }) => {
   const navigate = useNavigate();
   const location = useLocation();
+  const { profiles, selectedProfileId } = useBusinessProfile();
+  const selectedProfile = profiles?.find((p) => p.id === selectedProfileId);
+  
+  // Choose navigation based on entity type
+  const isJdg = selectedProfile?.entityType === 'dzialalnosc';
+  const navSections = isJdg ? jdgNavSections : spolkaNavSections;
 
   const handleNavigation = (href: string) => {
     onItemSelect?.(href);
@@ -194,8 +305,12 @@ export const AccountingSidebar: React.FC<AccountingSidebarProps> = ({
         >
           {!collapsed && (
             <div>
-              <h2 className="font-semibold text-base text-slate-900 dark:text-slate-100">Księgowość Spółki</h2>
-              <p className="text-xs text-slate-600 dark:text-slate-400 mt-1">Pełna księgowość sp. z o.o.</p>
+              <h2 className="font-semibold text-base text-slate-900 dark:text-slate-100">
+                {isJdg ? 'Księgowość JDG' : 'Księgowość Spółki'}
+              </h2>
+              <p className="text-xs text-slate-600 dark:text-slate-400 mt-1">
+                {isJdg ? 'Księgowość jednoosobowej działalności gospodarczej' : 'Pełna księgowość sp. z o.o.'}
+              </p>
             </div>
           )}
           {onToggleCollapsed && (
@@ -214,7 +329,7 @@ export const AccountingSidebar: React.FC<AccountingSidebarProps> = ({
       
       <ScrollArea className="flex-1">
         <nav className={cn(collapsed ? "p-2" : "p-3")}>
-          {spolkaNavSections.map((section, sectionIdx) => (
+          {navSections.map((section, sectionIdx) => (
             <div key={section.title} className="mb-4">
               {!collapsed && (
                 <div className="px-3 py-2 text-[10px] font-semibold tracking-wider text-slate-500 dark:text-slate-400 uppercase">

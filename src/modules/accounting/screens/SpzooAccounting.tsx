@@ -1,11 +1,15 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useBusinessProfile } from '@/shared/context/BusinessProfileContext';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/shared/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/shared/ui/tabs';
 import { Badge } from '@/shared/ui/badge';
 import { Alert, AlertDescription } from '@/shared/ui/alert';
-import { Building2, Lock, Unlock, AlertCircle, FileText, TrendingUp } from 'lucide-react';
+import { Building2, TrendingUp, FileText, AlertCircle, Users, Landmark } from 'lucide-react';
 import { Button } from '@/shared/ui/button';
+import { EmptyStateAccounting } from '../components/EmptyStateAccounting';
+import { getAccountingSetupState, SetupState } from '../domain/setupState';
+import type { BusinessProfile } from '@/shared/types';
 import { AutoPostingButton } from '../components/AutoPostingButton';
 import { UnpostedQueueWidget } from '../components/UnpostedQueueWidget';
 import { AccountingPeriodStatus } from '../components/AccountingPeriodStatus';
@@ -15,6 +19,27 @@ export default function SpzooAccounting() {
   const { profiles, selectedProfileId } = useBusinessProfile();
   const selectedProfile = profiles?.find((p) => p.id === selectedProfileId);
   const [activeTab, setActiveTab] = useState('overview');
+  const [setupState, setSetupState] = useState<SetupState | null>(null);
+  const [isLoadingSetup, setIsLoadingSetup] = useState(true);
+  const navigate = useNavigate();
+
+  useEffect(() => {
+    async function loadSetupState() {
+      if (!selectedProfile?.id) return;
+      
+      setIsLoadingSetup(true);
+      try {
+        const state = await getAccountingSetupState(selectedProfile.id);
+        setSetupState(state);
+      } catch (error) {
+        console.error('Failed to load setup state:', error);
+      } finally {
+        setIsLoadingSetup(false);
+      }
+    }
+    
+    loadSetupState();
+  }, [selectedProfile?.id]);
 
   if (!selectedProfile) {
     return (
@@ -26,6 +51,17 @@ export default function SpzooAccounting() {
           </AlertDescription>
         </Alert>
       </div>
+    );
+  }
+
+  // Show empty state for new businesses or businesses with no activity
+  if (!isLoadingSetup && setupState && (setupState.stage === 'empty' || setupState.stage === 'configured_no_activity')) {
+    return (
+      <EmptyStateAccounting
+        setupState={setupState}
+        entityType="sp_zoo"
+        onAction={(route) => navigate(route)}
+      />
     );
   }
 

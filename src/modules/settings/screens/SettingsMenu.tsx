@@ -232,6 +232,14 @@ const SettingsMenu = () => {
           <CardContent className="space-y-4">
             {[
               {
+                icon: <Building2 className="h-4 w-4 text-blue-500" />,
+                title: "Dane firmy",
+                desc: "Nazwa, NIP, adres, forma opodatkowania, zwolnienie z VAT i inne podstawowe dane.",
+                action: () => activeProfile && navigate(`/settings/business-profiles/${activeProfile.id}/edit`),
+                actionLabel: "Edytuj dane firmy",
+                disabled: !activeProfile,
+              },
+              {
                 icon: <FileText className="h-4 w-4 text-purple-500" />,
                 title: "Dokumenty",
                 desc: "Szablony, numeracja i formaty wpływają na wszystkie nowe faktury.",
@@ -271,7 +279,7 @@ const SettingsMenu = () => {
                     <p className="text-sm text-muted-foreground">{item.desc}</p>
                   </div>
                 </div>
-                <Button variant="outline" onClick={item.action}>
+                <Button variant="outline" onClick={item.action} disabled={item.disabled}>
                   {item.actionLabel}
                 </Button>
               </div>

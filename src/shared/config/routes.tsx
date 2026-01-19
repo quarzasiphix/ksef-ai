@@ -64,6 +64,8 @@ const EventLog = React.lazy(() => import('@/modules/accounting/screens/EventLog'
 const LedgerPage = React.lazy(() => import('@/modules/accounting/screens/LedgerPage'));
 const GeneralLedger = React.lazy(() => import('@/modules/accounting/screens/GeneralLedger'));
 const ChartOfAccounts = React.lazy(() => import('@/modules/accounting/screens/ChartOfAccounts'));
+const RyczaltCategories = React.lazy(() => import('@/modules/accounting/screens/RyczaltCategories'));
+const EwidencjaPrzychodow = React.lazy(() => import('@/modules/accounting/screens/EwidencjaPrzychodow'));
 const EventsShell = React.lazy(() => import('@/modules/events/components/EventsShell'));
 const EventsTimeline = React.lazy(() => import('@/modules/events/screens/EventsTimeline'));
 const EventsPosting = React.lazy(() => import('@/modules/events/screens/EventsPosting'));
@@ -573,6 +575,14 @@ export const routes: RouteConfig[] = [
       {
         path: '/accounting/coa',
         element: <ChartOfAccounts />,
+      },
+      {
+        path: '/accounting/ryczalt-categories',
+        element: <RyczaltCategories />,
+      },
+      {
+        path: '/accounting/ewidencja',
+        element: <EwidencjaPrzychodow />,
       },
     ],
   },

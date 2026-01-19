@@ -48,6 +48,7 @@ import FinancialImpactSummary from '@/modules/invoices/components/FinancialImpac
 import EventHistoryTimeline from '@/modules/invoices/components/EventHistoryTimeline';
 import { useBusinessProfile } from "@/shared/context/BusinessProfileContext";
 import InvoiceControlHeader from '@/modules/invoices/components/detail/InvoiceControlHeader';
+import { PostInvoiceDialog } from '@/modules/invoices/components/PostInvoiceDialog';
 import FinancialSummaryStrip from '@/modules/invoices/components/detail/FinancialSummaryStrip';
 import PartyRelationshipCard from '@/modules/invoices/components/detail/PartyRelationshipCard';
 import ActionBar from '@/modules/invoices/components/detail/ActionBar';
@@ -78,6 +79,7 @@ const InvoiceDetail: React.FC<InvoiceDetailProps> = ({ type }) => {
   const { invoices: { data: invoices, isLoading }, refreshAllData } = useGlobalData();
   const [showPDF, setShowPDF] = useState(false);
   const [showShareDialog, setShowShareDialog] = useState(false);
+  const [showPostDialog, setShowPostDialog] = useState(false);
   const [isUpdatingPaid, setIsUpdatingPaid] = useState(false);
   const [selectedBankAccount, setSelectedBankAccount] = useState<any>(null);
   const [bankAccounts, setBankAccounts] = useState<BankAccount[]>([]);
@@ -404,6 +406,7 @@ const InvoiceDetail: React.FC<InvoiceDetailProps> = ({ type }) => {
         }}
         onDelete={handleDelete}
         onTogglePaid={handleTogglePaid}
+        onPost={() => setShowPostDialog(true)}
         isOwner={isOwner}
       />
 
@@ -644,7 +647,7 @@ const InvoiceDetail: React.FC<InvoiceDetailProps> = ({ type }) => {
       )}
 
       {/* Share Invoice Dialog */}
-      {showShareDialog && (
+      {showShareDialog && isIncome && (
         <ShareInvoiceDialog
           isOpen={showShareDialog}
           onClose={() => setShowShareDialog(false)}
@@ -652,6 +655,28 @@ const InvoiceDetail: React.FC<InvoiceDetailProps> = ({ type }) => {
           invoiceNumber={invoice.number}
         />
       )}
+
+      {/* Post Invoice Dialog */}
+      {showPostDialog && (() => {
+        const businessProfile = businessProfiles.find(p => p.id === invoice.businessProfileId);
+        return (
+          <PostInvoiceDialog
+            open={showPostDialog}
+            onOpenChange={setShowPostDialog}
+            invoice={invoice}
+            businessProfile={{
+              id: invoice.businessProfileId || '',
+              entityType: businessProfile?.entityType || 'dzialalnosc',
+              tax_type: businessProfile?.tax_type
+            }}
+            onSuccess={async () => {
+              await refreshAllData();
+              await queryClient.invalidateQueries({ queryKey: ["invoice", invoice.id] });
+              await queryClient.invalidateQueries({ queryKey: ["invoices"] });
+            }}
+          />
+        );
+      })()}
     </div>
   );
 };

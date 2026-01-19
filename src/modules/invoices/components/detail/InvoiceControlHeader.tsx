@@ -42,6 +42,7 @@ interface InvoiceControlHeaderProps {
   onDuplicate?: () => void;
   onDelete?: () => void;
   onTogglePaid?: () => void;
+  onPost?: () => void;
   isOwner?: boolean;
   showActions?: boolean;
 }
@@ -87,6 +88,7 @@ export const InvoiceControlHeader: React.FC<InvoiceControlHeaderProps> = ({
   onDuplicate,
   onDelete,
   onTogglePaid,
+  onPost,
   isOwner,
   showActions = true,
 }) => {
@@ -229,14 +231,8 @@ export const InvoiceControlHeader: React.FC<InvoiceControlHeaderProps> = ({
                         Cofnij płatność
                       </DropdownMenuItem>
                     )}
-                    {isPaid && !isBooked && (
-                      <DropdownMenuItem onClick={() => {
-                        // Placeholder for booking functionality
-                        const toast = (window as any).toast;
-                        if (toast?.info) {
-                          toast.info('Funkcja księgowania w przygotowaniu');
-                        }
-                      }}>
+                    {!isBooked && onPost && (
+                      <DropdownMenuItem onClick={onPost}>
                         <FileText className="h-4 w-4 mr-2" />
                         Zaksięguj
                       </DropdownMenuItem>

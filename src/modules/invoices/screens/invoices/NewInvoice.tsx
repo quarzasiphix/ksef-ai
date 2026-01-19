@@ -102,6 +102,7 @@ const invoiceFormSchema = z.object({
   bankAccountId: z.string().optional(),
   cashAccountId: z.string().optional(),
   projectId: z.string().optional(),
+  ryczalt_category_id: z.string().optional(),
   
   // Calculated fields (will be set programmatically)
   totalNetValue: z.number().default(0),
@@ -119,6 +120,13 @@ const invoiceFormSchema = z.object({
 }, {
   message: 'Kasa fiskalna jest wymagana dla płatności gotówką',
   path: ['cashAccountId']
+}).refine((data) => {
+  // Ryczałt category is required for JDG ryczałt income invoices
+  // This will be validated at runtime based on business profile
+  return true;
+}, {
+  message: 'W ryczałcie musisz wybrać kategorię przychodu',
+  path: ['ryczalt_category_id']
 });
 
 type InvoiceFormValues = z.infer<typeof invoiceFormSchema>;
@@ -1343,6 +1351,9 @@ const handleFormSubmit = form.handleSubmit(async (formData) => {
                 form={form}
                 documentTitle={documentTitle}
                 businessProfileId={businessProfileId}
+                transactionType={transactionType}
+                profileTaxType={selectedProfile?.tax_type}
+                profileEntityType={selectedProfile?.entityType}
                 exchangeRate={exchangeRate}
                 exchangeRateDate={form.watch('exchangeRateDate')}
                 exchangeRateSource={form.watch('exchangeRateSource')}

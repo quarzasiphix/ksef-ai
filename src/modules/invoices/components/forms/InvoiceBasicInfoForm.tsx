@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useState, useEffect } from "react";
 import { FormField, FormItem, FormLabel, FormControl, FormMessage } from "@/shared/ui/form";
 import { Input } from "@/shared/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/shared/ui/select";
@@ -15,6 +15,8 @@ import { BankAccount } from "@/modules/banking/bank";
 import { InvoiceItem } from "@/shared/types";
 import type { CashAccount } from "@/modules/accounting/kasa";
 import { cn } from "@/shared/lib/utils";
+import { listRyczaltRevenueCategories, type RyczaltRevenueCategory } from "@/modules/accounting/data/ryczaltCategoriesRepository";
+import { TransactionType } from "@/shared/types/common";
 
 interface InvoiceBasicInfoFormProps {
   form: UseFormReturn<any, any>;
@@ -30,6 +32,9 @@ interface InvoiceBasicInfoFormProps {
   isSpoolka?: boolean;
   onAddVatAccount?: () => void;
   onNumberChange?: (value: string) => void;
+  transactionType?: TransactionType;
+  profileTaxType?: string;
+  profileEntityType?: string;
 }
 
 export const InvoiceBasicInfoForm: React.FC<InvoiceBasicInfoFormProps> = ({
@@ -45,10 +50,40 @@ export const InvoiceBasicInfoForm: React.FC<InvoiceBasicInfoFormProps> = ({
   cashAccounts = [],
   isSpoolka = false,
   onAddVatAccount,
-  onNumberChange
+  onNumberChange,
+  transactionType,
+  profileTaxType,
+  profileEntityType
 }) => {
   const currency = form.watch('currency') || 'PLN';
   const paymentMethod = form.watch('paymentMethod');
+  const [ryczaltCategories, setRyczaltCategories] = useState<RyczaltRevenueCategory[]>([]);
+  const [isLoadingCategories, setIsLoadingCategories] = useState(false);
+
+  // Determine if ryczałt category is required
+  const isJdgRyczaltIncome = 
+    profileEntityType === 'dzialalnosc' && 
+    profileTaxType === 'ryczalt' && 
+    transactionType === TransactionType.INCOME;
+
+  // Fetch ryczałt categories when needed
+  useEffect(() => {
+    async function fetchCategories() {
+      if (!isJdgRyczaltIncome || !businessProfileId) return;
+      
+      setIsLoadingCategories(true);
+      try {
+        const categories = await listRyczaltRevenueCategories(businessProfileId);
+        setRyczaltCategories(categories);
+      } catch (error) {
+        console.error('Failed to load ryczałt categories:', error);
+      } finally {
+        setIsLoadingCategories(false);
+      }
+    }
+    
+    fetchCategories();
+  }, [isJdgRyczaltIncome, businessProfileId]);
 
   return (
     <Card className="md:col-span-1">
@@ -356,6 +391,77 @@ export const InvoiceBasicInfoForm: React.FC<InvoiceBasicInfoFormProps> = ({
           />
         )}
 
+        {/* Ryczałt Category Selection - Only for JDG + ryczałt + income */}
+        {isJdgRyczaltIncome && (
+          <FormField
+            control={form.control}
+            name="ryczalt_category_id"
+            rules={{ required: 'W ryczałcie musisz wybrać kategorię przychodu' }}
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel className="flex items-center gap-2">
+                  Kategoria ryczałtu *
+                  <TooltipProvider>
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <span className="cursor-pointer"><Info size={14} /></span>
+                      </TooltipTrigger>
+                      <TooltipContent>
+                        <p className="max-w-xs">Stawka zależy od rodzaju przychodu (usługi/produktu), nie od firmy.</p>
+                      </TooltipContent>
+                    </Tooltip>
+                  </TooltipProvider>
+                </FormLabel>
+                {isLoadingCategories ? (
+                  <div className="text-sm text-muted-foreground">Ładowanie kategorii...</div>
+                ) : ryczaltCategories.length === 0 ? (
+                  <div className="p-4 border border-amber-200 bg-amber-50 rounded-lg dark:bg-amber-900/20 dark:border-amber-800">
+                    <div className="flex items-start gap-3">
+                      <AlertCircle className="h-4 w-4 mt-0.5 text-amber-600" />
+                      <div className="space-y-2">
+                        <p className="text-sm text-amber-800 dark:text-amber-100">
+                          Nie masz jeszcze żadnych kategorii ryczałtu. Musisz dodać przynajmniej jedną kategorię, aby wystawić fakturę przychodową.
+                        </p>
+                        <Button
+                          type="button"
+                          size="sm"
+                          variant="outline"
+                          onClick={() => {
+                            // TODO: Open manage categories modal/page
+                            alert('Funkcja zarządzania kategoriami ryczałtu w przygotowaniu');
+                          }}
+                        >
+                          Dodaj kategorię ryczałtu
+                        </Button>
+                      </div>
+                    </div>
+                  </div>
+                ) : (
+                  <>
+                    <Select onValueChange={field.onChange} value={field.value}>
+                      <FormControl>
+                        <SelectTrigger className={cn(!field.value && "border-red-500")}>
+                          <SelectValue placeholder="Wybierz kategorię przychodu" />
+                        </SelectTrigger>
+                      </FormControl>
+                      <SelectContent>
+                        {ryczaltCategories.map((category) => (
+                          <SelectItem key={category.id} value={category.id}>
+                            {category.name} ({category.rate}%)
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    <p className="text-xs text-muted-foreground mt-1">
+                      Stawka jest przypisana do rodzaju przychodu, nie do firmy.
+                    </p>
+                  </>
+                )}
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+        )}
       </CardContent>
     </Card>
   );

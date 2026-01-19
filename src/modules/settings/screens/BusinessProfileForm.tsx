@@ -84,6 +84,9 @@ const BusinessProfileForm = ({
   const isMobile = useIsMobile();
   const isWizardJdg = lockedEntityType === "dzialalnosc" && !isEditing;
 
+  // Debug logging to see what data we're getting
+  console.log('BusinessProfileForm initialData:', initialData);
+  
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
     defaultValues: {
@@ -97,10 +100,10 @@ const BusinessProfileForm = ({
       phone: initialData?.phone || "",
       isDefault: initialData?.isDefault || false,
       entityType: lockedEntityType || initialData?.entityType || "dzialalnosc",
-      taxType: (initialData as any)?.taxType || "skala",
+      taxType: (initialData as any)?.tax_type || "skala",
       defaultRyczaltRate: initialData?.defaultRyczaltRate || undefined,
       pkdCodes: (initialData as any)?.pkdCodes || [],
-      is_vat_exempt: initialData?.is_vat_exempt || false,
+      is_vat_exempt: (initialData as any)?.is_vat_exempt || false,
       vat_exemption_reason: initialData?.vat_exemption_reason || "",
       vat_threshold_pln: initialData?.vat_threshold_pln || undefined,
       share_capital: initialData?.share_capital || undefined,
@@ -132,6 +135,7 @@ const BusinessProfileForm = ({
 
   const onSubmit = async (values: z.infer<typeof formSchema>) => {
     console.log('onSubmit called with values:', values);
+    console.log('Form mode:', { isEditing, profileId: initialData?.id });
     try {
       // Ensure all required fields are present
       if (!user?.id) {
@@ -160,7 +164,7 @@ const BusinessProfileForm = ({
         phone: values.phone || "", // Optional field
         isDefault: values.isDefault,
         entityType: values.entityType || "dzialalnosc",
-        tax_type: (values as any).taxType,
+        tax_type: values.taxType,
         pkdCodes: values.pkdCodes || [],
         logo: initialData?.logo || "", // Preserve existing logo if any
         user_id: user.id, // Enforce RLS: always include user_id
@@ -177,7 +181,10 @@ const BusinessProfileForm = ({
         headquarters_postal_code: values.headquarters_postal_code,
         headquarters_city: values.headquarters_city,
         pkd_main: values.pkd_main,
-      };
+        // JDG specific fields
+        ...(values.business_start_date && { business_start_date: values.business_start_date }),
+        ...(values.accounting_start_date && { accounting_start_date: values.accounting_start_date }),
+      } as any;
 
       console.log('Saving business profile with VAT exemption:', {
         is_vat_exempt: profile.is_vat_exempt,
@@ -186,14 +193,28 @@ const BusinessProfileForm = ({
         vat_threshold_year: profile.vat_threshold_year
       });
 
-      // Global duplicate NIP check (other users)
-      const taxDup = await checkTaxIdExists(values.taxId, user.id);
-      if (taxDup.exists) {
-        toast.error(`NIP jest już przypisany do firmy "${taxDup.ownerName}". Skontaktuj się z właścicielem lub napisz na support@twojadomena.pl.`);
-        return;
+      // Global duplicate NIP check (other users) - ONLY when creating new profile
+      if (!isEditing) {
+        console.log('Checking for duplicate NIP...');
+        try {
+          const taxDup = await checkTaxIdExists(values.taxId, user.id);
+          console.log('NIP check result:', taxDup);
+          if (taxDup.exists) {
+            toast.error(`NIP jest już przypisany do firmy "${taxDup.ownerName}". Skontaktuj się z właścicielem lub napisz na support@twojadomena.pl.`);
+            return;
+          }
+        } catch (nipError) {
+          console.error('Error checking NIP:', nipError);
+          toast.error('Błąd podczas sprawdzania NIP. Spróbuj ponownie.');
+          return;
+        }
+      } else {
+        console.log('Skipping NIP check - editing existing profile');
       }
 
+      console.log('Saving business profile...');
       const savedProfile = await saveBusinessProfile(profile);
+      console.log('Profile saved:', savedProfile);
       const savedId = (savedProfile as any)?.id || profile.id;
 
       if (!isEditing && savedProfile.entityType === 'sp_zoo' && savedId) {
@@ -205,6 +226,9 @@ const BusinessProfileForm = ({
         }
       }
       console.log('Profile saved successfully:', savedProfile);
+      
+      // Note: Business profiles will be refreshed automatically by the context on next render
+      
       toast.success(
         isEditing ? "Profil zaktualizowany" : "Profil utworzony"
       );
@@ -238,8 +262,20 @@ const BusinessProfileForm = ({
       console.error("Error saving business profile:", error);
       console.error("Error details:", JSON.stringify(error, null, 2));
 
-      // Duplicate NIP handling – only relevant when creating a new profile
+      // Handle specific database constraint errors
       const errMsg = (error as any)?.message ? (error as any).message : String(error);
+      
+      if (errMsg.includes('check_accounting_start_after_business_start')) {
+        toast.error('Data rozpoczęcia księgowości nie może być wcześniejsza niż data rozpoczęcia działalności. Ustaw datę księgowości równą lub późniejszą od daty rozpoczęcia działalności.');
+        return;
+      }
+      
+      if (errMsg.includes('duplicate key') || errMsg.includes('UNIQUE')) {
+        toast.error('Profil z tymi danymi już istnieje. Sprawdź NIP i inne unikalne pola.');
+        return;
+      }
+
+      // Duplicate NIP handling – only relevant when creating a new profile
       if (!isEditing && errMsg.toLowerCase().includes("nip") && errMsg.toLowerCase().includes("już")) {
         const nip = form.getValues("taxId");
 
@@ -293,6 +329,10 @@ const BusinessProfileForm = ({
     console.error('Form validation errors:', errors);
     toast.error('Formularz zawiera błędy. Sprawdź wszystkie pola.');
   };
+
+  // Debug: Log current form values
+  const currentFormValues = form.watch();
+  console.log('Current form values:', currentFormValues);
 
   return (
     <div className={isWizardJdg ? "mx-auto w-full max-w-3xl px-4 py-10" : ""}>
@@ -595,6 +635,59 @@ const BusinessProfileForm = ({
             />
           )}
 
+          {/* VAT Exemption - Available for all entity types */}
+          <div className="space-y-4 p-4 border rounded-lg bg-blue-50 dark:bg-blue-950">
+            <h3 className="font-semibold text-lg">VAT</h3>
+            
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <FormField
+                control={form.control}
+                name="is_vat_exempt"
+                render={({ field }) => (
+                  <FormItem className="flex flex-row items-start space-x-3 space-y-0 rounded-md border p-4 bg-white dark:bg-gray-900">
+                    <FormControl>
+                      <Checkbox
+                        checked={field.value}
+                        onCheckedChange={field.onChange}
+                      />
+                    </FormControl>
+                    <div className="space-y-1 leading-none">
+                      <FormLabel>Zwolniony z VAT (art. 113)</FormLabel>
+                      <p className="text-xs text-muted-foreground">
+                        Przychody poniżej 200 000 PLN rocznie
+                      </p>
+                    </div>
+                  </FormItem>
+                )}
+              />
+              
+              {form.watch("is_vat_exempt") && (
+                <FormField
+                  control={form.control}
+                  name="vat_threshold_pln"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Limit VAT (PLN)</FormLabel>
+                      <FormControl>
+                        <Input 
+                          type="number" 
+                          step="1000"
+                          placeholder="200000"
+                          {...field}
+                          onChange={(e) => field.onChange(e.target.value ? parseFloat(e.target.value) : undefined)}
+                        />
+                      </FormControl>
+                      <p className="text-xs text-muted-foreground">
+                        System będzie monitorował zbliżanie się do limitu
+                      </p>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              )}
+            </div>
+          </div>
+
           {/* Only show tax type for JDG (działalność gospodarcza) */}
           {form.watch("entityType") === "dzialalnosc" && (
             <div className="space-y-4 p-4 border rounded-lg bg-amber-50 dark:bg-amber-950">
@@ -695,54 +788,6 @@ const BusinessProfileForm = ({
                     )}
                   />
                 </div>
-              </div>
-
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <FormField
-                  control={form.control}
-                  name="is_vat_exempt"
-                  render={({ field }) => (
-                    <FormItem className="flex flex-row items-start space-x-3 space-y-0 rounded-md border p-4">
-                      <FormControl>
-                        <Checkbox
-                          checked={field.value}
-                          onCheckedChange={field.onChange}
-                        />
-                      </FormControl>
-                      <div className="space-y-1 leading-none">
-                        <FormLabel>Zwolniony z VAT (art. 113)</FormLabel>
-                        <p className="text-xs text-muted-foreground">
-                          Przychody poniżej 200 000 PLN rocznie
-                        </p>
-                      </div>
-                    </FormItem>
-                  )}
-                />
-                
-                {form.watch("is_vat_exempt") && (
-                  <FormField
-                    control={form.control}
-                    name="vat_threshold_pln"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Limit VAT (PLN)</FormLabel>
-                        <FormControl>
-                          <Input 
-                            type="number" 
-                            step="1000"
-                            placeholder="200000"
-                            {...field}
-                            onChange={(e) => field.onChange(e.target.value ? parseFloat(e.target.value) : undefined)}
-                          />
-                        </FormControl>
-                        <p className="text-xs text-muted-foreground">
-                          System będzie monitorował zbliżanie się do limitu
-                        </p>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                )}
               </div>
             </div>
           )}
@@ -889,58 +934,6 @@ const BusinessProfileForm = ({
                 )}
               />
             </div>
-          )}
-        </div>
-        {/* VAT zwolnienie */}
-        <div className="mt-6">
-          <FormField
-            control={form.control}
-            name="is_vat_exempt"
-            render={({ field }) => (
-              <FormItem className="flex flex-row items-start space-x-3 space-y-0 rounded-md border p-4">
-                <FormControl>
-                  <Checkbox
-                    checked={field.value}
-                    onCheckedChange={field.onChange}
-                  />
-                </FormControl>
-                <div className="space-y-1 leading-none">
-                  <FormLabel>Firma jest zwolniona z VAT</FormLabel>
-                </div>
-              </FormItem>
-            )}
-          />
-          {form.watch("is_vat_exempt") && (
-            <FormField
-              control={form.control}
-              name="vat_exemption_reason"
-              render={({ field }) => (
-                <FormItem className="mt-2">
-                  <FormLabel>Powód zwolnienia z VAT</FormLabel>
-                  <Select 
-                    onValueChange={field.onChange} 
-                    value={field.value || undefined}
-                    defaultValue={field.value || undefined}
-                  >
-                    <FormControl>
-                      <SelectTrigger>
-                        <SelectValue placeholder="Wybierz powód zwolnienia" />
-                      </SelectTrigger>
-                    </FormControl>
-                    <SelectContent>
-                      <SelectItem value="113_1">Zwolnienie podmiotowe (art. 113 ust. 1)</SelectItem>
-                      <SelectItem value="43_1">Zwolnienie przedmiotowe (art. 43 ust. 1)</SelectItem>
-                      <SelectItem value="41_4">Eksport towarów (art. 41 ust. 4)</SelectItem>
-                      <SelectItem value="42">Wewnątrzwspólnotowa dostawa towarów (art. 42)</SelectItem>
-                      <SelectItem value="28b">Usługi zagraniczne (art. 28b)</SelectItem>
-                      <SelectItem value="17">Odwrotne obciążenie (art. 17)</SelectItem>
-                      <SelectItem value="other">Inna podstawa prawna</SelectItem>
-                    </SelectContent>
-                  </Select>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
           )}
         </div>
         

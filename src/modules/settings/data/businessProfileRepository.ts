@@ -239,9 +239,11 @@ export async function getBusinessProfileById(id: string, userId: string): Promis
 
 export async function checkTaxIdExists(taxId: string, currentUserId: string): Promise<{ exists: boolean, ownerName?: string }> {
   try {
+    console.log('checkTaxIdExists called with:', { taxId, currentUserId });
     const { data, error } = await supabase.rpc('find_user_by_tax_id', {
       tax_id_param: taxId
     });
+    console.log('find_user_by_tax_id response:', { data, error });
 
     if (error) {
       console.error("Error checking tax ID:", error);
@@ -249,15 +251,18 @@ export async function checkTaxIdExists(taxId: string, currentUserId: string): Pr
     }
 
     if (data && data.length > 0) {
-      const existingProfile = data[0];
-      // If the existing profile belongs to the current user, it's OK
-      if (existingProfile.user_id === currentUserId) {
-        return { exists: false };
+      // Check if ANY profile with this NIP belongs to a DIFFERENT user
+      const otherUserProfiles = data.filter(p => p.user_id !== currentUserId);
+      if (otherUserProfiles.length > 0) {
+        // There's at least one profile with this NIP belonging to someone else
+        const otherProfile = otherUserProfiles[0];
+        return { 
+          exists: true, 
+          ownerName: otherProfile.business_name 
+        };
       }
-      return { 
-        exists: true, 
-        ownerName: existingProfile.business_name 
-      };
+      // All profiles with this NIP belong to the current user, which is OK
+      return { exists: false };
     }
 
     return { exists: false };
@@ -269,6 +274,7 @@ export async function checkTaxIdExists(taxId: string, currentUserId: string): Pr
 
 export async function saveBusinessProfile(profile: BusinessProfile): Promise<BusinessProfile> {
   try {
+    console.log('saveBusinessProfile called with:', profile);
     // Check duplicate NIP only when creating new profile
     if (!profile.id) {
       const taxIdCheck = await checkTaxIdExists(profile.taxId, profile.user_id);
@@ -320,6 +326,7 @@ export async function saveBusinessProfile(profile: BusinessProfile): Promise<Bus
       vat_threshold_year: normalizeNumberValue(profile.vat_threshold_year) ?? new Date().getFullYear(),
       business_start_date: (profile as any).business_start_date || null,
       accounting_start_date: (profile as any).accounting_start_date || null,
+      updated_at: new Date().toISOString(),
 
       // Spółka fields
       share_capital: normalizeNumberValue((profile as any).share_capital),
@@ -338,12 +345,17 @@ export async function saveBusinessProfile(profile: BusinessProfile): Promise<Bus
     
     if (profile.id) {
       // Update existing profile
+      console.log('Supabase update payload:', payload);
+      console.log('Updating profile ID:', profile.id);
+      
       const { data, error } = await supabase
         .from("business_profiles")
         .update(payload)
         .eq("id", profile.id)
         .select()
         .single();
+      
+      console.log('Supabase update result:', { data, error });
 
       if (error) {
         console.error('Supabase update error:', error);
