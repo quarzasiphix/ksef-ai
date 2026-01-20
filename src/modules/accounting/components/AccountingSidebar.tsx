@@ -29,6 +29,7 @@ interface NavItem {
   icon: React.ReactNode;
   description: string;
   color: string;
+  disabled?: boolean;
 }
 
 interface NavSection {
@@ -274,9 +275,39 @@ export const AccountingSidebar: React.FC<AccountingSidebarProps> = ({
   const { profiles, selectedProfileId } = useBusinessProfile();
   const selectedProfile = profiles?.find((p) => p.id === selectedProfileId);
   
-  // Choose navigation based on entity type
+  // Choose navigation based on entity type and tax regime
   const isJdg = selectedProfile?.entityType === 'dzialalnosc';
-  const navSections = isJdg ? jdgNavSections : spolkaNavSections;
+  const taxType = selectedProfile?.tax_type;
+  const isRyczalt = taxType === 'ryczalt';
+  const isKpirRegime = taxType === 'skala' || taxType === 'liniowy';
+  
+  // Filter navigation based on tax regime
+  const getFilteredNavSections = () => {
+    if (isJdg) {
+      return jdgNavSections.map(section => ({
+        ...section,
+        items: section.items.map(item => {
+          // For ryczałt: disable KPiR
+          if (isRyczalt && item.href === '/accounting/kpir') {
+            return {
+              ...item,
+              disabled: true,
+              label: 'KPiR (nie dotyczy)',
+              description: 'KPiR nie dotyczy ryczałtu. Użyj: Ewidencja przychodów.'
+            };
+          }
+          // For KPiR regimes: hide Ewidencja (could also disable with message)
+          if (isKpirRegime && item.href === '/accounting/ewidencja') {
+            return null; // Hide entirely
+          }
+          return item;
+        }).filter(Boolean) as NavItem[]
+      }));
+    }
+    return spolkaNavSections;
+  };
+  
+  const navSections = getFilteredNavSections();
 
   const handleNavigation = (href: string) => {
     onItemSelect?.(href);
@@ -351,31 +382,44 @@ export const AccountingSidebar: React.FC<AccountingSidebarProps> = ({
                     <Button
                       key={item.href}
                       variant="ghost"
+                      disabled={item.disabled}
                       className={cn(
                         "group relative transition-all duration-200",
                         collapsed
                           ? "w-full justify-center h-10 px-0"
                           : "w-full justify-start h-10 px-3",
-                        "hover:bg-slate-100 dark:hover:bg-slate-800/50",
+                        item.disabled 
+                          ? "opacity-50 cursor-not-allowed hover:bg-transparent"
+                          : "hover:bg-slate-100 dark:hover:bg-slate-800/50",
                         isActive 
                           ? "bg-slate-100 dark:bg-slate-800 text-slate-900 dark:text-slate-100 shadow-sm" 
-                          : "text-slate-700 dark:text-slate-300"
+                          : item.disabled
+                            ? "text-slate-400 dark:text-slate-500"
+                            : "text-slate-700 dark:text-slate-300"
                       )}
-                      onClick={() => handleNavigation(item.href)}
+                      onClick={() => !item.disabled && handleNavigation(item.href)}
                       title={collapsed ? item.label : undefined}
                     >
                       <div className={cn(
                         collapsed ? "" : "mr-3", 
-                        item.color,
-                        "transition-transform group-hover:scale-110",
-                        isActive && "scale-110"
+                        item.disabled ? "text-slate-400 dark:text-slate-500" : item.color,
+                        "transition-transform",
+                        !item.disabled && "group-hover:scale-110",
+                        isActive && !item.disabled && "scale-110"
                       )}>
                         {item.icon}
                       </div>
                       {!collapsed && (
                         <div className="flex flex-col items-start text-left flex-1">
                           <span className="text-sm font-medium leading-tight">{item.label}</span>
-                          <span className="text-[10px] text-slate-500 dark:text-slate-400 leading-tight mt-0.5">{item.description}</span>
+                          <span className={cn(
+                            "text-[10px] leading-tight mt-0.5",
+                            item.disabled 
+                              ? "text-slate-400 dark:text-slate-500 italic" 
+                              : "text-slate-500 dark:text-slate-400"
+                          )}>
+                            {item.description}
+                          </span>
                         </div>
                       )}
                       {isActive && !collapsed && (

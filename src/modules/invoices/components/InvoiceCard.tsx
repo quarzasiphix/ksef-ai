@@ -157,6 +157,13 @@ const InvoiceCard: React.FC<InvoiceCardProps> = ({ invoice, currency = invoice.c
     e.preventDefault();
     e.stopPropagation();
     setIsDropdownOpen(false);
+    
+    // Debug logging
+    console.log('🔍 Post button clicked for invoice:', invoice.id);
+    console.log('🔍 Invoice businessProfileId:', invoice.businessProfileId);
+    console.log('🔍 Available business profiles:', businessProfiles.length);
+    console.log('🔍 Matching business profile:', businessProfiles.find(p => p.id === invoice.businessProfileId));
+    
     setShowPostDialog(true);
   };
 
@@ -186,6 +193,9 @@ const InvoiceCard: React.FC<InvoiceCardProps> = ({ invoice, currency = invoice.c
     const updated = [recentDoc, ...recent.filter((r: any) => r.id !== invoice.id)].slice(0, 20);
     localStorage.setItem('recent_documents', JSON.stringify(updated));
   };
+
+  // Debug: Log when component renders
+  console.log('🔍 InvoiceCard rendering for invoice:', invoice.id, 'isPosted:', isPosted);
 
   return (
     <div 
@@ -389,28 +399,6 @@ const InvoiceCard: React.FC<InvoiceCardProps> = ({ invoice, currency = invoice.c
           </div>
         </div>
       </div>
-
-      {/* Post Invoice Dialog */}
-      {showPostDialog && (() => {
-        const businessProfile = businessProfiles.find(p => p.id === invoice.businessProfileId);
-        return (
-          <PostInvoiceDialog
-            open={showPostDialog}
-            onOpenChange={setShowPostDialog}
-            invoice={invoice}
-            businessProfile={{
-              id: invoice.businessProfileId || '',
-              entityType: businessProfile?.entityType || 'dzialalnosc',
-              tax_type: businessProfile?.tax_type
-            }}
-            onSuccess={async () => {
-              await refreshAllData();
-              await queryClient.invalidateQueries({ queryKey: ["invoice", invoice.id] });
-              await queryClient.invalidateQueries({ queryKey: ["invoices"] });
-            }}
-          />
-        );
-      })()}
     </div>
   );
 };

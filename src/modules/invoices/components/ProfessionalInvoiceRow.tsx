@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { formatCurrency } from '@/shared/lib/invoice-utils';
 import { format } from 'date-fns';
@@ -30,6 +30,10 @@ import {
 } from 'lucide-react';
 import { Invoice } from '@/shared/types';
 import { useOpenTab } from '@/shared/hooks/useOpenTab';
+import { PostInvoiceDialog } from '@/modules/invoices/components/PostInvoiceDialog';
+import { useBusinessProfile } from '@/shared/context/BusinessProfileContext';
+import { useQueryClient } from '@tanstack/react-query';
+import { toast } from 'sonner';
 
 interface ProfessionalInvoiceRowProps {
   invoice: Invoice;
@@ -58,7 +62,10 @@ const ProfessionalInvoiceRow: React.FC<ProfessionalInvoiceRowProps> = ({
 }) => {
   const navigate = useNavigate();
   const { openInvoiceTab, openExpenseTab } = useOpenTab();
+  const { profiles: businessProfiles } = useBusinessProfile();
+  const queryClient = useQueryClient();
   const [contextMenuOpen, setContextMenuOpen] = React.useState(false);
+  const [showPostDialog, setShowPostDialog] = React.useState(false);
   
   // Calculate state
   const isPaid = invoice.isPaid || invoice.paid;
@@ -110,6 +117,17 @@ const ProfessionalInvoiceRow: React.FC<ProfessionalInvoiceRowProps> = ({
     e.preventDefault();
     e.stopPropagation();
     setContextMenuOpen(true);
+  };
+
+  // Handle post button click
+  const handlePostClick = () => {
+    console.log('🔍 Post button clicked for invoice:', invoice.id);
+    console.log('🔍 Invoice businessProfileId:', invoice.businessProfileId);
+    console.log('🔍 Available business profiles:', businessProfiles.length);
+    console.log('🔍 Matching business profile:', businessProfiles.find(p => p.id === invoice.businessProfileId));
+    
+    setContextMenuOpen(false);
+    setShowPostDialog(true);
   };
 
   // Handle row click to open in tab
@@ -230,9 +248,7 @@ const ProfessionalInvoiceRow: React.FC<ProfessionalInvoiceRowProps> = ({
                 <CheckCircle className="h-4 w-4 mr-2" />
                 {isPaid ? 'Oznacz nieopłacone' : 'Oznacz opłacone'}
               </DropdownMenuItem>
-              <DropdownMenuItem onClick={() => { 
-                setContextMenuOpen(false); 
-              }}>
+              <DropdownMenuItem onClick={handlePostClick}>
                 <BookOpen className="h-4 w-4 mr-2" />
                 Zaksięguj
               </DropdownMenuItem>
@@ -317,7 +333,7 @@ const ProfessionalInvoiceRow: React.FC<ProfessionalInvoiceRowProps> = ({
                   <CheckCircle className="h-4 w-4 mr-2" />
                   {isPaid ? 'Oznacz nieopłacone' : 'Oznacz opłacone'}
                 </DropdownMenuItem>
-                <DropdownMenuItem onClick={() => {}}>
+                <DropdownMenuItem onClick={handlePostClick}>
                   <BookOpen className="h-4 w-4 mr-2" />
                   Zaksięguj
                 </DropdownMenuItem>
@@ -333,6 +349,38 @@ const ProfessionalInvoiceRow: React.FC<ProfessionalInvoiceRowProps> = ({
           </div>
         </div>
       </div>
+
+      {/* Post Invoice Dialog */}
+      {showPostDialog && (() => {
+        const businessProfile = businessProfiles.find(p => p.id === invoice.businessProfileId);
+        return (
+          <PostInvoiceDialog
+            open={showPostDialog}
+            onOpenChange={setShowPostDialog}
+            invoice={invoice}
+            businessProfile={{
+              id: invoice.businessProfileId || '',
+              entityType: businessProfile?.entityType || 'dzialalnosc',
+              tax_type: businessProfile?.tax_type
+            }}
+            onSuccess={async (accountInfo) => {
+              await queryClient.invalidateQueries({ queryKey: ["invoice", invoice.id] });
+              await queryClient.invalidateQueries({ queryKey: ["invoices"] });
+              
+              // Show custom toast for ryczałt posting
+              if (accountInfo) {
+                toast.success(
+                  `Dodano do ryczałtu: ${accountInfo.accountName} (${accountInfo.accountRate}%)`,
+                  {
+                    duration: 4000,
+                    icon: '📋'
+                  }
+                );
+              }
+            }}
+          />
+        );
+      })()}
     </div>
   );
 };

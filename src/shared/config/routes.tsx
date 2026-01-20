@@ -66,6 +66,7 @@ const GeneralLedger = React.lazy(() => import('@/modules/accounting/screens/Gene
 const ChartOfAccounts = React.lazy(() => import('@/modules/accounting/screens/ChartOfAccounts'));
 const RyczaltAccounts = React.lazy(() => import('@/modules/accounting/screens/RyczaltAccounts'));
 const EwidencjaPrzychodow = React.lazy(() => import('@/modules/accounting/screens/EwidencjaPrzychodow'));
+const KpirPage = React.lazy(() => import('@/modules/accounting/screens/KpirPage'));
 const VatPage = React.lazy(() => import('@/modules/accounting/screens/VatPage'));
 const PitPage = React.lazy(() => import('@/modules/accounting/screens/PitPage'));
 const EventsShell = React.lazy(() => import('@/modules/events/components/EventsShell'));
@@ -589,6 +590,10 @@ export const routes: RouteConfig[] = [
       {
         path: '/accounting/ewidencja',
         element: <EwidencjaPrzychodow />,
+      },
+      {
+        path: '/accounting/kpir',
+        element: <KpirPage />,
       },
       {
         path: '/accounting/vat',

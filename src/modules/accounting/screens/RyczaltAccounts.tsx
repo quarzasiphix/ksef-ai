@@ -183,10 +183,10 @@ function RyczaltAccounts() {
         *,
         invoices!inner(
           number,
-          customer_name,
           total_gross_value,
           currency,
           exchange_rate,
+          customers!inner(name)
           sell_date
         )
       `)
@@ -214,13 +214,16 @@ function RyczaltAccounts() {
     
     const taxAmount = totalAmount * (rate / 100);
     
+    const now = new Date();
+    const nextMonth = new Date(now.getFullYear(), now.getMonth() + 1, 20);
+    
     return {
       totalAmount,
       taxAmount,
       invoiceCount: invoices.length,
-      currentMonth: new Date().getMonth() + 1,
-      currentYear: new Date().getFullYear(),
-      deadlineDate: new Date(new Date().getFullYear(), new Date().getMonth() + 1, 20) // 20th of next month
+      currentMonth: now.getMonth() + 1,
+      currentYear: now.getFullYear(),
+      deadlineDate: nextMonth
     };
   };
 
@@ -334,14 +337,17 @@ function RyczaltAccounts() {
                     <CreditCard className="h-5 w-5 text-blue-600" />
                     <div>
                       <CardTitle className="text-lg">{account.account_name}</CardTitle>
-                      <CardDescription className="flex items-center gap-2">
+                      <CardDescription className="mb-2">
+                        Konto ryczałtowe
+                      </CardDescription>
+                      <div className="flex items-center gap-2">
                         <Badge variant="outline" className="text-xs">
                           {account.account_number}
                         </Badge>
                         <Badge variant="secondary" className="bg-amber-100 text-amber-800">
                           {account.category_name} ({account.category_rate}%)
                         </Badge>
-                      </CardDescription>
+                      </div>
                     </div>
                   </div>
                   <div className="text-right">
@@ -384,7 +390,11 @@ function RyczaltAccounts() {
                       <div>
                         <div className="text-muted-foreground">Termin płatności:</div>
                         <div className="font-medium">
-                          {format(accountTaxInfo[account.id].deadlineDate, 'dd MMMM yyyy', { locale: pl })}
+                          {accountTaxInfo[account.id]?.deadlineDate && 
+                           !isNaN(accountTaxInfo[account.id].deadlineDate.getTime()) ? 
+                            format(accountTaxInfo[account.id].deadlineDate, 'dd MMMM yyyy', { locale: pl }) :
+                            'Brak danych'
+                          }
                         </div>
                       </div>
                     </div>

@@ -28,7 +28,7 @@ interface PostInvoiceDialogProps {
     entityType: string;
     tax_type?: string;
   };
-  onSuccess: () => void;
+  onSuccess: (accountInfo?: { accountName: string; accountRate: number }) => void;
 }
 
 export function PostInvoiceDialog({
@@ -154,8 +154,14 @@ export function PostInvoiceDialog({
         throw new Error(errorMessage);
       }
 
+      // Pass account info to onSuccess if it's a ryczałt account
+      const accountInfo = selectedAccount ? {
+        accountName: selectedAccount.account_name,
+        accountRate: selectedAccount.category_rate
+      } : undefined;
+      
       toast.success('Dokument został zaksięgowany');
-      onSuccess();
+      onSuccess(accountInfo);
       onOpenChange(false);
     } catch (error: any) {
       console.error('Failed to post invoice:', error);

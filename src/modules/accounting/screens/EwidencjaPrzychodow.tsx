@@ -1,12 +1,15 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { useBusinessProfile } from '@/shared/context/BusinessProfileContext';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/shared/ui/card';
 import { Button } from '@/shared/ui/button';
 import { Badge } from '@/shared/ui/badge';
-import { Plus, Receipt, TrendingUp, Calendar, Filter, Calculator, MoreHorizontal, Trash2, FileText } from 'lucide-react';
+import { Plus, Receipt, TrendingUp, Calendar, Filter, Calculator, MoreHorizontal, Trash2, FileText, Lock, AlertTriangle } from 'lucide-react';
 import { formatCurrency } from '@/shared/lib/invoice-utils';
-import { format } from 'date-fns';
+import { format, startOfMonth, endOfMonth, isSameMonth } from 'date-fns';
 import { pl } from 'date-fns/locale';
+import { useAccountingPeriod } from '../hooks/useAccountingPeriod';
+import { PeriodTimelineStrip } from '../components/PeriodTimelineStrip';
+import { UnpostedQueueWidget } from '../components/UnpostedQueueWidget';
 import { 
   DropdownMenu,
   DropdownMenuContent,
@@ -19,12 +22,16 @@ import { toast } from 'sonner';
 
 interface EwidencjaItem {
   id: string;
+  invoice_id: string;
   register_number: string;
   register_date: string;
   invoice_number: string;
   issue_date: string;
   customer_name: string;
   amount: number;
+  original_amount: number;
+  currency: string;
+  exchange_rate: number;
   category_name: string;
   category_rate: number;
   account_number: string;
@@ -33,19 +40,24 @@ interface EwidencjaItem {
 export default function EwidencjaPrzychodow() {
   const { profiles, selectedProfileId } = useBusinessProfile();
   const selectedProfile = profiles?.find((p) => p.id === selectedProfileId);
+  const { period, setPeriod, getPeriodLabel } = useAccountingPeriod();
   const [accounts, setAccounts] = useState<RyczaltAccount[]>([]);
-  const [ewidencjaItems, setEwidencjaItems] = useState<EwidencjaItem[]>([]);
+  const [allEwidencjaItems, setAllEwidencjaItems] = useState<EwidencjaItem[]>([]);
   const [isLoading, setIsLoading] = useState(true);
-  const [selectedPeriod, setSelectedPeriod] = useState('current');
   const [isDeleting, setIsDeleting] = useState(false);
   const [refreshKey, setRefreshKey] = useState(0);
   const [deletedInvoiceIds, setDeletedInvoiceIds] = useState<Set<string>>(new Set());
+  const [currentYear, setCurrentYear] = useState(period.key.year);
 
   useEffect(() => {
     if (!selectedProfile?.id) return;
     
     loadData();
-  }, [selectedProfile?.id]);
+  }, [selectedProfile?.id, period.key.year, period.key.month]);
+
+  useEffect(() => {
+    setCurrentYear(period.key.year);
+  }, [period.key.year]);
 
   const loadData = async () => {
     if (!selectedProfile?.id) return;
@@ -68,13 +80,14 @@ export default function EwidencjaPrzychodow() {
       // Process register lines to create ewidencja items
       const items = processRegisterLinesForEwidencja(registerLinesData, accountsData);
       
-      // Filter out deleted items (cache workaround)
-      const filteredItems = items.filter(item => !deletedInvoiceIds.has(item.id));
+      // Filter out deleted items (cache workaround) - use invoice_id for filtering
+      const filteredItems = items.filter(item => !deletedInvoiceIds.has(item.invoice_id));
       console.log('🔄 Processed ewidencja items:', items.length);
       console.log('🔄 After filtering deleted items:', filteredItems.length);
-      console.log('🔄 Ewidencja items IDs:', filteredItems.map(item => ({ id: item.id, invoice: item.invoice_number })));
+      console.log('🔄 Ewidencja items IDs:', filteredItems.map(item => ({ id: item.id, invoice_id: item.invoice_id, invoice: item.invoice_number })));
+      console.log('🔄 Deleted invoice IDs:', Array.from(deletedInvoiceIds));
       
-      setEwidencjaItems(filteredItems);
+      setAllEwidencjaItems(filteredItems);
       console.log('🔄 State updated with', filteredItems.length, 'items');
     } catch (error) {
       console.error('Failed to load ewidencja data:', error);
@@ -87,10 +100,17 @@ export default function EwidencjaPrzychodow() {
   const getRegisterLines = async (businessProfileId: string) => {
     console.log('📡 Fetching register lines for business profile:', businessProfileId);
     
-    // Add cache-busting by using a different approach
+    // Join with invoices to get currency and exchange rate information
     const { data, error } = await supabase
       .from('jdg_revenue_register_lines')
-      .select('*')
+      .select(`
+        *,
+        invoices!inner(
+          currency,
+          exchange_rate,
+          total_gross_value
+        )
+      `)
       .eq('business_profile_id', businessProfileId)
       .order('occurred_at', { ascending: false });
     
@@ -119,14 +139,22 @@ export default function EwidencjaPrzychodow() {
       .map(line => {
         const account = accounts.find(acc => acc.id === line.ryczalt_account_id);
         
+        const originalAmount = parseFloat(line.invoices?.total_gross_value) || 0;
+        const currency = line.invoices?.currency || 'PLN';
+        const exchangeRate = parseFloat(line.invoices?.exchange_rate) || 1;
+        
         return {
           id: line.id,
-          register_number: line.id.substring(0, 8).toUpperCase(),
+          invoice_id: line.invoice_id,
+          register_number: line.document_number,
           register_date: line.occurred_at,
-          invoice_number: line.document_number || 'Brak numeru',
+          invoice_number: line.document_number,
           issue_date: line.occurred_at,
-          customer_name: line.counterparty_name || 'Nieznany klient',
-          amount: parseFloat(line.tax_base_amount) || 0,
+          customer_name: line.counterparty_name,
+          amount: parseFloat(line.tax_base_amount) || 0, // This should be in PLN
+          original_amount: originalAmount,
+          currency: currency,
+          exchange_rate: exchangeRate,
           category_name: line.category_name || account?.category_name || 'Nieznane konto',
           category_rate: parseFloat(line.ryczalt_rate) || account?.category_rate || 0,
           account_number: line.ryczalt_account_number || account?.account_number || 'Brak konta'
@@ -144,14 +172,26 @@ export default function EwidencjaPrzychodow() {
     try {
       console.log('🔄 Starting deletion process for:', invoiceId);
       
-      // Step 1: Remove from register lines (this is what the UI displays)
-      console.log('📋 Step 1: Deleting from register lines...');
+      // Step 1: Remove ALL register lines for this invoice (this is what the UI displays)
+      console.log('📋 Step 1: Deleting ALL register lines for invoice...');
       const { error: registerError, count: registerCount } = await supabase
         .from('jdg_revenue_register_lines')
         .delete()
         .eq('invoice_id', invoiceId);
 
       console.log('📋 Register lines deletion result:', { error: registerError, count: registerCount });
+
+      // Also delete from new ryczalt_invoice_items table if it exists
+      try {
+        const { error: itemError } = await supabase
+          .from('ryczalt_invoice_items')
+          .delete()
+          .eq('invoice_id', invoiceId);
+        
+        console.log('📋 Ryczalt items deletion result:', { error: itemError });
+      } catch (itemError) {
+        console.log('📋 Ryczalt items table might not exist yet:', itemError);
+      }
 
       if (registerError) {
         console.error('❌ Failed to delete from register lines:', registerError);
@@ -192,12 +232,12 @@ export default function EwidencjaPrzychodow() {
 
       console.log('✅ Successfully deleted invoice, clearing state and reloading...');
       
-      // Add to deleted IDs set (cache workaround)
+      // Add to deleted INVOICE IDs set (cache workaround) - use invoice_id, not register line id
       setDeletedInvoiceIds(prev => new Set([...prev, invoiceId]));
-      console.log('🗑️ Added to deleted IDs set:', invoiceId);
+      console.log('🗑️ Added to deleted INVOICE IDs set:', invoiceId);
       
       // Immediately clear the deleted item from state
-      setEwidencjaItems(prev => {
+      setAllEwidencjaItems(prev => {
         const filtered = prev.filter(item => item.id !== invoiceId);
         console.log('🧹 Cleared invoice from state, remaining items:', filtered.length);
         return filtered;
@@ -215,7 +255,7 @@ export default function EwidencjaPrzychodow() {
       await new Promise(resolve => setTimeout(resolve, 100));
       
       // Check if the deleted item is still in the data (debugging)
-      const stillExists = ewidencjaItems.some(item => item.id === invoiceId);
+      const stillExists = allEwidencjaItems.some(item => item.id === invoiceId);
       console.log('🔍 Check if deleted item still exists:', stillExists);
       
       if (stillExists) {
@@ -233,9 +273,20 @@ export default function EwidencjaPrzychodow() {
     }
   };
 
+  // Filter items for selected period
+  const ewidencjaItems = useMemo(() => {
+    return allEwidencjaItems.filter(item => {
+      const itemDate = new Date(item.register_date);
+      const periodStart = startOfMonth(new Date(period.key.year, period.key.month - 1));
+      const periodEnd = endOfMonth(new Date(period.key.year, period.key.month - 1));
+      return itemDate >= periodStart && itemDate <= periodEnd;
+    });
+  }, [allEwidencjaItems, period.key.year, period.key.month]);
+
   const calculateGroupTax = (group: any) => {
     const taxAmount = group.total_amount * (group.category_rate / 100);
-    const deadlineDate = new Date(new Date().getFullYear(), new Date().getMonth() + 1, 20);
+    // Deadline is 20th of next month after the period
+    const deadlineDate = new Date(period.key.year, period.key.month, 20);
     
     return {
       taxAmount,
@@ -243,6 +294,26 @@ export default function EwidencjaPrzychodow() {
       invoiceCount: group.items.length
     };
   };
+
+  // Calculate month states for timeline
+  const monthStates = useMemo(() => {
+    const states = [];
+    for (let month = 1; month <= 12; month++) {
+      const monthItems = allEwidencjaItems.filter(item => {
+        const itemDate = new Date(item.register_date);
+        return isSameMonth(itemDate, new Date(currentYear, month - 1));
+      });
+      
+      states.push({
+        month,
+        hasActivity: monthItems.length > 0,
+        isLocked: false, // TODO: implement period locking
+        hasErrors: false,
+        unpostedCount: 0 // TODO: fetch unposted count
+      });
+    }
+    return states;
+  }, [allEwidencjaItems, currentYear]);
 
   // Group items by category
   const groupedByCategory = ewidencjaItems.reduce((groups, item) => {
@@ -305,13 +376,22 @@ export default function EwidencjaPrzychodow() {
         </div>
       </div>
 
-      {/* Summary Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+      {/* Period Timeline Navigation */}
+      <PeriodTimelineStrip
+        currentPeriod={period.key}
+        currentYear={currentYear}
+        monthStates={monthStates}
+        onPeriodChange={setPeriod}
+        onYearChange={setCurrentYear}
+      />
+
+      {/* Period Summary Cards */}
+      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
         <Card>
           <CardHeader className="pb-3">
             <CardTitle className="text-base flex items-center gap-2">
               <TrendingUp className="h-4 w-4 text-green-600" />
-              Łączne przychody
+              Przychody okresu
             </CardTitle>
           </CardHeader>
           <CardContent>
@@ -319,7 +399,7 @@ export default function EwidencjaPrzychodow() {
               {formatCurrency(totalRevenue)}
             </div>
             <p className="text-xs text-muted-foreground mt-1">
-              Wszystkie kategorie ryczałtowe
+              {getPeriodLabel(period.key)}
             </p>
           </CardContent>
         </Card>
@@ -328,7 +408,7 @@ export default function EwidencjaPrzychodow() {
           <CardHeader className="pb-3">
             <CardTitle className="text-base flex items-center gap-2">
               <Receipt className="h-4 w-4 text-blue-600" />
-              Liczba transakcji
+              Liczba dokumentów
             </CardTitle>
           </CardHeader>
           <CardContent>
@@ -336,7 +416,7 @@ export default function EwidencjaPrzychodow() {
               {ewidencjaItems.length}
             </div>
             <p className="text-xs text-muted-foreground mt-1">
-              Faktury przychodowe
+              Zaksięgowane faktury
             </p>
           </CardContent>
         </Card>
@@ -344,31 +424,93 @@ export default function EwidencjaPrzychodow() {
         <Card>
           <CardHeader className="pb-3">
             <CardTitle className="text-base flex items-center gap-2">
-              <Calendar className="h-4 w-4 text-purple-600" />
-              Okres
+              <Calculator className="h-4 w-4 text-red-600" />
+              Podatek do zapłaty
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-purple-600">
-              {format(new Date(), 'MMMM yyyy', { locale: pl })}
+            <div className="text-2xl font-bold text-red-600">
+              {formatCurrency(
+                Object.values(groupedByCategory).reduce((sum, group: any) => {
+                  return sum + (group.total_amount * (group.category_rate / 100));
+                }, 0)
+              )}
             </div>
             <p className="text-xs text-muted-foreground mt-1">
-              Bieżący miesiąc
+              Suma ryczałtu
+            </p>
+          </CardContent>
+        </Card>
+        
+        <Card>
+          <CardHeader className="pb-3">
+            <CardTitle className="text-base flex items-center gap-2">
+              <Calendar className="h-4 w-4 text-orange-600" />
+              Termin płatności
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="text-lg font-bold text-orange-600">
+              {format(new Date(period.key.year, period.key.month, 20), 'dd MMM yyyy', { locale: pl })}
+            </div>
+            <p className="text-xs text-muted-foreground mt-1">
+              {new Date() > new Date(period.key.year, period.key.month, 20) 
+                ? '⚠️ Po terminie' 
+                : `${Math.ceil((new Date(period.key.year, period.key.month, 20).getTime() - new Date().getTime()) / (1000 * 60 * 60 * 24))} dni pozostało`}
             </p>
           </CardContent>
         </Card>
       </div>
+
+      {/* Unposted Documents Widget - Period Aware */}
+      {selectedProfile?.id && (
+        <UnpostedQueueWidget
+          businessProfileId={selectedProfile.id}
+          period={period.key}
+          onNavigateToInvoice={(invoiceId) => window.location.href = `/income/${invoiceId}`}
+        />
+      )}
+
+      {/* Period Status Header */}
+      <Card className="border-l-4 border-l-blue-500">
+        <CardHeader>
+          <div className="flex items-center justify-between">
+            <div>
+              <CardTitle className="text-xl">Okres: {getPeriodLabel(period.key)}</CardTitle>
+              <CardDescription className="mt-1">
+                Ewidencja podatkowa - termin złożenia do 20 {format(new Date(period.key.year, period.key.month), 'MMMM yyyy', { locale: pl })}
+              </CardDescription>
+            </div>
+            <div className="flex items-center gap-3">
+              <Badge variant="outline" className="text-sm">
+                {ewidencjaItems.length} {ewidencjaItems.length === 1 ? 'dokument' : ewidencjaItems.length < 5 ? 'dokumenty' : 'dokumentów'}
+              </Badge>
+              {new Date() > new Date(period.key.year, period.key.month, 20) ? (
+                <Badge variant="destructive" className="flex items-center gap-1">
+                  <AlertTriangle className="h-3 w-3" />
+                  Po terminie
+                </Badge>
+              ) : (
+                <Badge variant="secondary" className="flex items-center gap-1">
+                  <Calendar className="h-3 w-3" />
+                  {Math.ceil((new Date(period.key.year, period.key.month, 20).getTime() - new Date().getTime()) / (1000 * 60 * 60 * 24))} dni do terminu
+                </Badge>
+              )}
+            </div>
+          </div>
+        </CardHeader>
+      </Card>
 
       {/* Ewidencja Grouped by Category */}
       {Object.keys(groupedByCategory).length === 0 ? (
         <Card>
           <CardContent className="text-center py-8">
             <Receipt className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
-            <h3 className="text-lg font-semibold mb-2">Brak przychodów</h3>
+            <h3 className="text-lg font-semibold mb-2">Brak przychodów w okresie {getPeriodLabel(period.key)}</h3>
             <p className="text-muted-foreground mb-4">
               {accounts.length === 0 
                 ? "Nie masz jeszcze kont ryczałtowych. Stwórz konto, aby zacząć grupować przychody."
-                : "Nie znaleziono przychodów z ryczałtowymi kontami. Zaksięguj faktury z wybranym kontem ryczałtowym."
+                : `Nie znaleziono zaksięgowanych przychodów dla okresu ${getPeriodLabel(period.key)}. Zaksięguj faktury z wybranym kontem ryczałtowym.`
               }
             </p>
             <div className="flex gap-2 justify-center">
@@ -380,7 +522,7 @@ export default function EwidencjaPrzychodow() {
               )}
               <Button variant="outline">
                 <Plus className="h-4 w-4 mr-2" />
-                Dodaj pierwszą fakturę
+                Dodaj fakturę
               </Button>
             </div>
           </CardContent>
@@ -395,7 +537,7 @@ export default function EwidencjaPrzychodow() {
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-3">
                       <CardTitle className="text-lg">{group.category_name}</CardTitle>
-                      <Badge variant="secondary" className="bg-amber-100 text-amber-800">
+                      <Badge variant="secondary" className="bg-amber-100 text-amber-800 dark:bg-amber-900 dark:text-amber-200">
                         {group.category_rate}%
                       </Badge>
                       <Badge variant="outline" className="text-xs">
@@ -407,7 +549,7 @@ export default function EwidencjaPrzychodow() {
                         {formatCurrency(group.total_amount)}
                       </div>
                       <div className="text-xs text-muted-foreground">
-                        {group.items.length} transakcji
+                        {group.items.length} {group.items.length === 1 ? 'transakcja' : group.items.length < 5 ? 'transakcje' : 'transakcji'}
                       </div>
                     </div>
                   </div>
@@ -444,7 +586,7 @@ export default function EwidencjaPrzychodow() {
                       <div
                         key={item.id}
                         className="flex items-center justify-between p-3 border rounded-lg hover:bg-muted/50 transition-colors cursor-pointer group"
-                        onClick={() => window.location.href = `/invoices/${item.id}`}
+                        onClick={() => window.location.href = `/income/${item.invoice_id}`}
                       >
                         <div className="flex items-center gap-3 flex-1">
                           <div>
@@ -456,6 +598,14 @@ export default function EwidencjaPrzychodow() {
                           <div className="text-right">
                             <div className="font-medium">
                               {formatCurrency(item.amount)}
+                              {item.currency !== 'PLN' && (
+                                <div className="text-xs text-muted-foreground">
+                                  {formatCurrency(item.original_amount, item.currency)} 
+                                  <span className="text-xs ml-1">
+                                    (×{item.exchange_rate})
+                                  </span>
+                                </div>
+                              )}
                             </div>
                             <div className="text-xs text-muted-foreground">
                               {format(new Date(item.issue_date), 'dd.MM.yyyy', { locale: pl })}
@@ -476,7 +626,7 @@ export default function EwidencjaPrzychodow() {
                               <DropdownMenuItem
                                 onClick={(e) => {
                                   e.stopPropagation();
-                                  window.location.href = `/invoices/${item.id}`;
+                                  window.location.href = `/income/${item.invoice_id}`;
                                 }}
                               >
                                 <FileText className="h-4 w-4 mr-2" />
@@ -486,8 +636,9 @@ export default function EwidencjaPrzychodow() {
                                 className="text-red-600"
                                 onClick={(e) => {
                                   e.stopPropagation();
-                                  console.log('🔴 Dropdown delete clicked for invoice:', item.id);
-                                  handleRemoveInvoiceFromEwidencja(item.id);
+                                  console.log('🔴 Dropdown delete clicked for invoice:', item.invoice_id);
+                                  console.log('🔴 Register line ID:', item.id);
+                                  handleRemoveInvoiceFromEwidencja(item.invoice_id);
                                 }}
                                 disabled={isDeleting}
                               >

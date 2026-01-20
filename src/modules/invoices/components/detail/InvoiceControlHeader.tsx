@@ -166,7 +166,7 @@ export const InvoiceControlHeader: React.FC<InvoiceControlHeaderProps> = ({
 
           {/* Due date - Secondary */}
           <div className="text-sm text-muted-foreground">
-            Termin: {format(new Date(dueDate), 'dd MMM yyyy', { locale: pl })}
+            Termin: {dueDate && !isNaN(new Date(dueDate).getTime()) ? format(new Date(dueDate), 'dd MMM yyyy', { locale: pl }) : 'Brak terminu'}
           </div>
 
           {/* Quick actions - Small icons */}

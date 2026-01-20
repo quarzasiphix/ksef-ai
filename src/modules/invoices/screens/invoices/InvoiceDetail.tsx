@@ -16,7 +16,13 @@ import {
   Share2,
   DollarSign,
   FilePlus,
-  ArrowDownCircle
+  ArrowDownCircle,
+  AlertCircle,
+  Clock,
+  BookOpen,
+  Lock,
+  ChevronDown,
+  ChevronUp
 } from "lucide-react";
 import { useGlobalData } from "@/shared/hooks/use-global-data";
 import { TransactionType } from "@/shared/types/common";
@@ -84,11 +90,14 @@ const InvoiceDetail: React.FC<InvoiceDetailProps> = ({ type }) => {
   const [selectedBankAccount, setSelectedBankAccount] = useState<any>(null);
   const [bankAccounts, setBankAccounts] = useState<BankAccount[]>([]);
   const [cashAccounts, setCashAccounts] = useState<CashAccount[]>([]);
+  const [showAccountingDetails, setShowAccountingDetails] = useState(false);
   const queryClient = useQueryClient();
   const discussionRef = useRef<HTMLDivElement>(null);
 
+  // Use cached invoice from global data (sync system)
   const baseInvoice = invoices.find(inv => inv.id === id) || null;
-
+  
+  // Only fetch from database if not in cache (fallback)
   const {
     data: invoice,
     isLoading: isLoadingInvoice,
@@ -98,74 +107,114 @@ const InvoiceDetail: React.FC<InvoiceDetailProps> = ({ type }) => {
     queryFn: async () => {
       if (!id) return null;
       
-      // Try to fetch as regular invoice first (owner/team access)
+      // If we have the invoice in cache, use it
+      if (baseInvoice) {
+        console.log('Using cached invoice from sync system:', baseInvoice);
+        return baseInvoice;
+      }
+      
+      // Fallback: fetch from database only if not in cache
+      console.log('Invoice not in cache, fetching from database...');
       try {
-        const fetchedInvoice = await getInvoiceById(id);
+        const { data: fetchedInvoice, error } = await supabase
+          .from('invoices')
+          .select(`
+            *,
+            business_profiles!inner(
+              id,
+              name,
+              user_id,
+              tax_id,
+              address,
+              city,
+              postal_code
+            ),
+            customers!inner(
+              id,
+              name,
+              user_id,
+              tax_id,
+              address,
+              city,
+              postal_code
+            ),
+            invoice_items (
+              id,
+              product_id,
+              name,
+              quantity,
+              unit_price,
+              vat_rate,
+              unit,
+              total_net_value,
+              total_gross_value,
+              total_vat_value,
+              vat_exempt
+            )
+          `)
+          .eq('id', id)
+          .single();
+
+        if (error) throw error;
+
         if (fetchedInvoice) {
-          console.log('Fetched invoice from database:', fetchedInvoice);
-          return fetchedInvoice;
+          console.log('Fetched invoice from database (fallback):', fetchedInvoice);
+          
+          // Transform database response to match Invoice interface
+          const transformedInvoice = {
+            ...fetchedInvoice,
+            items: fetchedInvoice.invoice_items || [],
+            issueDate: fetchedInvoice.issue_date,
+            dueDate: fetchedInvoice.due_date,
+            sellDate: fetchedInvoice.sell_date,
+            businessProfileId: fetchedInvoice.business_profile_id,
+            customerId: fetchedInvoice.customer_id,
+            totalNetValue: fetchedInvoice.total_net_value,
+            totalGrossValue: fetchedInvoice.total_gross_value,
+            totalVatValue: fetchedInvoice.total_vat_value,
+            paymentMethod: fetchedInvoice.payment_method,
+            isPaid: fetchedInvoice.is_paid,
+            ksefStatus: fetchedInvoice.ksef_status,
+            ksefReferenceNumber: fetchedInvoice.ksef_reference_number,
+            userId: fetchedInvoice.user_id,
+            transactionType: fetchedInvoice.transaction_type,
+            vatExemptionReason: fetchedInvoice.vat_exemption_reason,
+            fakturaBezVAT: fetchedInvoice.vat === false,
+            seller: fetchedInvoice.business_profiles || {},
+            buyer: fetchedInvoice.customers || {},
+          };
+          
+          return transformedInvoice;
         }
       } catch (error) {
-        // If RLS blocks access or not found, try as received invoice
-        console.log('Invoice not found via standard access, trying as received invoice...');
-      }
-
-      // If regular fetch fails (e.g. RLS) or returns null, try fetching as received invoice
-      const receivedInvoiceData = await getReceivedInvoiceWithSender(id);
-      
-      if (receivedInvoiceData) {
-        console.log('Fetched received invoice:', receivedInvoiceData);
-        // Map to Invoice type - we only have partial data but enough for display
-        return {
-          id: receivedInvoiceData.invoice_id,
-          number: receivedInvoiceData.invoice_number,
-          issueDate: receivedInvoiceData.issue_date,
-          dueDate: receivedInvoiceData.due_date,
-          sellDate: receivedInvoiceData.issue_date, // Fallback
-          isPaid: receivedInvoiceData.is_paid,
-          totalGrossValue: receivedInvoiceData.total_gross_value,
-          // Partial data for display
-          type: 'sales' as InvoiceType, // Assumed
-          transactionType: TransactionType.EXPENSE, // It's an expense for the receiver
-          user_id: '', // Unknown/Hidden
-          businessProfileId: receivedInvoiceData.sender_id,
-          customerId: '', // Current user's company
-          items: [], // Details might not be fully available in summary view
-          paymentMethod: 'transfer',
-          paid: receivedInvoiceData.is_paid,
-          status: 'issued' as InvoiceStatus,
-          comments: '',
-          totalNetValue: 0, // Not exposed in summary RPC
-          totalVatValue: 0, // Not exposed in summary RPC
-          totalAmount: receivedInvoiceData.total_gross_value,
-          ksef: { status: 'none', referenceNumber: null },
-          seller: {
-            id: receivedInvoiceData.sender_id,
-            name: receivedInvoiceData.sender_name,
-            taxId: receivedInvoiceData.sender_tax_id,
-            address: receivedInvoiceData.sender_address,
-            city: receivedInvoiceData.sender_city,
-            postalCode: receivedInvoiceData.sender_postal_code,
-          },
-          buyer: { id: '', name: 'Ty (Nabywca)', taxId: '', address: '', city: '', postalCode: '' }, // Placeholder
-          businessName: receivedInvoiceData.sender_name,
-          customerName: 'Ty',
-          created_at: new Date().toISOString(),
-          updated_at: new Date().toISOString(),
-          vat: true,
-          currency: 'PLN',
-        } as Invoice;
+        console.error('Error fetching invoice:', error);
       }
 
       return null;
     },
     enabled: !!id,
     initialData: baseInvoice,
-    staleTime: 0,
-    refetchOnMount: true,
+    staleTime: Infinity, // Use cached data indefinitely, sync system handles updates
+    refetchOnMount: false, // Don't refetch, use sync system
   });
 
-  // Auto-scroll to discussion if requested via query param
+  // Check if invoice has register lines (posted to accounting) - moved to top
+  const { data: registerLines } = useQuery({
+    queryKey: ['invoice-register-lines', id],
+    queryFn: async () => {
+      if (!id) return [];
+      
+      const { data, error } = await supabase
+        .from('jdg_revenue_register_lines')
+        .select('*')
+        .eq('invoice_id', id);
+        
+      if (error) throw error;
+      return data || [];
+    },
+    enabled: !!id,
+  });
+
   useEffect(() => {
     const params = new URLSearchParams(location.search);
     if (params.get('section') === 'discussion' && discussionRef.current && !isLoadingInvoice) {
@@ -184,16 +233,14 @@ const InvoiceDetail: React.FC<InvoiceDetailProps> = ({ type }) => {
         }).catch(console.error);
       }
       
-      // Load bank accounts for bank payment invoices
-      if (invoice.bankAccountId) {
+      // Load bank accounts for bank transfer invoices
+      if (invoice.paymentMethod === 'transfer') {
         getBankAccountsForProfile(invoice.businessProfileId).then(accs => {
-          setSelectedBankAccount(accs.find(a => a.id === invoice.bankAccountId) || null);
-        });
-      } else {
-        setSelectedBankAccount(null);
+          setBankAccounts(accs);
+        }).catch(console.error);
       }
     }
-  }, [invoice?.bankAccountId, invoice?.businessProfileId, invoice?.paymentMethod]);
+  }, [invoice?.businessProfileId, invoice?.paymentMethod]);
 
   useEffect(() => {
     if (invoice?.businessProfileId) {
@@ -205,6 +252,10 @@ const InvoiceDetail: React.FC<InvoiceDetailProps> = ({ type }) => {
 
   // Preprocess items to ensure correct VAT values using calculateInvoiceTotals
   const { items: processedItems, totalNetValue, totalVatValue, totalGrossValue } = calculateInvoiceTotals(invoice?.items || []);
+  
+  // Debug logging
+  console.log('Processed items:', processedItems);
+  console.log('Raw invoice items:', invoice?.items);
   const fakturaBezVAT = invoice?.fakturaBezVAT || invoice?.vat === false;
   
   const totals = {
@@ -255,6 +306,17 @@ const InvoiceDetail: React.FC<InvoiceDetailProps> = ({ type }) => {
 
   const isIncome = invoice.transactionType === TransactionType.INCOME;
   const editPath = isIncome ? `/income/edit/${invoice.id}` : `/expense/${invoice.id}/edit`;
+  
+  // Accounting status calculations - moved after invoice check
+  const hasRegisterLines = registerLines && registerLines.length > 0;
+  const isPosted = hasRegisterLines || ((invoice as any).accounting_status === 'posted');
+  
+  // Accounting status information
+  const accountingStatus = isPosted ? 'posted' : ((invoice as any).accounting_status || 'unposted');
+  const isBooked = (invoice as any).booked_to_ledger || false;
+  const accountingLockedAt = (invoice as any).accounting_locked_at;
+  const accountingLockedBy = (invoice as any).accounting_locked_by;
+  const accountingErrorReason = (invoice as any).accounting_error_reason;
 
   const handleDownloadPdf = async () => {
     const recalculatedInvoice = {
@@ -394,7 +456,7 @@ const InvoiceDetail: React.FC<InvoiceDetailProps> = ({ type }) => {
         dueDate={invoice.dueDate}
         isPaid={invoice.isPaid}
         isOverdue={isOverdue}
-        isBooked={(invoice as any).booked_to_ledger || false}
+        isBooked={isBooked}
         lifecycleStatus={(invoice as any).lifecycle_status}
         onEdit={() => navigate(editPath)}
         onDownload={handleDownloadPdf}
@@ -423,13 +485,119 @@ const InvoiceDetail: React.FC<InvoiceDetailProps> = ({ type }) => {
         />
       )}
 
+      {/* Accounting Details - Collapsible for Accountants */}
+      <div className="border border-white/5 rounded-lg overflow-hidden">
+        <button
+          onClick={() => setShowAccountingDetails(!showAccountingDetails)}
+          className="w-full flex items-center justify-between p-4 hover:bg-white/[0.02] transition-colors"
+        >
+          <div className="flex items-center gap-3">
+            <Wallet className="h-4 w-4 text-muted-foreground" />
+            <span className="text-sm font-medium">Informacje księgowe</span>
+            {isPosted && (
+              <Badge variant="outline" className="text-xs text-green-600 border-green-600/30">
+                Zaksięgowana
+              </Badge>
+            )}
+            {!isPosted && accountingErrorReason && (
+              <Badge variant="outline" className="text-xs text-red-600 border-red-600/30">
+                Wymaga uwagi
+              </Badge>
+            )}
+          </div>
+          {showAccountingDetails ? (
+            <ChevronUp className="h-4 w-4 text-muted-foreground" />
+          ) : (
+            <ChevronDown className="h-4 w-4 text-muted-foreground" />
+          )}
+        </button>
+        
+        {showAccountingDetails && (
+          <div className="p-4 pt-0 space-y-4 border-t border-white/5">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              {/* Status dokumentu */}
+              <div className="space-y-2">
+                <div className="text-xs text-muted-foreground uppercase tracking-wide">Status dokumentu</div>
+                <div className="flex items-center gap-2">
+                  {isPosted ? (
+                    <>
+                      <CheckCircle className="h-4 w-4 text-green-600" />
+                      <span className="text-sm">Zaksięgowana</span>
+                    </>
+                  ) : accountingErrorReason ? (
+                    <>
+                      <AlertCircle className="h-4 w-4 text-red-600" />
+                      <span className="text-sm">Błąd księgowania</span>
+                    </>
+                  ) : (
+                    <>
+                      <Clock className="h-4 w-4 text-amber-600" />
+                      <span className="text-sm">Do zaksięgowania</span>
+                    </>
+                  )}
+                </div>
+                {accountingErrorReason && (
+                  <div className="text-xs text-red-600 dark:text-red-400 mt-1">
+                    {accountingErrorReason === 'MISSING_CATEGORY' ? 'Brak kategorii ryczałtu' :
+                     accountingErrorReason === 'LOCKED_PERIOD' ? 'Okres zamknięty' :
+                     accountingErrorReason === 'PENDING_ACCEPTANCE' ? 'Oczekuje na akceptację' :
+                     accountingErrorReason}
+                  </div>
+                )}
+              </div>
+
+              {/* Księga główna */}
+              <div className="space-y-2">
+                <div className="text-xs text-muted-foreground uppercase tracking-wide">Księga główna</div>
+                <div className="flex items-center gap-2">
+                  {isBooked ? (
+                    <>
+                      <BookOpen className="h-4 w-4 text-blue-600" />
+                      <span className="text-sm">Zaksięgowana w KPiR</span>
+                    </>
+                  ) : (
+                    <>
+                      <BookOpen className="h-4 w-4 text-muted-foreground" />
+                      <span className="text-sm text-muted-foreground">Nie zaksięgowana</span>
+                    </>
+                  )}
+                </div>
+              </div>
+
+              {/* Blokada księgowa */}
+              <div className="space-y-2">
+                <div className="text-xs text-muted-foreground uppercase tracking-wide">Blokada księgowa</div>
+                <div className="flex items-center gap-2">
+                  {accountingLockedAt ? (
+                    <>
+                      <Lock className="h-4 w-4 text-orange-600" />
+                      <span className="text-sm">Zablokowana</span>
+                    </>
+                  ) : (
+                    <>
+                      <Lock className="h-4 w-4 text-muted-foreground" />
+                      <span className="text-sm text-muted-foreground">Odblokowana</span>
+                    </>
+                  )}
+                </div>
+                {accountingLockedAt && (
+                  <div className="text-xs text-muted-foreground mt-1">
+                    {accountingLockedAt && !isNaN(new Date(accountingLockedAt).getTime()) ? format(new Date(accountingLockedAt), 'dd.MM.yyyy HH:mm') : 'Brak daty'}
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+        )}
+      </div>
+
       {/* Financial Summary Strip - Soft cards, no white inputs */}
       <FinancialSummaryStrip
         cashflowStatus={invoice.isPaid ? 'received' : isOverdue ? 'overdue' : 'expected'}
         vatStatus={fakturaBezVAT ? 'exempt' : 'applicable'}
-        accountingPeriod={format(new Date(invoice.issueDate), 'MM/yyyy')}
+        accountingPeriod={invoice.issueDate && !isNaN(new Date(invoice.issueDate).getTime()) ? format(new Date(invoice.issueDate), 'MM/yyyy') : 'Brak daty'}
         paymentMethod={invoice.paymentMethod}
-        isBooked={(invoice as any).booked_to_ledger || false}
+        isBooked={isBooked}
         transactionType={invoice.transactionType as 'income' | 'expense'}
       />
 
@@ -492,15 +660,15 @@ const InvoiceDetail: React.FC<InvoiceDetailProps> = ({ type }) => {
               <div className="h-px bg-white/5" />
               <div className="flex justify-between text-sm">
                 <span className="text-muted-foreground">Wystawienie</span>
-                <span>{format(new Date(invoice.issueDate), "dd.MM.yyyy", { locale: pl })}</span>
+                <span>{invoice.issueDate && !isNaN(new Date(invoice.issueDate).getTime()) ? format(new Date(invoice.issueDate), "dd.MM.yyyy", { locale: pl }) : 'Brak daty'}</span>
               </div>
               <div className="flex justify-between text-sm">
                 <span className="text-muted-foreground">Sprzedaż</span>
-                <span>{format(new Date(invoice.sellDate), "dd.MM.yyyy", { locale: pl })}</span>
+                <span>{invoice.sellDate && !isNaN(new Date(invoice.sellDate).getTime()) ? format(new Date(invoice.sellDate), "dd.MM.yyyy", { locale: pl }) : 'Brak daty'}</span>
               </div>
               <div className="flex justify-between text-sm">
                 <span className="text-muted-foreground">Termin</span>
-                <span>{format(new Date(invoice.dueDate), "dd.MM.yyyy", { locale: pl })}</span>
+                <span>{invoice.dueDate && !isNaN(new Date(invoice.dueDate).getTime()) ? format(new Date(invoice.dueDate), "dd.MM.yyyy", { locale: pl }) : 'Brak daty'}</span>
               </div>
               <div className="h-px bg-white/5" />
               <div className="flex justify-between text-sm">

@@ -46,10 +46,10 @@ export default function PitPage() {
           *,
           invoices!inner(
             number,
-            customer_name,
             total_gross_value,
             currency,
             exchange_rate,
+            customers!inner(name)
             sell_date
           )
         `)

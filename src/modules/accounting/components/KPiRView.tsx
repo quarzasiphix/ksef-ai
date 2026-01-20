@@ -63,7 +63,7 @@ export function KPiRView({ businessProfileId, isRyczalt }: KPiRViewProps) {
           id: inv.id,
           occurred_at: inv.issue_date,
           document_number: inv.invoice_number || 'Draft',
-          counterparty_name: inv.customer_name || 'Nieznany',
+          counterparty_name: (inv as any).customers?.[0]?.name || 'Nieznany',
           tax_base_amount: inv.total_gross_value || 0,
           ryczalt_rate: 0,
           ryczalt_tax_amount: 0,
