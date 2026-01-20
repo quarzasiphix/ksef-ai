@@ -178,6 +178,11 @@ export function RyczaltAccountAssignmentModal({
 
       await Promise.all(updates);
 
+      // Invalidate all relevant queries to refresh the UI
+      queryClient.invalidateQueries({ queryKey: ['invoices'] });
+      queryClient.invalidateQueries({ queryKey: ['ryczalt-accounts'] });
+      queryClient.invalidateQueries({ queryKey: ['jdg-revenue-register'] });
+
       toast.success('Zapisano przypisania', {
         description: `Przypisano ${invoiceAssignments.length} faktur do kont ryczałtowych`,
         icon: <CheckCircle2 className="h-4 w-4" />,
