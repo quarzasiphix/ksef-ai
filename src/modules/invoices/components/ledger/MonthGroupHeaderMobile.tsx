@@ -23,27 +23,27 @@ export function MonthGroupHeaderMobile({
     <button
       onClick={onToggle}
       className={cn(
-        "sticky top-0 z-10 w-full flex items-center justify-between px-4 py-3",
-        "bg-background border-b-2 border-border",
-        "active:bg-muted/50 transition-colors"
+        "sticky top-0 z-10 w-full flex items-center justify-between px-4 py-5",
+        "bg-muted/60 border-y-2 border-border backdrop-blur-sm shadow-sm",
+        "active:bg-muted/80 transition-all duration-150"
       )}
     >
-      <div className="flex items-center gap-2">
+      <div className="flex items-center gap-3">
         {isExpanded ? (
-          <ChevronDown className="h-4 w-4 text-muted-foreground" />
+          <ChevronDown className="h-5 w-5 text-muted-foreground" />
         ) : (
-          <ChevronRight className="h-4 w-4 text-muted-foreground" />
+          <ChevronRight className="h-5 w-5 text-muted-foreground" />
         )}
         <div className="flex flex-col items-start">
-          <span className="text-sm font-semibold">
+          <span className="text-base font-bold text-foreground">
             {capitalizeMonth(label)}
           </span>
-          <span className="text-xs text-muted-foreground">
+          <span className="text-xs text-muted-foreground font-medium">
             {invoiceCount} {invoiceCount === 1 ? 'dokument' : 'dokumentów'}
           </span>
         </div>
       </div>
-      <div className="text-sm font-mono font-semibold tabular-nums">
+      <div className="text-base font-mono font-bold tabular-nums">
         {formatLedgerAmount(sum, currency)}
       </div>
     </button>

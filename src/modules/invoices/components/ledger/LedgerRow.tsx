@@ -13,6 +13,7 @@ import {
 import { Button } from '@/shared/ui/button';
 import { format } from 'date-fns';
 import { pl } from 'date-fns/locale';
+import { useState, useMemo, useEffect, useRef } from 'react';
 
 interface LedgerRowProps {
   invoice: Invoice;
@@ -43,6 +44,9 @@ export function LedgerRow({
   const amount = isVatExempt ? (invoice.totalNetValue || 0) : (invoice.totalGrossValue || invoice.totalAmount || 0);
   const isPaid = invoice.isPaid || invoice.paid;
   const isOverdue = new Date(invoice.dueDate) < new Date() && !isPaid;
+  
+  const [isDropdownOpen, setIsDropdownOpen] = useState(false);
+  const dropdownButtonRef = useRef<HTMLButtonElement>(null);
 
   const handleRowClick = () => {
     if (onView) {
@@ -50,59 +54,88 @@ export function LedgerRow({
     }
   };
 
+  const handleContextMenu = (e: React.MouseEvent) => {
+    e.preventDefault();
+    // Open dropdown by setting state directly
+    setIsDropdownOpen(true);
+  };
+
+  const handleDropdownOpenChange = (open: boolean) => {
+    setIsDropdownOpen(open);
+  };
+
   return (
     <div
       className={cn(
-        "group flex items-center justify-between px-4 py-3",
-        "hover:bg-muted/30 transition-colors cursor-pointer",
-        "border-b border-border/50"
+        "group relative flex items-center justify-between px-5 py-4",
+        "bg-card hover:bg-accent/50 focus-within:bg-accent/50 transition-all duration-150 cursor-pointer",
+        "border-b border-border/30",
+        "hover:shadow-sm hover:-translate-y-[1px]",
+        "before:absolute before:left-0 before:top-0 before:bottom-0 before:w-[3px]",
+        "before:bg-transparent before:transition-colors",
+        isOverdue && "before:bg-red-500",
+        !isPaid && !isOverdue && "before:bg-amber-400",
+        isPaid && "before:bg-transparent hover:before:bg-green-400/30"
       )}
       onClick={handleRowClick}
+      onContextMenu={handleContextMenu}
     >
-      <div className="flex items-center gap-4 flex-1 min-w-0">
-        <div className="flex items-center gap-3 min-w-0 flex-1">
-          <span className="text-sm font-medium text-foreground whitespace-nowrap">
-            {invoice.number}
-          </span>
-          <span className="text-sm text-muted-foreground truncate">
-            {invoice.customerName || 'Brak kontrahenta'}
-          </span>
+      <div className="flex items-center gap-6 flex-1 min-w-0">
+        <div className="flex flex-col gap-1 min-w-0 flex-1">
+          <div className="flex items-baseline gap-3">
+            <span className="text-lg font-semibold text-foreground leading-tight">
+              {invoice.customerName || 'Brak kontrahenta'}
+            </span>
+            <span className="text-xs text-muted-foreground/70 font-medium">
+              {invoice.number}
+            </span>
+          </div>
+          <div className="flex items-center gap-2 text-xs text-muted-foreground">
+            <span>{format(new Date(invoice.issueDate), 'd MMM yyyy', { locale: pl })}</span>
+            {invoice.dueDate && (
+              <>
+                <span className="text-muted-foreground/40">•</span>
+                <span>Termin: {format(new Date(invoice.dueDate), 'd MMM', { locale: pl })}</span>
+              </>
+            )}
+          </div>
         </div>
         
         <div className="flex items-center gap-2">
           {isPaid ? (
-            <Badge variant="outline" className="bg-green-50 text-green-700 border-green-200">
+            <Badge variant="outline" className="bg-green-100 text-green-800 border-green-300 text-xs font-semibold">
               Zapłacone
             </Badge>
           ) : isOverdue ? (
-            <Badge variant="outline" className="bg-red-50 text-red-700 border-red-200">
+            <Badge variant="outline" className="bg-red-100 text-red-800 border-red-300 text-xs font-semibold">
               Przeterminowane
             </Badge>
           ) : (
-            <Badge variant="outline" className="bg-amber-50 text-amber-700 border-amber-200">
+            <Badge variant="outline" className="bg-amber-100 text-amber-800 border-amber-300 text-xs font-semibold">
               Do zapłaty
             </Badge>
           )}
           
           {isVatExempt && (
-            <Badge variant="outline" className="text-xs">
+            <Badge variant="outline" className="text-xs font-medium bg-muted/50">
               Bez VAT
             </Badge>
           )}
         </div>
       </div>
 
-      <div className="flex items-center gap-3">
-        <div className="text-base font-mono font-medium tabular-nums text-right min-w-[120px]">
+      <div className="flex items-center gap-4">
+        <div className="text-lg font-mono font-semibold tabular-nums text-right min-w-[140px]">
           {formatLedgerAmount(amount, invoice.currency || 'PLN')}
         </div>
         
-        <DropdownMenu>
+        <DropdownMenu open={isDropdownOpen} onOpenChange={handleDropdownOpenChange}>
           <DropdownMenuTrigger asChild onClick={(e) => e.stopPropagation()}>
             <Button
+              ref={dropdownButtonRef}
               variant="ghost"
               size="sm"
-              className="h-8 w-8 p-0 opacity-0 group-hover:opacity-100 transition-opacity"
+              className="h-8 w-8 p-0 text-muted-foreground/40 group-hover:text-foreground/80 group-hover:bg-accent transition-all"
             >
               <MoreVertical className="h-4 w-4" />
             </Button>

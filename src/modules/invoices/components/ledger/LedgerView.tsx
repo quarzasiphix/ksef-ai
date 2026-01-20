@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { Invoice } from '@/shared/types';
 import { groupInvoicesByPeriod, getAvailableYears, MonthGroup } from '@/shared/lib/ledger-utils';
 import { PeriodNavigator } from './PeriodNavigator';
@@ -49,6 +49,35 @@ export function LedgerView({
     }
     return groups;
   }, [invoices, selectedYear]);
+
+  // Auto-expand last 3 months by default
+  useEffect(() => {
+    if (yearGroups.length > 0 && expandedMonths.size === 0) {
+      const lastThreeMonths = new Set<string>();
+      const currentDate = new Date();
+      
+      // Get the last 3 months including current month
+      for (let i = 0; i < 3; i++) {
+        const date = new Date(currentDate.getFullYear(), currentDate.getMonth() - i, 1);
+        const year = date.getFullYear();
+        const month = date.getMonth() + 1; // getMonth() is 0-indexed
+        const monthKey = `${year}-${month.toString().padStart(2, '0')}`;
+        
+        // Check if this month exists in our data
+        const monthExists = yearGroups.some(group => 
+          group.year === year && group.months.some(month => month.key === monthKey)
+        );
+        
+        if (monthExists) {
+          lastThreeMonths.add(monthKey);
+        }
+      }
+      
+      if (lastThreeMonths.size > 0) {
+        setExpandedMonths(lastThreeMonths);
+      }
+    }
+  }, [yearGroups, expandedMonths.size]);
 
   const allMonthKeys = useMemo(() => {
     return yearGroups.flatMap(yg => yg.months.map(m => m.key));

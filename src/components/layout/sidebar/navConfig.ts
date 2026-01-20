@@ -77,13 +77,6 @@ const jdgNavGroups: NavGroupConfig[] = [
     showForJdg: true,
     items: [
       {
-        id: "inbox",
-        label: "Skrzynka",
-        icon: Inbox,
-        path: "/inbox",
-        tint: "finance",
-      },
-      {
         id: "invoices",
         label: "Przychody",
         icon: FileText,
@@ -110,6 +103,13 @@ const jdgNavGroups: NavGroupConfig[] = [
         label: "Kasa",
         icon: Wallet,
         path: "/accounting/kasa",
+        tint: "finance",
+      },
+      {
+        id: "inbox",
+        label: "Skrzynka",
+        icon: Inbox,
+        path: "/inbox",
         tint: "finance",
       },
     ],
@@ -227,15 +227,8 @@ const spoolkaNavGroups: NavGroupConfig[] = [
     showForSpoolka: true,
     items: [
       {
-        id: "inbox",
-        label: "Skrzynka",
-        icon: Inbox,
-        path: "/inbox",
-        tint: "finance",
-      },
-      {
         id: "invoices",
-        label: "Faktury sprzedaży",
+        label: "Faktury",
         icon: FileText,
         path: "/income",
         tint: "finance",
@@ -260,6 +253,13 @@ const spoolkaNavGroups: NavGroupConfig[] = [
         label: "Kasa",
         icon: Wallet,
         path: "/accounting/kasa",
+        tint: "finance",
+      },
+      {
+        id: "inbox",
+        label: "Skrzynka",
+        icon: Inbox,
+        path: "/inbox",
         tint: "finance",
       },
     ],
