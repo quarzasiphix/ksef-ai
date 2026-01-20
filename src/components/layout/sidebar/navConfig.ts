@@ -66,21 +66,16 @@ export interface NavGroup extends NavGroupConfig {
   items: NavItem[];
 }
 
-const navGroupsConfig: NavGroupConfig[] = [
+// JDG Navigation: Focus on daily work, tax, and simplicity
+const jdgNavGroups: NavGroupConfig[] = [
   {
-    id: "money",
-    label: "PIENIĄDZE",
-    subtitle: "Przepływ pieniędzy",
+    id: "daily",
+    label: "DZIAŁALNOŚĆ",
+    subtitle: "Codzienna praca",
     defaultExpanded: true,
+    collapsible: false,
+    showForJdg: true,
     items: [
-      {
-        id: "ledger",
-        label: "Księga",
-        icon: BookOpen,
-        path: "/ledger",
-        tint: "finance",
-        emphasis: true,
-      },
       {
         id: "inbox",
         label: "Skrzynka",
@@ -90,10 +85,11 @@ const navGroupsConfig: NavGroupConfig[] = [
       },
       {
         id: "invoices",
-        label: "Faktury",
+        label: "Przychody",
         icon: FileText,
         path: "/income",
         tint: "finance",
+        emphasis: true,
       },
       {
         id: "expenses",
@@ -110,10 +106,153 @@ const navGroupsConfig: NavGroupConfig[] = [
         tint: "finance",
       },
       {
+        id: "cash",
+        label: "Kasa",
+        icon: Wallet,
+        path: "/accounting/kasa",
+        tint: "finance",
+      },
+    ],
+  },
+  {
+    id: "tax",
+    label: "PODATKI",
+    subtitle: "Księgowość i rozliczenia",
+    defaultExpanded: false,
+    showForJdg: true,
+    items: [
+      {
+        id: "ledger",
+        label: "Księga przychodów",
+        icon: BookOpen,
+        path: "/ledger",
+        tint: "accounting",
+      },
+      {
         id: "accounting",
-        label: "Księgowość",
+        label: "Rozliczenia",
         icon: Calculator,
         path: "/accounting",
+        tint: "accounting",
+      },
+      {
+        id: "events",
+        label: "Zdarzenia",
+        icon: Activity,
+        path: "/events/timeline",
+        tint: "accounting",
+      },
+    ],
+  },
+  {
+    id: "reports",
+    label: "RAPORTY",
+    subtitle: "Analizy",
+    defaultExpanded: false,
+    showForJdg: true,
+    items: [
+      {
+        id: "analytics",
+        label: "Analizy",
+        icon: TrendingUp,
+        path: "/analytics",
+        tint: "accounting",
+      },
+    ],
+  },
+  {
+    id: "data",
+    label: "DANE",
+    subtitle: "Podstawowe",
+    defaultExpanded: false,
+    showForJdg: true,
+    items: [
+      {
+        id: "customers",
+        label: "Klienci",
+        icon: Users,
+        path: "/customers",
+        tint: "operations",
+      },
+      {
+        id: "products",
+        label: "Produkty",
+        icon: Package,
+        path: "/products",
+        tint: "operations",
+      },
+      {
+        id: "employees",
+        label: "Pracownicy",
+        icon: UserCheck,
+        path: "/employees",
+        tint: "operations",
+      },
+    ],
+  },
+  {
+    id: "system",
+    label: "SYSTEM",
+    subtitle: "Ustawienia",
+    collapsible: false,
+    defaultExpanded: false,
+    showForJdg: true,
+    items: [
+      {
+        id: "projects",
+        label: "Działy",
+        icon: FolderKanban,
+        path: "/settings/projects",
+        tint: "system",
+      },
+      {
+        id: "settings",
+        label: "Ustawienia",
+        icon: Settings,
+        path: "/settings",
+        tint: "system",
+      },
+    ],
+  },
+];
+
+// Sp. z o.o. Navigation: Focus on operations, governance, and structure
+const spoolkaNavGroups: NavGroupConfig[] = [
+  {
+    id: "operations",
+    label: "OPERACJE",
+    subtitle: "Ruch pieniędzy",
+    defaultExpanded: true,
+    collapsible: false,
+    showForSpoolka: true,
+    items: [
+      {
+        id: "inbox",
+        label: "Skrzynka",
+        icon: Inbox,
+        path: "/inbox",
+        tint: "finance",
+      },
+      {
+        id: "invoices",
+        label: "Faktury sprzedaży",
+        icon: FileText,
+        path: "/income",
+        tint: "finance",
+        emphasis: true,
+      },
+      {
+        id: "expenses",
+        label: "Wydatki",
+        icon: CreditCard,
+        path: "/expense",
+        tint: "finance",
+      },
+      {
+        id: "bank",
+        label: "Bank",
+        icon: Landmark,
+        pathResolver: (ctx) => ctx.bankPath,
         tint: "finance",
       },
       {
@@ -126,24 +265,25 @@ const navGroupsConfig: NavGroupConfig[] = [
     ],
   },
   {
-    id: "reports",
-    label: "RAPORTY",
-    subtitle: "Analizy i sprawozdania",
+    id: "accounting",
+    label: "KSIĘGOWOŚĆ",
+    subtitle: "Podatki i rozliczenia",
+    defaultExpanded: false,
+    showForSpoolka: true,
     items: [
       {
-        id: "analytics",
-        label: "Analizy",
-        icon: TrendingUp,
-        path: "/analytics",
+        id: "ledger",
+        label: "Księga",
+        icon: BookOpen,
+        path: "/ledger",
         tint: "accounting",
       },
       {
-        id: "balance",
-        label: "Bilans",
-        icon: Scale,
-        path: "/accounting/balance-sheet",
+        id: "accounting",
+        label: "Rozliczenia",
+        icon: Calculator,
+        path: "/accounting",
         tint: "accounting",
-        showForSpoolka: true,
       },
       {
         id: "events",
@@ -155,9 +295,11 @@ const navGroupsConfig: NavGroupConfig[] = [
     ],
   },
   {
-    id: "compliance",
-    label: "ZGODNOŚĆ",
-    subtitle: "Zasady i formalności",
+    id: "governance",
+    label: "SPÓŁKA",
+    subtitle: "Struktura i zarządzanie",
+    defaultExpanded: false,
+    showForSpoolka: true,
     items: [
       {
         id: "decisions",
@@ -179,7 +321,6 @@ const navGroupsConfig: NavGroupConfig[] = [
         icon: Users,
         path: "/accounting/equity",
         tint: "structure",
-        showForSpoolka: true,
       },
       {
         id: "registry",
@@ -187,7 +328,6 @@ const navGroupsConfig: NavGroupConfig[] = [
         icon: Building,
         path: "/accounting/company-registry",
         tint: "structure",
-        showForSpoolka: true,
       },
       {
         id: "assets",
@@ -195,14 +335,15 @@ const navGroupsConfig: NavGroupConfig[] = [
         icon: Landmark,
         path: "/assets",
         tint: "structure",
-        showForSpoolka: true,
       },
     ],
   },
   {
     id: "data",
     label: "DANE",
-    subtitle: "Dane podstawowe",
+    subtitle: "Podstawowe",
+    defaultExpanded: false,
+    showForSpoolka: true,
     items: [
       {
         id: "customers",
@@ -239,7 +380,29 @@ const navGroupsConfig: NavGroupConfig[] = [
         icon: Truck,
         path: "/operations",
         tint: "operations",
-        showForSpoolka: true,
+      },
+    ],
+  },
+  {
+    id: "reports",
+    label: "RAPORTY",
+    subtitle: "Analizy i sprawozdania",
+    defaultExpanded: false,
+    showForSpoolka: true,
+    items: [
+      {
+        id: "analytics",
+        label: "Analizy",
+        icon: TrendingUp,
+        path: "/analytics",
+        tint: "accounting",
+      },
+      {
+        id: "balance",
+        label: "Bilans",
+        icon: Scale,
+        path: "/accounting/balance-sheet",
+        tint: "accounting",
       },
     ],
   },
@@ -248,6 +411,8 @@ const navGroupsConfig: NavGroupConfig[] = [
     label: "SYSTEM",
     subtitle: "Ustawienia",
     collapsible: false,
+    defaultExpanded: false,
+    showForSpoolka: true,
     items: [
       {
         id: "projects",
@@ -269,8 +434,11 @@ const navGroupsConfig: NavGroupConfig[] = [
 
 export function buildNavGroups(ctx: NavContext): NavGroup[] {
   const entityType = ctx.entityType;
+  
+  // Select the appropriate navigation structure based on entity type
+  const selectedNavConfig = entityType === "spoolka" ? spoolkaNavGroups : jdgNavGroups;
 
-  return navGroupsConfig
+  return selectedNavConfig
     .filter((group) => {
       if (entityType === "spoolka") {
         return group.showForSpoolka !== false;
