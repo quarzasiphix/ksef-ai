@@ -10,6 +10,7 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from '@/shared/ui/tooltip';
+import { RyczaltAccountAssignmentModal } from './RyczaltAccountAssignmentModal';
 
 interface AutoPostingButtonProps {
   mode: 'single' | 'batch';
@@ -18,6 +19,8 @@ interface AutoPostingButtonProps {
   onPosted?: () => void;
   variant?: 'default' | 'outline' | 'ghost';
   size?: 'default' | 'sm' | 'lg' | 'icon';
+  startDate?: Date;
+  endDate?: Date;
 }
 
 export function AutoPostingButton({
@@ -27,8 +30,12 @@ export function AutoPostingButton({
   onPosted,
   variant = 'default',
   size = 'default',
+  startDate,
+  endDate,
 }: AutoPostingButtonProps) {
   const [isPosting, setIsPosting] = useState(false);
+  const [showAssignmentModal, setShowAssignmentModal] = useState(false);
+  const [missingAccountInvoiceIds, setMissingAccountInvoiceIds] = useState<string[]>([]);
   const queryClient = useQueryClient();
 
   const handleSinglePost = async () => {
@@ -75,9 +82,23 @@ export function AutoPostingButton({
 
     setIsPosting(true);
     try {
-      const result = await autoPostPendingInvoices(businessProfileId, 100);
+      const result = await autoPostPendingInvoices(businessProfileId, 100, startDate, endDate);
       
       if (result.success) {
+        // Check if there are MISSING_ACCOUNT errors
+        const missingAccountErrors = result.errors?.filter((err: any) => err.error === 'MISSING_ACCOUNT') || [];
+        
+        if (missingAccountErrors.length > 0) {
+          // Show assignment modal for missing accounts
+          const invoiceIds = missingAccountErrors.map((err: any) => err.invoice_id);
+          setMissingAccountInvoiceIds(invoiceIds);
+          setShowAssignmentModal(true);
+          toast.info('Przypisz konta ryczałtowe', {
+            description: `${missingAccountErrors.length} faktur wymaga przypisania konta ryczałtowego`,
+          });
+          return;
+        }
+        
         const message = `Zaksięgowano: ${result.posted_count} dokumentów`;
         const failedMessage = result.failed_count > 0 
           ? `Niepowodzenia: ${result.failed_count}` 
@@ -94,7 +115,7 @@ export function AutoPostingButton({
           });
         }
         
-        if (result.failed_count > 0) {
+        if (result.failed_count > 0 && missingAccountErrors.length === 0) {
           console.log('Failed invoices:', result.errors);
         }
         
@@ -155,5 +176,30 @@ export function AutoPostingButton({
     );
   }
 
-  return buttonContent;
+  return (
+    <>
+      {buttonContent}
+      {businessProfileId && startDate && endDate && (
+        <RyczaltAccountAssignmentModal
+          open={showAssignmentModal}
+          onOpenChange={(open) => {
+            setShowAssignmentModal(open);
+            if (!open) {
+              setMissingAccountInvoiceIds([]); // Reset when closing
+            }
+          }}
+          businessProfileId={businessProfileId}
+          periodStart={startDate}
+          periodEnd={endDate}
+          invoiceIds={missingAccountInvoiceIds}
+          onAssignmentsComplete={() => {
+            setShowAssignmentModal(false);
+            setMissingAccountInvoiceIds([]); // Reset after completion
+            // Retry auto-post after assignments
+            handleBatchPost();
+          }}
+        />
+      )}
+    </>
+  );
 }

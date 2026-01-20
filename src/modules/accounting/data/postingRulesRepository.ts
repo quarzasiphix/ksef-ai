@@ -144,11 +144,15 @@ export async function autoPostInvoice(invoiceId: string): Promise<any> {
 
 export async function autoPostPendingInvoices(
   businessProfileId: string,
-  limit: number = 100
+  limit: number = 100,
+  startDate?: Date,
+  endDate?: Date
 ): Promise<any> {
   const { data, error } = await supabase.rpc('auto_post_pending_invoices', {
     p_business_profile_id: businessProfileId,
-    p_limit: limit
+    p_limit: limit,
+    p_start_date: startDate?.toISOString().split('T')[0], // Format as YYYY-MM-DD
+    p_end_date: endDate?.toISOString().split('T')[0]
   });
 
   if (error) throw error;

@@ -29,6 +29,10 @@ export function UnpostedQueueWidget({ businessProfileId, period, onNavigateToInv
   const [loading, setLoading] = useState(true);
   const [expanded, setExpanded] = useState(false);
 
+  // Calculate period boundaries for date filtering
+  const periodStart = new Date(period.year, period.month - 1, 1);
+  const periodEnd = new Date(period.year, period.month, 0, 23, 59, 59);
+
   useEffect(() => {
     loadUnpostedInvoices();
   }, [businessProfileId, period.year, period.month]);
@@ -36,9 +40,6 @@ export function UnpostedQueueWidget({ businessProfileId, period, onNavigateToInv
   const loadUnpostedInvoices = async () => {
     setLoading(true);
     try {
-      // Get period boundaries
-      const periodStart = new Date(period.year, period.month - 1, 1);
-      const periodEnd = new Date(period.year, period.month, 0, 23, 59, 59);
 
       // Fetch unposted invoices for the period
       const { data, error } = await supabase
@@ -191,6 +192,8 @@ export function UnpostedQueueWidget({ businessProfileId, period, onNavigateToInv
                 mode="batch"
                 businessProfileId={businessProfileId}
                 onPosted={loadUnpostedInvoices}
+                startDate={periodStart}
+                endDate={periodEnd}
               />
             </div>
           )}

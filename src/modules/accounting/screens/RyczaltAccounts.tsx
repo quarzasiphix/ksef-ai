@@ -186,7 +186,7 @@ function RyczaltAccounts() {
           total_gross_value,
           currency,
           exchange_rate,
-          customers!inner(name)
+          customers!inner(name),
           sell_date
         )
       `)
@@ -264,12 +264,12 @@ function RyczaltAccounts() {
           <CardHeader className="pb-3">
             <CardTitle className="text-base flex items-center gap-2">
               <TrendingUp className="h-4 w-4 text-green-600" />
-              Łączne przychody
+              Saldo całkowite
             </CardTitle>
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold text-green-600">
-              {formatCurrency(Object.values(accountTaxInfo).reduce((sum, info) => sum + (info.totalAmount || 0), 0))}
+              {formatCurrency(summary?.totalBalance || 0)}
             </div>
             <p className="text-xs text-muted-foreground mt-1">
               Wszystkie konta ryczałtowe
@@ -280,16 +280,16 @@ function RyczaltAccounts() {
         <Card>
           <CardHeader className="pb-3">
             <CardTitle className="text-base flex items-center gap-2">
-              <Calculator className="h-4 w-4 text-blue-600" />
-              Łączny podatek
+              <Calendar className="h-4 w-4 text-blue-600" />
+              Saldo okresu
             </CardTitle>
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold text-blue-600">
-              {formatCurrency(Object.values(accountTaxInfo).reduce((sum, info) => sum + (info.taxAmount || 0), 0))}
+              {formatCurrency(summary?.periodBalance || 0)}
             </div>
             <p className="text-xs text-muted-foreground mt-1">
-              Podatek ryczałtowy do zapłaty
+              Bieżący okres podatkowy
             </p>
           </CardContent>
         </Card>
@@ -298,15 +298,15 @@ function RyczaltAccounts() {
           <CardHeader className="pb-3">
             <CardTitle className="text-base flex items-center gap-2">
               <CreditCard className="h-4 w-4 text-purple-600" />
-              Liczba faktur
+              Saldo roczne
             </CardTitle>
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold text-purple-600">
-              {Object.values(accountTaxInfo).reduce((sum, info) => sum + (info.invoiceCount || 0), 0)}
+              {formatCurrency(summary?.yearBalance || 0)}
             </div>
             <p className="text-xs text-muted-foreground mt-1">
-              Wszystkie zaksięgowane faktury
+              Od początku roku
             </p>
           </CardContent>
         </Card>
