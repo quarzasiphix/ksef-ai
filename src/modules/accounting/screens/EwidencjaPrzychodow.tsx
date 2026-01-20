@@ -8,8 +8,24 @@ import { formatCurrency } from '@/shared/lib/invoice-utils';
 import { format, startOfMonth, endOfMonth, isSameMonth } from 'date-fns';
 import { pl } from 'date-fns/locale';
 import { useAccountingPeriod } from '../hooks/useAccountingPeriod';
-import { PeriodTimelineStrip } from '../components/PeriodTimelineStrip';
+import { PeriodControlBar } from '../components/PeriodControlBar';
+import { PeriodActionBanner } from '../components/PeriodActionBanner';
 import { UnpostedQueueWidget } from '../components/UnpostedQueueWidget';
+import { UnaccountedQueuePanel } from '../components/UnaccountedQueuePanel';
+import { 
+  generateYearPeriodStates, 
+  getCurrentPeriod, 
+  formatPeriodName,
+  canClosePeriod 
+} from '../utils/periodState';
+import { 
+  closeAccountingPeriod, 
+  getClosedPeriods, 
+  getPeriodStatistics 
+} from '../data/periodRepository';
+import { PeriodClosureModal } from '../components/PeriodClosureModal';
+import { RyczaltAccountAssignmentModal } from '../components/RyczaltAccountAssignmentModal';
+import { PeriodLockingWidget } from '../components/PeriodLockingWidget';
 import { 
   DropdownMenu,
   DropdownMenuContent,
@@ -48,12 +64,71 @@ export default function EwidencjaPrzychodow() {
   const [refreshKey, setRefreshKey] = useState(0);
   const [deletedInvoiceIds, setDeletedInvoiceIds] = useState<Set<string>>(new Set());
   const [currentYear, setCurrentYear] = useState(period.key.year);
+  
+  // Period state management
+  const currentPeriodData = getCurrentPeriod();
+  const [selectedPeriod, setSelectedPeriod] = useState<Date>(
+    new Date(currentPeriodData.year, currentPeriodData.month - 1, 1)
+  );
+  const [periodStates, setPeriodStates] = useState<any[]>([]);
+  const [periodStats, setPeriodStats] = useState<any>(null);
+  const [showClosureModal, setShowClosureModal] = useState(false);
+  const [showAssignmentModal, setShowAssignmentModal] = useState(false);
 
   useEffect(() => {
     if (!selectedProfile?.id) return;
-    
     loadData();
+    loadPeriodData();
   }, [selectedProfile?.id, period.key.year, period.key.month]);
+
+  const loadPeriodData = async () => {
+    if (!selectedProfile?.id) return;
+    
+    try {
+      const year = selectedPeriod.getFullYear();
+      const month = selectedPeriod.getMonth() + 1;
+      
+      // Get closed periods
+      const closedPeriods = await getClosedPeriods(selectedProfile.id);
+      
+      // Generate period states for the year
+      const states = generateYearPeriodStates(year, closedPeriods);
+      setPeriodStates(states);
+      
+      // Get statistics for selected period
+      const stats = await getPeriodStatistics(selectedProfile.id, year, month);
+      setPeriodStats(stats);
+    } catch (error) {
+      console.error('Error loading period data:', error);
+    }
+  };
+
+  const handleClosePeriod = async (lockPeriod: boolean, note?: string) => {
+    if (!selectedProfile?.id) return;
+    
+    const year = selectedPeriod.getFullYear();
+    const month = selectedPeriod.getMonth() + 1;
+    
+    try {
+      const result = await closeAccountingPeriod(
+        selectedProfile.id,
+        year,
+        month,
+        lockPeriod,
+        note
+      );
+      
+      if (result.success) {
+        toast.success('Okres zamknięty pomyślnie');
+        await loadPeriodData();
+      } else {
+        toast.error(result.message || 'Nie udało się zamknąć okresu');
+      }
+    } catch (error) {
+      console.error('Error closing period:', error);
+      toast.error('Błąd podczas zamykania okresu');
+    }
+  };
 
   useEffect(() => {
     setCurrentYear(period.key.year);
@@ -295,25 +370,29 @@ export default function EwidencjaPrzychodow() {
     };
   };
 
-  // Calculate month states for timeline
-  const monthStates = useMemo(() => {
-    const states = [];
-    for (let month = 1; month <= 12; month++) {
-      const monthItems = allEwidencjaItems.filter(item => {
-        const itemDate = new Date(item.register_date);
-        return isSameMonth(itemDate, new Date(currentYear, month - 1));
-      });
-      
-      states.push({
-        month,
-        hasActivity: monthItems.length > 0,
-        isLocked: false, // TODO: implement period locking
-        hasErrors: false,
-        unpostedCount: 0 // TODO: fetch unposted count
-      });
-    }
-    return states;
-  }, [allEwidencjaItems, currentYear]);
+  // Sync period with existing period hook
+  useEffect(() => {
+    const year = selectedPeriod.getFullYear();
+    const month = selectedPeriod.getMonth() + 1;
+    setPeriod({ year, month });
+  }, [selectedPeriod]);
+
+  const selectedYear = selectedPeriod.getFullYear();
+  const selectedMonth = selectedPeriod.getMonth() + 1;
+  const currentState = periodStates.find(
+    p => p.year === selectedYear && p.month === selectedMonth
+  );
+
+  if (!selectedProfile) {
+    return (
+      <div className="p-6">
+        <div className="text-center">
+          <h3 className="text-lg font-semibold">Wybierz profil firmy</h3>
+          <p className="text-muted-foreground">Nie wybrano profilu działalności gospodarczej</p>
+        </div>
+      </div>
+    );
+  }
 
   // Group items by category
   const groupedByCategory = ewidencjaItems.reduce((groups, item) => {
@@ -333,17 +412,6 @@ export default function EwidencjaPrzychodow() {
   }, {} as Record<string, any>);
 
   const totalRevenue = ewidencjaItems.reduce((sum, item) => sum + item.amount, 0);
-
-  if (!selectedProfile) {
-    return (
-      <div className="p-6">
-        <div className="text-center">
-          <h3 className="text-lg font-semibold">Wybierz profil firmy</h3>
-          <p className="text-muted-foreground">Nie wybrano profilu działalności gospodarczej</p>
-        </div>
-      </div>
-    );
-  }
 
   return (
     <div className="space-y-6 p-6" key={refreshKey}>
@@ -376,13 +444,47 @@ export default function EwidencjaPrzychodow() {
         </div>
       </div>
 
-      {/* Period Timeline Navigation */}
-      <PeriodTimelineStrip
-        currentPeriod={period.key}
-        currentYear={currentYear}
-        monthStates={monthStates}
-        onPeriodChange={setPeriod}
-        onYearChange={setCurrentYear}
+      {/* Period Control Bar */}
+      <PeriodControlBar
+        currentPeriod={selectedPeriod}
+        onPeriodChange={setSelectedPeriod}
+        periodStates={periodStates.map(p => ({
+          ...p,
+          taxAmount: p.year === selectedYear && p.month === selectedMonth ? periodStats?.totalTax : undefined,
+          invoiceCount: p.year === selectedYear && p.month === selectedMonth ? periodStats?.invoiceCount : undefined,
+          postedCount: p.year === selectedYear && p.month === selectedMonth ? periodStats?.invoiceCount : undefined,
+        }))}
+        onClosePeriod={() => setShowClosureModal(true)}
+      />
+      
+      {/* Action Banner */}
+      {currentState && periodStats && (
+        <PeriodActionBanner
+          status={currentState.status}
+          periodName={formatPeriodName(selectedYear, selectedMonth)}
+          taxAmount={periodStats.totalTax}
+          taxDeadline={currentState.taxDeadline}
+          invoiceCount={periodStats.invoiceCount}
+          postedCount={periodStats.invoiceCount}
+          unpostedCount={periodStats.unpostedCount}
+          onViewDocuments={() => window.location.href = '/income'}
+          onAssignAccounts={() => setShowAssignmentModal(true)}
+          onClosePeriod={() => {
+            const check = canClosePeriod(selectedYear, selectedMonth, periodStats.unpostedCount);
+            if (check.canClose) {
+              setShowClosureModal(true);
+            } else {
+              toast.error(check.reason);
+            }
+          }}
+        />
+      )}
+
+      {/* Period Locking Widget */}
+      <PeriodLockingWidget 
+        compact={false}
+        showCriticalOnly={false}
+        autoLockEnabled={true}
       />
 
       {/* Period Summary Cards */}
@@ -462,12 +564,22 @@ export default function EwidencjaPrzychodow() {
         </Card>
       </div>
 
-      {/* Unposted Documents Widget - Period Aware */}
+      {/* Unaccounted Queue Panel */}
       {selectedProfile?.id && (
-        <UnpostedQueueWidget
+        <UnaccountedQueuePanel
           businessProfileId={selectedProfile.id}
-          period={period.key}
-          onNavigateToInvoice={(invoiceId) => window.location.href = `/income/${invoiceId}`}
+          periodYear={selectedYear}
+          periodMonth={selectedMonth}
+          onAssignCategories={(invoiceIds) => {
+            // Open assignment modal with specific invoices
+            setShowAssignmentModal(true);
+          }}
+          onViewInvoice={(invoiceId) => {
+            window.location.href = `/income/${invoiceId}`;
+          }}
+          onFixError={(invoiceId) => {
+            window.location.href = `/income/${invoiceId}`;
+          }}
         />
       )}
 

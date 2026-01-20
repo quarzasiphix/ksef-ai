@@ -1,11 +1,11 @@
 import React from 'react';
-import { ChevronLeft, ChevronRight, CheckCircle, AlertTriangle, Clock, Circle } from 'lucide-react';
+import { ChevronLeft, ChevronRight, CheckCircle, AlertTriangle, Clock, Circle, Lock } from 'lucide-react';
 import { Button } from '@/shared/ui/button';
 import { Badge } from '@/shared/ui/badge';
 import { format, addMonths, subMonths, isAfter, isBefore, startOfMonth, endOfMonth } from 'date-fns';
 import { pl } from 'date-fns/locale';
 
-export type PeriodStatus = 'open' | 'due' | 'late' | 'closed' | 'future';
+export type PeriodStatus = 'open' | 'due' | 'late' | 'closed' | 'future' | 'locked';
 
 interface PeriodState {
   year: number;
@@ -55,6 +55,8 @@ export function PeriodControlBar({
     switch (status) {
       case 'closed':
         return <CheckCircle className="h-4 w-4 text-green-600" />;
+      case 'locked':
+        return <Lock className="h-4 w-4 text-emerald-600" />;
       case 'due':
         return <Clock className="h-4 w-4 text-amber-600" />;
       case 'late':
@@ -70,6 +72,8 @@ export function PeriodControlBar({
     switch (status) {
       case 'closed':
         return <Badge variant="outline" className="bg-green-50 text-green-700 border-green-200">Zamknięty</Badge>;
+      case 'locked':
+        return <Badge variant="outline" className="bg-emerald-50 text-emerald-700 border-emerald-200">Zablokowany</Badge>;
       case 'due':
         return <Badge variant="outline" className="bg-amber-50 text-amber-700 border-amber-200">Do rozliczenia</Badge>;
       case 'late':
@@ -84,6 +88,7 @@ export function PeriodControlBar({
   const getStatusText = (status: PeriodStatus) => {
     switch (status) {
       case 'closed': return 'Zamknięty';
+      case 'locked': return 'Zablokowany';
       case 'due': return 'Do rozliczenia';
       case 'late': return 'Po terminie';
       case 'future': return 'Przyszły';
@@ -94,7 +99,7 @@ export function PeriodControlBar({
   return (
     <div className="space-y-4">
       {/* Layer One: Primary Control - "Where Am I?" */}
-      <div className="bg-white border border-gray-200 rounded-lg p-6 shadow-sm">
+      <div className="bg-background border border-border rounded-lg p-6 shadow-sm">
         <div className="flex items-center justify-between">
           <Button
             variant="ghost"
@@ -146,13 +151,17 @@ export function PeriodControlBar({
       </div>
 
       {/* Layer Two: Period Status Rail - Visual State Overview */}
-      <div className="bg-white border border-gray-200 rounded-lg p-4 shadow-sm">
+      <div className="bg-background border border-border rounded-lg p-4 shadow-sm">
         <div className="flex items-center justify-between mb-3">
-          <h3 className="text-sm font-medium text-gray-700">Przegląd okresów</h3>
-          <div className="flex items-center gap-4 text-xs text-gray-600">
+          <h3 className="text-sm font-medium text-foreground">Przegląd okresów</h3>
+          <div className="flex items-center gap-4 text-xs text-muted-foreground">
             <div className="flex items-center gap-1">
               <CheckCircle className="h-3 w-3 text-green-600" />
               <span>Zamknięty</span>
+            </div>
+            <div className="flex items-center gap-1">
+              <Lock className="h-3 w-3 text-emerald-600" />
+              <span>Zablokowany</span>
             </div>
             <div className="flex items-center gap-1">
               <Clock className="h-3 w-3 text-amber-600" />
@@ -202,7 +211,7 @@ export function PeriodControlBar({
 
         {/* Year indicator */}
         <div className="mt-3 text-center">
-          <span className="text-sm font-semibold text-gray-700">{currentYear}</span>
+          <span className="text-sm font-semibold text-foreground">{currentYear}</span>
         </div>
       </div>
     </div>

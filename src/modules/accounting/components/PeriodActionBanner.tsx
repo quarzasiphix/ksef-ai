@@ -38,14 +38,14 @@ export function PeriodActionBanner({
   }
 
   const renderLateBanner = () => (
-    <div className="bg-red-50 border-l-4 border-red-500 p-4 rounded-lg shadow-sm">
+    <div className="bg-destructive/10 border-l-4 border-destructive p-4 rounded-lg shadow-sm">
       <div className="flex items-start gap-3">
-        <AlertTriangle className="h-6 w-6 text-red-600 flex-shrink-0 mt-0.5" />
+        <AlertTriangle className="h-6 w-6 text-destructive flex-shrink-0 mt-0.5" />
         <div className="flex-1">
-          <h3 className="text-lg font-semibold text-red-900 mb-1">
+          <h3 className="text-lg font-semibold text-destructive-foreground mb-1">
             {periodName} nie został rozliczony
           </h3>
-          <div className="space-y-1 text-sm text-red-800">
+          <div className="space-y-1 text-sm text-destructive-foreground">
             {taxAmount !== undefined && (
               <p>Podatek do zapłaty: <span className="font-bold">{taxAmount.toFixed(2)} PLN</span></p>
             )}
@@ -96,14 +96,14 @@ export function PeriodActionBanner({
   );
 
   const renderDueBanner = () => (
-    <div className="bg-amber-50 border-l-4 border-amber-500 p-4 rounded-lg shadow-sm">
+    <div className="bg-amber-50 dark:bg-amber-950 border-l-4 border-amber-500 dark:border-amber-600 p-4 rounded-lg shadow-sm">
       <div className="flex items-start gap-3">
-        <Clock className="h-6 w-6 text-amber-600 flex-shrink-0 mt-0.5" />
+        <Clock className="h-6 w-6 text-amber-600 dark:text-amber-400 flex-shrink-0 mt-0.5" />
         <div className="flex-1">
-          <h3 className="text-lg font-semibold text-amber-900 mb-1">
+          <h3 className="text-lg font-semibold text-amber-900 dark:text-amber-100 mb-1">
             {periodName} wymaga rozliczenia
           </h3>
-          <div className="space-y-1 text-sm text-amber-800">
+          <div className="space-y-1 text-sm text-amber-800 dark:text-amber-200">
             {taxAmount !== undefined && (
               <p>Podatek do zapłaty: <span className="font-bold">{taxAmount.toFixed(2)} PLN</span></p>
             )}
@@ -154,14 +154,14 @@ export function PeriodActionBanner({
   );
 
   const renderOpenBanner = () => (
-    <div className="bg-blue-50 border-l-4 border-blue-500 p-4 rounded-lg shadow-sm">
+    <div className="bg-blue-50 dark:bg-blue-950 border-l-4 border-blue-500 dark:border-blue-600 p-4 rounded-lg shadow-sm">
       <div className="flex items-start gap-3">
-        <Info className="h-6 w-6 text-blue-600 flex-shrink-0 mt-0.5" />
+        <Info className="h-6 w-6 text-blue-600 dark:text-blue-400 flex-shrink-0 mt-0.5" />
         <div className="flex-1">
-          <h3 className="text-lg font-semibold text-blue-900 mb-1">
+          <h3 className="text-lg font-semibold text-blue-900 dark:text-blue-100 mb-1">
             Trwa bieżący okres: {periodName}
           </h3>
-          <div className="space-y-1 text-sm text-blue-800">
+          <div className="space-y-1 text-sm text-blue-800 dark:text-blue-200">
             <p>
               {postedCount} {postedCount === 1 ? 'faktura zaksięgowana' : 'faktury zaksięgowane'}
             </p>
@@ -205,21 +205,21 @@ export function PeriodActionBanner({
   );
 
   const renderClosedBanner = () => (
-    <div className="bg-green-50 border-l-4 border-green-500 p-4 rounded-lg shadow-sm">
+    <div className="bg-green-50 dark:bg-green-950 border-l-4 border-green-500 dark:border-green-600 p-4 rounded-lg shadow-sm">
       <div className="flex items-start gap-3">
-        <CheckCircle className="h-6 w-6 text-green-600 flex-shrink-0 mt-0.5" />
+        <CheckCircle className="h-6 w-6 text-green-600 dark:text-green-400 flex-shrink-0 mt-0.5" />
         <div className="flex-1">
-          <h3 className="text-lg font-semibold text-green-900 mb-1">
+          <h3 className="text-lg font-semibold text-green-900 dark:text-green-100 mb-1">
             {periodName} - okres zamknięty
           </h3>
-          <div className="space-y-1 text-sm text-green-800">
+          <div className="space-y-1 text-sm text-green-800 dark:text-green-200">
             <p>
               {invoiceCount} {invoiceCount === 1 ? 'faktura zaksięgowana' : 'faktury zaksięgowane'}
             </p>
             {taxAmount !== undefined && (
               <p>Podatek rozliczony: <span className="font-bold">{taxAmount.toFixed(2)} PLN</span></p>
             )}
-            <p className="text-green-700">
+            <p className="text-green-700 dark:text-green-300">
               Okres zablokowany - dokumenty są niezmienne
             </p>
           </div>

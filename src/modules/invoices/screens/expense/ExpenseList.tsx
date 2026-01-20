@@ -1,66 +1,58 @@
 import { useState, useMemo } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { Invoice, InvoiceType } from '@/shared/types';
-import { format, differenceInDays, addDays, isAfter, isBefore } from 'date-fns';
-import { pl } from 'date-fns/locale';
 import { Badge } from '@/shared/ui/badge';
-import { Plus, FileText, AlertCircle, Clock, CheckCircle2, MessageSquare, ArrowDownCircle, TrendingUp, Calendar, Bell } from 'lucide-react';
-import { Card, CardContent, CardHeader, CardTitle } from '@/shared/ui/card';
+import { Plus, ArrowDownCircle, Search, Filter } from 'lucide-react';
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/shared/ui/card';
 import { useGlobalData } from '@/shared/hooks/use-global-data';
 import { useBusinessProfile } from "@/shared/context/BusinessProfileContext";
 import { useProjectScope } from "@/shared/context/ProjectContext";
-
 import { Button } from "@/shared/ui/button";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/shared/ui/tabs';
-import ExpenseCard from '@/modules/invoices/components/expenses/ExpenseCard';
-import ExpenseListView from '@/modules/invoices/components/expenses/ExpenseListView';
-import { formatCurrency } from '@/shared/lib/utils';
-import { Checkbox } from '@/shared/ui/checkbox';
-import { LayoutGrid, List as ListIcon } from 'lucide-react';
-import { saveInvoice } from '@/modules/invoices/data/invoiceRepository';
+import { Input } from "@/shared/ui/input";
 import { toast } from 'sonner';
 import { useQueryClient } from '@tanstack/react-query';
+import { saveInvoice } from '@/modules/invoices/data/invoiceRepository';
+import { LedgerView } from '@/modules/invoices/components/ledger/LedgerView';
+import { PeriodSwitcherMobile } from '@/modules/invoices/components/ledger/PeriodSwitcherMobile';
+import { FilterSheetMobile } from '@/modules/invoices/components/ledger/FilterSheetMobile';
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/shared/ui/collapsible";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/shared/ui/select";
+import { useIsMobile } from "@/shared/hooks/use-mobile";
+import { getAvailableYears } from '@/shared/lib/ledger-utils';
 
-const ZUS_NIP = "5220005994";
-const ZUS_NAME = "ZAKŁAD UBEZPIECZEŃ SPOŁECZNYCH";
+type SmartFilter = 'all' | 'unpaid' | 'paid' | 'overdue';
 
 const isSharedExpense = (expense: any) =>
   (expense?.isShared) ||
   (typeof expense?.id === 'string' && expense.id.startsWith('share-'));
 
-const getExpenseDetailPath = (expense: any) => {
-  if (isSharedExpense(expense)) {
-    const invoiceId =
-      expense?.linkedInvoiceId ||
-      expense?.invoiceId ||
-      expense?.id?.replace(/^share-/, '') ||
-      expense?.id;
-    return `/expense/${invoiceId}`;
-  }
-  return `/expense/${expense?.id}`;
-};
-
-// ExpenseList component for displaying a list of expenses
 export default function ExpenseList() {
   const [searchTerm, setSearchTerm] = useState("");
-  const [activeTab, setActiveTab] = useState<"all" | "pending" | "upcoming">("all");
-  const [viewMode, setViewMode] = useState<'grid' | 'list'>('list');
-  const [selectedExpenses, setSelectedExpenses] = useState<Set<string>>(new Set());
-  const [isMultiSelectMode, setIsMultiSelectMode] = useState(false);
+  const [smartFilter, setSmartFilter] = useState<SmartFilter>('all');
+  const [isFiltersOpen, setIsFiltersOpen] = useState(false);
+  const [isMobileFiltersOpen, setIsMobileFiltersOpen] = useState(false);
+  const [selectedYear, setSelectedYear] = useState<number | null>(null);
+  const [selectedMonth, setSelectedMonth] = useState<number | null>(null);
 
   const { expenses: { data: allExpenses = [], isLoading: isLoadingExpenses } } = useGlobalData();
   const { selectedProfileId } = useBusinessProfile();
   const { selectedProjectId, selectedProject } = useProjectScope();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
+  const isMobile = useIsMobile();
 
   const filteredExpenses = useMemo(() => {
     if (!allExpenses) return [];
 
-    const list = allExpenses.filter(expense => {
+    return allExpenses.filter(expense => {
       const isShared = isSharedExpense(expense);
 
-      // Apply business profile filter only to own expenses; always include shared ones
       if (!isShared && selectedProfileId && expense.businessProfileId !== selectedProfileId) {
         return false;
       }
@@ -69,64 +61,74 @@ export default function ExpenseList() {
       }
 
       const type = (expense.transactionType || (expense as any).transaction_type || "").toString().toLowerCase();
-      return type === "expense";
-    });
+      if (type !== "expense") return false;
 
-    console.log("Filtered expenses count:", list.length);
-    return list;
-  }, [allExpenses, selectedProfileId, selectedProjectId]);
+      const matchesSearch =
+        expense.number?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        (expense.customerName || "").toLowerCase().includes(searchTerm.toLowerCase()) ||
+        (expense.description || "").toLowerCase().includes(searchTerm.toLowerCase());
 
-  // Categorize expenses
-  const categorizedExpenses = useMemo(() => {
-    const today = new Date();
-    const urgent: typeof filteredExpenses = [];
-    const needsReview: typeof filteredExpenses = [];
-    const upcoming: typeof filteredExpenses = [];
-    const paid: typeof filteredExpenses = [];
-    const overdue: typeof filteredExpenses = [];
-
-    filteredExpenses.forEach(expense => {
-      const dueDate = expense.dueDate ? new Date(expense.dueDate) : null;
+      let matchesSmartFilter = true;
       const isPaid = (expense as any).isPaid || (expense as any).status === 'paid';
-      const isReceived = isSharedExpense(expense);
-      
-      if (isPaid) {
-        paid.push(expense);
-      } else if (dueDate) {
-        const daysUntilDue = differenceInDays(dueDate, today);
+      const dueDate = expense.dueDate ? new Date(expense.dueDate) : null;
+      const isOverdue = dueDate && dueDate < new Date() && !isPaid;
+
+      switch (smartFilter) {
+        case 'unpaid':
+          matchesSmartFilter = !isPaid;
+          break;
+        case 'paid':
+          matchesSmartFilter = isPaid;
+          break;
+        case 'overdue':
+          matchesSmartFilter = !!isOverdue;
+          break;
+        default:
+          matchesSmartFilter = true;
+      }
+
+      // Period filtering (mobile)
+      let matchesPeriod = true;
+      if (selectedYear !== null) {
+        const expenseDate = new Date(expense.issueDate);
+        const expenseYear = expenseDate.getFullYear();
+        const expenseMonth = expenseDate.getMonth() + 1;
         
-        if (daysUntilDue < 0) {
-          overdue.push(expense);
-        } else if (daysUntilDue <= 7) {
-          urgent.push(expense);
-        } else if (daysUntilDue <= 30) {
-          upcoming.push(expense);
+        if (selectedMonth !== null) {
+          matchesPeriod = expenseYear === selectedYear && expenseMonth === selectedMonth;
+        } else {
+          matchesPeriod = expenseYear === selectedYear;
         }
       }
-      
-      if (isReceived && !isPaid) {
-        needsReview.push(expense);
-      }
+
+      return matchesSearch && matchesSmartFilter && matchesPeriod;
     });
+  }, [allExpenses, selectedProfileId, selectedProjectId, searchTerm, smartFilter, selectedYear, selectedMonth]);
 
-    return { urgent, needsReview, upcoming, paid, overdue, all: filteredExpenses };
-  }, [filteredExpenses]);
+  const availableYears = useMemo(() => {
+    if (!allExpenses) return [];
+    return getAvailableYears(allExpenses.filter(exp => {
+      const type = (exp.transactionType || (exp as any).transaction_type || "").toString().toLowerCase();
+      return type === "expense";
+    }));
+  }, [allExpenses]);
 
-  // Calculate stats
   const stats = useMemo(() => {
     const unpaid = filteredExpenses.filter(e => !(e as any).isPaid);
     const totalPending = unpaid.reduce((sum, e) => sum + (e.amount || e.totalGrossValue || 0), 0);
+    const overdue = filteredExpenses.filter(e => {
+      const isPaid = (e as any).isPaid;
+      const dueDate = e.dueDate ? new Date(e.dueDate) : null;
+      return dueDate && dueDate < new Date() && !isPaid;
+    });
     
     return {
       total: filteredExpenses.length,
       pending: unpaid.length,
-      urgent: categorizedExpenses.urgent.length + categorizedExpenses.overdue.length,
-      needsReview: categorizedExpenses.needsReview.length,
+      overdue: overdue.length,
       totalPending,
     };
-  }, [filteredExpenses, categorizedExpenses]);
-
-  const isLoading = isLoadingExpenses;
+  }, [filteredExpenses]);
 
   const handleAddZus = () => {
     const today = new Date();
@@ -137,46 +139,29 @@ export default function ExpenseList() {
     navigate(`/expense/new?zus=1&desc=${encodeURIComponent(desc)}&date=${date}`);
   };
 
-  const toggleExpenseSelection = (expenseId: string, event?: React.MouseEvent) => {
-    if (event) {
-      event.stopPropagation();
-      event.preventDefault();
-    }
-    
-    setSelectedExpenses(prev => {
-      const newSet = new Set(prev);
-      if (newSet.has(expenseId)) {
-        newSet.delete(expenseId);
-      } else {
-        newSet.add(expenseId);
-      }
-      return newSet;
-    });
-  };
-
-  const handleMarkAsPaid = async (id: string, expense: Invoice) => {
+  const handleTogglePaid = async (id: string, expense: Invoice) => {
     try {
-      await saveInvoice({ ...expense, isPaid: true });
+      const updatedInvoice = { ...expense, isPaid: !expense.isPaid };
+      await saveInvoice(updatedInvoice);
       await queryClient.invalidateQueries({ queryKey: ['expenses'] });
-      toast.success('Oznaczono jako zapłacone');
+      toast.success(updatedInvoice.isPaid ? 'Oznaczono jako zapłacone' : 'Oznaczono jako niezapłacone');
     } catch (error) {
-      console.error('Error marking as paid:', error);
-      toast.error('Błąd podczas oznaczania jako zapłacone');
+      console.error('Error toggling paid status:', error);
+      toast.error('Błąd podczas zmiany statusu płatności');
     }
   };
 
-  const handleMarkAsUnpaid = async (id: string, expense: Invoice) => {
+  const handleDelete = async (id: string) => {
     try {
-      await saveInvoice({ ...expense, isPaid: false });
       await queryClient.invalidateQueries({ queryKey: ['expenses'] });
-      toast.success('Oznaczono jako niezapłacone');
+      toast.success('Wydatek został usunięty');
     } catch (error) {
-      console.error('Error marking as unpaid:', error);
-      toast.error('Błąd podczas oznaczania jako niezapłacone');
+      console.error('Error deleting expense:', error);
+      toast.error('Błąd podczas usuwania wydatku');
     }
   };
 
-  if (isLoading) {
+  if (isLoadingExpenses) {
     return (
       <div className="flex items-center justify-center h-64">
         <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-blue-500"></div>
@@ -186,15 +171,14 @@ export default function ExpenseList() {
 
   return (
     <div className="w-full max-w-full overflow-x-hidden py-6 space-y-6 px-2 sm:px-4">
-      {/* Header */}
       <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 w-full">
         <div>
           <h1 className="text-3xl font-bold flex items-center gap-3">
             <ArrowDownCircle className="h-8 w-8 text-red-500" />
-            Wydatki
+            Rejestr wydatków
           </h1>
           <p className="text-muted-foreground mt-1">
-            Zarządzaj fakturami kosztowymi i płatnościami
+            Chronologiczny rejestr zdarzeń kosztowych z podsumowaniami okresowymi
           </p>
           {selectedProject && (
             <div className="mt-2 inline-flex items-center gap-2 rounded-full border px-3 py-1 text-sm">
@@ -227,12 +211,10 @@ export default function ExpenseList() {
         </div>
       </div>
 
-      {/* Stats Cards */}
       <div className="grid gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 w-full">
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">Wszystkie wydatki</CardTitle>
-            <FileText className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">{stats.total}</div>
@@ -243,7 +225,6 @@ export default function ExpenseList() {
         <Card className="border-l-4 border-l-amber-500">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">Do zapłaty</CardTitle>
-            <Clock className="h-4 w-4 text-amber-500" />
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold text-amber-600">{stats.pending}</div>
@@ -253,11 +234,10 @@ export default function ExpenseList() {
 
         <Card className="border-l-4 border-l-red-500">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Pilne</CardTitle>
-            <AlertCircle className="h-4 w-4 text-red-500" />
+            <CardTitle className="text-sm font-medium">Przeterminowane</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-red-600">{stats.urgent}</div>
+            <div className="text-2xl font-bold text-red-600">{stats.overdue}</div>
             <p className="text-xs text-muted-foreground">wymaga uwagi</p>
           </CardContent>
         </Card>
@@ -265,240 +245,199 @@ export default function ExpenseList() {
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">Wartość do zapłaty</CardTitle>
-            <TrendingUp className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">
-              {formatCurrency(stats.totalPending)}
+              {new Intl.NumberFormat('pl-PL', {
+                minimumFractionDigits: 2,
+                maximumFractionDigits: 2,
+              }).format(stats.totalPending)} zł
             </div>
-            <p className="text-xs text-muted-foreground">PLN do zapłaty</p>
+            <p className="text-xs text-muted-foreground">do zapłaty</p>
           </CardContent>
         </Card>
       </div>
 
-      {/* Tabs and View Toggle */}
-      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 w-full">
-        <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as any)} className="flex-1">
-          <TabsList>
-            <TabsTrigger value="all">
-              Wszystkie
-              <Badge className="ml-2">{stats.total}</Badge>
-            </TabsTrigger>
-            <TabsTrigger value="pending">
-              Do zapłaty
-              <Badge className="ml-2 bg-amber-500">{stats.pending}</Badge>
-            </TabsTrigger>
-            <TabsTrigger value="upcoming">
-              Nadchodzące
-              <Badge className="ml-2 bg-blue-500">{categorizedExpenses.upcoming.length}</Badge>
-            </TabsTrigger>
-          </TabsList>
-        </Tabs>
-        
-        {/* View Mode Toggle */}
-        <div className="flex rounded-md border overflow-hidden">
-          <button
-            type="button"
-            className={`px-3 py-2 text-sm flex items-center gap-2 ${viewMode === 'grid' ? 'bg-accent text-accent-foreground' : 'bg-background text-muted-foreground hover:bg-muted'}`}
-            onClick={() => setViewMode('grid')}
-            aria-label="Widok siatki"
-          >
-            <LayoutGrid className="h-4 w-4" />
-            <span className="hidden sm:inline">Siatka</span>
-          </button>
-          <button
-            type="button"
-            className={`px-3 py-2 text-sm flex items-center gap-2 border-l ${viewMode === 'list' ? 'bg-accent text-accent-foreground' : 'bg-background text-muted-foreground hover:bg-muted'}`}
-            onClick={() => setViewMode('list')}
-            aria-label="Widok listy"
-          >
-            <ListIcon className="h-4 w-4" />
-            <span className="hidden sm:inline">Lista</span>
-          </button>
-        </div>
-      </div>
-      
-      <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as any)}>
-
-        <TabsContent value={activeTab} className="space-y-4 mt-6">
-          {/* Urgent/Overdue Section - Always visible if there are urgent items */}
-          {(categorizedExpenses.urgent.length > 0 || categorizedExpenses.overdue.length > 0) && (
-            <Card className="border-2 border-red-500 bg-red-50 dark:bg-red-950/20">
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2 text-red-700 dark:text-red-400">
-                  <AlertCircle className="h-5 w-5" />
-                  Pilne - Wymaga natychmiastowej uwagi!
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-3">
-                {[...categorizedExpenses.overdue, ...categorizedExpenses.urgent].map((expense) => {
-                  const dueDate = expense.dueDate ? new Date(expense.dueDate) : null;
-                  const daysUntilDue = dueDate ? differenceInDays(dueDate, new Date()) : null;
-                  const isOverdue = daysUntilDue !== null && daysUntilDue < 0;
-                  
-                  return (
-                    <Card
-                      key={expense.id}
-                      className="cursor-pointer hover:shadow-md transition-all border-l-4 border-l-red-600"
-                      onClick={() => navigate(getExpenseDetailPath(expense))}
-                    >
-                      <CardContent className="p-4">
-                        <div className="flex items-start justify-between gap-4">
-                          <div className="flex-1 space-y-2">
-                            <div className="flex items-center gap-2">
-                              <AlertCircle className="h-5 w-5 text-red-600" />
-                              <span className="font-semibold text-lg">
-                                {expense.description || 'Wydatek'}
-                              </span>
-                              {isOverdue ? (
-                                <Badge className="bg-red-600 text-white">
-                                  Przeterminowane {Math.abs(daysUntilDue!)} dni
-                                </Badge>
-                              ) : (
-                                <Badge className="bg-orange-500 text-white">
-                                  Termin za {daysUntilDue} dni
-                                </Badge>
-                              )}
-                            </div>
-                            <p className="text-sm text-muted-foreground">
-                              {expense.customerName || (expense as any).counterpartyName || 'Brak kontrahenta'}
-                            </p>
-                            <div className="flex items-center gap-4 text-sm">
-                              <span className="font-bold text-lg text-red-600">
-                                {formatCurrency(expense.amount || expense.totalGrossValue || 0)}
-                              </span>
-                              {dueDate && (
-                                <span className="text-muted-foreground">
-                                  Termin: {format(dueDate, 'dd MMM yyyy', { locale: pl })}
-                                </span>
-                              )}
-                            </div>
-                          </div>
-                          <Button size="sm" className="bg-red-600 hover:bg-red-700">
-                            Zapłać teraz
-                          </Button>
-                        </div>
-                      </CardContent>
-                    </Card>
-                  );
-                })}
-              </CardContent>
-            </Card>
-          )}
-
-          {/* Needs Review Section - Incoming invoices */}
-          {categorizedExpenses.needsReview.length > 0 && (
-            <Card className="border-2 border-blue-500 bg-blue-50 dark:bg-blue-950/20">
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2 text-blue-700 dark:text-blue-400">
-                  <MessageSquare className="h-5 w-5" />
-                  Nowe faktury otrzymane - Wymaga przeglądu
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-3">
-                {categorizedExpenses.needsReview.map((expense) => (
-                  <Card
-                    key={expense.id}
-                    className="cursor-pointer hover:shadow-md transition-all border-l-4 border-l-blue-600"
-                    onClick={() => navigate(getExpenseDetailPath(expense))}
-                  >
-                    <CardContent className="p-4">
-                      <div className="flex items-start justify-between gap-4">
-                        <div className="flex-1 space-y-2">
-                          <div className="flex items-center gap-2">
-                            <ArrowDownCircle className="h-5 w-5 text-blue-600" />
-                            <span className="font-semibold text-lg">
-                              {expense.description || 'Wydatek'}
-                            </span>
-                            <Badge className="bg-blue-600 text-white">
-                              Nowa faktura
-                            </Badge>
-                          </div>
-                          <p className="text-sm text-muted-foreground">
-                            od: {expense.customerName || (expense as any).counterpartyName || 'Brak kontrahenta'}
-                          </p>
-                          <div className="flex items-center gap-4 text-sm">
-                            <span className="font-bold text-lg">
-                              {formatCurrency(expense.amount || expense.totalGrossValue || 0)}
-                            </span>
-                            <span className="text-muted-foreground">
-                              {format(new Date(expense.issueDate), 'dd MMM yyyy', {
-                                locale: pl,
-                              })}
-                            </span>
-                          </div>
-                        </div>
-                        <div className="flex flex-col gap-2">
-                          <Button size="sm" className="bg-green-600 hover:bg-green-700">
-                            Zatwierdź
-                          </Button>
-                          <Button size="sm" variant="outline">
-                            Dyskusja
-                          </Button>
-                        </div>
-                      </div>
-                    </CardContent>
-                  </Card>
-                ))}
-              </CardContent>
-            </Card>
-          )}
-
-          {/* Main expense list */}
-          {filteredExpenses.length === 0 ? (
-            <Card>
-              <CardContent className="py-12 text-center">
-                <FileText className="h-12 w-12 mx-auto text-gray-400 mb-4" />
-                <h3 className="text-lg font-medium mb-2">Brak zarejestrowanych wydatków</h3>
-                <p className="text-muted-foreground mb-4">
-                  Dodaj swój pierwszy wydatek
-                </p>
-                <Link
-                  to="/expense/new"
-                  className="inline-flex items-center justify-center rounded-md bg-blue-500 px-4 py-2 text-sm font-medium text-white hover:bg-blue-600 transition-colors"
-                >
-                  <Plus className="mr-2 h-4 w-4" />
-                  Nowy wydatek
-                </Link>
-              </CardContent>
-            </Card>
-          ) : viewMode === 'list' ? (
-            <ExpenseListView
-              expenses={activeTab === 'all' ? filteredExpenses : 
-                activeTab === 'pending' ? filteredExpenses.filter(e => !(e as any).isPaid) :
-                categorizedExpenses.upcoming}
-              selectedExpenses={selectedExpenses}
-              isMultiSelectMode={isMultiSelectMode}
-              onToggleSelection={toggleExpenseSelection}
-              onMarkAsPaid={handleMarkAsPaid}
-              onMarkAsUnpaid={handleMarkAsUnpaid}
-            />
-          ) : (
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
-              {(activeTab === 'all' ? filteredExpenses : 
-                activeTab === 'pending' ? filteredExpenses.filter(e => !(e as any).isPaid) :
-                categorizedExpenses.upcoming).map(exp => (
-                <ExpenseCard
-                  key={exp.id}
-                  expense={{
-                    id: exp.id,
-                    issueDate: exp.issueDate,
-                    amount: exp.amount || exp.totalGrossValue || 0,
-                    description: exp.description,
-                    customerName: exp.customerName || (exp as any).buyer?.name,
-                    transactionType: exp.transactionType as InvoiceType | any,
-                    linkedInvoiceId:
-                      (exp as any).linkedInvoiceId ||
-                      (exp as any).invoiceId ||
-                      null,
-                    isShared: isSharedExpense(exp),
-                  }}
-                />
-              ))}
+      <Card>
+        <CardHeader className="pb-3">
+          <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+            <div>
+              <CardTitle className="flex flex-wrap items-center gap-3">
+                Zdarzenia kosztowe
+                {selectedProject && (
+                  <span className="text-xs font-semibold uppercase tracking-wide inline-flex items-center gap-1 bg-primary/10 text-primary px-2 py-0.5 rounded-full">
+                    <span
+                      className="h-2 w-2 rounded-full"
+                      style={{ backgroundColor: selectedProject.color || '#0ea5e9' }}
+                    />
+                    Projekt: {selectedProject.name}
+                  </span>
+                )}
+              </CardTitle>
+              <CardDescription>
+                Dokumenty ujęte w systemie: {filteredExpenses.length}
+              </CardDescription>
             </div>
+            <div className="flex gap-2 items-center flex-wrap w-full">
+              {isMobile ? (
+                <>
+                  <PeriodSwitcherMobile
+                    years={availableYears}
+                    selectedYear={selectedYear}
+                    selectedMonth={selectedMonth}
+                    onPeriodSelect={(year, month) => {
+                      setSelectedYear(year);
+                      setSelectedMonth(month || null);
+                    }}
+                    className="flex-1"
+                  />
+                  <Button
+                    variant={smartFilter !== 'all' ? 'default' : 'outline'}
+                    size="sm"
+                    onClick={() => setIsMobileFiltersOpen(true)}
+                    className="gap-1.5"
+                  >
+                    <Filter className="h-4 w-4" />
+                    {smartFilter !== 'all' && (
+                      <Badge variant="secondary" className="ml-1">1</Badge>
+                    )}
+                  </Button>
+                </>
+              ) : (
+                <>
+                  <Button
+                    variant={isFiltersOpen ? 'default' : 'outline'}
+                    size="sm"
+                    onClick={() => setIsFiltersOpen(!isFiltersOpen)}
+                    className="gap-1.5"
+                  >
+                    <Filter className="h-4 w-4" />
+                    <span>Filtry</span>
+                    {smartFilter !== 'all' && (
+                      <Badge variant="secondary" className="ml-1">1</Badge>
+                    )}
+                  </Button>
+                  <div className="relative w-full sm:w-72">
+                    <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                    <Input
+                      placeholder="Szukaj: kontrahent, opis..."
+                      className="pl-9"
+                      value={searchTerm}
+                      onChange={(e) => setSearchTerm(e.target.value)}
+                    />
+                  </div>
+                </>
+              )}
+            </div>
+          </div>
+        </CardHeader>
+
+        <Collapsible open={isFiltersOpen} onOpenChange={setIsFiltersOpen}>
+          <CollapsibleContent>
+            <div className="px-6 pb-4 border-b">
+              <div className="space-y-2">
+                <label className="text-sm font-medium">Status płatności</label>
+                <Select value={smartFilter} onValueChange={(value: SmartFilter) => setSmartFilter(value)}>
+                  <SelectTrigger className="w-full md:w-[300px]">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">Wszystkie</SelectItem>
+                    <SelectItem value="unpaid">Niezapłacone</SelectItem>
+                    <SelectItem value="paid">Zapłacone</SelectItem>
+                    <SelectItem value="overdue">Przeterminowane</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+          </CollapsibleContent>
+        </Collapsible>
+
+        <CardContent className="pt-6">
+          {filteredExpenses.length === 0 ? (
+            <div className="text-center py-12">
+              <div className="max-w-md mx-auto space-y-3">
+                <div className="text-lg font-medium">
+                  {smartFilter !== 'all'
+                    ? 'Brak dokumentów spełniających kryteria'
+                    : searchTerm.length > 0
+                    ? 'Brak wyników wyszukiwania'
+                    : 'Brak zarejestrowanych wydatków'}
+                </div>
+                <p className="text-sm text-muted-foreground">
+                  {searchTerm.length > 0
+                    ? 'Spróbuj wyszukać po nazwie kontrahenta lub opisie.'
+                    : 'Dodaj swój pierwszy wydatek.'}
+                </p>
+                {smartFilter === 'all' && searchTerm.length === 0 && (
+                  <Link
+                    to="/expense/new"
+                    className="inline-flex items-center justify-center rounded-md bg-blue-500 px-4 py-2 text-sm font-medium text-white hover:bg-blue-600 transition-colors"
+                  >
+                    <Plus className="mr-2 h-4 w-4" />
+                    Nowy wydatek
+                  </Link>
+                )}
+              </div>
+            </div>
+          ) : (
+            <LedgerView
+              invoices={filteredExpenses}
+              isIncome={false}
+              onView={(id) => {
+                const expense = filteredExpenses.find(e => e.id === id);
+                if (expense && isSharedExpense(expense)) {
+                  const invoiceId =
+                    (expense as any).linkedInvoiceId ||
+                    (expense as any).invoiceId ||
+                    expense.id.replace(/^share-/, '');
+                  navigate(`/expense/${invoiceId}`);
+                } else {
+                  navigate(`/expense/${id}`);
+                }
+              }}
+              onEdit={(id) => navigate(`/expense/edit/${id}`)}
+              onDelete={handleDelete}
+              onTogglePaid={handleTogglePaid}
+            />
           )}
-        </TabsContent>
-      </Tabs>
+        </CardContent>
+      </Card>
+
+      {isMobile && (
+        <>
+          <div className="fixed bottom-0 left-0 right-0 p-4 bg-background border-t z-10">
+            <div className="relative">
+              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+              <Input
+                placeholder="Szukaj: kontrahent, opis..."
+                className="pl-9"
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+              />
+            </div>
+          </div>
+
+          <FilterSheetMobile
+            isOpen={isMobileFiltersOpen}
+            onOpenChange={setIsMobileFiltersOpen}
+            smartFilter={smartFilter as any}
+            documentTypeFilter={'all'}
+            onSmartFilterChange={(filter) => {
+              const mapping: Record<string, SmartFilter> = {
+                'all': 'all',
+                'unpaid_issued': 'unpaid',
+                'paid_not_booked': 'paid',
+                'overdue': 'overdue'
+              };
+              setSmartFilter(mapping[filter] || 'all');
+            }}
+            onDocumentTypeFilterChange={() => {}}
+            onReset={() => setSmartFilter('all')}
+            isIncome={false}
+          />
+        </>
+      )}
     </div>
   );
 }

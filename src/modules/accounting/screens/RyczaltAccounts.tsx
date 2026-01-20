@@ -4,6 +4,21 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/sha
 import { Button } from '@/shared/ui/button';
 import { Badge } from '@/shared/ui/badge';
 import { Plus, Trash2, CreditCard, TrendingUp, Calendar, Calculator, MoreHorizontal, FileText } from 'lucide-react';
+import { PeriodControlBar } from '../components/PeriodControlBar';
+import { PeriodActionBanner } from '../components/PeriodActionBanner';
+import { PeriodClosureModal } from '../components/PeriodClosureModal';
+import { RyczaltAccountAssignmentModal } from '../components/RyczaltAccountAssignmentModal';
+import { 
+  generateYearPeriodStates, 
+  getCurrentPeriod, 
+  formatPeriodName,
+  canClosePeriod 
+} from '../utils/periodState';
+import { 
+  closeAccountingPeriod, 
+  getClosedPeriods, 
+  getPeriodStatistics 
+} from '../data/periodRepository';
 import { formatCurrency } from '@/shared/lib/invoice-utils';
 import { format } from 'date-fns';
 import { pl } from 'date-fns/locale';
@@ -38,11 +53,44 @@ function RyczaltAccounts() {
   const [showAddForm, setShowAddForm] = useState(false);
   const [accountTaxInfo, setAccountTaxInfo] = useState<Record<string, any>>({});
   const [contracts, setContracts] = useState<Contract[]>([]);
+  
+  // Period state management
+  const currentPeriodData = getCurrentPeriod();
+  const [selectedPeriod, setSelectedPeriod] = useState<Date>(
+    new Date(currentPeriodData.year, currentPeriodData.month - 1, 1)
+  );
+  const [periodStates, setPeriodStates] = useState<any[]>([]);
+  const [periodStats, setPeriodStats] = useState<any>(null);
+  const [showClosureModal, setShowClosureModal] = useState(false);
+  const [showAssignmentModal, setShowAssignmentModal] = useState(false);
 
   useEffect(() => {
     if (!selectedProfile?.id) return;
     loadData();
-  }, [selectedProfile?.id]);
+    loadPeriodData();
+  }, [selectedProfile?.id, selectedPeriod]);
+
+  const loadPeriodData = async () => {
+    if (!selectedProfile?.id) return;
+    
+    try {
+      const year = selectedPeriod.getFullYear();
+      const month = selectedPeriod.getMonth() + 1;
+      
+      // Get closed periods
+      const closedPeriods = await getClosedPeriods(selectedProfile.id);
+      
+      // Generate period states for the year
+      const states = generateYearPeriodStates(year, closedPeriods);
+      setPeriodStates(states);
+      
+      // Get statistics for selected period
+      const stats = await getPeriodStatistics(selectedProfile.id, year, month);
+      setPeriodStats(stats);
+    } catch (error) {
+      console.error('Error loading period data:', error);
+    }
+  };
 
   const loadData = async () => {
     if (!selectedProfile?.id) return;
@@ -238,13 +286,46 @@ function RyczaltAccounts() {
     );
   }
 
+  const handleClosePeriod = async (lockPeriod: boolean, note?: string) => {
+    if (!selectedProfile?.id) return;
+    
+    const year = selectedPeriod.getFullYear();
+    const month = selectedPeriod.getMonth() + 1;
+    
+    try {
+      const result = await closeAccountingPeriod(
+        selectedProfile.id,
+        year,
+        month,
+        lockPeriod,
+        note
+      );
+      
+      if (result.success) {
+        toast.success('Okres zamknięty pomyślnie');
+        await loadPeriodData();
+      } else {
+        toast.error(result.message || 'Nie udało się zamknąć okresu');
+      }
+    } catch (error) {
+      console.error('Error closing period:', error);
+      toast.error('Błąd podczas zamykania okresu');
+    }
+  };
+
+  const selectedYear = selectedPeriod.getFullYear();
+  const selectedMonth = selectedPeriod.getMonth() + 1;
+  const currentState = periodStates.find(
+    p => p.year === selectedYear && p.month === selectedMonth
+  );
+
   return (
     <div className="space-y-6 p-6">
       <div className="flex justify-between items-center">
         <div>
-          <h1 className="text-3xl font-bold tracking-tight">Konta ryczałtowe</h1>
+          <h1 className="text-3xl font-bold tracking-tight">Ewidencja przychodów</h1>
           <p className="text-muted-foreground">
-            Zarządzaj kontami ryczałtowymi dla {selectedProfile.name}
+            Ryczałt od przychodów ewidencjonowanych - {selectedProfile.name}
           </p>
         </div>
         <div className="flex gap-2">
@@ -257,6 +338,42 @@ function RyczaltAccounts() {
           </Button>
         </div>
       </div>
+      
+      {/* Period Control Bar */}
+      <PeriodControlBar
+        currentPeriod={selectedPeriod}
+        onPeriodChange={setSelectedPeriod}
+        periodStates={periodStates.map(p => ({
+          ...p,
+          taxAmount: p.year === selectedYear && p.month === selectedMonth ? periodStats?.totalTax : undefined,
+          invoiceCount: p.year === selectedYear && p.month === selectedMonth ? periodStats?.invoiceCount : undefined,
+          postedCount: p.year === selectedYear && p.month === selectedMonth ? periodStats?.invoiceCount : undefined,
+        }))}
+        onClosePeriod={() => setShowClosureModal(true)}
+      />
+      
+      {/* Action Banner */}
+      {currentState && periodStats && (
+        <PeriodActionBanner
+          status={currentState.status}
+          periodName={formatPeriodName(selectedYear, selectedMonth)}
+          taxAmount={periodStats.totalTax}
+          taxDeadline={currentState.taxDeadline}
+          invoiceCount={periodStats.invoiceCount}
+          postedCount={periodStats.invoiceCount}
+          unpostedCount={periodStats.unpostedCount}
+          onViewDocuments={() => window.location.href = '/invoices'}
+          onAssignAccounts={() => setShowAssignmentModal(true)}
+          onClosePeriod={() => {
+            const check = canClosePeriod(selectedYear, selectedMonth, periodStats.unpostedCount);
+            if (check.canClose) {
+              setShowClosureModal(true);
+            } else {
+              toast.error(check.reason);
+            }
+          }}
+        />
+      )}
 
       {/* Summary Cards */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
@@ -490,6 +607,36 @@ function RyczaltAccounts() {
           categories={categories}
           onSubmit={handleAddAccount}
           onCancel={() => setShowAddForm(false)}
+        />
+      )}
+
+      {/* Period Closure Modal */}
+      {periodStats && (
+        <PeriodClosureModal
+          open={showClosureModal}
+          onOpenChange={setShowClosureModal}
+          year={selectedYear}
+          month={selectedMonth}
+          totalRevenue={periodStats.totalRevenue}
+          totalTax={periodStats.totalTax}
+          invoiceCount={periodStats.invoiceCount}
+          onConfirm={handleClosePeriod}
+        />
+      )}
+
+      {/* Ryczalt Account Assignment Modal */}
+      {selectedProfile && (
+        <RyczaltAccountAssignmentModal
+          open={showAssignmentModal}
+          onOpenChange={setShowAssignmentModal}
+          businessProfileId={selectedProfile.id}
+          periodStart={new Date(selectedYear, selectedMonth - 1, 1)}
+          periodEnd={new Date(selectedYear, selectedMonth, 0)}
+          onAssignmentsComplete={() => {
+            setShowAssignmentModal(false);
+            loadPeriodData();
+            loadData();
+          }}
         />
       )}
     </div>

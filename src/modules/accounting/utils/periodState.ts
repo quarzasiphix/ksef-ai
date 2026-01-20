@@ -12,14 +12,91 @@ export interface PeriodStateCalculation {
   isLocked: boolean;
 }
 
+export type TaxRegime = 'ryczalt' | 'skala' | 'liniowy';
+export type VATCadence = 'monthly' | 'quarterly' | 'none';
+export type SettlementCadence = 'monthly' | 'quarterly' | 'annual';
+
+export interface DeadlineRules {
+  taxRegime: TaxRegime;
+  vatCadence: VATCadence;
+  settlementCadence: SettlementCadence;
+}
+
 /**
  * Calculate the tax payment deadline for a given period
- * For ryczalt: 20th of the following month
+ * Rules vary by tax regime and cadence
  */
-export function calculateTaxDeadline(year: number, month: number): Date {
-  const periodEnd = new Date(year, month - 1, 1); // First day of the period month
+export function calculateTaxDeadline(
+  year: number,
+  month: number,
+  rules: DeadlineRules = {
+    taxRegime: 'ryczalt',
+    vatCadence: 'monthly',
+    settlementCadence: 'monthly'
+  }
+): Date {
+  const periodEnd = new Date(year, month - 1, 1);
+  
+  // Ryczalt monthly: 20th of following month
+  if (rules.taxRegime === 'ryczalt' && rules.settlementCadence === 'monthly') {
+    const nextMonth = addMonths(periodEnd, 1);
+    return new Date(nextMonth.getFullYear(), nextMonth.getMonth(), 20);
+  }
+  
+  // Ryczalt quarterly: 20th of month following quarter end
+  if (rules.taxRegime === 'ryczalt' && rules.settlementCadence === 'quarterly') {
+    const quarter = Math.ceil(month / 3);
+    const quarterEndMonth = quarter * 3;
+    const nextMonth = new Date(year, quarterEndMonth, 1);
+    return new Date(nextMonth.getFullYear(), nextMonth.getMonth(), 20);
+  }
+  
+  // Skala/Liniowy monthly advance: 20th of following month
+  if ((rules.taxRegime === 'skala' || rules.taxRegime === 'liniowy') && rules.settlementCadence === 'monthly') {
+    const nextMonth = addMonths(periodEnd, 1);
+    return new Date(nextMonth.getFullYear(), nextMonth.getMonth(), 20);
+  }
+  
+  // Skala/Liniowy quarterly: 20th of month following quarter
+  if ((rules.taxRegime === 'skala' || rules.taxRegime === 'liniowy') && rules.settlementCadence === 'quarterly') {
+    const quarter = Math.ceil(month / 3);
+    const quarterEndMonth = quarter * 3;
+    const nextMonth = new Date(year, quarterEndMonth, 1);
+    return new Date(nextMonth.getFullYear(), nextMonth.getMonth(), 20);
+  }
+  
+  // Default fallback: 20th of next month
   const nextMonth = addMonths(periodEnd, 1);
   return new Date(nextMonth.getFullYear(), nextMonth.getMonth(), 20);
+}
+
+/**
+ * Calculate VAT declaration deadline (if applicable)
+ */
+export function calculateVATDeadline(
+  year: number,
+  month: number,
+  cadence: VATCadence
+): Date | null {
+  if (cadence === 'none') return null;
+  
+  const periodEnd = new Date(year, month - 1, 1);
+  
+  // VAT monthly: 25th of following month
+  if (cadence === 'monthly') {
+    const nextMonth = addMonths(periodEnd, 1);
+    return new Date(nextMonth.getFullYear(), nextMonth.getMonth(), 25);
+  }
+  
+  // VAT quarterly: 25th of month following quarter
+  if (cadence === 'quarterly') {
+    const quarter = Math.ceil(month / 3);
+    const quarterEndMonth = quarter * 3;
+    const nextMonth = new Date(year, quarterEndMonth, 1);
+    return new Date(nextMonth.getFullYear(), nextMonth.getMonth(), 25);
+  }
+  
+  return null;
 }
 
 /**
@@ -36,8 +113,13 @@ export function calculatePeriodStatus(
   const periodEnd = endOfMonth(periodStart);
   const taxDeadline = calculateTaxDeadline(year, month);
 
-  // Closed periods are always "closed" status
-  if (isClosed || isLocked) {
+  // Locked periods have special status
+  if (isLocked) {
+    return 'locked';
+  }
+
+  // Closed but not locked periods
+  if (isClosed) {
     return 'closed';
   }
 
