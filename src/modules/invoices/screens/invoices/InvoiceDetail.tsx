@@ -224,6 +224,14 @@ const InvoiceDetail: React.FC<InvoiceDetailProps> = ({ type }) => {
     }
   }, [location.search, isLoadingInvoice]);
 
+  // Auto-scroll to top when invoice loads
+  useEffect(() => {
+    if (!isLoadingInvoice && invoice) {
+      // Scroll to top of page when invoice loads
+      window.scrollTo({ top: 0, left: 0, behavior: 'smooth' });
+    }
+  }, [isLoadingInvoice, invoice]);
+
   useEffect(() => {
     if (invoice?.businessProfileId) {
       // Load cash accounts for cash payment invoices

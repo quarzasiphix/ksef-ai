@@ -61,10 +61,10 @@ export async function getCustomers(businessProfileId?: string): Promise<Customer
         (bp: any) => bp.tax_id === item.tax_id && bp.tax_id,
       );
 
-      // If not found (likely due to RLS), fall back to RPC lookup
-      if (!linkedProfile && item.tax_id) {
-        linkedProfile = await findBusinessProfileByTaxId(item.tax_id);
-      }
+      // Remove RPC fallback to prevent spam - use only cached data
+      // if (!linkedProfile && item.tax_id) {
+      //   linkedProfile = await findBusinessProfileByTaxId(item.tax_id);
+      // }
 
       return {
         id: item.id,
@@ -160,10 +160,10 @@ export async function getCustomerWithLinkedProfile(customerId: string): Promise<
       };
     }
 
-    // If not found via direct select (due to RLS), use RPC fallback
-    if (!linkedProfile) {
-      linkedProfile = await findBusinessProfileByTaxId(data.tax_id);
-    }
+    // Remove RPC fallback to prevent spam
+    // if (!linkedProfile) {
+    //   linkedProfile = await findBusinessProfileByTaxId(data.tax_id);
+    // }
   }
 
   return {
