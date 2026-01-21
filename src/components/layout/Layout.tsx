@@ -49,46 +49,86 @@ const Layout = ({ children }: LayoutProps) => {
 
     return (
       <div className="flex min-h-screen w-full bg-background">
+        {/* Sidebar - only rendered on desktop */}
         {!focusMode && (
-          <div className="hidden md:block fixed top-0 left-0 h-screen">
+          <div className="hidden md:block fixed top-0 left-0 h-screen z-40">
             <AppSidebar />
           </div>
         )}
 
+        {/* Header - full width on both desktop and mobile */}
+        <Header />
+
+        {/* Main Content Area */}
         <div className={cn(
           "flex-1 flex flex-col min-w-0 transition-all duration-300 ease-in-out",
           !focusMode && (state === "expanded" ? "md:ml-56" : "md:ml-16")
         )}>
-          <Header />
-          <main
-            className={cn(
-              "flex-1 w-full max-w-full",
-              disableOuterScroll ? "overflow-hidden" : "overflow-auto",
-              mainPaddingClass
-            )}
-          >
-            <div
+          <div className="hidden md:flex md:flex-col md:flex-1">
+            <main
               className={cn(
-                "w-full",
-                isFullBleedRoute ? "max-w-none" : "max-w-7xl mx-auto"
+                "flex-1 w-full max-w-full",
+                disableOuterScroll ? "overflow-hidden" : "overflow-auto",
+                mainPaddingClass
               )}
             >
-              {!hideBreadcrumbs && (
-                <div className={cn(
-                  "flex items-center justify-between gap-3",
-                  isFullBleedRoute ? "mb-3" : "mb-6"
-                )}>
-                  <Breadcrumbs />
-                  {actions ? <div className="shrink-0">{actions}</div> : null}
-                </div>
+              <div
+                className={cn(
+                  "w-full",
+                  isFullBleedRoute ? "max-w-none" : "max-w-7xl mx-auto"
+                )}
+              >
+                {!hideBreadcrumbs && (
+                  <div className={cn(
+                    "flex items-center justify-between gap-3",
+                    isFullBleedRoute ? "mb-3" : "mb-6"
+                  )}>
+                    <Breadcrumbs />
+                    {actions ? <div className="shrink-0">{actions}</div> : null}
+                  </div>
+                )}
+                {innerChildren || <Outlet />}
+              </div>
+            </main>
+            <Footer />
+          </div>
+
+          {/* Mobile Layout: Content area with padding for fixed navigation */}
+          <div className="md:hidden flex flex-col flex-1">
+            <main
+              className={cn(
+                "flex-1 w-full max-w-full",
+                disableOuterScroll ? "overflow-hidden" : "overflow-auto",
+                mainPaddingClass,
+                "" // No padding needed
               )}
-              {innerChildren || <Outlet />}
-            </div>
-          </main>
-          <Footer />
+            >
+              <div
+                className={cn(
+                  "w-full",
+                  isFullBleedRoute ? "max-w-none" : "max-w-7xl mx-auto"
+                )}
+              >
+                {!hideBreadcrumbs && (
+                  <div className={cn(
+                    "flex items-center justify-between gap-3",
+                    isFullBleedRoute ? "mb-3" : "mb-6"
+                  )}>
+                    <Breadcrumbs />
+                    {actions ? <div className="shrink-0">{actions}</div> : null}
+                  </div>
+                )}
+                {innerChildren || <Outlet />}
+              </div>
+            </main>
+            <Footer />
+          </div>
         </div>
 
-        {!focusMode && <MobileNavigation />}
+        {/* Mobile Navigation - only on mobile devices */}
+        <div className="md:hidden">
+          <MobileNavigation />
+        </div>
       </div>
     );
   };

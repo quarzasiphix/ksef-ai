@@ -1,5 +1,7 @@
 import { Invoice } from '@/shared/types';
 import { formatLedgerAmount } from '@/shared/lib/ledger-utils';
+import { useNavigate } from 'react-router-dom';
+import { useBusinessProfile } from '@/shared/context/BusinessProfileContext';
 import { Badge } from '@/shared/ui/badge';
 import { MoreVertical, Eye, Download, Edit, Trash2, Share2, Copy, CreditCard } from 'lucide-react';
 import { cn } from '@/shared/lib/utils';
@@ -40,6 +42,10 @@ export function LedgerRow({
   onDuplicate,
   onTogglePaid,
 }: LedgerRowProps) {
+  const { profiles, selectedProfileId } = useBusinessProfile();
+  const selectedProfile = profiles?.find(p => p.id === selectedProfileId);
+  const isProfileVatExempt = selectedProfile?.is_vat_exempt || false;
+  
   const isVatExempt = invoice.fakturaBezVAT || invoice.vat === false;
   const amount = isVatExempt ? (invoice.totalNetValue || 0) : (invoice.totalGrossValue || invoice.totalAmount || 0);
   const isPaid = invoice.isPaid || invoice.paid;
@@ -116,7 +122,7 @@ export function LedgerRow({
             </Badge>
           )}
           
-          {isVatExempt && (
+          {isVatExempt && !isProfileVatExempt && (
             <Badge variant="outline" className="text-xs font-medium bg-muted/50">
               Bez VAT
             </Badge>
@@ -135,9 +141,9 @@ export function LedgerRow({
               ref={dropdownButtonRef}
               variant="ghost"
               size="sm"
-              className="h-8 w-8 p-0 text-muted-foreground/40 group-hover:text-foreground/80 group-hover:bg-accent transition-all"
+              className="h-10 w-10 p-0 text-muted-foreground/40 group-hover:text-foreground/80 group-hover:bg-accent transition-all"
             >
-              <MoreVertical className="h-4 w-4" />
+              <MoreVertical className="h-5 w-5" />
             </Button>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end" className="w-48">

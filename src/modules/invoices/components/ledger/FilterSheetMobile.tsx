@@ -8,8 +8,9 @@ import {
   SheetFooter,
 } from '@/shared/ui/sheet';
 import { cn } from '@/shared/lib/utils';
+import { Clock, AlertTriangle, CheckCircle, FileText, Calendar, AlertCircle } from 'lucide-react';
 
-type SmartFilter = 'all' | 'unpaid_issued' | 'paid_not_booked' | 'booked_not_reconciled' | 'overdue';
+type SmartFilter = 'all' | 'unpaid_issued' | 'paid_issued' | 'accounted' | 'overdue';
 type DocumentTypeFilter = 'all' | 'invoice' | 'receipt' | 'proforma' | 'correction';
 
 interface FilterSheetMobileProps {
@@ -70,26 +71,17 @@ export function FilterSheetMobile({
                 onClick={() => onSmartFilterChange('unpaid_issued')}
                 className="flex-1 min-w-[120px]"
               >
-                <Badge variant="secondary" className="mr-1 text-xs">⏳</Badge>
+                <Clock className="mr-1 h-3 w-3" />
                 Nieopłacone
               </Button>
               <Button
-                variant={smartFilter === 'paid_not_booked' ? 'default' : 'outline'}
+                variant={smartFilter === 'paid_issued' ? 'default' : 'outline'}
                 size="sm"
-                onClick={() => onSmartFilterChange('paid_not_booked')}
+                onClick={() => onSmartFilterChange('paid_issued')}
                 className="flex-1 min-w-[120px]"
               >
-                <Badge variant="secondary" className="mr-1 text-xs">⚠️</Badge>
-                Niezaksięgowane
-              </Button>
-              <Button
-                variant={smartFilter === 'booked_not_reconciled' ? 'default' : 'outline'}
-                size="sm"
-                onClick={() => onSmartFilterChange('booked_not_reconciled')}
-                className="flex-1 min-w-[120px]"
-              >
-                <Badge variant="secondary" className="mr-1 text-xs">📘</Badge>
-                Zaksięgowane
+                <CheckCircle className="mr-1 h-3 w-3" />
+                Opłacone
               </Button>
               <Button
                 variant={smartFilter === 'overdue' ? 'default' : 'outline'}
@@ -97,8 +89,17 @@ export function FilterSheetMobile({
                 onClick={() => onSmartFilterChange('overdue')}
                 className="flex-1 min-w-[120px]"
               >
-                <Badge variant="secondary" className="mr-1 text-xs bg-red-100 text-red-700">🔴</Badge>
+                <AlertCircle className="mr-1 h-3 w-3" />
                 Zaległe
+              </Button>
+              <Button
+                variant={smartFilter === 'accounted' ? 'default' : 'outline'}
+                size="sm"
+                onClick={() => onSmartFilterChange('accounted')}
+                className="flex-1 min-w-[120px]"
+              >
+                <FileText className="mr-1 h-3 w-3" />
+                Zaksięgowane
               </Button>
             </div>
           </div>

@@ -255,3 +255,18 @@ html.sidebar-transition body {
 .dark .scrollbar-thin::-webkit-scrollbar-thumb:hover {
   background-color: hsl(var(--muted-foreground) / 0.6);
 }
+
+/* Prevent mobile scroll-based hiding of fixed elements */
+@media (max-width: 767px) {
+  header.sticky {
+    position: fixed !important;
+    top: 0 !important;
+    transform: none !important;
+  }
+  
+  .fixed.bottom-0 {
+    position: fixed !important;
+    bottom: 0 !important;
+    transform: none !important;
+  }
+}

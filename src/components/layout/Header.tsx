@@ -39,15 +39,17 @@ const Header = () => {
   return (
     <>
       {/* Top Header - Three-region layout: left (brand), center (tabs), right (actions) */}
-      <header className="sticky top-0 z-40 bg-black/40 backdrop-blur-xl border-b border-white/5">
-        <div className="px-4 md:px-6 py-2.5 flex items-center gap-4">
+      <header className="sticky top-0 z-50 bg-black/40 backdrop-blur-xl border-b border-white/5 w-screen md:w-auto">
+        <div className="px-0 md:px-6 py-2.5 flex items-center gap-4 w-full">
           {/* Left region - Brand/Logo (if needed in future) */}
           <div className="flex-shrink-0">
             {/* Reserved for logo/brand */}
           </div>
 
-          {/* Center region - Workspace Tabs Strip */}
-          <HeaderTabsStrip />
+          {/* Center region - Workspace Tabs Strip (hidden on mobile) */}
+          <div className="hidden md:block">
+            <HeaderTabsStrip />
+          </div>
 
           {/* Right region - Project switcher + actions */}
           <div className="flex items-center gap-2 flex-shrink-0">

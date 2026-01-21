@@ -15,7 +15,7 @@ import { BankAccount } from "@/modules/banking/bank";
 import { InvoiceItem } from "@/shared/types";
 import type { CashAccount } from "@/modules/accounting/kasa";
 import { cn } from "@/shared/lib/utils";
-import { listRyczaltCategories, type RyczaltCategory } from "@/modules/accounting/data/ryczaltRepository";
+import { listRyczaltCategories, listRyczaltAccounts, type RyczaltCategory, type RyczaltAccount } from "@/modules/accounting/data/ryczaltRepository";
 import { TransactionType } from "@/shared/types/common";
 
 interface InvoiceBasicInfoFormProps {
@@ -35,6 +35,7 @@ interface InvoiceBasicInfoFormProps {
   transactionType?: TransactionType;
   profileTaxType?: string;
   profileEntityType?: string;
+  isProfileVatExempt?: boolean;
 }
 
 export const InvoiceBasicInfoForm: React.FC<InvoiceBasicInfoFormProps> = ({
@@ -53,14 +54,17 @@ export const InvoiceBasicInfoForm: React.FC<InvoiceBasicInfoFormProps> = ({
   onNumberChange,
   transactionType,
   profileTaxType,
-  profileEntityType
+  profileEntityType,
+  isProfileVatExempt = false
 }) => {
   const currency = form.watch('currency') || 'PLN';
   const paymentMethod = form.watch('paymentMethod');
   const [ryczaltCategories, setRyczaltCategories] = useState<RyczaltCategory[]>([]);
+  const [ryczaltAccounts, setRyczaltAccounts] = useState<RyczaltAccount[]>([]);
   const [isLoadingCategories, setIsLoadingCategories] = useState(false);
+  const [isLoadingAccounts, setIsLoadingAccounts] = useState(false);
 
-  // Determine if ryczałt category is required
+  // Determine if ryczałt selection should be shown (optional)
   const isJdgRyczaltIncome = 
     profileEntityType === 'dzialalnosc' && 
     profileTaxType === 'ryczalt' && 
@@ -83,6 +87,25 @@ export const InvoiceBasicInfoForm: React.FC<InvoiceBasicInfoFormProps> = ({
     }
     
     fetchCategories();
+  }, [isJdgRyczaltIncome, businessProfileId]);
+
+  // Fetch ryczałt accounts when needed
+  useEffect(() => {
+    async function fetchAccounts() {
+      if (!isJdgRyczaltIncome || !businessProfileId) return;
+      
+      setIsLoadingAccounts(true);
+      try {
+        const accounts = await listRyczaltAccounts(businessProfileId);
+        setRyczaltAccounts(accounts);
+      } catch (error) {
+        console.error('Failed to load ryczałt accounts:', error);
+      } finally {
+        setIsLoadingAccounts(false);
+      }
+    }
+    
+    fetchAccounts();
   }, [isJdgRyczaltIncome, businessProfileId]);
 
   return (
@@ -347,22 +370,24 @@ export const InvoiceBasicInfoForm: React.FC<InvoiceBasicInfoFormProps> = ({
           )}
         />
 
-        <FormField
-          control={form.control}
-          name="fakturaBezVAT"
-          render={({ field }) => (
-            <FormItem className="flex items-center space-x-2">
-              <FormControl>
-                <Checkbox
-                  checked={field.value}
-                  onCheckedChange={field.onChange}
-                />
-              </FormControl>
-              <FormLabel>Faktura bez VAT</FormLabel>
-              <FormMessage />
-            </FormItem>
-          )}
-        />
+        {!isProfileVatExempt && (
+          <FormField
+            control={form.control}
+            name="fakturaBezVAT"
+            render={({ field }) => (
+              <FormItem className="flex items-center space-x-2">
+                <FormControl>
+                  <Checkbox
+                    checked={field.value}
+                    onCheckedChange={field.onChange}
+                  />
+                </FormControl>
+                <FormLabel>Faktura bez VAT</FormLabel>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+        )}
 
         {form.watch("fakturaBezVAT") && (
           <FormField
@@ -391,47 +416,46 @@ export const InvoiceBasicInfoForm: React.FC<InvoiceBasicInfoFormProps> = ({
           />
         )}
 
-        {/* Ryczałt Category Selection - Only for JDG + ryczałt + income */}
+        {/* Ryczałt Account Selection - Optional for JDG + ryczałt + income */}
         {isJdgRyczaltIncome && (
           <FormField
             control={form.control}
             name="ryczalt_category_id"
-            rules={{ required: 'W ryczałcie musisz wybrać kategorię przychodu' }}
             render={({ field }) => (
               <FormItem>
                 <FormLabel className="flex items-center gap-2">
-                  Kategoria ryczałtu *
+                  Konto ryczałtowe (opcjonalnie)
                   <TooltipProvider>
                     <Tooltip>
                       <TooltipTrigger asChild>
                         <span className="cursor-pointer"><Info size={14} /></span>
                       </TooltipTrigger>
                       <TooltipContent>
-                        <p className="max-w-xs">Stawka zależy od rodzaju przychodu (usługi/produktu), nie od firmy.</p>
+                        <p className="max-w-xs">Wybierz konto ryczałtowe, jeśli chcesz przypisać przychód do konkretnego konta.</p>
                       </TooltipContent>
                     </Tooltip>
                   </TooltipProvider>
                 </FormLabel>
-                {isLoadingCategories ? (
-                  <div className="text-sm text-muted-foreground">Ładowanie kategorii...</div>
-                ) : ryczaltCategories.length === 0 ? (
+                {isLoadingAccounts ? (
+                  <div className="text-sm text-muted-foreground">Ładowanie kont...</div>
+                ) : ryczaltAccounts.length === 0 ? (
                   <div className="p-4 border border-amber-200 bg-amber-50 rounded-lg dark:bg-amber-900/20 dark:border-amber-800">
                     <div className="flex items-start gap-3">
                       <AlertCircle className="h-4 w-4 mt-0.5 text-amber-600" />
                       <div className="space-y-2">
                         <p className="text-sm text-amber-800 dark:text-amber-100">
-                          Nie masz jeszcze żadnych kategorii ryczałtu. Musisz dodać przynajmniej jedną kategorię, aby wystawić fakturę przychodową.
+                          Nie masz jeszcze żadnych kont ryczałtowych. Możesz je dodać w sekcji Księgowość → Ryczałt.
                         </p>
                         <Button
                           type="button"
                           size="sm"
                           variant="outline"
                           onClick={() => {
-                            // TODO: Open manage categories modal/page
-                            alert('Funkcja zarządzania kategoriami ryczałtu w przygotowaniu');
+                            // TODO: Navigate to ryczałt accounts management
+                            alert('Funkcja zarządzania kontami ryczałtowymi w przygotowaniu');
                           }}
                         >
-                          Dodaj kategorię ryczałtu
+                          Zarządzaj kontami ryczałtowymi
                         </Button>
                       </div>
                     </div>
@@ -440,20 +464,21 @@ export const InvoiceBasicInfoForm: React.FC<InvoiceBasicInfoFormProps> = ({
                   <>
                     <Select onValueChange={field.onChange} value={field.value}>
                       <FormControl>
-                        <SelectTrigger className={cn(!field.value && "border-red-500")}>
-                          <SelectValue placeholder="Wybierz kategorię przychodu" />
+                        <SelectTrigger>
+                          <SelectValue placeholder="Wybierz konto ryczałtowe (opcjonalnie)" />
                         </SelectTrigger>
                       </FormControl>
                       <SelectContent>
-                        {ryczaltCategories.map((category) => (
-                          <SelectItem key={category.id} value={category.id}>
-                            {category.name} ({category.rate}%)
+                        <SelectItem value="">-- Brak przypisania --</SelectItem>
+                        {ryczaltAccounts.map((account) => (
+                          <SelectItem key={account.id} value={account.id}>
+                            {account.account_name} ({account.account_number}) - {account.category_name} ({account.category_rate}%)
                           </SelectItem>
                         ))}
                       </SelectContent>
                     </Select>
                     <p className="text-xs text-muted-foreground mt-1">
-                      Stawka jest przypisana do rodzaju przychodu, nie do firmy.
+                      Konto ryczałtowe pomaga w śledzeniu przychodów według stawek.
                     </p>
                   </>
                 )}

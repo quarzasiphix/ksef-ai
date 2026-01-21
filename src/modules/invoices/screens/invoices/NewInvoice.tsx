@@ -1354,6 +1354,7 @@ const handleFormSubmit = form.handleSubmit(async (formData) => {
                 transactionType={transactionType}
                 profileTaxType={selectedProfile?.tax_type}
                 profileEntityType={selectedProfile?.entityType}
+                isProfileVatExempt={isProfileVatExempt}
                 exchangeRate={exchangeRate}
                 exchangeRateDate={form.watch('exchangeRateDate')}
                 exchangeRateSource={form.watch('exchangeRateSource')}

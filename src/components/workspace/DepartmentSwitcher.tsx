@@ -76,7 +76,7 @@ export const DepartmentSwitcher: React.FC = () => {
             />
           )}
           <span className="text-sm font-medium">{displayLabel}</span>
-          <span className="text-xs uppercase tracking-wide bg-white/10 px-2 py-0.5 rounded-full">
+          <span className="hidden md:inline-flex text-xs uppercase tracking-wide bg-white/10 px-2 py-0.5 rounded-full">
             {displayBadge}
           </span>
         </Button>

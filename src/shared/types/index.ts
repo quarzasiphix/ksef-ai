@@ -316,6 +316,10 @@ export interface Invoice {
   postedAt?: string;
   journalEntryId?: string;
   decisionReference?: string;
+  // JDG register relation
+  ryczalt_account_id?: string; // ID of the ryczalt account this invoice is linked to (accounted)
+  accountingRegisterId?: string; // ID of the JDG register entry this invoice is linked to
+  accountingRegisterDate?: string; // Date when posted to accounting register
   projectId?: string; // Project assignment
   currency?: string;
   created_at?: string;

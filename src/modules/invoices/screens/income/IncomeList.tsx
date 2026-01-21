@@ -26,6 +26,12 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/shared/ui/dropdown-menu";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from "@/shared/ui/dialog";
 import { toast } from "sonner";
 import { deleteInvoice, saveInvoice } from "@/modules/invoices/data/invoiceRepository";
 import { useQueryClient } from "@tanstack/react-query";
@@ -41,7 +47,7 @@ import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/shared/ui
 import { useIsMobile } from "@/shared/hooks/use-mobile";
 import { getAvailableYears } from '@/shared/lib/ledger-utils';
 
-type SmartFilter = 'all' | 'unpaid_issued' | 'paid_not_booked' | 'booked_not_reconciled' | 'overdue';
+type SmartFilter = 'all' | 'unpaid_issued' | 'paid_issued' | 'accounted' | 'overdue';
 type DocumentTypeFilter = 'all' | 'invoice' | 'receipt' | 'proforma' | 'correction';
 
 const IncomeList = () => {
@@ -53,6 +59,7 @@ const IncomeList = () => {
   const [smartFilter, setSmartFilter] = useState<SmartFilter>('all');
   const [isFiltersOpen, setIsFiltersOpen] = useState(false);
   const [isMobileFiltersOpen, setIsMobileFiltersOpen] = useState(false);
+  const [isMobileSearchOpen, setIsMobileSearchOpen] = useState(false);
   const [selectedYear, setSelectedYear] = useState<number | null>(null);
   const [selectedMonth, setSelectedMonth] = useState<number | null>(null);
   const navigate = useNavigate();
@@ -129,18 +136,19 @@ const IncomeList = () => {
 
       let matchesSmartFilter = true;
       const isPaid = invoice.isPaid || invoice.paid;
-      const isBooked = (invoice as any).booked_to_ledger;
+      const accountingStatus = invoice.accountingStatus || 'unposted';
+      const isPostedToRegister = !!invoice.ryczalt_account_id; // Check if linked to ryczalt account (accounted)
       const isOverdue = new Date(invoice.dueDate) < new Date() && !isPaid;
       
       switch (smartFilter) {
         case 'unpaid_issued':
           matchesSmartFilter = !isPaid;
           break;
-        case 'paid_not_booked':
-          matchesSmartFilter = isPaid && !isBooked;
+        case 'paid_issued':
+          matchesSmartFilter = isPaid;
           break;
-        case 'booked_not_reconciled':
-          matchesSmartFilter = isBooked;
+        case 'accounted':
+          matchesSmartFilter = isPostedToRegister;
           break;
         case 'overdue':
           matchesSmartFilter = isOverdue;
@@ -274,13 +282,15 @@ const IncomeList = () => {
             </div>
           )}
         </div>
-
+        
+      {/*    
         <MonthlySummaryBar
           invoices={invoices}
           transactionType="income"
           cta={summaryCTA}
           onFilter={handleSummaryFilter}
         />
+      */}
       </div>
       
       <Card>
@@ -329,6 +339,14 @@ const IncomeList = () => {
                       </Badge>
                     )}
                   </Button>
+                  <Button
+                    variant={searchTerm ? 'default' : 'outline'}
+                    size="sm"
+                    onClick={() => setIsMobileSearchOpen(true)}
+                    className="gap-1.5"
+                  >
+                    <Search className="h-4 w-4" />
+                  </Button>
                 </>
               ) : (
                 <>
@@ -361,7 +379,7 @@ const IncomeList = () => {
           </div>
         </CardHeader>
         
-        <Collapsible open={isFiltersOpen} onOpenChange={setIsFiltersOpen}>
+        <Collapsible open={isFiltersOpen}>
           <CollapsibleContent>
             <div className="px-6 pb-4 border-b space-y-4">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -390,8 +408,8 @@ const IncomeList = () => {
                     <SelectContent>
                       <SelectItem value="all">Wszystkie</SelectItem>
                       <SelectItem value="unpaid_issued">Wystawione, nieopłacone</SelectItem>
-                      <SelectItem value="paid_not_booked">Opłacone, niezaksięgowane</SelectItem>
-                      <SelectItem value="booked_not_reconciled">Zaksięgowane</SelectItem>
+                      <SelectItem value="paid_issued">Opłacone</SelectItem>
+                      <SelectItem value="accounted">Zaksięgowane</SelectItem>
                       <SelectItem value="overdue">Zaległe</SelectItem>
                     </SelectContent>
                   </Select>
@@ -470,17 +488,28 @@ const IncomeList = () => {
 
       {isMobile && (
         <>
-          <div className="fixed bottom-0 left-0 right-0 p-4 bg-background border-t z-10">
-            <div className="relative">
-              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-              <Input
-                placeholder="Szukaj: kontrahent, numer..."
-                className="pl-9"
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-              />
-            </div>
-          </div>
+          <Dialog open={isMobileSearchOpen} onOpenChange={setIsMobileSearchOpen}>
+            <DialogContent className="sm:max-w-md">
+              <DialogHeader>
+                <DialogTitle>Szukaj faktur</DialogTitle>
+              </DialogHeader>
+              <div className="space-y-4">
+                <div className="relative">
+                  <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                  <Input
+                    placeholder="Kontrahent, numer faktury..."
+                    className="pl-9"
+                    value={searchTerm}
+                    onChange={(e) => setSearchTerm(e.target.value)}
+                    autoFocus
+                  />
+                </div>
+                <div className="text-sm text-muted-foreground">
+                  Znaleziono {filteredInvoices.length} faktur
+                </div>
+              </div>
+            </DialogContent>
+          </Dialog>
 
           <FilterSheetMobile
             isOpen={isMobileFiltersOpen}

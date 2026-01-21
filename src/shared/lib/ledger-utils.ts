@@ -44,8 +44,14 @@ export function groupInvoicesByPeriod(invoices: Invoice[]): YearGroup[] {
     
     const sum = invoices.reduce((total, inv) => {
       const isVatExempt = inv.fakturaBezVAT || inv.vat === false;
-      const amount = isVatExempt ? (inv.totalNetValue || 0) : (inv.totalGrossValue || inv.totalAmount || 0);
-      return total + amount;
+      const baseAmount = isVatExempt ? (inv.totalNetValue || 0) : (inv.totalGrossValue || inv.totalAmount || 0);
+      
+      // Convert to PLN if foreign currency
+      const plnValue = inv.currency === 'PLN' || !inv.exchangeRate
+        ? baseAmount
+        : baseAmount * inv.exchangeRate;
+      
+      return total + plnValue;
     }, 0);
     
     return {
