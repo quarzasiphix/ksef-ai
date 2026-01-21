@@ -293,12 +293,11 @@ const IncomeList = () => {
       */}
       </div>
       
-      <Card>
+      <Card className="md:block hidden md:rounded-lg md:border md:shadow-sm">
         <CardHeader className="pb-3">
           <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
             <div>
               <CardTitle className="flex flex-wrap items-center gap-3">
-                Zdarzenia przychodowe
                 {selectedProject && (
                   <span className="text-xs font-semibold uppercase tracking-wide inline-flex items-center gap-1 bg-primary/10 text-primary px-2 py-0.5 rounded-full">
                     <span
@@ -464,6 +463,86 @@ const IncomeList = () => {
           )}
         </CardContent>
       </Card>
+
+      {/* Mobile version - full width without Card */}
+      <div className="md:hidden">
+        <div className="pb-3">
+          <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+            <div>
+              <h2 className="text-lg font-semibold flex flex-wrap items-center gap-3">
+                Zdarzenia przychodowe
+                {selectedProject && (
+                  <span className="text-xs font-semibold uppercase tracking-wide inline-flex items-center gap-1 bg-primary/10 text-primary px-2 py-0.5 rounded-full">
+                    <span
+                      className="h-2 w-2 rounded-full"
+                      style={{ backgroundColor: selectedProject.color || '#0ea5e9' }}
+                    />
+                    Projekt: {selectedProject.name}
+                  </span>
+                )}
+              </h2>
+              <p className="text-sm text-muted-foreground">
+                Dokumenty ujęte w systemie: {filteredInvoices.length}
+              </p>
+            </div>
+          </div>
+        </div>
+
+        <div className="pt-6">
+          {isLoading ? (
+            <div className="text-center py-8">Ładowanie...</div>
+          ) : filteredInvoices.length === 0 ? (
+            <div className="text-center py-12">
+              <div className="max-w-md mx-auto space-y-3">
+                <div className="text-lg font-medium">
+                  {smartFilter !== 'all' || documentTypeFilter !== 'all'
+                    ? 'Brak dokumentów spełniających kryteria'
+                    : searchTerm.length > 0
+                    ? 'Brak wyników wyszukiwania'
+                    : 'Brak dokumentów'}
+                </div>
+                <div className="text-sm text-muted-foreground">
+                  {smartFilter !== 'all' || documentTypeFilter !== 'all'
+                    ? 'Spróbuj zmienić filtry, aby zobaczyć więcej dokumentów.'
+                    : searchTerm.length > 0
+                    ? 'Spróbuj zmienić kryteria wyszukiwania.'
+                    : 'Dodaj pierwszą fakturę, aby rozpocząć.'}
+                </div>
+                <div className="pt-4">
+                  <Button asChild>
+                    <Link to="/income/new">
+                      <Plus className="mr-2 h-4 w-4" />
+                      Dodaj pierwszą fakturę
+                    </Link>
+                  </Button>
+                </div>
+              </div>
+            </div>
+          ) : (
+            <LedgerView
+              invoices={filteredInvoices}
+              isIncome={true}
+              onView={(id) => navigate(`/income/${id}`)}
+              onPreview={openPreview}
+              onDownload={async (inv) => {
+                const customer = customers?.find((c: any) => c.id === inv.customerId);
+                await generateInvoicePdf({
+                  invoice: inv,
+                  businessProfile,
+                  customer,
+                  filename: getInvoiceFileName(inv),
+                  bankAccounts,
+                });
+              }}
+              onEdit={(id) => navigate(`/income/edit/${id}`)}
+              onDelete={handleDeleteInvoice}
+              onShare={(id) => setShareInvoiceId(id)}
+              onDuplicate={(id) => navigate(`/income/new?duplicateId=${id}`)}
+              onTogglePaid={handleTogglePaid}
+            />
+          )}
+        </div>
+      </div>
 
       {isPreviewOpen && previewInvoice && (
         <InvoicePDFViewer 

@@ -56,15 +56,13 @@ const Layout = ({ children }: LayoutProps) => {
           </div>
         )}
 
-        {/* Header - full width on both desktop and mobile */}
-        <Header />
-
         {/* Main Content Area */}
         <div className={cn(
           "flex-1 flex flex-col min-w-0 transition-all duration-300 ease-in-out",
           !focusMode && (state === "expanded" ? "md:ml-56" : "md:ml-16")
         )}>
           <div className="hidden md:flex md:flex-col md:flex-1">
+            <Header />
             <main
               className={cn(
                 "flex-1 w-full max-w-full",
@@ -95,6 +93,7 @@ const Layout = ({ children }: LayoutProps) => {
 
           {/* Mobile Layout: Content area with padding for fixed navigation */}
           <div className="md:hidden flex flex-col flex-1">
+            <Header />
             <main
               className={cn(
                 "flex-1 w-full max-w-full",
