@@ -485,6 +485,39 @@ const IncomeList = () => {
                 Dokumenty ujęte w systemie: {filteredInvoices.length}
               </p>
             </div>
+            <div className="flex gap-2 items-center flex-wrap w-full">
+              <PeriodSwitcherMobile
+                years={availableYears}
+                selectedYear={selectedYear}
+                selectedMonth={selectedMonth}
+                onPeriodSelect={(year, month) => {
+                  setSelectedYear(year);
+                  setSelectedMonth(month || null);
+                }}
+                className="flex-1"
+              />
+              <Button
+                variant={smartFilter !== 'all' || documentTypeFilter !== 'all' ? 'default' : 'outline'}
+                size="sm"
+                onClick={() => setIsMobileFiltersOpen(true)}
+                className="gap-1.5"
+              >
+                <Filter className="h-4 w-4" />
+                {(smartFilter !== 'all' || documentTypeFilter !== 'all') && (
+                  <Badge variant="secondary" className="ml-1">
+                    {[smartFilter !== 'all' ? 1 : 0, documentTypeFilter !== 'all' ? 1 : 0].reduce((a, b) => a + b, 0)}
+                  </Badge>
+                )}
+              </Button>
+              <Button
+                variant={searchTerm ? 'default' : 'outline'}
+                size="sm"
+                onClick={() => setIsMobileSearchOpen(true)}
+                className="gap-1.5"
+              >
+                <Search className="h-4 w-4" />
+              </Button>
+            </div>
           </div>
         </div>
 

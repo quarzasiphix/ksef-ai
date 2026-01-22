@@ -1,15 +1,23 @@
 import { useState, useMemo, useEffect } from 'react';
 import { Invoice } from '@/shared/types';
-import { groupInvoicesByPeriod, getAvailableYears, MonthGroup } from '@/shared/lib/ledger-utils';
+import { groupInvoicesByPeriod, groupInvoicesByQuarter, groupInvoicesByYear, getAvailableYears, MonthGroup, QuarterGroup, YearOnlyGroup, GroupingMode } from '@/shared/lib/ledger-utils';
 import { PeriodNavigator } from './PeriodNavigator';
 import { MonthGroupHeader } from './MonthGroupHeader';
 import { MonthGroupHeaderMobile } from './MonthGroupHeaderMobile';
+import { QuarterGroupHeader } from './QuarterGroupHeader';
+import { YearGroupHeader } from './YearGroupHeader';
 import { LedgerRow } from './LedgerRow';
 import { LedgerRowMobile } from './LedgerRowMobile';
 import { Card } from '@/shared/ui/card';
 import { Button } from '@/shared/ui/button';
-import { ChevronDown, ChevronUp } from 'lucide-react';
+import { ChevronDown, ChevronUp, Calendar } from 'lucide-react';
 import { useIsMobile } from '@/shared/hooks/use-mobile';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@/shared/ui/dropdown-menu';
 
 interface LedgerViewProps {
   invoices: Invoice[];
@@ -38,12 +46,29 @@ export function LedgerView({
 }: LedgerViewProps) {
   const [selectedYear, setSelectedYear] = useState<number | null>(null);
   const [expandedMonths, setExpandedMonths] = useState<Set<string>>(new Set());
+  const [groupingMode, setGroupingMode] = useState<GroupingMode>('month');
   const isMobile = useIsMobile();
 
   const years = useMemo(() => getAvailableYears(invoices), [invoices]);
   
   const yearGroups = useMemo(() => {
     const groups = groupInvoicesByPeriod(invoices);
+    if (selectedYear !== null) {
+      return groups.filter(g => g.year === selectedYear);
+    }
+    return groups;
+  }, [invoices, selectedYear]);
+
+  const quarterGroups = useMemo(() => {
+    const groups = groupInvoicesByQuarter(invoices);
+    if (selectedYear !== null) {
+      return groups.filter(g => g.year === selectedYear);
+    }
+    return groups;
+  }, [invoices, selectedYear]);
+
+  const yearOnlyGroups = useMemo(() => {
+    const groups = groupInvoicesByYear(invoices);
     if (selectedYear !== null) {
       return groups.filter(g => g.year === selectedYear);
     }
@@ -80,8 +105,14 @@ export function LedgerView({
   }, [yearGroups, expandedMonths.size]);
 
   const allMonthKeys = useMemo(() => {
-    return yearGroups.flatMap(yg => yg.months.map(m => m.key));
-  }, [yearGroups]);
+    if (groupingMode === 'month') {
+      return yearGroups.flatMap(yg => yg.months.map(m => m.key));
+    } else if (groupingMode === 'quarter') {
+      return quarterGroups.flatMap(yg => yg.quarters.map(q => q.key));
+    } else {
+      return yearOnlyGroups.map(y => y.key);
+    }
+  }, [yearGroups, quarterGroups, yearOnlyGroups, groupingMode]);
 
   const toggleMonth = (monthKey: string) => {
     setExpandedMonths(prev => {
@@ -109,11 +140,33 @@ export function LedgerView({
     <div className="space-y-4">
       {!isMobile && (
         <div className="flex items-center justify-between">
-          <PeriodNavigator
-            years={years}
-            selectedYear={selectedYear}
-            onYearSelect={setSelectedYear}
-          />
+          <div className="flex items-center gap-3">
+            <PeriodNavigator
+              years={years}
+              selectedYear={selectedYear}
+              onYearSelect={setSelectedYear}
+            />
+            
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="outline" size="sm" className="gap-2">
+                  <Calendar className="h-4 w-4" />
+                  Grupuj: {groupingMode === 'month' ? 'Miesiąc' : groupingMode === 'quarter' ? 'Kwartał' : 'Rok'}
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="start">
+                <DropdownMenuItem onClick={() => setGroupingMode('month')}>
+                  Grupuj po miesiącach
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => setGroupingMode('quarter')}>
+                  Grupuj po kwartałach
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => setGroupingMode('year')}>
+                  Grupuj po latach
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+          </div>
           
           <Button
             variant="outline"
@@ -137,13 +190,13 @@ export function LedgerView({
       )}
 
       <Card className="overflow-hidden">
-        {yearGroups.length === 0 ? (
+        {invoices.length === 0 ? (
           <div className="p-8 text-center text-muted-foreground">
             Brak dokumentów do wyświetlenia
           </div>
         ) : (
           <div className="divide-y divide-border">
-            {yearGroups.map(yearGroup => (
+            {groupingMode === 'month' && yearGroups.map(yearGroup => (
               <div key={yearGroup.year}>
                 {yearGroup.months.map(month => {
                   const isExpanded = expandedMonths.has(month.key);
@@ -184,6 +237,84 @@ export function LedgerView({
                 })}
               </div>
             ))}
+            
+            {groupingMode === 'quarter' && quarterGroups.map(yearGroup => (
+              <div key={yearGroup.year}>
+                {yearGroup.quarters.map(quarter => {
+                  const isExpanded = expandedMonths.has(quarter.key);
+                  const RowComponent = isMobile ? LedgerRowMobile : LedgerRow;
+                  
+                  return (
+                    <div key={quarter.key}>
+                      <QuarterGroupHeader
+                        label={quarter.label}
+                        sum={quarter.sum}
+                        isExpanded={isExpanded}
+                        onToggle={() => toggleMonth(quarter.key)}
+                        invoiceCount={quarter.invoices.length}
+                      />
+                      
+                      {isExpanded && (
+                        <div className={isMobile ? '' : 'bg-muted/20'}>
+                          {quarter.invoices.map(invoice => (
+                            <RowComponent
+                              key={invoice.id}
+                              invoice={invoice}
+                              isIncome={isIncome}
+                              onView={onView}
+                              onPreview={onPreview}
+                              onDownload={onDownload}
+                              onEdit={onEdit}
+                              onDelete={onDelete}
+                              onShare={onShare}
+                              onDuplicate={onDuplicate}
+                              onTogglePaid={onTogglePaid}
+                            />
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+            ))}
+            
+            {groupingMode === 'year' && yearOnlyGroups.map(yearGroup => {
+              const isExpanded = expandedMonths.has(yearGroup.key);
+              const RowComponent = isMobile ? LedgerRowMobile : LedgerRow;
+              
+              return (
+                <div key={yearGroup.key}>
+                  <YearGroupHeader
+                    label={yearGroup.label}
+                    sum={yearGroup.sum}
+                    isExpanded={isExpanded}
+                    onToggle={() => toggleMonth(yearGroup.key)}
+                    invoiceCount={yearGroup.invoices.length}
+                  />
+                  
+                  {isExpanded && (
+                    <div className={isMobile ? '' : 'bg-muted/20'}>
+                      {yearGroup.invoices.map(invoice => (
+                        <RowComponent
+                          key={invoice.id}
+                          invoice={invoice}
+                          isIncome={isIncome}
+                          onView={onView}
+                          onPreview={onPreview}
+                          onDownload={onDownload}
+                          onEdit={onEdit}
+                          onDelete={onDelete}
+                          onShare={onShare}
+                          onDuplicate={onDuplicate}
+                          onTogglePaid={onTogglePaid}
+                        />
+                      ))}
+                    </div>
+                  )}
+                </div>
+              );
+            })}
           </div>
         )}
       </Card>

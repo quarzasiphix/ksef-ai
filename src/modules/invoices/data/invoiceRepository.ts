@@ -80,6 +80,7 @@ interface DatabaseInvoiceResponse {
   exchange_rate?: number | null;
   decision_id?: string | null;
   decision_reference?: string | null;
+  ryczalt_account_id?: string | null;
 }
 
 const mapDatabaseInvoiceToInvoice = (dbInvoice: DatabaseInvoiceResponse): Invoice => {
@@ -155,7 +156,8 @@ const mapDatabaseInvoiceToInvoice = (dbInvoice: DatabaseInvoiceResponse): Invoic
     vatExemptionReason: (dbInvoice.vat_exemption_reason as VatExemptionReason | null) ?? undefined,
     fakturaBezVAT: dbInvoice.vat === false,
     currency: dbInvoice.currency || 'PLN',
-    exchangeRate: dbInvoice.exchange_rate || null
+    exchangeRate: dbInvoice.exchange_rate || null,
+    ryczalt_account_id: dbInvoice.ryczalt_account_id || null,
   };
 
   return invoice;
@@ -283,6 +285,7 @@ export async function saveInvoice(invoice: Omit<Invoice, 'id' | 'ksef' | 'vat' |
     bank_account_id?: string | null;
     exchange_rate?: number | null;
     decision_id?: string | null;
+    ryczalt_account_id?: string | null;
   };
 
   const fakturaBezVAT = invoice.fakturaBezVAT ?? (invoice as any).fakturaBezVat ?? false;
@@ -356,6 +359,7 @@ export async function saveInvoice(invoice: Omit<Invoice, 'id' | 'ksef' | 'vat' |
     bank_account_id: invoice.bankAccountId || null,
     exchange_rate: invoice.exchangeRate || null,
     decision_id: invoice.decisionId || null,
+    ryczalt_account_id: (invoice as any).ryczalt_account_id || null,
   };
 
   console.log('Prepared invoice payload:', basePayload);
@@ -542,6 +546,7 @@ export async function getInvoice(id: string): Promise<Invoice> {
     currency,
     bank_account_id,
     exchange_rate,
+    ryczalt_account_id,
     business_profiles!inner(id, name, user_id, tax_id, address, city, postal_code),
     customers!inner(id, name, user_id, tax_id, address, city, postal_code),
     invoice_items(id, product_id, name, quantity, unit_price, vat_rate, unit, total_net_value, total_gross_value, total_vat_value, vat_exempt)
@@ -638,7 +643,8 @@ export async function getInvoice(id: string): Promise<Invoice> {
     vatExemptionReason: (data.vat_exemption_reason as VatExemptionReason | null) ?? undefined,
     fakturaBezVAT: data.vat === false,
     currency: data.currency || 'PLN',
-    exchangeRate: data.exchange_rate || null
+    exchangeRate: data.exchange_rate || null,
+    ryczalt_account_id: (data as any).ryczalt_account_id || null,
   };
 
   return invoice;

@@ -32,6 +32,7 @@ export const transformInvoiceForForm = (invoiceData: Invoice | null) => {
     isPaid: invoiceData.isPaid || false,
     status: invoiceData.status || 'draft',
     comments: invoiceData.comments || '',
+    ryczalt_account_id: invoiceData.ryczalt_account_id || '',
     // Ensure items is always an array with proper values
     items: (invoiceData.items || []).map(item => ({
       id: item.id || '',

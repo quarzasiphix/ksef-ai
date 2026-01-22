@@ -102,7 +102,7 @@ const invoiceFormSchema = z.object({
   bankAccountId: z.string().optional(),
   cashAccountId: z.string().optional(),
   projectId: z.string().optional(),
-  ryczalt_category_id: z.string().optional(),
+  ryczalt_account_id: z.string().optional(),
   
   // Calculated fields (will be set programmatically)
   totalNetValue: z.number().default(0),
@@ -125,8 +125,8 @@ const invoiceFormSchema = z.object({
   // This will be validated at runtime based on business profile
   return true;
 }, {
-  message: 'W ryczałcie musisz wybrać kategorię przychodu',
-  path: ['ryczalt_category_id']
+  message: 'W ryczałcie musisz wybrać konto ryczałtu',
+  path: ['ryczalt_account_id']
 });
 
 type InvoiceFormValues = z.infer<typeof invoiceFormSchema>;
@@ -190,6 +190,7 @@ const NewInvoice = React.forwardRef<{
         fakturaBezVAT: initialData?.fakturaBezVAT || false,
         decisionId: initialData?.decisionId || '',
         projectId: initialData?.projectId || '',
+        ryczalt_account_id: initialData?.ryczalt_account_id || '',
         ...(initialData ? {
           ...initialData,
           paymentMethod: toPaymentMethodUi(initialData.paymentMethod as PaymentMethodDb),
@@ -832,6 +833,8 @@ const NewInvoice = React.forwardRef<{
           decisionId: formValues.decisionId || undefined,
           cashAccountId: formValues.cashAccountId || undefined,
           cash_account_id: formValues.cashAccountId || undefined,
+          ryczalt_account_id: formValues.ryczalt_account_id && formValues.ryczalt_account_id !== 'none' ? formValues.ryczalt_account_id : undefined,
+          accounting_status: formValues.ryczalt_account_id && formValues.ryczalt_account_id !== 'none' ? 'posted' : 'unposted',
           
           // Items and totals
           items: processedItems.map(item => ({

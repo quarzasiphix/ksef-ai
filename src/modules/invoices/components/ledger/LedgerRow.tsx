@@ -3,7 +3,7 @@ import { formatLedgerAmount } from '@/shared/lib/ledger-utils';
 import { useNavigate } from 'react-router-dom';
 import { useBusinessProfile } from '@/shared/context/BusinessProfileContext';
 import { Badge } from '@/shared/ui/badge';
-import { MoreVertical, Eye, Download, Edit, Trash2, Share2, Copy, CreditCard } from 'lucide-react';
+import { MoreVertical, Eye, Download, Edit, Trash2, Share2, Copy, CreditCard, BookOpen } from 'lucide-react';
 import { cn } from '@/shared/lib/utils';
 import {
   DropdownMenu,
@@ -108,6 +108,23 @@ export function LedgerRow({
         </div>
         
         <div className="flex items-center gap-2">
+          {invoice.accountingStatus === 'posted' ? (
+            <Badge variant="outline" className="bg-green-100 text-green-800 border-green-300 text-xs font-semibold flex items-center gap-1">
+              <BookOpen className="w-3 h-3" />
+              Rozliczona
+            </Badge>
+          ) : invoice.accountingStatus && invoice.accountingStatus !== 'unposted' ? (
+            <Badge variant="outline" className="bg-amber-100 text-amber-800 border-amber-300 text-xs font-semibold flex items-center gap-1">
+              <BookOpen className="w-3 h-3" />
+              {invoice.accountingStatus === 'needs_review' ? 'Do sprawdzenia' : invoice.accountingStatus === 'rejected' ? 'Odrzucona' : invoice.accountingStatus}
+            </Badge>
+          ) : (
+            <Badge variant="outline" className="bg-red-100 text-red-800 border-red-300 text-xs font-semibold flex items-center gap-1">
+              <BookOpen className="w-3 h-3" />
+              Nierozliczona
+            </Badge>
+          )}
+          
           {isPaid ? (
             <Badge variant="outline" className="bg-green-100 text-green-800 border-green-300 text-xs font-semibold">
               Zapłacone

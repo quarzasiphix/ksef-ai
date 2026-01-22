@@ -110,7 +110,7 @@ const EditInvoice = () => {
       customerName: invoiceData.customerName,
       bankAccountId: invoiceData.bankAccountId,
       bankAccountNumber: invoiceData.bankAccountNumber,
-      cashAccountId: invoiceData.cashAccountId,
+      ryczalt_account_id: invoiceData.ryczalt_account_id,
     };
     return transformed;
   }, []);

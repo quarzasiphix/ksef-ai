@@ -420,7 +420,7 @@ export const InvoiceBasicInfoForm: React.FC<InvoiceBasicInfoFormProps> = ({
         {isJdgRyczaltIncome && (
           <FormField
             control={form.control}
-            name="ryczalt_category_id"
+            name="ryczalt_account_id"
             render={({ field }) => (
               <FormItem>
                 <FormLabel className="flex items-center gap-2">
@@ -469,10 +469,10 @@ export const InvoiceBasicInfoForm: React.FC<InvoiceBasicInfoFormProps> = ({
                         </SelectTrigger>
                       </FormControl>
                       <SelectContent>
-                        <SelectItem value="">-- Brak przypisania --</SelectItem>
+                        <SelectItem value="none">-- Brak przypisania --</SelectItem>
                         {ryczaltAccounts.map((account) => (
                           <SelectItem key={account.id} value={account.id}>
-                            {account.account_name} ({account.account_number}) - {account.category_name} ({account.category_rate}%)
+                            {account.category_name} ({account.category_rate}%) - {account.account_name} ({account.account_number})
                           </SelectItem>
                         ))}
                       </SelectContent>

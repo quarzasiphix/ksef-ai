@@ -3,782 +3,807 @@ import { useBusinessProfile } from '@/shared/context/BusinessProfileContext';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/shared/ui/card';
 import { Button } from '@/shared/ui/button';
 import { Badge } from '@/shared/ui/badge';
-import { Plus, Receipt, TrendingUp, Calendar, Filter, Calculator, MoreHorizontal, Trash2, FileText, Lock, AlertTriangle } from 'lucide-react';
+import { Receipt, AlertCircle, CheckCircle2, Calendar, Plus, History, CheckSquare, Square } from 'lucide-react';
 import { formatCurrency } from '@/shared/lib/invoice-utils';
-import { format, startOfMonth, endOfMonth, isSameMonth } from 'date-fns';
+import { format, startOfMonth, endOfMonth } from 'date-fns';
 import { pl } from 'date-fns/locale';
-import { useAccountingPeriod } from '../hooks/useAccountingPeriod';
-import { PeriodControlBar } from '../components/PeriodControlBar';
-import { PeriodActionBanner } from '../components/PeriodActionBanner';
-import { UnpostedQueueWidget } from '../components/UnpostedQueueWidget';
-import { UnaccountedQueuePanel } from '../components/UnaccountedQueuePanel';
-import { 
-  generateYearPeriodStates, 
-  getCurrentPeriod, 
-  formatPeriodName,
-  canClosePeriod 
-} from '../utils/periodState';
-import { 
-  closeAccountingPeriod, 
-  getClosedPeriods, 
-  getPeriodStatistics 
-} from '../data/periodRepository';
-import { PeriodClosureModal } from '../components/PeriodClosureModal';
-import { RyczaltAccountAssignmentModal } from '../components/RyczaltAccountAssignmentModal';
-import { PeriodLockingWidget } from '../components/PeriodLockingWidget';
-import { 
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from '@/shared/ui/dropdown-menu';
-import { listRyczaltAccounts, getRyczaltAccountsSummary, type RyczaltAccount } from '../data/ryczaltRepository';
-import { supabase } from '@/integrations/supabase/client';
+import { PeriodSwitcher } from '../components/PeriodSwitcher';
+import { PeriodStatusStrip } from '../components/PeriodStatusStrip';
+import { RyczaltRateChip } from '../components/RyczaltRateChip';
+import { listRyczaltAccounts, type RyczaltAccount } from '../data/ryczaltRepository';
+import { useGlobalData } from '@/shared/hooks/use-global-data';
 import { toast } from 'sonner';
+import { supabase } from '@/integrations/supabase/client';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/shared/ui/select';
+import { useQueryClient } from '@tanstack/react-query';
 
-interface EwidencjaItem {
+interface InvoiceWithAccounting {
   id: string;
-  invoice_id: string;
-  register_number: string;
-  register_date: string;
   invoice_number: string;
   issue_date: string;
   customer_name: string;
-  amount: number;
-  original_amount: number;
+  total_gross_value: number;
+  pln_gross_value: number;
   currency: string;
   exchange_rate: number;
-  category_name: string;
-  category_rate: number;
-  account_number: string;
+  is_paid: boolean;
+  ryczalt_account_id: string | null;
+  accounting_status: 'unposted' | 'posted' | 'needs_review' | 'rejected';
+  ryczalt_account?: {
+    id: string;
+    account_number: string;
+    account_name: string;
+    category_rate: number;
+    category_name: string;
+  };
+}
+
+interface RateGroup {
+  rate: number;
+  categoryName: string;
+  accountNumber: string;
+  totalRevenue: number;
+  totalTax: number;
+  items: InvoiceWithAccounting[];
 }
 
 export default function EwidencjaPrzychodow() {
   const { profiles, selectedProfileId } = useBusinessProfile();
   const selectedProfile = profiles?.find((p) => p.id === selectedProfileId);
-  const { period, setPeriod, getPeriodLabel } = useAccountingPeriod();
-  const [accounts, setAccounts] = useState<RyczaltAccount[]>([]);
-  const [allEwidencjaItems, setAllEwidencjaItems] = useState<EwidencjaItem[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
-  const [isDeleting, setIsDeleting] = useState(false);
-  const [refreshKey, setRefreshKey] = useState(0);
-  const [deletedInvoiceIds, setDeletedInvoiceIds] = useState<Set<string>>(new Set());
-  const [currentYear, setCurrentYear] = useState(period.key.year);
   
-  // Period state management
-  const currentPeriodData = getCurrentPeriod();
-  const [selectedPeriod, setSelectedPeriod] = useState<Date>(
-    new Date(currentPeriodData.year, currentPeriodData.month - 1, 1)
-  );
-  const [periodStates, setPeriodStates] = useState<any[]>([]);
-  const [periodStats, setPeriodStats] = useState<any>(null);
-  const [showClosureModal, setShowClosureModal] = useState(false);
-  const [showAssignmentModal, setShowAssignmentModal] = useState(false);
+  const [accounts, setAccounts] = useState<RyczaltAccount[]>([]);
+  const [currentPeriod, setCurrentPeriod] = useState(new Date());
+  const [showCorrectionModal, setShowCorrectionModal] = useState(false);
+  const [selectedInvoice, setSelectedInvoice] = useState<InvoiceWithAccounting | null>(null);
+  const [selectedAccountId, setSelectedAccountId] = useState<string>('');
+  const [isAssigning, setIsAssigning] = useState(false);
+  const [selectedInvoices, setSelectedInvoices] = useState<Set<string>>(new Set());
+  const [showBulkAssignModal, setShowBulkAssignModal] = useState(false);
+  const [bulkAccountId, setBulkAccountId] = useState<string>('');
+  const [isBulkAssigning, setIsBulkAssigning] = useState(false);
+  
+  const queryClient = useQueryClient();
+  
+  // Fetch invoices directly with ryczalt account data
+  const [invoicesData, setInvoicesData] = useState<any[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
     if (!selectedProfile?.id) return;
     loadData();
-    loadPeriodData();
-  }, [selectedProfile?.id, period.key.year, period.key.month]);
-
-  const loadPeriodData = async () => {
-    if (!selectedProfile?.id) return;
-    
-    try {
-      const year = selectedPeriod.getFullYear();
-      const month = selectedPeriod.getMonth() + 1;
-      
-      // Get closed periods
-      const closedPeriods = await getClosedPeriods(selectedProfile.id);
-      
-      // Generate period states for the year
-      const states = generateYearPeriodStates(year, closedPeriods);
-      setPeriodStates(states);
-      
-      // Get statistics for selected period
-      const stats = await getPeriodStatistics(selectedProfile.id, year, month);
-      setPeriodStats(stats);
-    } catch (error) {
-      console.error('Error loading period data:', error);
-    }
-  };
-
-  const handleClosePeriod = async (lockPeriod: boolean, note?: string) => {
-    if (!selectedProfile?.id) return;
-    
-    const year = selectedPeriod.getFullYear();
-    const month = selectedPeriod.getMonth() + 1;
-    
-    try {
-      const result = await closeAccountingPeriod(
-        selectedProfile.id,
-        year,
-        month,
-        lockPeriod,
-        note
-      );
-      
-      if (result.success) {
-        toast.success('Okres zamknięty pomyślnie');
-        await loadPeriodData();
-      } else {
-        toast.error(result.message || 'Nie udało się zamknąć okresu');
-      }
-    } catch (error) {
-      console.error('Error closing period:', error);
-      toast.error('Błąd podczas zamykania okresu');
-    }
-  };
-
-  useEffect(() => {
-    setCurrentYear(period.key.year);
-  }, [period.key.year]);
+  }, [selectedProfile?.id, currentPeriod]);
 
   const loadData = async () => {
     if (!selectedProfile?.id) return;
     
-    console.log('🔄 Loading data for profile:', selectedProfile.id);
     setIsLoading(true);
     try {
-      const [accountsData, registerLinesData] = await Promise.all([
+      const [accountsData, invoicesData] = await Promise.all([
         listRyczaltAccounts(selectedProfile.id),
-        getRegisterLines(selectedProfile.id)
+        loadInvoices()
       ]);
       
-      console.log('🔄 Data loaded:', { 
-        accounts: accountsData.length, 
-        registerLines: registerLinesData.length 
-      });
-      
       setAccounts(accountsData);
-      
-      // Process register lines to create ewidencja items
-      const items = processRegisterLinesForEwidencja(registerLinesData, accountsData);
-      
-      // Filter out deleted items (cache workaround) - use invoice_id for filtering
-      const filteredItems = items.filter(item => !deletedInvoiceIds.has(item.invoice_id));
-      console.log('🔄 Processed ewidencja items:', items.length);
-      console.log('🔄 After filtering deleted items:', filteredItems.length);
-      console.log('🔄 Ewidencja items IDs:', filteredItems.map(item => ({ id: item.id, invoice_id: item.invoice_id, invoice: item.invoice_number })));
-      console.log('🔄 Deleted invoice IDs:', Array.from(deletedInvoiceIds));
-      
-      setAllEwidencjaItems(filteredItems);
-      console.log('🔄 State updated with', filteredItems.length, 'items');
+      setInvoicesData(invoicesData);
     } catch (error) {
-      console.error('Failed to load ewidencja data:', error);
-      toast.error('Błąd podczas ładowania ewidencji przychodów');
+      console.error('Error loading data:', error);
+      toast.error('Błąd podczas ładowania danych');
     } finally {
       setIsLoading(false);
     }
   };
 
-  const getRegisterLines = async (businessProfileId: string) => {
-    console.log('📡 Fetching register lines for business profile:', businessProfileId);
-    
-    // Join with invoices to get currency and exchange rate information
+  const loadInvoices = async () => {
+    const periodStart = startOfMonth(currentPeriod);
+    const periodEnd = endOfMonth(currentPeriod);
+
     const { data, error } = await supabase
-      .from('jdg_revenue_register_lines')
+      .from('invoices')
       .select(`
         *,
-        invoices!inner(
-          currency,
-          exchange_rate,
-          total_gross_value
-        )
+        business_profiles ( id, name, user_id, tax_id, address, city, postal_code ),
+        customers ( id, name, user_id, tax_id, address, city, postal_code ),
+        invoice_items ( id, product_id, name, quantity, unit_price, vat_rate, unit, total_net_value, total_gross_value, total_vat_value, vat_exempt )
       `)
-      .eq('business_profile_id', businessProfileId)
-      .order('occurred_at', { ascending: false });
-    
-    console.log('📡 Register lines result:', { error, count: data?.length, data: data?.slice(0, 3) });
-    
-    if (error) {
-      console.error('❌ Error fetching register lines:', error);
-      throw error;
+      .eq('business_profile_id', selectedProfile?.id)
+      .eq('transaction_type', 'income')
+      .gte('issue_date', periodStart.toISOString())
+      .lte('issue_date', periodEnd.toISOString())
+      .order('issue_date', { ascending: false });
+
+    if (error) throw error;
+    return data || [];
+  };
+
+  const handleAssignAccount = async () => {
+    if (!selectedInvoice || !selectedAccountId) {
+      toast.error('Wybierz konto ryczałtu');
+      return;
     }
-    
-    // Filter out the deleted item if it's still in cache
-    const filteredData = data?.filter(item => {
-      // This is a workaround for Supabase cache issues
-      return true; // We'll handle this in the delete function
-    }) || [];
-    
-    console.log('📡 Returning register lines:', filteredData.length, 'items');
-    return filteredData;
-  };
 
-  const processRegisterLinesForEwidencja = (
-    registerLines: any[], 
-    accounts: RyczaltAccount[]
-  ): EwidencjaItem[] => {
-    return registerLines
-      .map(line => {
-        const account = accounts.find(acc => acc.id === line.ryczalt_account_id);
-        
-        const originalAmount = parseFloat(line.invoices?.total_gross_value) || 0;
-        const currency = line.invoices?.currency || 'PLN';
-        const exchangeRate = parseFloat(line.invoices?.exchange_rate) || 1;
-        
-        return {
-          id: line.id,
-          invoice_id: line.invoice_id,
-          register_number: line.document_number,
-          register_date: line.occurred_at,
-          invoice_number: line.document_number,
-          issue_date: line.occurred_at,
-          customer_name: line.counterparty_name,
-          amount: parseFloat(line.tax_base_amount) || 0, // This should be in PLN
-          original_amount: originalAmount,
-          currency: currency,
-          exchange_rate: exchangeRate,
-          category_name: line.category_name || account?.category_name || 'Nieznane konto',
-          category_rate: parseFloat(line.ryczalt_rate) || account?.category_rate || 0,
-          account_number: line.ryczalt_account_number || account?.account_number || 'Brak konta'
-        };
-      })
-      .sort((a, b) => new Date(b.register_date).getTime() - new Date(a.register_date).getTime());
-  };
-
-  const handleRemoveInvoiceFromEwidencja = async (invoiceId: string) => {
-    // Immediate feedback
-    console.log('🗑️ Delete button clicked for invoice:', invoiceId);
-    toast.info('Usuwanie faktury...');
-    
-    setIsDeleting(true);
+    setIsAssigning(true);
     try {
-      console.log('🔄 Starting deletion process for:', invoiceId);
-      
-      // Step 1: Remove ALL register lines for this invoice (this is what the UI displays)
-      console.log('📋 Step 1: Deleting ALL register lines for invoice...');
-      const { error: registerError, count: registerCount } = await supabase
-        .from('jdg_revenue_register_lines')
-        .delete()
-        .eq('invoice_id', invoiceId);
-
-      console.log('📋 Register lines deletion result:', { error: registerError, count: registerCount });
-
-      // Also delete from new ryczalt_invoice_items table if it exists
-      try {
-        const { error: itemError } = await supabase
-          .from('ryczalt_invoice_items')
-          .delete()
-          .eq('invoice_id', invoiceId);
-        
-        console.log('📋 Ryczalt items deletion result:', { error: itemError });
-      } catch (itemError) {
-        console.log('📋 Ryczalt items table might not exist yet:', itemError);
-      }
-
-      if (registerError) {
-        console.error('❌ Failed to delete from register lines:', registerError);
-        throw registerError;
-      }
-
-      // Step 2: Remove ryczałt account link from invoice
-      console.log('📝 Step 2: Updating invoice ryczalt account link...');
-      const { error: invoiceError } = await supabase
-        .from('invoices')
-        .update({ ryczalt_account_id: null })
-        .eq('id', invoiceId);
-
-      console.log('📝 Invoice update result:', { error: invoiceError });
-
-      if (invoiceError) {
-        console.error('❌ Failed to update invoice:', invoiceError);
-        throw invoiceError;
-      }
-
-      // Step 3: Update invoice status
-      console.log('🔄 Step 3: Updating invoice status...');
-      const { error: statusError } = await supabase
+      const { error } = await supabase
         .from('invoices')
         .update({ 
-          accounting_status: 'unposted',
-          accounting_locked_at: null,
-          accounting_locked_by: null
+          ryczalt_account_id: selectedAccountId,
+          accounting_status: 'posted'
         })
-        .eq('id', invoiceId);
+        .eq('id', selectedInvoice.id);
 
-      console.log('🔄 Status update result:', { error: statusError });
+      if (error) throw error;
 
-      if (statusError) {
-        console.error('❌ Failed to update invoice status:', statusError);
-        throw statusError;
-      }
-
-      console.log('✅ Successfully deleted invoice, clearing state and reloading...');
+      toast.success('Konto ryczałtu zostało przypisane');
+      setSelectedInvoice(null);
+      setSelectedAccountId('');
       
-      // Add to deleted INVOICE IDs set (cache workaround) - use invoice_id, not register line id
-      setDeletedInvoiceIds(prev => new Set([...prev, invoiceId]));
-      console.log('🗑️ Added to deleted INVOICE IDs set:', invoiceId);
-      
-      // Immediately clear the deleted item from state
-      setAllEwidencjaItems(prev => {
-        const filtered = prev.filter(item => item.id !== invoiceId);
-        console.log('🧹 Cleared invoice from state, remaining items:', filtered.length);
-        return filtered;
-      });
-      
-      // Force a refresh to ensure UI updates
-      setRefreshKey(prev => prev + 1);
-      console.log('🔄 Forced refresh with key:', refreshKey + 1);
-      
-      // Then reload data to ensure consistency
+      // Refresh data properly
       await loadData();
-      console.log('🔄 Data reload completed');
-      
-      // Add a small delay to ensure database consistency
-      await new Promise(resolve => setTimeout(resolve, 100));
-      
-      // Check if the deleted item is still in the data (debugging)
-      const stillExists = allEwidencjaItems.some(item => item.id === invoiceId);
-      console.log('🔍 Check if deleted item still exists:', stillExists);
-      
-      if (stillExists) {
-        console.log('⚠️ Item still exists due to cache issue, but marked as deleted');
-        toast.success('Faktura usunięta z ewidencji (cache issue)');
-      } else {
-        console.log('✅ Confirmed: Deleted item no longer exists in database');
-        toast.success('Faktura usunięta z ewidencji');
-      }
     } catch (error) {
-      console.error('❌ Failed to remove invoice from ewidencja:', error);
-      toast.error(`Błąd podczas usuwania faktury: ${error.message || 'Nieznany błąd'}`);
+      console.error('Error assigning account:', error);
+      toast.error('Błąd podczas przypisywania konta');
     } finally {
-      setIsDeleting(false);
+      setIsAssigning(false);
     }
   };
 
-  // Filter items for selected period
-  const ewidencjaItems = useMemo(() => {
-    return allEwidencjaItems.filter(item => {
-      const itemDate = new Date(item.register_date);
-      const periodStart = startOfMonth(new Date(period.key.year, period.key.month - 1));
-      const periodEnd = endOfMonth(new Date(period.key.year, period.key.month - 1));
-      return itemDate >= periodStart && itemDate <= periodEnd;
-    });
-  }, [allEwidencjaItems, period.key.year, period.key.month]);
+  const handleBulkAssign = async () => {
+    if (!bulkAccountId || selectedInvoices.size === 0) {
+      toast.error('Wybierz konto ryczałtu i faktury do przypisania');
+      return;
+    }
 
-  const calculateGroupTax = (group: any) => {
-    const taxAmount = group.total_amount * (group.category_rate / 100);
-    // Deadline is 20th of next month after the period
-    const deadlineDate = new Date(period.key.year, period.key.month, 20);
-    
-    return {
-      taxAmount,
-      deadlineDate,
-      invoiceCount: group.items.length
-    };
+    setIsBulkAssigning(true);
+    try {
+      const { error } = await supabase
+        .from('invoices')
+        .update({ 
+          ryczalt_account_id: bulkAccountId,
+          accounting_status: 'posted'
+        })
+        .in('id', Array.from(selectedInvoices));
+
+      if (error) throw error;
+
+      toast.success(`Przypisano ${selectedInvoices.size} faktur do konta ryczałtu`);
+      setSelectedInvoices(new Set());
+      setBulkAccountId('');
+      setShowBulkAssignModal(false);
+      
+      // Refresh data properly
+      await loadData();
+    } catch (error) {
+      console.error('Error bulk assigning accounts:', error);
+      toast.error('Błąd podczas masowego przypisywania kont');
+    } finally {
+      setIsBulkAssigning(false);
+    }
   };
 
-  // Sync period with existing period hook
-  useEffect(() => {
-    const year = selectedPeriod.getFullYear();
-    const month = selectedPeriod.getMonth() + 1;
-    setPeriod({ year, month });
-  }, [selectedPeriod]);
+  const toggleInvoiceSelection = (invoiceId: string) => {
+    setSelectedInvoices(prev => {
+      const newSet = new Set(prev);
+      if (newSet.has(invoiceId)) {
+        newSet.delete(invoiceId);
+      } else {
+        newSet.add(invoiceId);
+      }
+      return newSet;
+    });
+  };
 
-  const selectedYear = selectedPeriod.getFullYear();
-  const selectedMonth = selectedPeriod.getMonth() + 1;
-  const currentState = periodStates.find(
-    p => p.year === selectedYear && p.month === selectedMonth
+  const toggleAllInvoices = () => {
+    if (selectedInvoices.size === unpostedInvoices.length) {
+      setSelectedInvoices(new Set());
+    } else {
+      setSelectedInvoices(new Set(unpostedInvoices.map(inv => inv.id)));
+    }
+  };
+
+  // Enrich invoices with ryczalt account data
+  const allInvoices = useMemo(() => {
+    if (!invoicesData) return [];
+    
+    return invoicesData.map(invoice => {
+      const ryczaltAccount = accounts.find(acc => acc.id === invoice.ryczalt_account_id);
+      
+      // Calculate PLN value considering exchange rate
+      const exchangeRate = invoice.exchange_rate || 1;
+      const plnGrossValue = invoice.currency === 'PLN' 
+        ? (invoice.total_gross_value || 0)
+        : (invoice.total_gross_value || 0) * exchangeRate;
+
+      return {
+        id: invoice.id,
+        invoice_number: invoice.number,
+        issue_date: invoice.issue_date,
+        customer_name: invoice.customers?.name || '',
+        total_gross_value: invoice.total_gross_value || 0,
+        pln_gross_value: plnGrossValue,
+        currency: invoice.currency || 'PLN',
+        exchange_rate: exchangeRate,
+        is_paid: invoice.is_paid || false,
+        ryczalt_account_id: invoice.ryczalt_account_id,
+        accounting_status: (invoice.accounting_status as 'unposted' | 'posted' | 'needs_review' | 'rejected') || 'unposted',
+        ryczalt_account: ryczaltAccount ? {
+          id: ryczaltAccount.id,
+          account_number: ryczaltAccount.account_number,
+          account_name: ryczaltAccount.account_name,
+          category_rate: ryczaltAccount.category_rate || 0,
+          category_name: ryczaltAccount.category_name || ''
+        } : undefined
+      };
+    });
+  }, [invoicesData, accounts]);
+
+  const unpostedInvoices = useMemo(() => {
+    return allInvoices.filter(inv => !inv.ryczalt_account_id);
+  }, [allInvoices]);
+
+  const postedInvoices = useMemo(() => {
+    return allInvoices.filter(inv => inv.ryczalt_account_id);
+  }, [allInvoices]);
+
+  const rateGroups = useMemo(() => {
+    const groups = new Map<string, RateGroup>();
+
+    postedInvoices.forEach(invoice => {
+      if (!invoice.ryczalt_account) return;
+
+      const key = `${invoice.ryczalt_account.category_rate}-${invoice.ryczalt_account.category_name}`;
+      
+      if (!groups.has(key)) {
+        groups.set(key, {
+          rate: invoice.ryczalt_account.category_rate,
+          categoryName: invoice.ryczalt_account.category_name,
+          accountNumber: invoice.ryczalt_account.account_number,
+          totalRevenue: 0,
+          totalTax: 0,
+          items: []
+        });
+      }
+
+      const group = groups.get(key)!;
+      group.items.push(invoice);
+      group.totalRevenue += invoice.pln_gross_value;
+      group.totalTax += invoice.pln_gross_value * (invoice.ryczalt_account.category_rate / 100);
+    });
+
+    return Array.from(groups.values()).sort((a, b) => b.rate - a.rate);
+  }, [postedInvoices]);
+
+  const periodTotals = useMemo(() => {
+    const totalRevenue = postedInvoices.reduce((sum, inv) => sum + inv.pln_gross_value, 0);
+    const totalTax = postedInvoices.reduce((sum, inv) => {
+      if (!inv.ryczalt_account) return sum;
+      return sum + (inv.pln_gross_value * inv.ryczalt_account.category_rate / 100);
+    }, 0);
+    return { totalRevenue, totalTax };
+  }, [postedInvoices]);
+
+  const availableYears = useMemo(() => {
+    const years = new Set<number>();
+    const currentYear = new Date().getFullYear();
+    years.add(currentYear);
+    years.add(currentYear - 1);
+    years.add(currentYear + 1);
+    return Array.from(years).sort((a, b) => b - a);
+  }, []);
+
+  const taxDeadline = new Date(
+    currentPeriod.getFullYear(),
+    currentPeriod.getMonth() + 1,
+    20
   );
 
-  if (!selectedProfile) {
+  const periodStatus = useMemo(() => {
+    if (unpostedInvoices.length > 0) return 'pending';
+    if (postedInvoices.length === 0) return 'pending';
+    return 'ready';
+  }, [unpostedInvoices, postedInvoices]);
+
+  if (isLoading) {
     return (
-      <div className="p-6">
+      <div className="flex items-center justify-center h-64">
         <div className="text-center">
-          <h3 className="text-lg font-semibold">Wybierz profil firmy</h3>
-          <p className="text-muted-foreground">Nie wybrano profilu działalności gospodarczej</p>
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto mb-4"></div>
+          <p className="text-muted-foreground">Ładowanie ewidencji...</p>
         </div>
       </div>
     );
   }
 
-  // Group items by category
-  const groupedByCategory = ewidencjaItems.reduce((groups, item) => {
-    const key = item.category_name;
-    if (!groups[key]) {
-      groups[key] = {
-        category_name: item.category_name,
-        category_rate: item.category_rate,
-        account_number: item.account_number,
-        items: [],
-        total_amount: 0
-      };
-    }
-    groups[key].items.push(item);
-    groups[key].total_amount += item.amount;
-    return groups;
-  }, {} as Record<string, any>);
-
-  const totalRevenue = ewidencjaItems.reduce((sum, item) => sum + item.amount, 0);
-
   return (
-    <div className="space-y-6 p-6" key={refreshKey}>
-      <div className="flex justify-between items-center">
+    <div className="space-y-6 p-6">
+      <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-3xl font-bold tracking-tight">Ewidencja przychodów</h1>
-          <p className="text-muted-foreground">
-            Przychody zgrupowane według kategorii ryczałtowych dla {selectedProfile.name}
+          <h1 className="text-3xl font-bold tracking-tight">Ewidencja przychodów (Ryczałt)</h1>
+          <p className="text-muted-foreground mt-1">
+            Okres: {format(currentPeriod, 'LLLL yyyy', { locale: pl })}
           </p>
         </div>
-        <div className="flex gap-2">
-          {accounts.length === 0 && (
-            <Button onClick={() => window.location.href = '/accounting/ryczalt-accounts'}>
-              <Plus className="h-4 w-4 mr-2" />
-              Stwórz konto ryczałtowe
-            </Button>
-          )}
+        <div className="flex items-center gap-3">
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => setShowCorrectionModal(true)}
+            className="flex items-center gap-2"
+          >
+            <History className="h-4 w-4" />
+            Poprawki
+          </Button>
           <Button variant="outline" onClick={() => window.location.href = '/accounting/ryczalt-accounts'}>
             <Receipt className="h-4 w-4 mr-2" />
             Zarządzaj kontami
           </Button>
-          <Button variant="outline">
-            <Filter className="h-4 w-4 mr-2" />
-            Filtruj
-          </Button>
-          <Button>
-            <Plus className="h-4 w-4 mr-2" />
-            Dodaj przychód
-          </Button>
+          <PeriodSwitcher
+            currentPeriod={currentPeriod}
+            onPeriodChange={setCurrentPeriod}
+            availableYears={availableYears}
+          />
         </div>
       </div>
 
-      {/* Period Control Bar */}
-      <PeriodControlBar
-        currentPeriod={selectedPeriod}
-        onPeriodChange={setSelectedPeriod}
-        periodStates={periodStates.map(p => ({
-          ...p,
-          taxAmount: p.year === selectedYear && p.month === selectedMonth ? periodStats?.totalTax : undefined,
-          invoiceCount: p.year === selectedYear && p.month === selectedMonth ? periodStats?.invoiceCount : undefined,
-          postedCount: p.year === selectedYear && p.month === selectedMonth ? periodStats?.invoiceCount : undefined,
-        }))}
-        onClosePeriod={() => setShowClosureModal(true)}
-      />
-      
-      {/* Action Banner */}
-      {currentState && periodStats && (
-        <PeriodActionBanner
-          status={currentState.status}
-          periodName={formatPeriodName(selectedYear, selectedMonth)}
-          taxAmount={periodStats.totalTax}
-          taxDeadline={currentState.taxDeadline}
-          invoiceCount={periodStats.invoiceCount}
-          postedCount={periodStats.invoiceCount}
-          unpostedCount={periodStats.unpostedCount}
-          onViewDocuments={() => window.location.href = '/income'}
-          onAssignAccounts={() => setShowAssignmentModal(true)}
-          onClosePeriod={() => {
-            const check = canClosePeriod(selectedYear, selectedMonth, periodStats.unpostedCount);
-            if (check.canClose) {
-              setShowClosureModal(true);
-            } else {
-              toast.error(check.reason);
-            }
-          }}
-        />
-      )}
-
-      {/* Period Locking Widget */}
-      <PeriodLockingWidget 
-        compact={false}
-        showCriticalOnly={false}
-        autoLockEnabled={true}
+      <PeriodStatusStrip
+        status={periodStatus}
+        deadline={taxDeadline}
+        issueCount={unpostedInvoices.length}
+        onFixIssues={() => {}}
+        onClosePeriod={() => {}}
       />
 
-      {/* Period Summary Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         <Card>
           <CardHeader className="pb-3">
-            <CardTitle className="text-base flex items-center gap-2">
-              <TrendingUp className="h-4 w-4 text-green-600" />
-              Przychody okresu
-            </CardTitle>
+            <CardTitle className="text-sm font-medium text-muted-foreground">Przychód</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-green-600">
-              {formatCurrency(totalRevenue)}
-            </div>
-            <p className="text-xs text-muted-foreground mt-1">
-              {getPeriodLabel(period.key)}
-            </p>
+            <div className="text-2xl font-bold">{formatCurrency(periodTotals.totalRevenue)}</div>
           </CardContent>
         </Card>
-        
+
         <Card>
           <CardHeader className="pb-3">
-            <CardTitle className="text-base flex items-center gap-2">
-              <Receipt className="h-4 w-4 text-blue-600" />
-              Liczba dokumentów
-            </CardTitle>
+            <CardTitle className="text-sm font-medium text-muted-foreground">Podatek ryczałt</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-blue-600">
-              {ewidencjaItems.length}
-            </div>
-            <p className="text-xs text-muted-foreground mt-1">
-              Zaksięgowane faktury
-            </p>
+            <div className="text-2xl font-bold">{formatCurrency(periodTotals.totalTax)}</div>
           </CardContent>
         </Card>
-        
+
         <Card>
           <CardHeader className="pb-3">
-            <CardTitle className="text-base flex items-center gap-2">
-              <Calculator className="h-4 w-4 text-red-600" />
-              Podatek do zapłaty
-            </CardTitle>
+            <CardTitle className="text-sm font-medium text-muted-foreground">Dokumenty</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-red-600">
-              {formatCurrency(
-                Object.values(groupedByCategory).reduce((sum, group: any) => {
-                  return sum + (group.total_amount * (group.category_rate / 100));
-                }, 0)
-              )}
+            <div className="text-2xl font-bold">
+              {postedInvoices.length} / {allInvoices.length}
             </div>
-            <p className="text-xs text-muted-foreground mt-1">
-              Suma ryczałtu
-            </p>
-          </CardContent>
-        </Card>
-        
-        <Card>
-          <CardHeader className="pb-3">
-            <CardTitle className="text-base flex items-center gap-2">
-              <Calendar className="h-4 w-4 text-orange-600" />
-              Termin płatności
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="text-lg font-bold text-orange-600">
-              {format(new Date(period.key.year, period.key.month, 20), 'dd MMM yyyy', { locale: pl })}
-            </div>
-            <p className="text-xs text-muted-foreground mt-1">
-              {new Date() > new Date(period.key.year, period.key.month, 20) 
-                ? '⚠️ Po terminie' 
-                : `${Math.ceil((new Date(period.key.year, period.key.month, 20).getTime() - new Date().getTime()) / (1000 * 60 * 60 * 24))} dni pozostało`}
-            </p>
+            <p className="text-xs text-muted-foreground mt-1">zaksięgowane / wszystkie</p>
           </CardContent>
         </Card>
       </div>
 
-      {/* Unaccounted Queue Panel */}
-      {selectedProfile?.id && (
-        <UnaccountedQueuePanel
-          businessProfileId={selectedProfile.id}
-          periodYear={selectedYear}
-          periodMonth={selectedMonth}
-          onAssignCategories={(invoiceIds) => {
-            // Open assignment modal with specific invoices
-            setShowAssignmentModal(true);
-          }}
-          onViewInvoice={(invoiceId) => {
-            window.location.href = `/income/${invoiceId}`;
-          }}
-          onFixError={(invoiceId) => {
-            window.location.href = `/income/${invoiceId}`;
-          }}
-        />
-      )}
-
-      {/* Period Status Header */}
-      <Card className="border-l-4 border-l-blue-500">
-        <CardHeader>
-          <div className="flex items-center justify-between">
-            <div>
-              <CardTitle className="text-xl">Okres: {getPeriodLabel(period.key)}</CardTitle>
-              <CardDescription className="mt-1">
-                Ewidencja podatkowa - termin złożenia do 20 {format(new Date(period.key.year, period.key.month), 'MMMM yyyy', { locale: pl })}
-              </CardDescription>
-            </div>
-            <div className="flex items-center gap-3">
-              <Badge variant="outline" className="text-sm">
-                {ewidencjaItems.length} {ewidencjaItems.length === 1 ? 'dokument' : ewidencjaItems.length < 5 ? 'dokumenty' : 'dokumentów'}
-              </Badge>
-              {new Date() > new Date(period.key.year, period.key.month, 20) ? (
-                <Badge variant="destructive" className="flex items-center gap-1">
-                  <AlertTriangle className="h-3 w-3" />
-                  Po terminie
-                </Badge>
-              ) : (
-                <Badge variant="secondary" className="flex items-center gap-1">
-                  <Calendar className="h-3 w-3" />
-                  {Math.ceil((new Date(period.key.year, period.key.month, 20).getTime() - new Date().getTime()) / (1000 * 60 * 60 * 24))} dni do terminu
-                </Badge>
-              )}
-            </div>
-          </div>
-        </CardHeader>
-      </Card>
-
-      {/* Ewidencja Grouped by Category */}
-      {Object.keys(groupedByCategory).length === 0 ? (
-        <Card>
-          <CardContent className="text-center py-8">
-            <Receipt className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
-            <h3 className="text-lg font-semibold mb-2">Brak przychodów w okresie {getPeriodLabel(period.key)}</h3>
-            <p className="text-muted-foreground mb-4">
-              {accounts.length === 0 
-                ? "Nie masz jeszcze kont ryczałtowych. Stwórz konto, aby zacząć grupować przychody."
-                : `Nie znaleziono zaksięgowanych przychodów dla okresu ${getPeriodLabel(period.key)}. Zaksięguj faktury z wybranym kontem ryczałtowym.`
-              }
-            </p>
-            <div className="flex gap-2 justify-center">
-              {accounts.length === 0 && (
-                <Button onClick={() => window.location.href = '/accounting/ryczalt-accounts'}>
-                  <Plus className="h-4 w-4 mr-2" />
-                  Stwórz konto ryczałtowe
+      {unpostedInvoices.length > 0 && (
+        <Card className="border-orange-800 bg-orange-950/30">
+          <CardHeader>
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <AlertCircle className="h-5 w-5 text-orange-400" />
+                <div>
+                  <CardTitle>Do zaksięgowania</CardTitle>
+                  <CardDescription>
+                    {unpostedInvoices.length} {unpostedInvoices.length === 1 ? 'dokument wymaga' : 'dokumentów wymaga'} przypisania konta ryczałtu
+                  </CardDescription>
+                </div>
+              </div>
+              <div className="flex items-center gap-2">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={toggleAllInvoices}
+                  className="flex items-center gap-2"
+                >
+                  {selectedInvoices.size === unpostedInvoices.length ? (
+                    <CheckSquare className="h-4 w-4" />
+                  ) : (
+                    <Square className="h-4 w-4" />
+                  )}
+                  {selectedInvoices.size === unpostedInvoices.length ? 'Odznacz wszystkie' : 'Zaznacz wszystkie'}
                 </Button>
-              )}
-              <Button variant="outline">
-                <Plus className="h-4 w-4 mr-2" />
-                Dodaj fakturę
-              </Button>
+                {selectedInvoices.size > 0 && (
+                  <Button
+                    size="sm"
+                    onClick={() => setShowBulkAssignModal(true)}
+                    className="flex items-center gap-2"
+                  >
+                    Zaksięguj wszystkie ({selectedInvoices.size})
+                  </Button>
+                )}
+              </div>
+            </div>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-2">
+              {unpostedInvoices.map(invoice => (
+                <div key={invoice.id} className="flex items-center justify-between p-3 rounded-lg border bg-muted hover:bg-accent transition-colors">
+                  <div className="flex items-center gap-3">
+                    <button
+                      onClick={() => toggleInvoiceSelection(invoice.id)}
+                      className="flex-shrink-0"
+                    >
+                      {selectedInvoices.has(invoice.id) ? (
+                        <CheckSquare className="h-4 w-4 text-primary" />
+                      ) : (
+                        <Square className="h-4 w-4 text-muted-foreground" />
+                      )}
+                    </button>
+                    <div className="flex-1">
+                      <div className="font-medium">{invoice.invoice_number}</div>
+                      <div className="text-sm text-muted-foreground">{invoice.customer_name}</div>
+                      <div className="text-xs text-muted-foreground mt-1">
+                        Data wystawienia: {format(new Date(invoice.issue_date), 'dd MMM yyyy', { locale: pl })}
+                      </div>
+                    </div>
+                  </div>
+                  <div className="text-right flex items-center gap-3">
+                    <div>
+                      <div className="font-semibold">
+                        {formatCurrency(invoice.total_gross_value, invoice.currency)}
+                        {invoice.currency !== 'PLN' && (
+                          <span className="text-sm text-muted-foreground ml-2">
+                            ≈ {formatCurrency(invoice.pln_gross_value, 'PLN')}
+                          </span>
+                        )}
+                      </div>
+                      {invoice.is_paid ? (
+                        <Badge variant="outline" className="text-xs border-green-500 text-green-400 mt-1">Zapłacona</Badge>
+                      ) : (
+                        <Badge variant="outline" className="text-xs mt-1">Niezapłacona</Badge>
+                      )}
+                    </div>
+                    <Button
+                      size="sm"
+                      onClick={() => {
+                        setSelectedInvoice(invoice);
+                        setSelectedAccountId('');
+                      }}
+                      className="ml-2"
+                    >
+                      Przypisz konto
+                    </Button>
+                  </div>
+                </div>
+              ))}
             </div>
           </CardContent>
         </Card>
-      ) : (
-        <div className="space-y-6">
-          {Object.values(groupedByCategory).map((group: any) => {
-            const taxInfo = calculateGroupTax(group);
-            return (
-              <Card key={group.category_name}>
-                <CardHeader>
-                  <div className="flex items-center justify-between">
+      )}
+
+      <Card>
+        <CardHeader>
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <CheckCircle2 className="h-5 w-5 text-green-600" />
+              <div>
+                <CardTitle>Zaksięgowane</CardTitle>
+                <CardDescription>
+                  Faktury przypisane do kont ryczałtu
+                </CardDescription>
+              </div>
+            </div>
+          </div>
+        </CardHeader>
+        <CardContent>
+          {postedInvoices.length === 0 ? (
+            <div className="text-center py-12 text-muted-foreground">
+              Brak zaksięgowanych faktur w tym okresie
+            </div>
+          ) : (
+            <div className="space-y-6">
+              {rateGroups.map((group, index) => (
+                <div key={index} className="space-y-3">
+                  <div className="flex items-center justify-between pb-2 border-b">
                     <div className="flex items-center gap-3">
-                      <CardTitle className="text-lg">{group.category_name}</CardTitle>
-                      <Badge variant="secondary" className="bg-amber-100 text-amber-800 dark:bg-amber-900 dark:text-amber-200">
-                        {group.category_rate}%
-                      </Badge>
-                      <Badge variant="outline" className="text-xs">
-                        {group.account_number}
-                      </Badge>
+                      <RyczaltRateChip rate={group.rate} categoryName={group.categoryName} showName />
+                      <span className="text-sm text-muted-foreground">({group.accountNumber})</span>
                     </div>
                     <div className="text-right">
-                      <div className="text-lg font-bold text-green-600">
-                        {formatCurrency(group.total_amount)}
+                      <div className="text-sm font-medium">
+                        {formatCurrency(group.totalRevenue)} → {formatCurrency(group.totalTax)}
                       </div>
                       <div className="text-xs text-muted-foreground">
-                        {group.items.length} {group.items.length === 1 ? 'transakcja' : group.items.length < 5 ? 'transakcje' : 'transakcji'}
-                      </div>
-                    </div>
-                  </div>
-                </CardHeader>
-                <CardContent>
-                  {/* Tax Summary */}
-                  <div className="bg-muted border border-border rounded-lg p-3 mb-4">
-                    <div className="flex items-center gap-2 mb-2">
-                      <Calculator className="h-4 w-4 text-primary" />
-                      <span className="text-sm font-medium text-foreground">Podsumowanie ryczałtu</span>
-                    </div>
-                    <div className="grid grid-cols-3 gap-4 text-sm">
-                      <div>
-                        <div className="text-muted-foreground">Podatek ({group.category_rate}%):</div>
-                        <div className="font-medium text-red-600">{formatCurrency(taxInfo.taxAmount)}</div>
-                      </div>
-                      <div>
-                        <div className="text-muted-foreground">Termin płatności:</div>
-                        <div className="font-medium">
-                          {format(taxInfo.deadlineDate, 'dd MMMM yyyy', { locale: pl })}
-                        </div>
-                      </div>
-                      <div>
-                        <div className="text-muted-foreground">Status:</div>
-                        <div className="font-medium text-orange-600">
-                          {new Date() > taxInfo.deadlineDate ? 'Po terminie' : 'Do zapłaty'}
-                        </div>
+                        {group.items.length} {group.items.length === 1 ? 'dokument' : 'dokumentów'}
                       </div>
                     </div>
                   </div>
 
-                  <div className="space-y-2">
-                    {group.items.map((item: EwidencjaItem) => (
-                      <div
-                        key={item.id}
-                        className="flex items-center justify-between p-3 border rounded-lg hover:bg-muted/50 transition-colors cursor-pointer group"
-                        onClick={() => window.location.href = `/income/${item.invoice_id}`}
-                      >
-                        <div className="flex items-center gap-3 flex-1">
-                          <div>
-                            <div className="font-medium group-hover:text-primary transition-colors">{item.invoice_number}</div>
-                            <div className="text-sm text-muted-foreground">{item.customer_name}</div>
+                  <div className="space-y-2 pl-4">
+                    {group.items.map(invoice => (
+                      <div key={invoice.id} className="flex items-center justify-between p-3 rounded-lg border hover:bg-muted/50 transition-colors">
+                        <div className="flex-1">
+                          <div className="font-medium">{invoice.invoice_number}</div>
+                          <div className="text-sm text-muted-foreground">{invoice.customer_name}</div>
+                          <div className="text-xs text-muted-foreground mt-1">
+                            {format(new Date(invoice.issue_date), 'dd MMM yyyy', { locale: pl })}
                           </div>
                         </div>
-                        <div className="flex items-center gap-3">
-                          <div className="text-right">
-                            <div className="font-medium">
-                              {formatCurrency(item.amount)}
-                              {item.currency !== 'PLN' && (
-                                <div className="text-xs text-muted-foreground">
-                                  {formatCurrency(item.original_amount, item.currency)} 
-                                  <span className="text-xs ml-1">
-                                    (×{item.exchange_rate})
-                                  </span>
-                                </div>
-                              )}
-                            </div>
-                            <div className="text-xs text-muted-foreground">
-                              {format(new Date(item.issue_date), 'dd.MM.yyyy', { locale: pl })}
-                            </div>
+                        <div className="text-right">
+                          <div className="font-semibold">
+                            {formatCurrency(invoice.total_gross_value, invoice.currency)}
+                            {invoice.currency !== 'PLN' && (
+                              <span className="text-sm text-muted-foreground ml-2">
+                                ≈ {formatCurrency(invoice.pln_gross_value, 'PLN')}
+                              </span>
+                            )}
                           </div>
-                          <DropdownMenu>
-                            <DropdownMenuTrigger asChild>
-                              <Button
-                                variant="ghost"
-                                size="sm"
-                                className="h-8 w-8 p-0"
-                                onClick={(e) => e.stopPropagation()}
-                              >
-                                <MoreHorizontal className="h-4 w-4" />
-                              </Button>
-                            </DropdownMenuTrigger>
-                            <DropdownMenuContent align="end">
-                              <DropdownMenuItem
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  window.location.href = `/income/${item.invoice_id}`;
-                                }}
-                              >
-                                <FileText className="h-4 w-4 mr-2" />
-                                Szczegóły faktury
-                              </DropdownMenuItem>
-                              <DropdownMenuItem
-                                className="text-red-600"
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  console.log('🔴 Dropdown delete clicked for invoice:', item.invoice_id);
-                                  console.log('🔴 Register line ID:', item.id);
-                                  handleRemoveInvoiceFromEwidencja(item.invoice_id);
-                                }}
-                                disabled={isDeleting}
-                              >
-                                <Trash2 className="h-4 w-4 mr-2" />
-                                {isDeleting ? 'Usuwanie...' : 'Usuń z ewidencji'}
-                              </DropdownMenuItem>
-                              <DropdownMenuItem
-                                className="text-blue-600"
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  console.log('🔍 Test button clicked for invoice:', item.id);
-                                  console.log('🔍 Invoice data:', item);
-                                  toast.info(`Test: Invoice ${item.invoice_number} (${item.id})`);
-                                }}
-                              >
-                                <FileText className="h-4 w-4 mr-2" />
-                                Testuj
-                              </DropdownMenuItem>
-                            </DropdownMenuContent>
-                          </DropdownMenu>
+                          <div className="text-sm text-muted-foreground">
+                            → {formatCurrency(invoice.pln_gross_value * (invoice.ryczalt_account!.category_rate / 100), 'PLN')}
+                          </div>
+                          <div className="mt-1">
+                            {invoice.is_paid ? (
+                              <Badge variant="outline" className="text-xs border-green-500 text-green-700">Zapłacona</Badge>
+                            ) : (
+                              <Badge variant="outline" className="text-xs">Niezapłacona</Badge>
+                            )}
+                          </div>
                         </div>
                       </div>
                     ))}
                   </div>
-                </CardContent>
-              </Card>
-            );
-          })}
+                </div>
+              ))}
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
+      {/* Assignment Modal */}
+      {selectedInvoice && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50">
+          <Card className="w-full max-w-lg">
+            <CardHeader>
+              <CardTitle>Przypisz konto ryczałtu</CardTitle>
+              <CardDescription>
+                Faktura: {selectedInvoice.invoice_number} • {formatCurrency(selectedInvoice.total_gross_value, selectedInvoice.currency)}
+                {selectedInvoice.currency !== 'PLN' && (
+                  <span className="text-sm text-muted-foreground ml-2">
+                    ≈ {formatCurrency(selectedInvoice.pln_gross_value, 'PLN')}
+                  </span>
+                )}
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="space-y-2">
+                <label className="text-sm font-medium">Kontrahent</label>
+                <div className="text-sm text-muted-foreground">{selectedInvoice.customer_name}</div>
+              </div>
+
+              <div className="space-y-2">
+                <label className="text-sm font-medium">Data wystawienia</label>
+                <div className="text-sm text-muted-foreground">
+                  {format(new Date(selectedInvoice.issue_date), 'dd MMMM yyyy', { locale: pl })}
+                </div>
+              </div>
+
+              <div className="space-y-2">
+                <label className="text-sm font-medium">Wybierz konto ryczałtu</label>
+                <Select value={selectedAccountId} onValueChange={setSelectedAccountId}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Wybierz konto..." />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {accounts.map(account => (
+                      <SelectItem key={account.id} value={account.id}>
+                        <div className="flex items-center gap-2">
+                          <span>{account.account_number}</span>
+                          <span className="text-muted-foreground">•</span>
+                          <span>{account.account_name}</span>
+                          <RyczaltRateChip rate={account.category_rate || 0} categoryName={account.category_name || ''} />
+                        </div>
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              {selectedAccountId && (
+                <div className="bg-muted p-3 rounded-lg space-y-1">
+                  <div className="text-sm font-medium">Podsumowanie</div>
+                  <div className="text-sm text-muted-foreground">
+                    Przychód: {formatCurrency(selectedInvoice.pln_gross_value, 'PLN')}
+                    {selectedInvoice.currency !== 'PLN' && (
+                      <span className="text-xs text-muted-foreground ml-2">
+                        ({formatCurrency(selectedInvoice.total_gross_value, selectedInvoice.currency)})
+                      </span>
+                    )}
+                  </div>
+                  <div className="text-sm text-muted-foreground">
+                    Podatek: {formatCurrency(selectedInvoice.pln_gross_value * ((accounts.find(a => a.id === selectedAccountId)?.category_rate || 0) / 100), 'PLN')}
+                  </div>
+                </div>
+              )}
+
+              <div className="flex justify-end gap-3 pt-4 border-t">
+                <Button 
+                  variant="outline" 
+                  onClick={() => {
+                    setSelectedInvoice(null);
+                    setSelectedAccountId('');
+                  }}
+                  disabled={isAssigning}
+                >
+                  Anuluj
+                </Button>
+                <Button 
+                  onClick={handleAssignAccount}
+                  disabled={!selectedAccountId || isAssigning}
+                >
+                  {isAssigning ? 'Przypisywanie...' : 'Przypisz'}
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+      )}
+
+      {/* Bulk Assignment Modal */}
+      {showBulkAssignModal && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50">
+          <Card className="w-full max-w-lg">
+            <CardHeader>
+              <CardTitle>Przypisz konto ryczałtu (masowe)</CardTitle>
+              <CardDescription>
+                {selectedInvoices.size} {selectedInvoices.size === 1 ? 'faktura' : selectedInvoices.size <= 4 ? 'faktury' : 'faktur'} do przypisania
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="space-y-2">
+                <label className="text-sm font-medium">Wybrane faktury:</label>
+                <div className="max-h-32 overflow-y-auto space-y-1">
+                  {Array.from(selectedInvoices).map(invoiceId => {
+                    const invoice = unpostedInvoices.find(inv => inv.id === invoiceId);
+                    return invoice ? (
+                      <div key={invoice.id} className="text-sm text-muted-foreground flex justify-between items-center">
+                        <span>{invoice.invoice_number}</span>
+                        <div className="text-right">
+                          <div>{formatCurrency(invoice.total_gross_value, invoice.currency)}</div>
+                          {invoice.currency !== 'PLN' && (
+                            <div className="text-xs">≈ {formatCurrency(invoice.pln_gross_value, 'PLN')}</div>
+                          )}
+                        </div>
+                      </div>
+                    ) : null;
+                  })}
+                </div>
+              </div>
+
+              <div className="border-t pt-4">
+                <div className="text-sm font-medium mb-2">Suma:</div>
+                <div className="text-sm text-muted-foreground">
+                  {Array.from(selectedInvoices).reduce((sum, invoiceId) => {
+                    const invoice = unpostedInvoices.find(inv => inv.id === invoiceId);
+                    return sum + (invoice?.total_gross_value || 0);
+                  }, 0)} PLN
+                </div>
+              </div>
+
+              <div className="space-y-2">
+                <label className="text-sm font-medium">Wybierz konto ryczałtu</label>
+                <Select value={bulkAccountId} onValueChange={setBulkAccountId}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Wybierz konto..." />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {accounts.map(account => (
+                      <SelectItem key={account.id} value={account.id}>
+                        <div className="flex items-center gap-2">
+                          <span>{account.account_number}</span>
+                          <span className="text-muted-foreground">•</span>
+                          <span>{account.account_name}</span>
+                          <RyczaltRateChip rate={account.category_rate || 0} categoryName={account.category_name || ''} />
+                        </div>
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              {bulkAccountId && (
+                <div className="bg-muted p-3 rounded-lg space-y-1">
+                  <div className="text-sm font-medium">Podsumowanie</div>
+                  <div className="text-sm text-muted-foreground">
+                    Przychód: {formatCurrency(
+                      Array.from(selectedInvoices).reduce((sum, invoiceId) => {
+                        const invoice = unpostedInvoices.find(inv => inv.id === invoiceId);
+                        return sum + (invoice?.pln_gross_value || 0);
+                      }, 0), 'PLN'
+                    )}
+                  </div>
+                  <div className="text-sm text-muted-foreground">
+                    Podatek: {formatCurrency(
+                      Array.from(selectedInvoices).reduce((sum, invoiceId) => {
+                        const invoice = unpostedInvoices.find(inv => inv.id === invoiceId);
+                        return sum + (invoice?.pln_gross_value || 0);
+                      }, 0) * ((accounts.find(a => a.id === bulkAccountId)?.category_rate || 0) / 100), 'PLN'
+                    )}
+                  </div>
+                </div>
+              )}
+
+              <div className="flex justify-end gap-3 pt-4 border-t">
+                <Button 
+                  variant="outline" 
+                  onClick={() => {
+                    setShowBulkAssignModal(false);
+                    setBulkAccountId('');
+                  }}
+                  disabled={isBulkAssigning}
+                >
+                  Anuluj
+                </Button>
+                <Button 
+                  onClick={handleBulkAssign}
+                  disabled={!bulkAccountId || isBulkAssigning}
+                >
+                  {isBulkAssigning ? 'Przypisywanie...' : `Przypisz ${selectedInvoices.size} ${selectedInvoices.size === 1 ? 'fakturę' : selectedInvoices.size <= 4 ? 'faktury' : 'faktur'}`}
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+      )}
+
+      {/* Correction Modal */}
+      {showCorrectionModal && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50">
+          <Card className="w-full max-w-2xl max-h-[80vh] overflow-y-auto">
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <History className="h-5 w-5" />
+                Poprawki dla poprzednich okresów
+              </CardTitle>
+              <CardDescription>
+                Dodaj brakujące faktury lub skoryguj zaksięgowanie dla okresu {format(currentPeriod, 'LLLL yyyy', { locale: pl })}
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <Button variant="outline" className="h-20 flex-col gap-2">
+                  <Plus className="h-6 w-6" />
+                  <span className="text-sm">Dodaj brakującą fakturę</span>
+                  <span className="text-xs text-muted-foreground">Wprowadź nową fakturę dla tego okresu</span>
+                </Button>
+                
+                <Button variant="outline" className="h-20 flex-col gap-2">
+                  <Receipt className="h-6 w-6" />
+                  <span className="text-sm">Przypisz konto ryczałtu</span>
+                  <span className="text-xs text-muted-foreground">Połącz fakturę z odpowiednim kontem</span>
+                </Button>
+              </div>
+
+              <div className="border-t pt-4">
+                <h4 className="font-medium mb-2">Typy poprawek:</h4>
+                <div className="space-y-2 text-sm text-muted-foreground">
+                  <div>• <strong>Dodanie faktury:</strong> Wprowadź fakturę, która nie została dodana do systemu</div>
+                  <div>• <strong>Korekta zaksięgowania:</strong> Zmień przypisanie konta ryczałtu dla istniejącej faktury</div>
+                  <div>• <strong>Poprawa danych:</strong> Zaktualizuj kwoty, daty lub dane kontrahenta</div>
+                </div>
+              </div>
+
+              <div className="flex justify-end gap-3 pt-4 border-t">
+                <Button variant="outline" onClick={() => setShowCorrectionModal(false)}>
+                  Anuluj
+                </Button>
+                <Button onClick={() => {
+                  toast.info('Funkcja poprawek zostanie wkrótce dodana');
+                  setShowCorrectionModal(false);
+                }}>
+                  Kontynuuj
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
         </div>
       )}
     </div>
