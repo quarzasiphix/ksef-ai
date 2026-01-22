@@ -4,7 +4,7 @@ import { Button } from "@/shared/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/shared/ui/card";
 import { Input } from "@/shared/ui/input";
 import { Invoice, InvoiceType } from "@/shared/types";
-import { Plus, Search, Filter } from "lucide-react";
+import { Plus, Search, Filter, ArrowUpDown } from "lucide-react";
 import { Badge } from "@/shared/ui/badge";
 import MonthlySummaryBar, { MonthlySummaryFilter } from '@/modules/invoices/components/MonthlySummaryBar';
 import InvoicePDFViewer from "@/modules/invoices/components/InvoicePDFViewer";
@@ -43,12 +43,16 @@ import { supabase } from "@/integrations/supabase/client";
 import { LedgerView } from '@/modules/invoices/components/ledger/LedgerView';
 import { PeriodSwitcherMobile } from '@/modules/invoices/components/ledger/PeriodSwitcherMobile';
 import { FilterSheetMobile } from '@/modules/invoices/components/ledger/FilterSheetMobile';
+import { SortSheet } from '@/modules/invoices/components/ledger/SortSheet';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/shared/ui/collapsible";
 import { useIsMobile } from "@/shared/hooks/use-mobile";
 import { getAvailableYears } from '@/shared/lib/ledger-utils';
 
 type SmartFilter = 'all' | 'unpaid_issued' | 'paid_issued' | 'accounted' | 'overdue';
 type DocumentTypeFilter = 'all' | 'invoice' | 'receipt' | 'proforma' | 'correction';
+type SortType = 'date' | 'number' | 'customer';
+type GroupingMode = 'month' | 'quarter' | 'year';
+type SubGroupingMode = 'none' | 'month' | 'quarter';
 
 const IncomeList = () => {
   const { invoices: { data: invoices, isLoading } } = useGlobalData();
@@ -62,6 +66,11 @@ const IncomeList = () => {
   const [isMobileSearchOpen, setIsMobileSearchOpen] = useState(false);
   const [selectedYear, setSelectedYear] = useState<number | null>(null);
   const [selectedMonth, setSelectedMonth] = useState<number | null>(null);
+  const [isSortOpen, setIsSortOpen] = useState(false);
+  const [sortBy, setSortBy] = useState<'date' | 'amount' | 'number' | 'customer'>('date');
+  const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc');
+  const [groupingMode, setGroupingMode] = useState<GroupingMode>('month');
+  const [subGroupingMode, setSubGroupingMode] = useState<SubGroupingMode>('none');
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const [previewInvoice, setPreviewInvoice] = useState<Invoice | null>(null);
@@ -349,20 +358,31 @@ const IncomeList = () => {
                 </>
               ) : (
                 <>
-                  <Button
-                    variant={isFiltersOpen ? 'default' : 'outline'}
-                    size="sm"
-                    onClick={() => setIsFiltersOpen(!isFiltersOpen)}
-                    className="gap-1.5"
-                  >
-                    <Filter className="h-4 w-4" />
-                    <span>Filtry</span>
-                    {(smartFilter !== 'all' || documentTypeFilter !== 'all') && (
-                      <Badge variant="secondary" className="ml-1">
-                        {[smartFilter !== 'all' ? 1 : 0, documentTypeFilter !== 'all' ? 1 : 0].reduce((a, b) => a + b, 0)}
-                      </Badge>
-                    )}
-                  </Button>
+                  <div className="flex gap-2">
+                    <Button
+                      variant={isFiltersOpen ? 'default' : 'outline'}
+                      size="sm"
+                      onClick={() => setIsFiltersOpen(!isFiltersOpen)}
+                      className="gap-1.5"
+                    >
+                      <Filter className="h-4 w-4" />
+                      <span>Filtry</span>
+                      {(smartFilter !== 'all' || documentTypeFilter !== 'all') && (
+                        <Badge variant="secondary" className="ml-1">
+                          {[smartFilter !== 'all' ? 1 : 0, documentTypeFilter !== 'all' ? 1 : 0].reduce((a, b) => a + b, 0)}
+                        </Badge>
+                      )}
+                    </Button>
+                    <Button
+                      variant={isSortOpen ? 'default' : 'outline'}
+                      size="sm"
+                      onClick={() => setIsSortOpen(!isSortOpen)}
+                      className="gap-1.5"
+                    >
+                      <ArrowUpDown className="h-4 w-4" />
+                      <span>Sortuj</span>
+                    </Button>
+                  </div>
                   <div className="relative w-full sm:w-72">
                     <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                     <Input
@@ -418,6 +438,28 @@ const IncomeList = () => {
           </CollapsibleContent>
         </Collapsible>
         
+        {/* Sort Sheet */}
+        <SortSheet
+          isOpen={isSortOpen}
+          onOpenChange={setIsSortOpen}
+          groupingMode={groupingMode}
+          subGroupingMode={subGroupingMode}
+          sortBy={sortBy}
+          sortOrder={sortOrder}
+          onGroupingModeChange={(mode, subMode) => {
+            setGroupingMode(mode);
+            setSubGroupingMode(subMode);
+          }}
+          onSortByChange={setSortBy}
+          onSortOrderChange={setSortOrder}
+          onReset={() => {
+            setGroupingMode('month');
+            setSubGroupingMode('none');
+            setSortBy('date');
+            setSortOrder('desc');
+          }}
+        />
+        
         <CardContent className="pt-6">
           {isLoading ? (
             <div className="text-center py-8">Ładowanie...</div>
@@ -442,6 +484,10 @@ const IncomeList = () => {
             <LedgerView
               invoices={filteredInvoices}
               isIncome={true}
+              sortBy={sortBy}
+              sortOrder={sortOrder}
+              groupingMode={groupingMode}
+              subGroupingMode={subGroupingMode}
               onView={(id) => navigate(`/income/${id}`)}
               onPreview={openPreview}
               onDownload={async (inv) => {
@@ -555,6 +601,10 @@ const IncomeList = () => {
             <LedgerView
               invoices={filteredInvoices}
               isIncome={true}
+              sortBy={sortBy}
+              sortOrder={sortOrder}
+              groupingMode={groupingMode}
+              subGroupingMode={subGroupingMode}
               onView={(id) => navigate(`/income/${id}`)}
               onPreview={openPreview}
               onDownload={async (inv) => {

@@ -8,21 +8,27 @@ import { QuarterGroupHeader } from './QuarterGroupHeader';
 import { YearGroupHeader } from './YearGroupHeader';
 import { LedgerRow } from './LedgerRow';
 import { LedgerRowMobile } from './LedgerRowMobile';
+import { SortSheet } from './SortSheet';
 import { Card } from '@/shared/ui/card';
 import { Button } from '@/shared/ui/button';
-import { ChevronDown, ChevronUp, Calendar, Calculator, BookOpen } from 'lucide-react';
+import { ChevronDown, ChevronUp, Calendar, Calculator, BookOpen, ArrowUpDown } from 'lucide-react';
 import { useIsMobile } from '@/shared/hooks/use-mobile';
 import { useBusinessProfile } from '@/shared/context/BusinessProfileContext';
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
+  DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/shared/ui/dropdown-menu';
 
 interface LedgerViewProps {
   invoices: Invoice[];
   isIncome?: boolean;
+  sortBy?: 'date' | 'amount' | 'number' | 'customer';
+  sortOrder?: 'asc' | 'desc';
+  groupingMode?: 'month' | 'quarter' | 'year';
+  subGroupingMode?: 'none' | 'month' | 'quarter';
   onView?: (id: string) => void;
   onPreview?: (invoice: Invoice) => void;
   onDownload?: (invoice: Invoice) => void;
@@ -36,6 +42,10 @@ interface LedgerViewProps {
 export function LedgerView({
   invoices,
   isIncome = true,
+  sortBy = 'date',
+  sortOrder = 'desc',
+  groupingMode = 'month',
+  subGroupingMode = 'none',
   onView,
   onPreview,
   onDownload,
@@ -47,55 +57,88 @@ export function LedgerView({
 }: LedgerViewProps) {
   const [selectedYear, setSelectedYear] = useState<number | null>(null);
   const [expandedMonths, setExpandedMonths] = useState<Set<string>>(new Set());
-  const [groupingMode, setGroupingMode] = useState<GroupingMode>('month');
-  const [subGroupingMode, setSubGroupingMode] = useState<SubGroupingMode>('none');
   const [accountingInfo, setAccountingInfo] = useState<AccountingPeriodInfo | null>(null);
   const [showAccountingInfo, setShowAccountingInfo] = useState(false);
   const isMobile = useIsMobile();
   const { profiles, selectedProfileId } = useBusinessProfile();
   const selectedProfile = profiles?.find(p => p.id === selectedProfileId);
 
-  const years = useMemo(() => getAvailableYears(invoices), [invoices]);
+  // Sort invoices based on current sort settings
+  const sortInvoices = (invoices: Invoice[]): Invoice[] => {
+    const sorted = [...invoices].sort((a, b) => {
+      let comparison = 0;
+      
+      switch (sortBy) {
+        case 'date':
+          comparison = new Date(a.issueDate).getTime() - new Date(b.issueDate).getTime();
+          break;
+        case 'amount': {
+          const getAmount = (inv: Invoice) => {
+            const isVatExempt = inv.fakturaBezVAT || inv.vat === false;
+            const baseAmount = isVatExempt ? (inv.totalNetValue || 0) : (inv.totalGrossValue || inv.totalAmount || 0);
+            return inv.currency === 'PLN' || !inv.exchangeRate ? baseAmount : baseAmount * inv.exchangeRate;
+          };
+          comparison = getAmount(a) - getAmount(b);
+          break;
+        }
+        case 'number':
+          comparison = a.number.localeCompare(b.number, undefined, { numeric: true });
+          break;
+        case 'customer':
+          comparison = (a.customerName || '').localeCompare(b.customerName || '');
+          break;
+      }
+      
+      return sortOrder === 'asc' ? comparison : -comparison;
+    });
+    
+    return sorted;
+  };
+
+  // Apply sorting to all invoice groups
+  const sortedInvoices = useMemo(() => sortInvoices(invoices), [invoices, sortBy, sortOrder]);
+
+  const years = useMemo(() => getAvailableYears(sortedInvoices), [sortedInvoices]);
   
   const yearGroups = useMemo(() => {
-    const groups = groupInvoicesByPeriod(invoices);
+    const groups = groupInvoicesByPeriod(sortedInvoices);
     if (selectedYear !== null) {
       return groups.filter(g => g.year === selectedYear);
     }
     return groups;
-  }, [invoices, selectedYear]);
+  }, [sortedInvoices, selectedYear]);
 
   const quarterGroups = useMemo(() => {
-    const groups = groupInvoicesByQuarter(invoices);
+    const groups = groupInvoicesByQuarter(sortedInvoices);
     if (selectedYear !== null) {
       return groups.filter(g => g.year === selectedYear);
     }
     return groups;
-  }, [invoices, selectedYear]);
+  }, [sortedInvoices, selectedYear]);
 
   const yearOnlyGroups = useMemo(() => {
-    const groups = groupInvoicesByYear(invoices);
+    const groups = groupInvoicesByYear(sortedInvoices);
     if (selectedYear !== null) {
       return groups.filter(g => g.year === selectedYear);
     }
     return groups;
-  }, [invoices, selectedYear]);
+  }, [sortedInvoices, selectedYear]);
 
   const yearQuarterMonthGroups = useMemo(() => {
-    const groups = groupInvoicesByYearQuarterMonth(invoices);
+    const groups = groupInvoicesByYearQuarterMonth(sortedInvoices);
     if (selectedYear !== null) {
       return groups.filter(g => g.year === selectedYear);
     }
     return groups;
-  }, [invoices, selectedYear]);
+  }, [sortedInvoices, selectedYear]);
 
   const quarterMonthGroups = useMemo(() => {
-    const groups = groupInvoicesByQuarterMonth(invoices);
+    const groups = groupInvoicesByQuarterMonth(sortedInvoices);
     if (selectedYear !== null) {
       return groups.filter(g => g.year === selectedYear);
     }
     return groups;
-  }, [invoices, selectedYear]);
+  }, [sortedInvoices, selectedYear]);
 
   // Calculate accounting info when invoices or business profile changes
   useEffect(() => {
@@ -139,11 +182,11 @@ export function LedgerView({
         const date = new Date(currentDate.getFullYear(), currentDate.getMonth() - i, 1);
         const year = date.getFullYear();
         const month = date.getMonth() + 1; // getMonth() is 0-indexed
-        const monthKey = `${year}-${month.toString().padStart(2, '0')}`;
+        const monthKey = `${year}-${String(month).padStart(2, '0')}`;
         
-        // Check if this month exists in our data
-        const monthExists = yearGroups.some(group => 
-          group.year === year && group.months.some(month => month.key === monthKey)
+        // Check if this month exists in the data
+        const monthExists = yearGroups.some(yg => 
+          yg.months.some(m => m.key === monthKey)
         );
         
         if (monthExists) {
@@ -208,74 +251,16 @@ export function LedgerView({
 
   return (
     <div className="space-y-4">
-      {!isMobile && (
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <PeriodNavigator
-              years={years}
-              selectedYear={selectedYear}
-              onYearSelect={setSelectedYear}
-            />
-            
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button variant="outline" size="sm" className="gap-2">
-                  <Calendar className="h-4 w-4" />
-                  Grupuj: {groupingMode === 'month' ? 'Miesiąc' : groupingMode === 'quarter' ? 'Kwartał' : 'Rok'}
-                  {subGroupingMode !== 'none' && ` > ${subGroupingMode === 'month' ? 'Miesiąc' : 'Kwartał'}`}
-                </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="start">
-                <DropdownMenuItem onClick={() => { setGroupingMode('month'); setSubGroupingMode('none'); }}>
-                  Grupuj po miesiącach
-                </DropdownMenuItem>
-                <DropdownMenuItem onClick={() => { setGroupingMode('quarter'); setSubGroupingMode('none'); }}>
-                  Grupuj po kwartałach
-                </DropdownMenuItem>
-                <DropdownMenuItem onClick={() => { setGroupingMode('quarter'); setSubGroupingMode('month'); }}>
-                  Grupuj po kwartałach → miesiącach
-                </DropdownMenuItem>
-                <DropdownMenuItem onClick={() => { setGroupingMode('year'); setSubGroupingMode('none'); }}>
-                  Grupuj po latach
-                </DropdownMenuItem>
-                <DropdownMenuItem onClick={() => { setGroupingMode('year'); setSubGroupingMode('quarter'); }}>
-                  Grupuj po latach → kwartałach
-                </DropdownMenuItem>
-              </DropdownMenuContent>
-            </DropdownMenu>
-            
-            {isRyczaltJDG && (
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => setShowAccountingInfo(!showAccountingInfo)}
-                className="gap-2"
-              >
-                <Calculator className="h-4 w-4" />
-                Info podatkowe
-              </Button>
-            )}
-          </div>
-          
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={hasExpandedMonths ? collapseAll : expandAll}
-            className="gap-2"
-          >
-            {hasExpandedMonths ? (
-              <>
-                <ChevronUp className="h-4 w-4" />
-                Zwiń wszystko
-              </>
-            ) : (
-              <>
-                <ChevronDown className="h-4 w-4" />
-                Rozwiń wszystko
-              </>
-            )}
-          </Button>
-        </div>
+      {isRyczaltJDG && (
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={() => setShowAccountingInfo(!showAccountingInfo)}
+          className="gap-2"
+        >
+          <Calculator className="h-4 w-4" />
+          Info podatkowe
+        </Button>
       )}
 
       {showAccountingInfo && isRyczaltJDG && accountingInfo && (
