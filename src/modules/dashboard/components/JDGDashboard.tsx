@@ -148,10 +148,10 @@ const JDGDashboard: React.FC<JDGDashboardProps> = ({
 
       {/* VAT Exemption Tracker (if applicable) */}
       {profile.is_vat_exempt && (
-        <Card className="border-2 border-purple-200 bg-gradient-to-br from-purple-50 to-background">
+        <Card className="border border-purple-400/40 bg-gradient-to-br from-[#2b1b3a] via-[#1a1026] to-[#120c1b] text-slate-100 shadow-[0_20px_45px_rgba(42,10,70,0.45)]">
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
-              <CheckCircle2 className="h-5 w-5 text-purple-600" />
+              <CheckCircle2 className="h-5 w-5 text-purple-200" />
               Zwolnienie z VAT (art. 113)
             </CardTitle>
           </CardHeader>
@@ -160,34 +160,34 @@ const JDGDashboard: React.FC<JDGDashboardProps> = ({
               <div>
                 <div className="flex items-center justify-between mb-2">
                   <span className="text-sm font-medium">Wykorzystanie limitu 200 000 zł</span>
-                  <span className="text-sm font-bold text-purple-600">{vatProgress.toFixed(1)}%</span>
+                  <span className="text-sm font-bold text-purple-300">{vatProgress.toFixed(1)}%</span>
                 </div>
-                <div className="h-3 bg-muted rounded-full overflow-hidden">
+                <div className="h-3 bg-white/10 rounded-full overflow-hidden">
                   <div
                     className={cn(
-                      'h-full transition-all rounded-full',
-                      vatProgress < 70 ? 'bg-green-500' : vatProgress < 90 ? 'bg-amber-500' : 'bg-red-500'
+                      'h-full transition-all rounded-full shadow-[0_0_15px_rgba(255,255,255,0.25)]',
+                      vatProgress < 70 ? 'bg-green-400' : vatProgress < 90 ? 'bg-amber-400' : 'bg-red-400'
                     )}
                     style={{ width: `${Math.min(vatProgress, 100)}%` }}
                   />
                 </div>
               </div>
               <div className="grid grid-cols-2 gap-4">
-                <div className="p-3 rounded-lg bg-background border">
-                  <p className="text-xs text-muted-foreground">Przychód roczny</p>
-                  <p className="font-bold text-lg">{formatCurrency(totalRevenue)}</p>
+                <div className="p-3 rounded-lg bg-white/5 border border-white/10">
+                  <p className="text-xs text-slate-300">Przychód roczny</p>
+                  <p className="font-bold text-lg text-white">{formatCurrency(totalRevenue)}</p>
                 </div>
-                <div className="p-3 rounded-lg bg-background border">
-                  <p className="text-xs text-muted-foreground">Do limitu pozostało</p>
-                  <p className="font-bold text-lg">{formatCurrency(Math.max(0, vatRemaining))}</p>
+                <div className="p-3 rounded-lg bg-white/5 border border-white/10">
+                  <p className="text-xs text-slate-300">Do limitu pozostało</p>
+                  <p className="font-bold text-lg text-white">{formatCurrency(Math.max(0, vatRemaining))}</p>
                 </div>
               </div>
               {vatProgress >= 90 && (
-                <div className="flex items-start gap-2 p-3 rounded-lg bg-amber-50 border border-amber-200">
-                  <AlertCircle className="h-5 w-5 text-amber-600 mt-0.5 flex-shrink-0" />
+                <div className="flex items-start gap-2 p-3 rounded-lg bg-amber-100/10 border border-amber-200/40">
+                  <AlertCircle className="h-5 w-5 text-amber-300 mt-0.5 flex-shrink-0" />
                   <div>
-                    <p className="font-medium text-sm">Zbliżasz się do limitu!</p>
-                    <p className="text-xs text-muted-foreground mt-1">
+                    <p className="font-medium text-sm text-white">Zbliżasz się do limitu!</p>
+                    <p className="text-xs text-slate-300 mt-1">
                       Przygotuj się do rejestracji jako płatnik VAT
                     </p>
                   </div>

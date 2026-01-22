@@ -151,7 +151,7 @@ export function LedgerRow({
               ref={dropdownButtonRef}
               variant="ghost"
               size="sm"
-              className="h-10 w-10 p-0 text-muted-foreground/40 group-hover:text-foreground/80 group-hover:bg-accent transition-all"
+              className="h-10 w-10 p-0 text-muted-foreground/80 group-hover:text-foreground group-hover:bg-accent transition-all"
             >
               <MoreVertical className="h-5 w-5" />
             </Button>
