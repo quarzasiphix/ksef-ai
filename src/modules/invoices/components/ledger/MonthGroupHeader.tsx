@@ -1,5 +1,5 @@
-import { ChevronDown, ChevronRight } from 'lucide-react';
-import { formatLedgerAmount, capitalizeMonth } from '@/shared/lib/ledger-utils';
+import { ChevronDown, ChevronRight, BookOpen } from 'lucide-react';
+import { formatLedgerAmount, capitalizeMonth, formatTaxAmount } from '@/shared/lib/ledger-utils';
 import { cn } from '@/shared/lib/utils';
 
 interface MonthGroupHeaderProps {
@@ -9,6 +9,9 @@ interface MonthGroupHeaderProps {
   isExpanded: boolean;
   onToggle: () => void;
   invoiceCount: number;
+  tax?: number;
+  accountedCount?: number;
+  totalCount?: number;
 }
 
 export function MonthGroupHeader({ 
@@ -17,8 +20,14 @@ export function MonthGroupHeader({
   currency = 'PLN', 
   isExpanded, 
   onToggle,
-  invoiceCount 
+  invoiceCount,
+  tax,
+  accountedCount,
+  totalCount
 }: MonthGroupHeaderProps) {
+  const isFullyAccounted = accountedCount !== undefined && totalCount !== undefined && accountedCount === totalCount && totalCount > 0;
+  const hasUnaccounted = accountedCount !== undefined && totalCount !== undefined && accountedCount < totalCount && totalCount > 0;
+
   return (
     <button
       onClick={onToggle}
@@ -42,10 +51,18 @@ export function MonthGroupHeader({
           <span className="text-xs text-muted-foreground font-medium">
             {invoiceCount} {invoiceCount === 1 ? 'dokument' : 'dokumentów'}
           </span>
+          {hasUnaccounted && (
+            <div className="flex items-center gap-1 text-red-600">
+              <BookOpen className="w-3 h-3" />
+              <span className="text-xs font-medium">
+                {totalCount - accountedCount} nierozliczonych
+              </span>
+            </div>
+          )}
         </div>
       </div>
       <div className="text-lg font-mono font-bold text-foreground tabular-nums">
-        {formatLedgerAmount(sum, currency)}
+        {formatLedgerAmount(sum, currency)}{tax !== undefined && tax > 0 ? formatTaxAmount(tax, currency) : ''}
       </div>
     </button>
   );

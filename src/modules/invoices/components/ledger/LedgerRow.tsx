@@ -108,20 +108,13 @@ export function LedgerRow({
         </div>
         
         <div className="flex items-center gap-2">
-          {invoice.accountingStatus === 'posted' ? (
-            <Badge variant="outline" className="bg-green-100 text-green-800 border-green-300 text-xs font-semibold flex items-center gap-1">
+          {invoice.ryczalt_account_id ? (
+            <Badge variant="outline" className="bg-green-100 text-green-800 border-green-300 flex items-center gap-1 p-1.5">
               <BookOpen className="w-3 h-3" />
-              Rozliczona
-            </Badge>
-          ) : invoice.accountingStatus && invoice.accountingStatus !== 'unposted' ? (
-            <Badge variant="outline" className="bg-amber-100 text-amber-800 border-amber-300 text-xs font-semibold flex items-center gap-1">
-              <BookOpen className="w-3 h-3" />
-              {invoice.accountingStatus === 'needs_review' ? 'Do sprawdzenia' : invoice.accountingStatus === 'rejected' ? 'Odrzucona' : invoice.accountingStatus}
             </Badge>
           ) : (
-            <Badge variant="outline" className="bg-red-100 text-red-800 border-red-300 text-xs font-semibold flex items-center gap-1">
+            <Badge variant="outline" className="bg-red-100 text-red-800 border-red-300 flex items-center gap-1 p-1.5">
               <BookOpen className="w-3 h-3" />
-              Nierozliczona
             </Badge>
           )}
           
