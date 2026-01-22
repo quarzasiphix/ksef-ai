@@ -4,7 +4,7 @@ import { Button } from "@/shared/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/shared/ui/card";
 import { Input } from "@/shared/ui/input";
 import { Invoice, InvoiceType } from "@/shared/types";
-import { Plus, Search, Filter, ArrowUpDown } from "lucide-react";
+import { Plus, Search, Filter, ArrowUpDown, Calculator } from "lucide-react";
 import { Badge } from "@/shared/ui/badge";
 import MonthlySummaryBar, { MonthlySummaryFilter } from '@/modules/invoices/components/MonthlySummaryBar';
 import InvoicePDFViewer from "@/modules/invoices/components/InvoicePDFViewer";
@@ -44,7 +44,6 @@ import { LedgerView } from '@/modules/invoices/components/ledger/LedgerView';
 import { PeriodSwitcherMobile } from '@/modules/invoices/components/ledger/PeriodSwitcherMobile';
 import { FilterSheetMobile } from '@/modules/invoices/components/ledger/FilterSheetMobile';
 import { SortSheet } from '@/modules/invoices/components/ledger/SortSheet';
-import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/shared/ui/collapsible";
 import { useIsMobile } from "@/shared/hooks/use-mobile";
 import { getAvailableYears } from '@/shared/lib/ledger-utils';
 
@@ -71,6 +70,7 @@ const IncomeList = () => {
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc');
   const [groupingMode, setGroupingMode] = useState<GroupingMode>('month');
   const [subGroupingMode, setSubGroupingMode] = useState<SubGroupingMode>('none');
+  const [showAccountingInfo, setShowAccountingInfo] = useState(false);
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const [previewInvoice, setPreviewInvoice] = useState<Invoice | null>(null);
@@ -324,16 +324,6 @@ const IncomeList = () => {
             <div className="flex gap-2 items-center flex-wrap w-full">
               {isMobile ? (
                 <>
-                  <PeriodSwitcherMobile
-                    years={availableYears}
-                    selectedYear={selectedYear}
-                    selectedMonth={selectedMonth}
-                    onPeriodSelect={(year, month) => {
-                      setSelectedYear(year);
-                      setSelectedMonth(month || null);
-                    }}
-                    className="flex-1"
-                  />
                   <Button
                     variant={smartFilter !== 'all' || documentTypeFilter !== 'all' ? 'default' : 'outline'}
                     size="sm"
@@ -346,6 +336,15 @@ const IncomeList = () => {
                         {[smartFilter !== 'all' ? 1 : 0, documentTypeFilter !== 'all' ? 1 : 0].reduce((a, b) => a + b, 0)}
                       </Badge>
                     )}
+                  </Button>
+                  <Button
+                    variant={isSortOpen ? 'default' : 'outline'}
+                    size="sm"
+                    onClick={() => setIsSortOpen(true)}
+                    className="gap-1.5"
+                  >
+                    <ArrowUpDown className="h-4 w-4" />
+                    <span>Sortuj</span>
                   </Button>
                   <Button
                     variant={searchTerm ? 'default' : 'outline'}
@@ -398,9 +397,10 @@ const IncomeList = () => {
           </div>
         </CardHeader>
         
-        <Collapsible open={isFiltersOpen}>
-          <CollapsibleContent>
-            <div className="px-6 pb-4 border-b space-y-4">
+        <div key="filters-wrapper">
+        {isFiltersOpen && (
+          <div key="filter-panel" className="border-b">
+            <div className="px-6 pb-4 space-y-4">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div className="space-y-2">
                   <label className="text-sm font-medium">Typ dokumentu</label>
@@ -433,10 +433,92 @@ const IncomeList = () => {
                     </SelectContent>
                   </Select>
                 </div>
+
+                <div className="space-y-2 md:col-span-2">
+                  <label className="text-sm font-medium">Okres rozliczeniowy</label>
+                  <PeriodSwitcherMobile
+                    years={availableYears}
+                    selectedYear={selectedYear}
+                    selectedMonth={selectedMonth}
+                    onPeriodSelect={(year, month) => {
+                      setSelectedYear(year);
+                      setSelectedMonth(month || null);
+                    }}
+                    className="w-full"
+                  />
+                </div>
               </div>
+
+              {/* Accounting Info Section */}
+              {businessProfile?.taxType === 'ryczalt' && businessProfile?.entityType === 'JDG' && (
+                <div className="space-y-2">
+                  <label className="text-sm font-medium">Podatki</label>
+                  <Button
+                    variant={showAccountingInfo ? "default" : "outline"}
+                    className="w-full justify-start gap-3 h-12"
+                    onClick={() => setShowAccountingInfo(!showAccountingInfo)}
+                  >
+                    <Calculator className="h-4 w-4" />
+                    <span>Info podatkowe</span>
+                    {showAccountingInfo && (
+                      <Badge variant="secondary" className="ml-auto">
+                        Aktywne
+                      </Badge>
+                    )}
+                  </Button>
+                </div>
+              )}
             </div>
-          </CollapsibleContent>
-        </Collapsible>
+          </div>
+        )}
+        
+        {/* Accounting Info Section */}
+        {showAccountingInfo && businessProfile?.taxType === 'ryczalt' && businessProfile?.entityType === 'JDG' && (
+          <div key="accounting-panel" className="px-6 pb-4 border-b">
+            <Card className="bg-blue-50 border-blue-200">
+              <div className="p-4">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <Calculator className="h-5 w-5 text-blue-600" />
+                    <span className="font-semibold text-blue-900">Podsumowanie podatkowe</span>
+                  </div>
+                  <div className="text-right">
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => setShowAccountingInfo(false)}
+                      className="text-blue-600 hover:text-blue-800"
+                    >
+                      ×
+                    </Button>
+                  </div>
+                </div>
+                <div className="mt-3 space-y-2 text-sm">
+                  <div className="flex justify-between">
+                    <span className="text-blue-700">Przychód:</span>
+                    <span className="font-medium text-blue-900">
+                      {filteredInvoices.reduce((sum, inv) => {
+                        const isVatExempt = inv.fakturaBezVAT || inv.vat === false;
+                        const baseAmount = isVatExempt ? (inv.totalNetValue || 0) : (inv.totalGrossValue || inv.totalAmount || 0);
+                        return inv.currency === 'PLN' || !inv.exchangeRate ? sum + baseAmount : sum + (baseAmount * (inv.exchangeRate || 1));
+                      }, 0).toLocaleString('pl-PL', { minimumFractionDigits: 2 })} PLN
+                    </span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-blue-700">Podatek:</span>
+                    <span className="font-medium text-blue-900">
+                      ~{(filteredInvoices.reduce((sum, inv) => sum + (inv.totalNetValue || 0), 0) * 0.12).toLocaleString('pl-PL', { minimumFractionDigits: 2 })} PLN
+                    </span>
+                  </div>
+                  <div className="text-xs text-blue-600 mt-2">
+                    * Szacunkowy podatek 12% - oblicz na podstawie formy opodatkowania
+                  </div>
+                </div>
+              </div>
+            </Card>
+          </div>
+        )}
+        </div>
         
         {/* Sort Sheet */}
         <SortSheet
@@ -532,16 +614,6 @@ const IncomeList = () => {
               </p>
             </div>
             <div className="flex gap-2 items-center flex-wrap w-full">
-              <PeriodSwitcherMobile
-                years={availableYears}
-                selectedYear={selectedYear}
-                selectedMonth={selectedMonth}
-                onPeriodSelect={(year, month) => {
-                  setSelectedYear(year);
-                  setSelectedMonth(month || null);
-                }}
-                className="flex-1"
-              />
               <Button
                 variant={smartFilter !== 'all' || documentTypeFilter !== 'all' ? 'default' : 'outline'}
                 size="sm"

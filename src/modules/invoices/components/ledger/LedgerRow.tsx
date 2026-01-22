@@ -88,12 +88,12 @@ export function LedgerRow({
     >
       <div className="flex items-center gap-6 flex-1 min-w-0">
         <div className="flex flex-col gap-1 min-w-0 flex-1">
-          <div className="flex items-baseline gap-3">
+          <div className="flex items-center gap-3 flex-wrap">
+            <span className="px-2.5 py-0.5 text-sm font-semibold tracking-wide rounded border border-amber-400/70 bg-amber-300/15 text-amber-200 font-mono uppercase shadow-[0_0_12px_rgba(251,191,36,0.25)]">
+              {invoice.number || 'Brak numeru'}
+            </span>
             <span className="text-lg font-semibold text-foreground leading-tight">
               {invoice.customerName || 'Brak kontrahenta'}
-            </span>
-            <span className="text-xs text-muted-foreground/70 font-medium">
-              {invoice.number}
             </span>
           </div>
           <div className="flex items-center gap-2 text-xs text-muted-foreground">
@@ -108,16 +108,6 @@ export function LedgerRow({
         </div>
         
         <div className="flex items-center gap-2">
-          {invoice.ryczalt_account_id ? (
-            <Badge variant="outline" className="bg-green-100 text-green-800 border-green-300 flex items-center gap-1 p-1.5">
-              <BookOpen className="w-3 h-3" />
-            </Badge>
-          ) : (
-            <Badge variant="outline" className="bg-red-100 text-red-800 border-red-300 flex items-center gap-1 p-1.5">
-              <BookOpen className="w-3 h-3" />
-            </Badge>
-          )}
-          
           {isPaid ? (
             <Badge variant="outline" className="bg-green-100 text-green-800 border-green-300 text-xs font-semibold">
               Zapłacone
@@ -129,6 +119,16 @@ export function LedgerRow({
           ) : (
             <Badge variant="outline" className="bg-amber-100 text-amber-800 border-amber-300 text-xs font-semibold">
               Do zapłaty
+            </Badge>
+          )}
+
+          {invoice.ryczalt_account_id ? (
+            <Badge variant="outline" className="bg-green-100 text-green-800 border-green-300 flex items-center gap-1 p-1.5">
+              <BookOpen className="w-3 h-3" />
+            </Badge>
+          ) : (
+            <Badge variant="outline" className="bg-red-100 text-red-800 border-red-300 flex items-center gap-1 p-1.5">
+              <BookOpen className="w-3 h-3" />
             </Badge>
           )}
           

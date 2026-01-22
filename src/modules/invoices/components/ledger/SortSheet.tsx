@@ -1,3 +1,4 @@
+import React from 'react';
 import { Button } from '@/shared/ui/button';
 import { Badge } from '@/shared/ui/badge';
 import {
@@ -7,11 +8,6 @@ import {
   SheetTitle,
   SheetFooter,
 } from '@/shared/ui/sheet';
-import {
-  Collapsible,
-  CollapsibleContent,
-  CollapsibleTrigger,
-} from '@/shared/ui/collapsible';
 import { cn } from '@/shared/lib/utils';
 import { ArrowUpDown, Calendar, DollarSign, FileText, Users } from 'lucide-react';
 import { useIsMobile } from '@/shared/hooks/use-mobile';
@@ -48,10 +44,6 @@ export function SortSheet({
 }: SortSheetProps) {
   const isMobile = useIsMobile();
 
-  const handleApply = () => {
-    onOpenChange(false);
-  };
-
   const handleReset = () => {
     onReset();
     onOpenChange(false);
@@ -72,21 +64,27 @@ export function SortSheet({
     { value: 'customer' as SortBy, label: 'Sortuj po kliencie', icon: Users },
   ];
 
-  const content = (
-    <div className="space-y-6 p-4">
-      {/* Grupowanie Section */}
+  const getGroupingClasses = (baseClasses: string, isSubGrouping: boolean) =>
+    cn(
+      baseClasses,
+      isSubGrouping && 'border border-dashed border-primary/40 bg-primary/5 text-primary'
+    );
+
+  const renderStackedContent = () => (
+    <div className="space-y-6">
       <div className="space-y-3">
         <h3 className="text-sm font-medium text-muted-foreground">Grupowanie</h3>
         <div className="space-y-2">
           {groupingOptions.map((option) => {
             const Icon = option.icon;
             const isActive = groupingMode === option.mode && subGroupingMode === option.subMode;
-            
+            const isSubGrouping = option.subMode !== 'none';
+
             return (
               <Button
                 key={`${option.mode}-${option.subMode}`}
                 variant={isActive ? "default" : "outline"}
-                className="w-full justify-start gap-3 h-12"
+                className={getGroupingClasses('w-full justify-start gap-3 h-12', isSubGrouping)}
                 onClick={() => onGroupingModeChange(option.mode, option.subMode)}
               >
                 <Icon className="h-4 w-4" />
@@ -102,14 +100,13 @@ export function SortSheet({
         </div>
       </div>
 
-      {/* Sortowanie Section */}
       <div className="space-y-3">
         <h3 className="text-sm font-medium text-muted-foreground">Sortowanie</h3>
         <div className="space-y-2">
           {sortOptions.map((option) => {
             const Icon = option.icon;
             const isActive = sortBy === option.value;
-            
+
             return (
               <Button
                 key={option.value}
@@ -130,7 +127,6 @@ export function SortSheet({
         </div>
       </div>
 
-      {/* Kierunek sortowania Section */}
       <div className="space-y-3">
         <h3 className="text-sm font-medium text-muted-foreground">Kierunek sortowania</h3>
         <div className="space-y-2">
@@ -147,7 +143,7 @@ export function SortSheet({
               </Badge>
             )}
           </Button>
-          
+
           <Button
             variant={sortOrder === 'asc' ? "default" : "outline"}
             className="w-full justify-start gap-3 h-12"
@@ -166,7 +162,123 @@ export function SortSheet({
     </div>
   );
 
-  // Mobile: Use Sheet
+  const renderDesktopContent = () => (
+    <div className="px-6 py-4">
+      <div className="hidden lg:flex flex-wrap gap-8 items-start">
+        <div className="min-w-0 flex-1">
+          <h3 className="text-sm font-medium text-muted-foreground mb-3">Grupowanie</h3>
+          <div className="flex flex-wrap gap-2">
+            {groupingOptions.map((option) => {
+              const Icon = option.icon;
+              const isActive = groupingMode === option.mode && subGroupingMode === option.subMode;
+              const isSubGrouping = option.subMode !== 'none';
+
+              return (
+                <Button
+                  key={`${option.mode}-${option.subMode}`}
+                  variant={isActive ? "default" : "outline"}
+                  className={getGroupingClasses('gap-2 h-10 px-3', isSubGrouping)}
+                  onClick={() => onGroupingModeChange(option.mode, option.subMode)}
+                >
+                  <Icon className="h-4 w-4" />
+                  <span className="text-foreground text-sm">{option.label}</span>
+                  {isActive && (
+                    <Badge variant="secondary" className="ml-1">
+                      Aktywne
+                    </Badge>
+                  )}
+                </Button>
+              );
+            })}
+          </div>
+        </div>
+
+        <div className="min-w-0 flex-1">
+          <h3 className="text-sm font-medium text-muted-foreground mb-3">Sortowanie</h3>
+          <div className="flex flex-wrap gap-2">
+            {sortOptions.map((option) => {
+              const Icon = option.icon;
+              const isActive = sortBy === option.value;
+
+              return (
+                <Button
+                  key={option.value}
+                  variant={isActive ? "default" : "outline"}
+                  className="gap-2 h-10 px-3"
+                  onClick={() => onSortByChange(option.value)}
+                >
+                  <Icon className="h-4 w-4" />
+                  <span className="text-foreground text-sm">{option.label}</span>
+                  {isActive && (
+                    <Badge variant="secondary" className="ml-1">
+                      {sortOrder === 'asc' ? '↑' : '↓'}
+                    </Badge>
+                  )}
+                </Button>
+              );
+            })}
+          </div>
+        </div>
+
+        <div className="min-w-0 flex-1">
+          <h3 className="text-sm font-medium text-muted-foreground mb-3">Kierunek sortowania</h3>
+          <div className="flex gap-2">
+            <Button
+              variant={sortOrder === 'desc' ? "default" : "outline"}
+              className="gap-2 h-10 px-3"
+              onClick={() => onSortOrderChange('desc')}
+            >
+              <ArrowUpDown className="h-4 w-4 rotate-180" />
+              <span className="text-foreground text-sm">Malejąco</span>
+              {sortOrder === 'desc' && (
+                <Badge variant="secondary" className="ml-1">
+                  Aktywne
+                </Badge>
+              )}
+            </Button>
+
+            <Button
+              variant={sortOrder === 'asc' ? "default" : "outline"}
+              className="gap-2 h-10 px-3"
+              onClick={() => onSortOrderChange('asc')}
+            >
+              <ArrowUpDown className="h-4 w-4" />
+              <span className="text-foreground text-sm">Rosnąco</span>
+              {sortOrder === 'asc' && (
+                <Badge variant="secondary" className="ml-1">
+                  Aktywne
+                </Badge>
+              )}
+            </Button>
+          </div>
+        </div>
+
+        <div className="flex items-end">
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={handleReset}
+            className="gap-2"
+          >
+            Resetuj
+          </Button>
+        </div>
+      </div>
+
+      <div className="lg:hidden space-y-6 mt-6">
+        {renderStackedContent()}
+        <div className="flex gap-2">
+          <Button variant="outline" onClick={handleReset}>
+            Resetuj
+          </Button>
+          <Button onClick={() => onOpenChange(false)}>
+            Zastosuj
+          </Button>
+        </div>
+      </div>
+    </div>
+  );
+
   if (isMobile) {
     return (
       <Sheet open={isOpen} onOpenChange={onOpenChange}>
@@ -177,9 +289,9 @@ export function SortSheet({
               Sortowanie i grupowanie
             </SheetTitle>
           </SheetHeader>
-          
-          <div className="flex-1">
-            {content}
+
+          <div className="flex-1 overflow-y-auto py-4">
+            {renderStackedContent()}
           </div>
 
           <SheetFooter className="gap-2">
@@ -195,12 +307,19 @@ export function SortSheet({
     );
   }
 
-  // Desktop: Use Collapsible
+  if (!isOpen) {
+    return null;
+  }
+
   return (
-    <Collapsible open={isOpen} onOpenChange={onOpenChange}>
-      <CollapsibleContent className="border-b space-y-4">
-        {content}
-      </CollapsibleContent>
-    </Collapsible>
+    <div
+      key="sort-panel"
+      className={cn(
+        'transition-all duration-200',
+        isOpen ? 'border-b bg-background' : 'pointer-events-none opacity-0'
+      )}
+    >
+      {renderDesktopContent()}
+    </div>
   );
 }

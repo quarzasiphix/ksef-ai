@@ -128,6 +128,7 @@ export function LedgerRowMobile({
         {/* Line 3: Status + Amount */}
         <div className="flex items-center justify-between gap-3">
           <div className="flex items-center gap-1.5">
+            {getStatusBadge()}
             {invoice.ryczalt_account_id ? (
               <Badge variant="outline" className="bg-green-100 text-green-800 border-green-300 flex items-center gap-1 p-1.5">
                 <BookOpen className="w-3 h-3" />
@@ -137,7 +138,6 @@ export function LedgerRowMobile({
                 <BookOpen className="w-3 h-3" />
               </Badge>
             )}
-            {getStatusBadge()}
             {isVatExempt && !isProfileVatExempt && (
               <Badge variant="outline" className="text-xs font-medium bg-muted/50">
                 Bez VAT

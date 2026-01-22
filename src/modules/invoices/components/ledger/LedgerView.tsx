@@ -8,10 +8,7 @@ import { QuarterGroupHeader } from './QuarterGroupHeader';
 import { YearGroupHeader } from './YearGroupHeader';
 import { LedgerRow } from './LedgerRow';
 import { LedgerRowMobile } from './LedgerRowMobile';
-import { SortSheet } from './SortSheet';
 import { Card } from '@/shared/ui/card';
-import { Button } from '@/shared/ui/button';
-import { ChevronDown, ChevronUp, Calendar, Calculator, BookOpen, ArrowUpDown } from 'lucide-react';
 import { useIsMobile } from '@/shared/hooks/use-mobile';
 import { useBusinessProfile } from '@/shared/context/BusinessProfileContext';
 import {
@@ -65,6 +62,11 @@ export function LedgerView({
 
   // Sort invoices based on current sort settings
   const sortInvoices = (invoices: Invoice[]): Invoice[] => {
+    // For period-based sorting, we sort the groups, not individual invoices
+    if (sortBy === 'amount' && groupingMode !== 'month') {
+      return invoices; // Return unsorted, groups will be sorted instead
+    }
+    
     const sorted = [...invoices].sort((a, b) => {
       let comparison = 0;
       
@@ -95,50 +97,88 @@ export function LedgerView({
     return sorted;
   };
 
+  // Sort groups by their totals for period-based sorting
+  const sortGroupsByTotal = <T extends { sum: number }>(groups: T[]): T[] => {
+    return [...groups].sort((a, b) => {
+      const comparison = a.sum - b.sum;
+      return sortOrder === 'asc' ? comparison : -comparison;
+    });
+  };
+
   // Apply sorting to all invoice groups
   const sortedInvoices = useMemo(() => sortInvoices(invoices), [invoices, sortBy, sortOrder]);
 
   const years = useMemo(() => getAvailableYears(sortedInvoices), [sortedInvoices]);
   
   const yearGroups = useMemo(() => {
-    const groups = groupInvoicesByPeriod(sortedInvoices);
+    let groups = groupInvoicesByPeriod(sortedInvoices);
     if (selectedYear !== null) {
-      return groups.filter(g => g.year === selectedYear);
+      groups = groups.filter(g => g.year === selectedYear);
+    }
+    // Sort months by total if sortBy is amount
+    if (sortBy === 'amount') {
+      groups = sortGroupsByTotal(groups);
     }
     return groups;
-  }, [sortedInvoices, selectedYear]);
+  }, [sortedInvoices, selectedYear, sortBy, sortOrder]);
 
   const quarterGroups = useMemo(() => {
-    const groups = groupInvoicesByQuarter(sortedInvoices);
+    let groups = groupInvoicesByQuarter(sortedInvoices);
     if (selectedYear !== null) {
-      return groups.filter(g => g.year === selectedYear);
+      groups = groups.filter(g => g.year === selectedYear);
+    }
+    // Sort quarters by total if sortBy is amount
+    if (sortBy === 'amount') {
+      groups = sortGroupsByTotal(groups);
     }
     return groups;
-  }, [sortedInvoices, selectedYear]);
+  }, [sortedInvoices, selectedYear, sortBy, sortOrder]);
 
   const yearOnlyGroups = useMemo(() => {
-    const groups = groupInvoicesByYear(sortedInvoices);
+    let groups = groupInvoicesByYear(sortedInvoices);
     if (selectedYear !== null) {
-      return groups.filter(g => g.year === selectedYear);
+      groups = groups.filter(g => g.year === selectedYear);
+    }
+    // Sort years by total if sortBy is amount
+    if (sortBy === 'amount') {
+      groups = sortGroupsByTotal(groups);
     }
     return groups;
-  }, [sortedInvoices, selectedYear]);
+  }, [sortedInvoices, selectedYear, sortBy, sortOrder]);
 
   const yearQuarterMonthGroups = useMemo(() => {
-    const groups = groupInvoicesByYearQuarterMonth(sortedInvoices);
+    let groups = groupInvoicesByYearQuarterMonth(sortedInvoices);
     if (selectedYear !== null) {
-      return groups.filter(g => g.year === selectedYear);
+      groups = groups.filter(g => g.year === selectedYear);
+    }
+    // Sort years by total if sortBy is amount
+    if (sortBy === 'amount') {
+      groups = sortGroupsByTotal(groups);
+      // Also sort quarters within each year
+      groups = groups.map(year => ({
+        ...year,
+        quarters: sortGroupsByTotal(year.quarters)
+      }));
     }
     return groups;
-  }, [sortedInvoices, selectedYear]);
+  }, [sortedInvoices, selectedYear, sortBy, sortOrder]);
 
   const quarterMonthGroups = useMemo(() => {
-    const groups = groupInvoicesByQuarterMonth(sortedInvoices);
+    let groups = groupInvoicesByQuarterMonth(sortedInvoices);
     if (selectedYear !== null) {
-      return groups.filter(g => g.year === selectedYear);
+      groups = groups.filter(g => g.year === selectedYear);
+    }
+    // Sort quarters by total if sortBy is amount
+    if (sortBy === 'amount') {
+      groups = sortGroupsByTotal(groups);
+      // Also sort months within each quarter
+      groups = groups.map(quarter => ({
+        ...quarter,
+        months: sortGroupsByTotal(quarter.months)
+      }));
     }
     return groups;
-  }, [sortedInvoices, selectedYear]);
+  }, [sortedInvoices, selectedYear, sortBy, sortOrder]);
 
   // Calculate accounting info when invoices or business profile changes
   useEffect(() => {
@@ -251,186 +291,152 @@ export function LedgerView({
 
   return (
     <div className="space-y-4">
-      {isRyczaltJDG && (
-        <Button
-          variant="outline"
-          size="sm"
-          onClick={() => setShowAccountingInfo(!showAccountingInfo)}
-          className="gap-2"
-        >
-          <Calculator className="h-4 w-4" />
-          Info podatkowe
-        </Button>
-      )}
-
-      {showAccountingInfo && isRyczaltJDG && accountingInfo && (
-        <Card className="mb-4 bg-blue-50 border-blue-200">
-          <div className="p-4">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-2">
-                <Calculator className="h-5 w-5 text-blue-600" />
-                <span className="font-semibold text-blue-900">Podsumowanie podatkowe</span>
-              </div>
-              <div className="text-right">
-                <div className="text-lg font-bold text-blue-900">
-                  {formatLedgerAmount(accountingInfo.sum)}{formatTaxAmount(accountingInfo.tax)}
-                </div>
-                <div className="text-sm text-blue-700">
-                  {accountingInfo.accountedCount} z {accountingInfo.totalCount} faktur rozliczonych
-                </div>
-              </div>
+      {invoices.length === 0 ? (
+        <div className="p-8 text-center text-muted-foreground">
+          Brak dokumentów do wyświetlenia
+        </div>
+      ) : (
+        <div className="divide-y divide-border">
+          {groupingMode === 'month' && yearGroups.map(yearGroup => (
+            <div key={yearGroup.year}>
+              {yearGroup.months.map(month => {
+                const isExpanded = expandedMonths.has(month.key);
+                const HeaderComponent = isMobile ? MonthGroupHeaderMobile : MonthGroupHeader;
+                const RowComponent = isMobile ? LedgerRowMobile : LedgerRow;
+                
+                return (
+                  <div key={month.key}>
+                    <HeaderComponent
+                      label={month.label}
+                      sum={month.sum}
+                      isExpanded={isExpanded}
+                      onToggle={() => toggleMonth(month.key)}
+                      invoiceCount={month.invoices.length}
+                    />
+                    
+                    {isExpanded && (
+                      <div className={isMobile ? '' : 'bg-muted/20'}>
+                        {month.invoices.map(invoice => (
+                          <RowComponent
+                            key={invoice.id}
+                            invoice={invoice}
+                            isIncome={isIncome}
+                            onView={onView}
+                            onPreview={onPreview}
+                            onDownload={onDownload}
+                            onEdit={onEdit}
+                            onDelete={onDelete}
+                            onShare={onShare}
+                            onDuplicate={onDuplicate}
+                            onTogglePaid={onTogglePaid}
+                          />
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
             </div>
-          </div>
-        </Card>
-      )}
-
-      <Card className="overflow-hidden">
-        {invoices.length === 0 ? (
-          <div className="p-8 text-center text-muted-foreground">
-            Brak dokumentów do wyświetlenia
-          </div>
-        ) : (
-          <div className="divide-y divide-border">
-            {groupingMode === 'month' && yearGroups.map(yearGroup => (
-              <div key={yearGroup.year}>
-                {yearGroup.months.map(month => {
-                  const isExpanded = expandedMonths.has(month.key);
-                  const HeaderComponent = isMobile ? MonthGroupHeaderMobile : MonthGroupHeader;
-                  const RowComponent = isMobile ? LedgerRowMobile : LedgerRow;
-                  
-                  return (
-                    <div key={month.key}>
-                      <HeaderComponent
-                        label={month.label}
-                        sum={month.sum}
-                        isExpanded={isExpanded}
-                        onToggle={() => toggleMonth(month.key)}
-                        invoiceCount={month.invoices.length}
-                      />
-                      
-                      {isExpanded && (
-                        <div className={isMobile ? '' : 'bg-muted/20'}>
-                          {month.invoices.map(invoice => (
-                            <RowComponent
-                              key={invoice.id}
-                              invoice={invoice}
-                              isIncome={isIncome}
-                              onView={onView}
-                              onPreview={onPreview}
-                              onDownload={onDownload}
-                              onEdit={onEdit}
-                              onDelete={onDelete}
-                              onShare={onShare}
-                              onDuplicate={onDuplicate}
-                              onTogglePaid={onTogglePaid}
-                            />
-                          ))}
-                        </div>
-                      )}
-                    </div>
-                  );
-                })}
-              </div>
-            ))}
+          ))}
+          
+          {groupingMode === 'quarter' && subGroupingMode === 'none' && quarterGroups.map(yearGroup => (
+            <div key={yearGroup.year}>
+              {yearGroup.quarters.map(quarter => {
+                const isExpanded = expandedMonths.has(quarter.key);
+                const RowComponent = isMobile ? LedgerRowMobile : LedgerRow;
+                
+                return (
+                  <div key={quarter.key}>
+                    <QuarterGroupHeader
+                      label={quarter.label}
+                      sum={quarter.sum}
+                      isExpanded={isExpanded}
+                      onToggle={() => toggleMonth(quarter.key)}
+                      invoiceCount={quarter.invoices.length}
+                    />
+                    
+                    {isExpanded && (
+                      <div className={isMobile ? '' : 'bg-muted/20'}>
+                        {quarter.invoices.map(invoice => (
+                          <RowComponent
+                            key={invoice.id}
+                            invoice={invoice}
+                            isIncome={isIncome}
+                            onView={onView}
+                            onPreview={onPreview}
+                            onDownload={onDownload}
+                            onEdit={onEdit}
+                            onDelete={onDelete}
+                            onShare={onShare}
+                            onDuplicate={onDuplicate}
+                            onTogglePaid={onTogglePaid}
+                          />
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+          ))}
+          
+          {groupingMode === 'quarter' && subGroupingMode === 'month' && quarterMonthGroups.map(quarter => {
+            const isQuarterExpanded = expandedMonths.has(quarter.key);
+            const RowComponent = isMobile ? LedgerRowMobile : LedgerRow;
+            const HeaderComponent = isMobile ? MonthGroupHeaderMobile : MonthGroupHeader;
             
-            {groupingMode === 'quarter' && subGroupingMode === 'none' && quarterGroups.map(yearGroup => (
-              <div key={yearGroup.year}>
-                {yearGroup.quarters.map(quarter => {
-                  const isExpanded = expandedMonths.has(quarter.key);
-                  const RowComponent = isMobile ? LedgerRowMobile : LedgerRow;
-                  
-                  return (
-                    <div key={quarter.key}>
-                      <QuarterGroupHeader
-                        label={quarter.label}
-                        sum={quarter.sum}
-                        isExpanded={isExpanded}
-                        onToggle={() => toggleMonth(quarter.key)}
-                        invoiceCount={quarter.invoices.length}
-                      />
+            return (
+              <div key={quarter.key}>
+                <QuarterGroupHeader
+                  label={quarter.label}
+                  sum={quarter.sum}
+                  isExpanded={isQuarterExpanded}
+                  onToggle={() => toggleMonth(quarter.key)}
+                  invoiceCount={quarter.months.reduce((sum, m) => sum + m.invoices.length, 0)}
+                />
+                
+                {isQuarterExpanded && (
+                  <div className="ml-4">
+                    {quarter.months.map(month => {
+                      const isMonthExpanded = expandedMonths.has(month.key);
                       
-                      {isExpanded && (
-                        <div className={isMobile ? '' : 'bg-muted/20'}>
-                          {quarter.invoices.map(invoice => (
-                            <RowComponent
-                              key={invoice.id}
-                              invoice={invoice}
-                              isIncome={isIncome}
-                              onView={onView}
-                              onPreview={onPreview}
-                              onDownload={onDownload}
-                              onEdit={onEdit}
-                              onDelete={onDelete}
-                              onShare={onShare}
-                              onDuplicate={onDuplicate}
-                              onTogglePaid={onTogglePaid}
-                            />
-                          ))}
+                      return (
+                        <div key={month.key}>
+                          <HeaderComponent
+                            label={month.label}
+                            sum={month.sum}
+                            isExpanded={isMonthExpanded}
+                            onToggle={() => toggleMonth(month.key)}
+                            invoiceCount={month.invoices.length}
+                          />
+                          
+                          {isMonthExpanded && (
+                            <div className={isMobile ? '' : 'bg-muted/20'}>
+                              {month.invoices.map(invoice => (
+                                <RowComponent
+                                  key={invoice.id}
+                                  invoice={invoice}
+                                  isIncome={isIncome}
+                                  onView={onView}
+                                  onPreview={onPreview}
+                                  onDownload={onDownload}
+                                  onEdit={onEdit}
+                                  onDelete={onDelete}
+                                  onShare={onShare}
+                                  onDuplicate={onDuplicate}
+                                  onTogglePaid={onTogglePaid}
+                                />
+                              ))}
+                            </div>
+                          )}
                         </div>
-                      )}
-                    </div>
-                  );
-                })}
+                      );
+                    })}
+                  </div>
+                )}
               </div>
-            ))}
-            
-            {groupingMode === 'quarter' && subGroupingMode === 'month' && quarterMonthGroups.map(quarter => {
-              const isQuarterExpanded = expandedMonths.has(quarter.key);
-              const RowComponent = isMobile ? LedgerRowMobile : LedgerRow;
-              const HeaderComponent = isMobile ? MonthGroupHeaderMobile : MonthGroupHeader;
-              
-              return (
-                <div key={quarter.key}>
-                  <QuarterGroupHeader
-                    label={quarter.label}
-                    sum={quarter.sum}
-                    isExpanded={isQuarterExpanded}
-                    onToggle={() => toggleMonth(quarter.key)}
-                    invoiceCount={quarter.months.reduce((sum, m) => sum + m.invoices.length, 0)}
-                  />
-                  
-                  {isQuarterExpanded && (
-                    <div className="ml-4">
-                      {quarter.months.map(month => {
-                        const isMonthExpanded = expandedMonths.has(month.key);
-                        
-                        return (
-                          <div key={month.key}>
-                            <HeaderComponent
-                              label={month.label}
-                              sum={month.sum}
-                              isExpanded={isMonthExpanded}
-                              onToggle={() => toggleMonth(month.key)}
-                              invoiceCount={month.invoices.length}
-                            />
-                            
-                            {isMonthExpanded && (
-                              <div className={isMobile ? '' : 'bg-muted/20'}>
-                                {month.invoices.map(invoice => (
-                                  <RowComponent
-                                    key={invoice.id}
-                                    invoice={invoice}
-                                    isIncome={isIncome}
-                                    onView={onView}
-                                    onPreview={onPreview}
-                                    onDownload={onDownload}
-                                    onEdit={onEdit}
-                                    onDelete={onDelete}
-                                    onShare={onShare}
-                                    onDuplicate={onDuplicate}
-                                    onTogglePaid={onTogglePaid}
-                                  />
-                                ))}
-                              </div>
-                            )}
-                          </div>
-                        );
-                      })}
-                    </div>
-                  )}
-                </div>
-              );
-            })}
+            );
+          })}
             
             {groupingMode === 'year' && subGroupingMode === 'none' && yearOnlyGroups.map(yearGroup => {
               const isExpanded = expandedMonths.has(yearGroup.key);
@@ -547,9 +553,8 @@ export function LedgerView({
                 </div>
               );
             })}
-          </div>
-        )}
-      </Card>
+        </div>
+      )}
     </div>
   );
 }
