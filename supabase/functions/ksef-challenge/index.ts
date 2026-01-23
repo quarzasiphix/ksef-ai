@@ -8,46 +8,50 @@ const corsHeaders = {
   'Access-Control-Max-Age': '86400',
 }
 
-serve(async (req) => {
-  // Handle CORS preflight requests
-  if (req.method === 'OPTIONS') {
-    return new Response('ok', { headers: corsHeaders })
+serve(async function handleInvoiceExport(req) {
+  console.log('📄 Handling invoice export request')
+  
+  const authHeader = req.headers.get('Authorization')
+  if (!authHeader || !authHeader.startsWith('Bearer ')) {
+    throw new Error('Missing or invalid Authorization header')
   }
-
-  try {
-    console.log('🔐 Getting KSeF challenge')
-    
-    // Make request to KSeF API
-    const response = await fetch('https://api-test.ksef.mf.gov.pl/v2/auth/challenge', {
-      method: 'POST',
-      headers: {
-        'Accept': 'application/json',
-        'Content-Type': 'application/json'
-      }
-    })
-    
-    if (!response.ok) {
-      throw new Error(`KSeF API error: ${response.status} ${response.statusText}`)
+  
+  const token = authHeader.substring(7) // Remove 'Bearer ' prefix
+  
+  const body = await req.json()
+  console.log('📤 Invoice export request body:', JSON.stringify(body, null, 2))
+  console.log('📤 Token length:', token.length)
+  console.log('📤 Token preview:', token.substring(0, 50) + '...')
+  
+  const response = await fetch('https://api-test.ksef.mf.gov.pl/v2/invoices/exports', {
+    method: 'POST',
+    headers: {
+      'Authorization': `Bearer ${token}`,
+      'Content-Type': 'application/json',
+      'Accept': 'application/json',
+      'User-Agent': 'KsiegaI/1.0'
+    },
+    body: JSON.stringify(body)
+  })
+  
+  console.log('📤 KSeF API response status:', response.status)
+  console.log('📤 KSeF API response headers:', Object.fromEntries(response.headers.entries()))
+  
+  if (!response.ok) {
+    const errorText = await response.text()
+    console.error('❌ KSeF API error response:', errorText)
+    throw new Error(`Invoice export failed: ${response.status} ${response.statusText}`)
+  }
+  
+  const data = await response.json()
+  console.log('📄 Invoice export successful:', JSON.stringify(data, null, 2))
+  
+  return new Response(JSON.stringify(data), {
+    headers: {
+      'Content-Type': 'application/json',
+      ...corsHeaders
     }
-    
-    const data = await response.json()
-    
-    console.log('✅ KSeF challenge received:', data)
-    
-    return new Response(
-      JSON.stringify(data),
-      { 
-        headers: { 
-          'Content-Type': 'application/json',
-          ...corsHeaders
-        }
-      }
-    )
-    
-  } catch (error) {
-    console.error('❌ KSeF challenge error:', error)
-    
-    return new Response(
+  })
       JSON.stringify({
         error: 'Failed to get KSeF challenge',
         message: error instanceof Error ? error.message : 'Unknown error'

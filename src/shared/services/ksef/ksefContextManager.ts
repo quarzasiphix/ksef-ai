@@ -207,6 +207,62 @@ export class KsefCompanyClient {
   }
 
   /**
+   * Get fresh access token by performing full authentication
+   */
+  async getFreshAccessToken(): Promise<{ token: string; validUntil: string }> {
+    console.log('🔐 Getting fresh KSeF access token for NIP:', this.integration.providerNip);
+    
+    // Import the proper auth service directly
+    const { KsefProperAuth } = await import('./ksefProperAuth');
+    const config = {
+      environment: 'test' as const,
+      baseUrl: 'https://rncrzxjyffxmfbnxlqtm.supabase.co/functions/v1/ksef-challenge',
+      apiUrl: 'https://rncrzxjyffxmfbnxlqtm.supabase.co/functions/v1/ksef-challenge',
+      systemInfo: 'KsięgaI v1.0',
+      namespace: 'http://crd.gov.pl/wzor/2023/06/29/12648/',
+      schemaVersion: '1-0E',
+    };
+    
+    const properAuth = new KsefProperAuth(config);
+    
+    // Get the stored KSeF token from credentials
+    const { data: credential } = await this.contextManager.getSupabase()
+      .from('ksef_credentials')
+      .select('*')
+      .eq('provider_nip', this.integration.providerNip)
+      .eq('is_active', true)
+      .single();
+    
+    if (!credential) {
+      throw new Error('No KSeF credentials found. Please configure KSeF token first.');
+    }
+    
+    console.log('🔑 Found credential:', credential.id);
+    
+    // Decode the stored token
+    const encryptedToken = credential.secret_ref;
+    const ksefToken = atob(encryptedToken);
+    
+    console.log('🔓 Token decoded successfully, length:', ksefToken.length);
+    console.log('🔓 Token preview:', ksefToken.substring(0, 50) + '...');
+    
+    // Perform full authentication to get a fresh token
+    console.log('🧪 Starting full authentication flow...');
+    const result = await properAuth.authenticateWithKsefToken(ksefToken, this.integration.taxpayerNip, 3, 1000);
+    
+    if (!result || !result.accessToken) {
+      throw new Error('Failed to authenticate with KSeF');
+    }
+    
+    console.log('✅ Authentication successful, token length:', result.accessToken.token.length);
+    
+    return {
+      token: result.accessToken.token,
+      validUntil: new Date(Date.now() + result.accessToken.expiresIn * 1000).toISOString()
+    };
+  }
+
+  /**
    * Test connection to verify permissions
    */
   async testConnection(): Promise<{ success: boolean; error?: string }> {
@@ -215,8 +271,10 @@ export class KsefCompanyClient {
     try {
       console.log('🔐 Testing KSeF connection for NIP:', this.integration.providerNip);
       
-      // Import the proper auth service directly
-      const { KsefProperAuth } = await import('./ksefProperAuth');
+      // Get fresh access token
+      const { token } = await this.getFreshAccessToken();
+      
+      // Test basic API call to verify the token works
       const config = {
         environment: 'test' as const,
         baseUrl: 'https://rncrzxjyffxmfbnxlqtm.supabase.co/functions/v1/ksef-challenge',
@@ -226,40 +284,10 @@ export class KsefCompanyClient {
         schemaVersion: '1-0E',
       };
       
-      const properAuth = new KsefProperAuth(config);
-      
-      // Get the stored KSeF token from credentials
-      const { data: credential } = await this.contextManager.getSupabase()
-        .from('ksef_credentials')
-        .select('*')
-        .eq('provider_nip', this.integration.providerNip)
-        .eq('is_active', true)
-        .single();
-      
-      if (!credential) {
-        throw new Error('No KSeF credentials found. Please configure KSeF token first.');
-      }
-      
-      console.log('🔑 Found credential:', credential.id);
-      
-      // Decode the stored token
-      const encryptedToken = credential.secret_ref;
-      const ksefToken = atob(encryptedToken);
-      
-      console.log('🔓 Token decoded successfully, length:', ksefToken.length);
-      console.log('🔓 Token preview:', ksefToken.substring(0, 50) + '...');
-      
-      // Test connection with proper authentication flow
-      console.log('🧪 Starting authentication test...');
-      const result = await properAuth.authenticateWithKsefToken(ksefToken, this.integration.taxpayerNip, 3, 1000);
-      
-      console.log('✅ Authentication test successful');
-      
-      // Test basic API call to verify the token works
       const testResponse = await fetch(`${config.baseUrl}/rate-limits`, {
         method: 'GET',
         headers: {
-          'Authorization': `Bearer ${result.accessToken.token}`,
+          'Authorization': `Bearer ${token}`,
           'Content-Type': 'application/json',
         },
       });
@@ -269,18 +297,10 @@ export class KsefCompanyClient {
       }
       
       console.log('✅ API test successful');
-
-      await this.contextManager.logOperation({
-        companyId: this.integration.companyId,
-        integrationId: this.integration.id,
-        operation: 'test_connection',
-        endpoint: '/api/v2/status',
-        taxpayerNip: this.integration.taxpayerNip,
-        providerNip: this.integration.providerNip,
-        responseStatus: 200,
-        durationMs: Date.now() - startTime,
-      });
-
+      
+      const duration = Date.now() - startTime;
+      console.log(`🎯 Connection test completed in ${duration}ms`);
+      
       return { success: true };
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : 'Unknown error';

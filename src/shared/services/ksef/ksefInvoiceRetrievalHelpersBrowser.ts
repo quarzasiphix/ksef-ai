@@ -1,4 +1,4 @@
-import crypto from 'crypto';
+// No crypto import - using browser's built-in crypto
 
 /**
  * KSeF Invoice Retrieval Helpers - Browser Compatible Version
@@ -252,17 +252,30 @@ export function parseInvoiceXml(xmlContent: string): any {
 /**
  * Calculate SHA-256 hash of data
  */
-export function calculateSha256(data: string | Buffer): string {
-  return crypto.createHash('sha256').update(data).digest('hex');
+export async function calculateSha256(data: string | Buffer): Promise<string> {
+  const encoder = new TextEncoder();
+  const dataBuffer = typeof data === 'string' ? encoder.encode(data) : new Uint8Array(data);
+  
+  const hashBuffer = await crypto.subtle.digest('SHA-256', dataBuffer);
+  
+  // Convert to hex string
+  return Array.from(new Uint8Array(hashBuffer))
+    .map(b => b.toString(16).padStart(2, '0'))
+    .join('');
 }
 
 /**
  * Calculate SHA-256 hash and encode as Base64URL
  */
-export function calculateSha256Base64Url(data: string | Buffer): string {
-  const hash = crypto.createHash('sha256').update(data).digest();
-  return hash
-    .toString('base64')
+export async function calculateSha256Base64Url(data: string | Buffer): Promise<string> {
+  const encoder = new TextEncoder();
+  const dataBuffer = typeof data === 'string' ? encoder.encode(data) : new Uint8Array(data);
+  
+  const hashBuffer = await crypto.subtle.digest('SHA-256', dataBuffer);
+  
+  // Convert to Base64URL
+  const base64 = btoa(String.fromCharCode(...new Uint8Array(hashBuffer)));
+  return base64
     .replace(/\+/g, '-')
     .replace(/\//g, '_')
     .replace(/=/g, '');

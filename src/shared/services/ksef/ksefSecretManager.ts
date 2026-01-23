@@ -127,10 +127,13 @@ export class KsefSecretManagerFallback {
    */
   async getSecret(secretRef: string): Promise<string> {
     try {
+      console.log(`🔐 Retrieving credential '${secretRef}'`);
+      
+      // Query by provider_nip instead of secret_ref
       const { data, error } = await this.supabase
         .from('ksef_credentials')
         .select('secret_ref')
-        .eq('secret_ref', secretRef)
+        .eq('provider_nip', secretRef)
         .eq('is_active', true)
         .single();
 
@@ -139,7 +142,7 @@ export class KsefSecretManagerFallback {
       }
 
       if (!data) {
-        throw new Error(`Credential with ref '${secretRef}' not found`);
+        throw new Error(`Credential with provider NIP '${secretRef}' not found`);
       }
 
       // In production, this should decrypt the secret

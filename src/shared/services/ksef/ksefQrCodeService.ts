@@ -1,5 +1,17 @@
-import crypto from 'crypto';
 import QRCode from 'qrcode';
+import { calculateSha256Base64Url } from './ksefInvoiceRetrievalHelpersBrowser';
+
+// Polyfill Buffer for browser compatibility
+if (typeof Buffer === 'undefined') {
+  (globalThis as any).Buffer = {
+    from: (arrayBuffer: ArrayBuffer | Uint8Array) => {
+      if (arrayBuffer instanceof ArrayBuffer) {
+        return new Uint8Array(arrayBuffer);
+      }
+      return arrayBuffer;
+    }
+  };
+}
 
 export interface QrCodeResult {
   qrCodeDataUrl: string;
@@ -47,7 +59,7 @@ export class KsefQrCodeService {
    * Label: KSeF number or "OFFLINE"
    */
   async generateInvoiceQr(params: GenerateInvoiceQrParams): Promise<QrCodeResult> {
-    const hash = this.calculateSha256Base64Url(params.invoiceXml);
+    const hash = await calculateSha256Base64Url(params.invoiceXml);
     const dateStr = this.formatDate(params.issueDate);
     const baseUrl = this.QR_BASE_URLS[params.environment];
     const url = `${baseUrl}/invoice/${params.sellerNip}/${dateStr}/${hash}`;
@@ -72,14 +84,14 @@ export class KsefQrCodeService {
    * Label: "CERTYFIKAT"
    */
   async generateCertificateQr(params: GenerateCertificateQrParams): Promise<QrCodeResult> {
-    const hash = this.calculateSha256Base64Url(params.invoiceXml);
+    const hash = await calculateSha256Base64Url(params.invoiceXml);
     const domain = this.QR_DOMAINS[params.environment];
     
     // Build path to sign (without https:// prefix and without trailing /)
     const pathToSign = `${domain}/certificate/${params.contextType}/${params.contextValue}/${params.sellerNip}/${params.certificateSerial}/${hash}`;
     
     // Sign the path using RSA-PSS
-    const signature = this.signRsaPss(pathToSign, params.privateKeyPem);
+    const signature = await this.signRsaPss(pathToSign, params.privateKeyPem);
     
     // Build final URL
     const url = `https://${pathToSign}/${signature}`;
@@ -97,31 +109,52 @@ export class KsefQrCodeService {
   }
 
   /**
-   * Calculate SHA-256 hash and encode as Base64URL
-   * Used for invoice file hash in QR codes
-   */
-  private calculateSha256Base64Url(data: string): string {
-    const hash = crypto.createHash('sha256').update(data, 'utf8').digest();
-    return this.base64UrlEncode(hash);
-  }
-
-  /**
    * Sign data using RSASSA-PSS with SHA-256
    * Algorithm: RSA-PSS with SHA-256, MGF1-SHA-256, salt length 32 bytes
    * Min key size: 2048 bits
    */
-  private signRsaPss(data: string, privateKeyPem: string): string {
-    const sign = crypto.createSign('sha256');
-    sign.update(data, 'utf8');
-    sign.end();
+  private async signRsaPss(data: string, privateKeyPem: string): Promise<string> {
+    const encoder = new TextEncoder();
+    const dataBuffer = encoder.encode(data);
 
-    const signature = sign.sign({
-      key: privateKeyPem,
-      padding: crypto.constants.RSA_PKCS1_PSS_PADDING,
-      saltLength: 32, // 32 bytes as per KSeF spec
-    });
+    // Import private key from PEM
+    const privateKey = await crypto.subtle.importKey(
+      'pkcs8',
+      this.pemToArrayBuffer(privateKeyPem),
+      { name: 'RSA-PSS', hash: 'SHA-256' },
+      false,
+      ['sign']
+    );
 
-    return this.base64UrlEncode(signature);
+    // Sign the data
+    const signature = await crypto.subtle.sign(
+      {
+        name: 'RSA-PSS',
+        saltLength: 32, // 32 bytes as per KSeF spec
+      },
+      privateKey,
+      dataBuffer
+    );
+
+    return this.base64UrlEncode(Buffer.from(signature));
+  }
+
+  /**
+   * Convert PEM string to ArrayBuffer
+   */
+  private pemToArrayBuffer(pem: string): ArrayBuffer {
+    const lines = pem.split('\n');
+    const base64 = lines
+      .filter(line => !line.includes('-----BEGIN') && !line.includes('-----END'))
+      .join('');
+    
+    const binaryString = atob(base64);
+    const bytes = new Uint8Array(binaryString.length);
+    for (let i = 0; i < binaryString.length; i++) {
+      bytes[i] = binaryString.charCodeAt(i);
+    }
+    
+    return bytes.buffer;
   }
 
   /**

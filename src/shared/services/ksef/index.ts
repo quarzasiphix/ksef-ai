@@ -53,4 +53,4 @@ export type { SyncJobConfig, SyncJobResult, SyncJobStats } from './ksefSyncJob';
 export { KsefDuplicateDetection, createDuplicateDetection } from './ksefDuplicateDetection';
 export type { DuplicateCheckParams, DuplicateCheckResult } from './ksefDuplicateDetection';
 
-export * from './ksefInvoiceRetrievalHelpers';
+export * from './ksefInvoiceRetrievalHelpersBrowser';

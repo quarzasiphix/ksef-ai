@@ -248,6 +248,143 @@ export default function KsefPageNew() {
     }
   };
 
+  const handleUploadInvoice = async (invoice: KsefInvoice) => {
+    if (!selectedProfileId || !ksefIntegration) {
+      toast({
+        title: "Błąd",
+        description: "Brak aktywnej integracji KSeF",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    // Check if we have KSeF credentials before proceeding
+    try {
+      console.log('🔍 KSeF Integration object:', ksefIntegration);
+      console.log('🔍 Available properties:', Object.keys(ksefIntegration || {}));
+      
+      // Try different possible NIP field names
+      const providerNip = ksefIntegration?.providerNip || 
+                         ksefIntegration?.provider_nip || 
+                         ksefIntegration?.nip || 
+                         ksefIntegration?.taxpayerNip;
+      
+      console.log('🔍 Provider NIP found:', providerNip);
+      
+      if (!providerNip) {
+        toast({
+          title: "Błąd konfiguracji",
+          description: "Brak numeru NIP w konfiguracji integracji KSeF. Sprawdź ustawienia KSeF.",
+          variant: "destructive",
+        });
+        return;
+      }
+
+      const { data: credential } = await supabase
+        .from('ksef_credentials')
+        .select('*')
+        .eq('provider_nip', providerNip)
+        .eq('is_active', true)
+        .single();
+
+      if (!credential) {
+        toast({
+          title: "Błąd konfiguracji",
+          description: `Brak aktywnych poświadczeń KSeF dla NIP: ${providerNip}. Skonfiguruj poświadczenia w ustawieniach KSeF.`,
+          variant: "destructive",
+        });
+        return;
+      }
+    } catch (error) {
+      console.error('🔍 Credential check error:', error);
+      toast({
+        title: "Błąd konfiguracji",
+        description: "Nie można sprawdzić poświadczeń KSeF. Skonfiguruj poświadczenia w ustawieniach KSeF.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    try {
+      toast({
+        title: "Wysyłanie faktury",
+        description: `Rozpoczynanie wysyłania faktury ${invoice.number}...`,
+      });
+
+      // Get KSeF client for this profile and perform full authentication
+      const config = getKsefConfig('test');
+      const contextManager = new KsefContextManager(config, supabase, false);
+      const ksefClient = await contextManager.forCompany(selectedProfileId);
+
+      // Perform full authentication to get a fresh token
+      console.log('🔐 Starting KSeF authentication for invoice upload...');
+      const authResult = await ksefClient.getFreshAccessToken();
+      
+      if (!authResult || !authResult.token) {
+        throw new Error('Failed to authenticate with KSeF');
+      }
+
+      const accessToken = authResult.token;
+      console.log('🔐 Authentication successful, token length:', accessToken.length);
+
+      // Create invoice export request
+      const fromDate = invoice.issueDate || new Date().toISOString().split('T')[0]; // Get YYYY-MM-DD format
+      const exportRequest = {
+        subjectType: (invoice as any).subjectType || 'subject3',
+        dateRange: {
+          from: fromDate,
+          dateTo: fromDate, // KSeF API might require both from and to
+          dateType: 'PermanentStorage',
+          restrictToPermanentStorageHwmDate: true
+        },
+        encryption: {}
+      };
+
+      console.log('📤 Invoice export request:', JSON.stringify(exportRequest, null, 2));
+
+      // Call the invoice export endpoint through Edge Function
+      const response = await fetch(`${config.baseUrl}/invoices/exports`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${accessToken}`,
+          'Content-Type': 'application/json',
+          'User-Agent': 'KsiegaI/1.0'
+        },
+        body: JSON.stringify(exportRequest)
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(`Invoice export failed: ${response.status} ${errorData.message || response.statusText}`);
+      }
+
+      const exportData = await response.json();
+      console.log('📄 Invoice export successful:', exportData);
+
+      toast({
+        title: "Sukces",
+        description: `Faktura ${invoice.number} została wysłana do KSeF (Export ID: ${exportData.referenceNumber})`,
+      });
+
+      // Update invoice status to submitted
+      await supabase
+        .from('invoices')
+        .update({ ksefStatus: 'submitted', ksefReferenceNumber: exportData.referenceNumber })
+        .eq('id', invoice.id);
+
+      // Refresh the invoice list
+      await loadSentInvoices(selectedProfileId);
+      
+    } catch (error) {
+      console.error('Error uploading invoice:', error);
+      toast({
+        title: "Błąd wysyłki",
+        description: `Nie udało się wysłać faktury ${invoice.number}: ${error instanceof Error ? error.message : 'Unknown error'}`,
+        variant: "destructive",
+      });
+    }
+  };
+
   const isKsefEnabled = ksefIntegration?.status === 'active';
 
   return (
@@ -566,7 +703,11 @@ export default function KsefPageNew() {
                             {invoice.totalGrossValue.toFixed(2)} PLN
                           </div>
                         </div>
-                        <Button size="sm" disabled={!isKsefEnabled}>
+                        <Button 
+                          size="sm" 
+                          disabled={!isKsefEnabled}
+                          onClick={() => handleUploadInvoice(invoice)}
+                        >
                           <Upload className="w-4 h-4 mr-1" />
                           Wyślij teraz
                         </Button>
