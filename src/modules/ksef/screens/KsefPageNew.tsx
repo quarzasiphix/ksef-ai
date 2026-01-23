@@ -25,6 +25,7 @@ import { KsefSettingsDialog } from '@/modules/invoices/components/KsefSettingsDi
 import { KsefContextManager } from '@/shared/services/ksef/ksefContextManager';
 import { getKsefConfig } from '@/shared/services/ksef/config';
 import { getKsefSyncJob } from '@/services/ksefSyncJobInit';
+import { generateEncryptionData } from '@/shared/services/ksef/ksefInvoiceRetrievalHelpersBrowser';
 
 interface KsefStats {
   totalInvoices: number;
@@ -311,12 +312,11 @@ export default function KsefPageNew() {
         description: `Rozpoczynanie wysyłania faktury ${invoice.number}...`,
       });
 
-      // Get KSeF client for this profile and perform full authentication
+      // Get KSeF client and perform authentication
       const config = getKsefConfig('test');
       const contextManager = new KsefContextManager(config, supabase, false);
       const ksefClient = await contextManager.forCompany(selectedProfileId);
-
-      // Perform full authentication to get a fresh token
+      
       console.log('🔐 Starting KSeF authentication for invoice upload...');
       const authResult = await ksefClient.getFreshAccessToken();
       
@@ -327,50 +327,77 @@ export default function KsefPageNew() {
       const accessToken = authResult.token;
       console.log('🔐 Authentication successful, token length:', accessToken.length);
 
-      // Create invoice export request
-      const fromDate = invoice.issueDate || new Date().toISOString().split('T')[0]; // Get YYYY-MM-DD format
-      const exportRequest = {
-        subjectType: (invoice as any).subjectType || 'subject3',
-        dateRange: {
-          from: fromDate,
-          dateTo: fromDate, // KSeF API might require both from and to
-          dateType: 'PermanentStorage',
-          restrictToPermanentStorageHwmDate: true
-        },
-        encryption: {}
-      };
-
-      console.log('📤 Invoice export request:', JSON.stringify(exportRequest, null, 2));
-
-      // Call the invoice export endpoint through Edge Function
-      const response = await fetch(`${config.baseUrl}/invoices/exports`, {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${accessToken}`,
-          'Content-Type': 'application/json',
-          'User-Agent': 'KsiegaI/1.0'
-        },
-        body: JSON.stringify(exportRequest)
-      });
-
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(`Invoice export failed: ${response.status} ${errorData.message || response.statusText}`);
+      // Use the proper KSeF service to submit the invoice
+      const { KsefService } = await import('@/shared/services/ksef/ksefService');
+      const ksefService = new KsefService('test');
+      
+      console.log('📄 Starting real KSeF invoice submission...');
+      
+      // Get business profile and customer data
+      const { data: businessProfile } = await supabase
+        .from('business_profiles')
+        .select('*')
+        .eq('id', selectedProfileId)
+        .single();
+      
+      if (!businessProfile) {
+        throw new Error('Business profile not found');
       }
-
-      const exportData = await response.json();
-      console.log('📄 Invoice export successful:', exportData);
+      
+      // Create a proper customer object from invoice data
+      const customer = {
+        id: `customer-${Date.now()}`,
+        name: invoice.customerName || 'Customer',
+        nip: invoice.customerNip || '',
+        address: invoice.customerAddress || '',
+        postalCode: invoice.customerPostalCode || '',
+        city: invoice.customerCity || '',
+        email: invoice.customerEmail || '',
+        phone: invoice.customerPhone || '',
+        customerType: 'odbiorca' as const,
+        user_id: businessProfile.user_id
+      };
+      
+      // Convert KsefInvoice to full Invoice format
+      const fullInvoice = {
+        ...invoice,
+        user_id: businessProfile.user_id,
+        type: 'standard',
+        transactionType: 'sale',
+        dueDate: invoice.dueDate || new Date(),
+        // Add any missing required fields
+        currency: invoice.currency || 'PLN',
+        language: invoice.language || 'pl',
+        paymentMethod: invoice.paymentMethod || 'transfer'
+      };
+      
+      console.log('🔐 Submitting real invoice to KSeF...');
+      
+      // Submit the invoice using the proper KSeF service
+      const result = await ksefService.submitInvoice({
+        invoice: fullInvoice,
+        businessProfile,
+        customer,
+        ksefToken: accessToken,
+        supabaseClient: supabase
+      });
 
       toast({
         title: "Sukces",
-        description: `Faktura ${invoice.number} została wysłana do KSeF (Export ID: ${exportData.referenceNumber})`,
+        description: `Faktura ${invoice.number} została wysłana do KSeF${result.referenceNumber ? ` (Ref: ${result.referenceNumber})` : ''}`,
       });
 
       // Update invoice status to submitted
-      await supabase
-        .from('invoices')
-        .update({ ksefStatus: 'submitted', ksefReferenceNumber: exportData.referenceNumber })
-        .eq('id', invoice.id);
+      if (result.referenceNumber || result.sessionReferenceNumber) {
+        await supabase
+          .from('invoices')
+          .update({ 
+            ksef_status: 'submitted', 
+            ksef_reference_number: result.referenceNumber || result.sessionReferenceNumber,
+            ksef_uploaded_at: new Date().toISOString()
+          })
+          .eq('id', invoice.id);
+      }
 
       // Refresh the invoice list
       await loadSentInvoices(selectedProfileId);
