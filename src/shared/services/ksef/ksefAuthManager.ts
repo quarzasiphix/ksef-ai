@@ -171,20 +171,43 @@ export class KsefAuthManager {
 
     const data = await response.json();
 
+    console.log('🔍 KSeF token redemption response:', data);
+
+    // Handle different response structures
+    let accessToken, refreshToken;
+    
+    if (data.accessToken && data.accessToken.token) {
+      // Expected structure
+      accessToken = data.accessToken;
+      refreshToken = data.refreshToken;
+    } else if (data.access_token && data.refresh_token) {
+      // Alternative structure
+      accessToken = {
+        token: data.access_token,
+        validUntil: data.expires_in ? new Date(Date.now() + data.expires_in * 1000).toISOString() : data.valid_until
+      };
+      refreshToken = {
+        token: data.refresh_token,
+        expires_in: data.refresh_expires_in || 86400
+      };
+    } else {
+      throw new Error(`Unexpected token response structure: ${JSON.stringify(data)}`);
+    }
+
     // Store tokens
-    this.accessToken = data.accessToken.token;
-    this.refreshToken = data.refreshToken.token;
-    this.tokenExpiresAt = new Date(data.accessToken.validUntil);
+    this.accessToken = accessToken.token;
+    this.refreshToken = refreshToken.token;
+    this.tokenExpiresAt = new Date(accessToken.validUntil);
 
     return {
       accessToken: {
-        token: data.accessToken.token,
-        expiresIn: data.accessToken.expiresIn || 3600
+        token: accessToken.token,
+        expiresIn: accessToken.expiresIn || 3600,
       },
       refreshToken: {
-        token: data.refreshToken.token,
-        expiresIn: data.refreshToken.expiresIn || 86400
-      }
+        token: refreshToken.token,
+        expiresIn: refreshToken.expiresIn || 86400,
+      },
     };
   }
 

@@ -3,8 +3,8 @@ import { KsefConfig, KsefEnvironment } from './types';
 export const KSEF_CONFIGS: Record<KsefEnvironment, KsefConfig> = {
   test: {
     environment: 'test',
-    baseUrl: 'https://api-test.ksef.mf.gov.pl/v2',
-    apiUrl: 'https://api-test.ksef.mf.gov.pl/v2',
+    baseUrl: 'https://rncrzxjyffxmfbnxlqtm.supabase.co/functions/v1/ksef-challenge',
+    apiUrl: 'https://rncrzxjyffxmfbnxlqtm.supabase.co/functions/v1/ksef-challenge',
     systemInfo: 'KsięgaI v1.0',
     namespace: 'http://crd.gov.pl/wzor/2023/06/29/12648/',
     schemaVersion: '1-0E',

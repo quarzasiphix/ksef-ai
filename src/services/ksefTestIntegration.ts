@@ -59,7 +59,7 @@ export async function testKsefIntegration() {
       const { data: integration } = await supabase
         .from('ksef_integrations')
         .select('*')
-        .eq('company_id', testProfile.id)
+        .eq('business_profile_id', testProfile.id)
         .eq('status', 'active')
         .single();
       

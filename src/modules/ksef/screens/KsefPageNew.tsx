@@ -40,7 +40,7 @@ interface KsefInvoice {
   number: string;
   customerName: string;
   totalGrossValue: number;
-  ksefStatus: 'none' | 'pending' | 'sent' | 'error';
+  ksefStatus: 'none' | 'pending' | 'submitted' | 'error';
   ksefReferenceNumber?: string | null;
   ksefSubmittedAt?: string | null;
   ksefError?: string | null;
@@ -83,7 +83,7 @@ export default function KsefPageNew() {
       const { data: integration } = await supabase
         .from('ksef_integrations')
         .select('*')
-        .eq('company_id', selectedProfileId)
+        .eq('business_profile_id', selectedProfileId)
         .eq('status', 'active')
         .single();
 
@@ -107,36 +107,36 @@ export default function KsefPageNew() {
   };
 
   const loadSentInvoices = async (businessProfileId: string) => {
-    const { data: invoicesData } = await supabase
-      .from('invoices')
+    const { data: invoicesData, error: invoicesError } = await supabase
+      .from('invoices_with_customer_name')
       .select(`
         id,
         number,
-        customerName,
-        totalGrossValue,
+        customername,
+        total_gross_value,
         ksef_status,
         ksef_reference_number,
         ksef_submitted_at,
         ksef_error,
-        issueDate,
+        issue_date,
         ksef_qr_code,
         ksef_qr_url
       `)
-      .eq('businessProfileId', businessProfileId)
-      .order('issueDate', { ascending: false })
+      .eq('business_profile_id', selectedProfileId)
+      .order('issue_date', { ascending: false })
       .limit(50);
 
     if (invoicesData) {
       const mappedInvoices = invoicesData.map((invoice: any) => ({
         id: invoice.id,
         number: invoice.number,
-        customerName: invoice.customerName,
-        totalGrossValue: invoice.totalGrossValue,
+        customerName: invoice.customername,
+        totalGrossValue: invoice.total_gross_value,
         ksefStatus: invoice.ksef_status || 'none',
         ksefReferenceNumber: invoice.ksef_reference_number,
         ksefSubmittedAt: invoice.ksef_submitted_at,
         ksefError: invoice.ksef_error,
-        issueDate: invoice.issueDate,
+        issueDate: invoice.issue_date,
         ksef_qr_code: invoice.ksef_qr_code,
         ksef_qr_url: invoice.ksef_qr_url,
       }));
@@ -147,7 +147,7 @@ export default function KsefPageNew() {
       const sentStats = mappedInvoices.reduce((acc: any, invoice: KsefInvoice) => {
         acc.totalInvoices++;
         switch (invoice.ksefStatus) {
-          case 'sent':
+          case 'submitted':
             acc.submittedInvoices++;
             break;
           case 'pending':
@@ -449,7 +449,7 @@ export default function KsefPageNew() {
                 <div className="text-center py-8">Ładowanie...</div>
               ) : (
                 <div className="space-y-4">
-                  {invoices.filter(inv => inv.ksefStatus === 'sent').map((invoice) => (
+                  {invoices.filter(inv => inv.ksefStatus === 'submitted').map((invoice) => (
                     <div key={invoice.id} className="flex items-center justify-between p-4 border rounded-lg">
                       <div className="flex-1">
                         <div className="flex items-center gap-3">

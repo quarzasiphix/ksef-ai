@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/shared/ui/dialog';
 import { Button } from '@/shared/ui/button';
 import { Input } from '@/shared/ui/input';
@@ -29,29 +29,156 @@ export function KsefSettingsDialog({ open, onOpenChange, businessProfileId }: Ks
     expiresAt: '',
   });
 
+  // Load existing settings when dialog opens
+  useEffect(() => {
+    if (open && businessProfileId) {
+      loadExistingSettings();
+    }
+  }, [open, businessProfileId]);
+
+  const loadExistingSettings = async () => {
+    try {
+      // Check for existing KSeF integration
+      const { data: integration } = await supabase
+        .from('ksef_integrations')
+        .select('*')
+        .eq('business_profile_id', businessProfileId)
+        .single();
+
+      // Also check business profile settings
+      const { data: profile } = await supabase
+        .from('business_profiles')
+        .select('ksef_enabled, ksef_environment, ksef_token_encrypted, ksef_token_expires_at')
+        .eq('id', businessProfileId)
+        .single();
+
+      const isEnabled = integration?.status === 'active' || profile?.ksef_enabled || false;
+      
+      setSettings({
+        enabled: isEnabled,
+        environment: profile?.ksef_environment || 'test',
+        token: '', // Don't load token for security
+        expiresAt: profile?.ksef_token_expires_at || '',
+      });
+    } catch (error) {
+      console.error('Error loading KSeF settings:', error);
+    }
+  };
+
   const handleSave = async () => {
     setLoading(true);
     try {
-      const encryptedToken = btoa(settings.token);
-      
-      const { error } = await supabase
-        .from('business_profiles')
-        .update({
-          ksef_enabled: settings.enabled,
-          ksef_environment: settings.environment,
-          ksef_token_encrypted: encryptedToken,
-          ksef_token_expires_at: settings.expiresAt || null,
-        })
-        .eq('id', businessProfileId);
+      if (settings.enabled && settings.token) {
+        // Create or update KSeF integration record
+        const { data: existingIntegration } = await supabase
+          .from('ksef_integrations')
+          .select('*')
+          .eq('business_profile_id', businessProfileId)
+          .single();
 
-      if (error) throw error;
+        // Get NIP from business profile
+        const { data: profile } = await supabase
+          .from('business_profiles')
+          .select('tax_id')
+          .eq('id', businessProfileId)
+          .single();
+
+        const integrationData = {
+          business_profile_id: businessProfileId,
+          taxpayer_nip: profile?.tax_id || '',
+          provider_nip: profile?.tax_id || '', // For now, use same NIP as provider
+          granted_scopes: ['invoice.send', 'invoice.receive'],
+          status: 'active',
+          granted_at: new Date().toISOString(),
+          granted_by: null, // Will be set by system
+        };
+
+        let error;
+        if (existingIntegration) {
+          // Update existing integration
+          ({ error } = await supabase
+            .from('ksef_integrations')
+            .update({
+              status: 'active',
+              taxpayer_nip: profile?.tax_id || '',
+              provider_nip: profile?.tax_id || '',
+              granted_scopes: ['invoice.send', 'invoice.receive'],
+              granted_at: new Date().toISOString(),
+            })
+            .eq('business_profile_id', businessProfileId));
+        } else {
+          // Create new integration
+          ({ error } = await supabase
+            .from('ksef_integrations')
+            .insert(integrationData));
+        }
+
+        if (error) throw error;
+
+        // Store the actual token in ksef_credentials table
+        const encryptedToken = btoa(settings.token);
+        const { error: credentialError } = await supabase
+          .from('ksef_credentials')
+          .upsert({
+            provider_nip: profile?.tax_id || '',
+            auth_type: 'token',
+            secret_ref: encryptedToken,
+            expires_at: settings.expiresAt || '2026-12-31',
+            is_active: true,
+          }, {
+            onConflict: 'provider_nip'
+          });
+
+        if (credentialError) throw credentialError;
+
+        // Also update business profile for backwards compatibility
+        const { error: profileError } = await supabase
+          .from('business_profiles')
+          .update({
+            ksef_enabled: settings.enabled,
+            ksef_environment: settings.environment,
+            ksef_token_encrypted: encryptedToken,
+            ksef_token_expires_at: settings.expiresAt || null,
+          })
+          .eq('id', businessProfileId);
+
+        if (profileError) throw profileError;
+      } else {
+        // Disable KSeF integration
+        const { error } = await supabase
+          .from('ksef_integrations')
+          .update({ status: 'disabled' })
+          .eq('business_profile_id', businessProfileId);
+
+        if (error && error.code !== 'PGRST116') { // Ignore if no integration exists
+          throw error;
+        }
+
+        // Also update business profile
+        const { error: profileError } = await supabase
+          .from('business_profiles')
+          .update({
+            ksef_enabled: settings.enabled,
+            ksef_environment: settings.environment,
+            ksef_token_encrypted: null,
+            ksef_token_expires_at: null,
+          })
+          .eq('id', businessProfileId);
+
+        if (profileError) throw profileError;
+      }
 
       toast({
         title: 'Zapisano ustawienia KSeF',
-        description: 'Konfiguracja została pomyślnie zaktualizowana',
+        description: settings.enabled 
+          ? 'Integracja KSeF została włączona' 
+          : 'Integracja KSeF została wyłączona',
       });
 
       onOpenChange(false);
+      
+      // Trigger a reload of the parent component
+      window.location.reload();
     } catch (error) {
       toast({
         title: 'Błąd',

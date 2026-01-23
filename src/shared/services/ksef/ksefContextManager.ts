@@ -213,9 +213,24 @@ export class KsefCompanyClient {
     const startTime = Date.now();
     
     try {
-      // Call a harmless endpoint to verify access
-      // testConnection requires ksefToken and contextNip
-      const result = await this.service.testConnection('', this.integration.taxpayerNip);
+      // Get the stored KSeF token from credentials
+      const { data: credential } = await this.supabase
+        .from('ksef_credentials')
+        .select('*')
+        .eq('provider_nip', this.integration.providerNip)
+        .eq('is_active', true)
+        .single();
+      
+      if (!credential) {
+        throw new Error('No KSeF credentials found. Please configure KSeF token first.');
+      }
+      
+      // Decode the stored token
+      const encryptedToken = credential.secret_ref;
+      const ksefToken = atob(encryptedToken);
+      
+      // Test connection with actual token
+      const result = await this.service.testConnection(ksefToken, this.integration.taxpayerNip);
 
       await this.contextManager.logOperation({
         companyId: this.integration.companyId,
@@ -310,7 +325,7 @@ export class KsefContextManager {
     const { data, error } = await this.supabase
       .from('ksef_integrations')
       .select('*')
-      .eq('company_id', companyId)
+      .eq('business_profile_id', companyId)
       .eq('status', 'active')
       .single();
 
@@ -320,7 +335,7 @@ export class KsefContextManager {
 
     return {
       id: data.id,
-      companyId: data.company_id,
+      companyId: data.business_profile_id,
       businessProfileId: data.business_profile_id,
       taxpayerNip: data.taxpayer_nip,
       providerNip: data.provider_nip,
@@ -369,8 +384,11 @@ export class KsefContextManager {
       return cached.token;
     }
     
-    // Retrieve from secret storage
-    const token = await this.secretManager.getSecret(credential.secretRef);
+    // Retrieve from secret storage using provider NIP
+    const encryptedToken = await this.secretManager.getSecret(credential.providerNip);
+    
+    // Decode the base64 token
+    const token = atob(encryptedToken);
     
     // Cache for 55 minutes (tokens typically valid for 60 minutes)
     this.tokenCache.set(cacheKey, {
@@ -488,7 +506,6 @@ export class KsefContextManager {
     const { data, error } = await this.supabase
       .from('ksef_integrations')
       .insert({
-        company_id: params.companyId,
         business_profile_id: params.businessProfileId,
         taxpayer_nip: params.taxpayerNip,
         provider_nip: params.providerNip,
@@ -510,7 +527,7 @@ export class KsefContextManager {
 
     return {
       id: data.id,
-      companyId: data.company_id,
+      companyId: data.business_profile_id,
       businessProfileId: data.business_profile_id,
       taxpayerNip: data.taxpayer_nip,
       providerNip: data.provider_nip,
@@ -532,7 +549,7 @@ export class KsefContextManager {
         revoked_at: new Date().toISOString(),
         revoked_reason: reason,
       })
-      .eq('company_id', companyId);
+      .eq('business_profile_id', companyId);
   }
 
   /**
