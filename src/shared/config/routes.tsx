@@ -96,6 +96,7 @@ const VehicleNewPage = React.lazy(() => import('@/modules/operations/screens/Tra
 const FuneralCasesListPage = React.lazy(() => import('@/modules/operations/screens/FuneralCasesListPage'));
 const FuneralCaseNewPage = React.lazy(() => import('@/modules/operations/screens/FuneralCaseNewPage'));
 const FuneralCaseDetailPage = React.lazy(() => import('@/modules/operations/screens/FuneralCaseDetailPage'));
+const KsefPage = React.lazy(() => import('@/modules/ksef/screens/KsefPage'));
 
 export type RouteGuard = 'public' | 'protected' | 'premium' | 'onboarding';
 
@@ -642,6 +643,16 @@ export const routes: RouteConfig[] = [
     element: <ReceivedInvoiceDetail />,
     guard: 'protected',
     hideInNav: true,
+  },
+
+  // KSeF
+  {
+    path: '/ksef',
+    element: <KsefPage />,
+    guard: 'protected',
+    title: 'KSeF',
+    icon: 'FileText',
+    section: 'main',
   },
 
   // Analytics
