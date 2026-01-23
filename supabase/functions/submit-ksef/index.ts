@@ -6,8 +6,8 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2.39.7";
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
 const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
 
-// KSEF API endpoint (demo/test)
-const KSEF_API_URL = "https://ksef-test.mf.gov.pl/api/submit"; // Replace with real endpoint
+// KSEF API endpoint (KSeF 2.0 API)
+const KSEF_API_URL = "https://api-test.ksef.mf.gov.pl/v2"; // KSeF 2.0 API endpoint
 
 serve(async (req) => {
   if (req.method !== "POST") {

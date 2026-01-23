@@ -7,10 +7,17 @@ import { TooltipProvider } from '@/shared/ui/tooltip';
 import { AuthProvider } from '@/shared/context/AuthContext';
 import { WorkspaceTabsProvider } from '@/shared/context/WorkspaceTabsContext';
 import { DepartmentProvider } from '@/shared/context/DepartmentContext';
+import { BusinessProfileProvider } from '@/shared/context/BusinessProfileContext';
 import { queryClient } from '@/shared/lib/queryClient';
 import { RouteRenderer } from '@/pages/routing/RouteRenderer';
 import { routeChangeHandler } from '@/shared/lib/routeChangeHandler';
 import { initializeQueryPersistence, restoreAllCachedQueries } from '@/shared/lib/queryPersistence';
+
+// Initialize KSeF sync job
+import './services/ksefSyncJobInit';
+
+// Import KSeF test integration (for debugging)
+import './services/ksefTestIntegration';
 
 /**
  * New App.tsx with route config system
@@ -45,9 +52,11 @@ const App = () => {
           <Router>
             <AuthProvider>
               <DepartmentProvider>
-                <WorkspaceTabsProvider>
-                  <RouteRenderer />
-                </WorkspaceTabsProvider>
+                <BusinessProfileProvider>
+                  <WorkspaceTabsProvider>
+                    <RouteRenderer />
+                  </WorkspaceTabsProvider>
+                </BusinessProfileProvider>
               </DepartmentProvider>
             </AuthProvider>
           </Router>

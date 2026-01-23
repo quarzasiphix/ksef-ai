@@ -143,7 +143,7 @@ export function KsefSettingsDialog({ open, onOpenChange, businessProfileId }: Ks
             <div className="flex items-center gap-2 text-xs text-muted-foreground">
               <span>Token można wygenerować w portalu KSeF po zalogowaniu</span>
               <a
-                href={settings.environment === 'production' ? 'https://ksef.mf.gov.pl' : 'https://ksef-test.mf.gov.pl'}
+                href={settings.environment === 'production' ? 'https://api.ksef.mf.gov.pl/docs/v2' : 'https://api-test.ksef.mf.gov.pl/docs/v2'}
                 target="_blank"
                 rel="noopener noreferrer"
                 className="text-blue-600 hover:text-blue-800 underline flex items-center gap-1"

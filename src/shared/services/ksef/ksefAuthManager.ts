@@ -37,30 +37,46 @@ export class KsefAuthManager {
   }
 
   /**
-   * Authenticate with KSeF token
+   * Get authentication challenge (alias for AuthCoordinator)
+   */
+  async getAuthChallenge(): Promise<{
+    challenge: string;
+    timestamp: string;
+  }> {
+    return this.getChallenge();
+  }
+
+  /**
+   * Authenticate with KSeF token (legacy method)
    * POST /auth/ksef-token
    */
   async authenticateWithKsefToken(
-    ksefToken: string,
-    contextNip: string
+    requestOrToken: any,
+    contextNip?: string
   ): Promise<{
     authenticationToken: string;
     referenceNumber: string;
   }> {
-    // Get challenge
-    const challenge = await this.getChallenge();
+    let requestBody: any;
 
-    // Encrypt token with timestamp
-    const encryptedToken = await this.encryptKsefToken(ksefToken, challenge.timestamp);
-
-    const requestBody = {
-      challenge: challenge.challenge,
-      contextIdentifier: {
-        type: 'Nip',
-        value: contextNip,
-      },
-      encryptedToken: encryptedToken,
-    };
+    // Support both old signature (token, nip) and new signature (request object)
+    if (typeof requestOrToken === 'string' && contextNip) {
+      // Old signature: authenticateWithKsefToken(token, nip)
+      const challenge = await this.getChallenge();
+      const encryptedToken = await this.encryptKsefToken(requestOrToken, challenge.timestamp);
+      
+      requestBody = {
+        challenge: challenge.challenge,
+        contextIdentifier: {
+          type: 'Nip',
+          value: contextNip,
+        },
+        encryptedToken: encryptedToken,
+      };
+    } else {
+      // New signature: authenticateWithKsefToken(request)
+      requestBody = requestOrToken;
+    }
 
     const response = await fetch(`${this.config.baseUrl}/auth/ksef-token`, {
       method: 'POST',
@@ -94,6 +110,7 @@ export class KsefAuthManager {
     status: {
       code: number;
       description: string;
+      details?: string[];
     };
   }> {
     const response = await fetch(`${this.config.baseUrl}/auth/${referenceNumber}`, {
@@ -111,12 +128,33 @@ export class KsefAuthManager {
   }
 
   /**
+   * Get authentication status (alias for AuthCoordinator)
+   */
+  async getAuthStatus(
+    referenceNumber: string,
+    authenticationToken: string
+  ): Promise<{
+    code: number;
+    description: string;
+    details?: string[];
+  }> {
+    const result = await this.checkAuthStatus(referenceNumber, authenticationToken);
+    return result.status;
+  }
+
+  /**
    * Redeem authentication token for access token
    * POST /auth/token/redeem
    */
   async redeemToken(authenticationToken: string): Promise<{
-    accessToken: string;
-    refreshToken: string;
+    accessToken: {
+      token: string;
+      expiresIn: number;
+    };
+    refreshToken: {
+      token: string;
+      expiresIn: number;
+    };
   }> {
     const response = await fetch(`${this.config.baseUrl}/auth/token/redeem`, {
       method: 'POST',
@@ -139,8 +177,14 @@ export class KsefAuthManager {
     this.tokenExpiresAt = new Date(data.accessToken.validUntil);
 
     return {
-      accessToken: this.accessToken,
-      refreshToken: this.refreshToken,
+      accessToken: {
+        token: data.accessToken.token,
+        expiresIn: data.accessToken.expiresIn || 3600
+      },
+      refreshToken: {
+        token: data.refreshToken.token,
+        expiresIn: data.refreshToken.expiresIn || 86400
+      }
     };
   }
 
@@ -148,15 +192,22 @@ export class KsefAuthManager {
    * Refresh access token
    * POST /auth/token/refresh
    */
-  async refreshAccessToken(): Promise<string> {
-    if (!this.refreshToken) {
+  async refreshAccessToken(refreshTokenParam?: string): Promise<{
+    accessToken: {
+      token: string;
+      expiresIn: number;
+    };
+  }> {
+    const tokenToUse = refreshTokenParam || this.refreshToken;
+    
+    if (!tokenToUse) {
       throw new Error('No refresh token available');
     }
 
     const response = await fetch(`${this.config.baseUrl}/auth/token/refresh`, {
       method: 'POST',
       headers: {
-        'Authorization': `Bearer ${this.refreshToken}`,
+        'Authorization': `Bearer ${tokenToUse}`,
         'Content-Type': 'application/json',
       },
     });
@@ -171,7 +222,47 @@ export class KsefAuthManager {
     this.accessToken = data.accessToken.token;
     this.tokenExpiresAt = new Date(data.accessToken.validUntil);
 
-    return this.accessToken;
+    return {
+      accessToken: {
+        token: data.accessToken.token,
+        expiresIn: data.accessToken.expiresIn || 3600
+      }
+    };
+  }
+
+  /**
+   * Submit signed XAdES authentication request
+   * POST /auth/token/signature
+   */
+  async submitSignedAuthRequest(
+    signedXml: string,
+    verifyCertificateChain: boolean = false
+  ): Promise<{
+    authenticationToken: string;
+    referenceNumber: string;
+  }> {
+    const response = await fetch(
+      `${this.config.baseUrl}/auth/token/signature?verifyCertificateChain=${verifyCertificateChain}`,
+      {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/xml',
+        },
+        body: signedXml,
+      }
+    );
+
+    if (!response.ok) {
+      const error = await response.json();
+      throw new Error(`Failed to submit signed auth request: ${error.exception?.description || response.statusText}`);
+    }
+
+    const data = await response.json();
+
+    return {
+      authenticationToken: data.authenticationToken.token,
+      referenceNumber: data.referenceNumber,
+    };
   }
 
   /**
@@ -184,8 +275,14 @@ export class KsefAuthManager {
     maxStatusChecks: number = 10,
     statusCheckDelayMs: number = 1000
   ): Promise<{
-    accessToken: string;
-    refreshToken: string;
+    accessToken: {
+      token: string;
+      expiresIn: number;
+    };
+    refreshToken: {
+      token: string;
+      expiresIn: number;
+    };
   }> {
     // Step 1: Authenticate with KSeF token
     const authResult = await this.authenticateWithKsefToken(ksefToken, contextNip);

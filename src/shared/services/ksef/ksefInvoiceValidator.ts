@@ -1,4 +1,6 @@
 import { Invoice, BusinessProfile, Customer } from '../../types';
+import { KsefDuplicateDetection } from './ksefDuplicateDetection';
+import type { SupabaseClient } from '@supabase/supabase-js';
 
 /**
  * KSeF Invoice Validator
@@ -6,9 +8,13 @@ import { Invoice, BusinessProfile, Customer } from '../../types';
  */
 export class KsefInvoiceValidator {
   private environment: 'test' | 'production';
+  private duplicateDetection?: KsefDuplicateDetection;
 
-  constructor(environment: 'test' | 'production' = 'test') {
+  constructor(environment: 'test' | 'production' = 'test', supabase?: SupabaseClient) {
     this.environment = environment;
+    if (supabase) {
+      this.duplicateDetection = new KsefDuplicateDetection(supabase);
+    }
   }
 
   /**
@@ -240,7 +246,26 @@ export class KsefInvoiceValidator {
       errors.push(sizeValidation.error!);
     }
 
-    // 3. Encoding validation
+    // 3. Duplicate detection (using new service)
+    if (this.duplicateDetection && businessProfile.id) {
+      try {
+        const duplicateResult = await this.duplicateDetection.checkDuplicate({
+          sellerNip: businessProfile.taxId || '',
+          invoiceType: invoice.type || 'VAT',
+          invoiceNumber: invoice.number,
+          businessProfileId: businessProfile.id,
+        });
+
+        if (duplicateResult.isDuplicate) {
+          errors.push(duplicateResult.errorMessage || 'Duplicate invoice detected');
+        }
+      } catch (error) {
+        console.error('Error checking duplicates:', error);
+        warnings.push('Could not verify duplicate status');
+      }
+    }
+
+    // 4. Encoding validation
     const encodingValidation = this.validateEncoding(xmlContent);
     if (!encodingValidation.valid) {
       errors.push(encodingValidation.error!);

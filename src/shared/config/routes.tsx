@@ -96,7 +96,8 @@ const VehicleNewPage = React.lazy(() => import('@/modules/operations/screens/Tra
 const FuneralCasesListPage = React.lazy(() => import('@/modules/operations/screens/FuneralCasesListPage'));
 const FuneralCaseNewPage = React.lazy(() => import('@/modules/operations/screens/FuneralCaseNewPage'));
 const FuneralCaseDetailPage = React.lazy(() => import('@/modules/operations/screens/FuneralCaseDetailPage'));
-const KsefPage = React.lazy(() => import('@/modules/ksef/screens/KsefPage'));
+const KsefPage = React.lazy(() => import('@/modules/ksef/screens/KsefPageNew'));
+const KsefInboxScreen = React.lazy(() => import('@/modules/ksef/screens/KsefInboxScreen').then(module => ({ default: module.KsefInboxScreen })));
 
 export type RouteGuard = 'public' | 'protected' | 'premium' | 'onboarding';
 
@@ -653,6 +654,15 @@ export const routes: RouteConfig[] = [
     title: 'KSeF',
     icon: 'FileText',
     section: 'main',
+  },
+  {
+    path: '/settings/ksef-inbox',
+    element: <KsefInboxScreen />,
+    guard: 'protected',
+    title: 'KSeF Inbox',
+    icon: 'Inbox',
+    section: 'settings',
+    hideInNav: true,
   },
 
   // Analytics

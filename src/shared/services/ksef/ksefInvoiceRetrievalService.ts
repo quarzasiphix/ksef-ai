@@ -9,7 +9,7 @@ import {
   extractInvoicesFromPackage,
   parseInvoiceXml,
   getKsefPublicKey,
-} from './ksefInvoiceRetrievalHelpers';
+} from './ksefInvoiceRetrievalHelpersBrowser';
 
 export interface InvoiceMetadata {
   ksefNumber: string;
@@ -389,7 +389,7 @@ export class KsefInvoiceRetrievalService {
   }
 
   private async unzipAndProcessInvoices(buffer: Buffer): Promise<any[]> {
-    const files = unzipPackage(buffer);
+    const files = await unzipPackage(buffer);
     const invoices = extractInvoicesFromPackage(files);
     return invoices;
   }
@@ -399,7 +399,8 @@ export class KsefInvoiceRetrievalService {
   }
 
   private generateEncryptionData(): any {
-    const environment = this.ksefService.getEnvironment?.() || 'test';
+    // Use test environment by default since KsefService doesn't expose getEnvironment
+    const environment = 'test';
     const publicKey = getKsefPublicKey(environment as 'test' | 'demo' | 'prod');
     return generateEncryptionData(publicKey);
   }

@@ -5,6 +5,7 @@ import { KsefInvoiceValidator } from './ksefInvoiceValidator';
 import { KsefXmlGenerator } from './ksefXmlGenerator';
 import { getKsefConfig } from './config';
 import { KsefEnvironment } from './types';
+import { ksefQrCodeService } from './ksefQrCodeService';
 
 export interface SubmitInvoiceParams {
   invoice: Invoice;
@@ -12,6 +13,7 @@ export interface SubmitInvoiceParams {
   customer: Customer;
   ksefToken: string;
   supabaseClient: any;
+  offlineMode?: boolean;
 }
 
 export interface SubmitInvoiceResult {
@@ -21,6 +23,11 @@ export interface SubmitInvoiceResult {
   upo?: string;
   warnings?: string[];
   error?: string;
+  qrCode?: {
+    dataUrl: string;
+    url: string;
+    label: string;
+  };
 }
 
 export class KsefService {
@@ -102,12 +109,44 @@ export class KsefService {
         upoUrl = status.upo.pages[0].downloadUrl;
       }
 
+      // 10. Generate QR code (CODE I - required for all invoices)
+      let qrCodeResult;
+      try {
+        qrCodeResult = await ksefQrCodeService.generateInvoiceQr({
+          sellerNip: businessProfile.taxId || '',
+          issueDate: new Date(invoice.issueDate),
+          invoiceXml: xml,
+          ksefNumber: invoiceResult.invoiceReferenceNumber,
+          environment: this.environment === 'production' ? 'prod' : 'test',
+        });
+
+        // Store QR code in invoice record
+        if (supabaseClient && invoice.id) {
+          await supabaseClient
+            .from('invoices')
+            .update({
+              ksef_qr_code: qrCodeResult.qrCodeDataUrl,
+              ksef_qr_label: qrCodeResult.label,
+              ksef_qr_url: qrCodeResult.url,
+            })
+            .eq('id', invoice.id);
+        }
+      } catch (qrError) {
+        console.error('Failed to generate QR code:', qrError);
+        // Don't fail the whole submission if QR generation fails
+      }
+
       return {
         success: true,
         referenceNumber: invoiceResult.invoiceReferenceNumber,
         sessionReferenceNumber: session.referenceNumber,
         upo: upoUrl,
         warnings: validation.warnings,
+        qrCode: qrCodeResult ? {
+          dataUrl: qrCodeResult.qrCodeDataUrl,
+          url: qrCodeResult.url,
+          label: qrCodeResult.label,
+        } : undefined,
       };
     } catch (error) {
       return {

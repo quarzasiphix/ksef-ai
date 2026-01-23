@@ -182,7 +182,7 @@ export default function KsefPage() {
             <div className="flex items-center gap-2">
               <span>Potrzebujesz tokenu KSeF?</span>
               <a
-                href="https://ksef-test.mf.gov.pl"
+                href="https://api-test.ksef.mf.gov.pl/docs/v2"
                 target="_blank"
                 rel="noopener noreferrer"
                 className="text-blue-600 hover:text-blue-800 underline flex items-center gap-1"
