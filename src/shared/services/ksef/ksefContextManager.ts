@@ -585,9 +585,11 @@ export class KsefContextManager {
     }
 
     // Create sync state
-    await this.supabase.from('ksef_sync_state').insert({
+    await this.supabase.from('ksef_sync_state').upsert({
       business_profile_id: params.businessProfileId,
       integration_id: data.id,
+      subject_type: 'invoices', // Default subject type
+      last_sync_at: new Date().toISOString(),
     });
 
     return {

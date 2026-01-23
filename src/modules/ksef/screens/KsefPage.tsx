@@ -103,7 +103,7 @@ export default function KsefPage() {
         ksef_error,
         issueDate
       `)
-      .eq('businessProfileId', businessProfileId)
+      .eq('business_profile_id', businessProfileId)
       .order('issueDate', { ascending: false })
       .limit(50);
 

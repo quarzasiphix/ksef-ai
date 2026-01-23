@@ -344,58 +344,149 @@ export default function KsefPageNew() {
         throw new Error('Business profile not found');
       }
       
-      // Create a proper customer object from invoice data
+      // Get the full invoice data with items from the database
+      const { data: fullInvoiceData, error: invoiceError } = await supabase
+        .from('invoices')
+        .select(`
+          *,
+          items:invoice_items(*)
+        `)
+        .eq('id', invoice.id)
+        .single();
+      
+      if (invoiceError || !fullInvoiceData) {
+        throw new Error('Failed to fetch invoice data: ' + (invoiceError?.message || 'Invoice not found'));
+      }
+
+      // Get the actual customer data from the database
+      const { data: customerData } = await supabase
+        .from('customers')
+        .select('*')
+        .eq('id', fullInvoiceData.customer_id)
+        .single();
+      
+      if (!customerData) {
+        throw new Error('Customer not found');
+      }
+      
+      // Create a proper customer object with all required fields
       const customer = {
-        id: `customer-${Date.now()}`,
-        name: invoice.customerName || 'Customer',
-        nip: invoice.customerNip || '',
-        address: invoice.customerAddress || '',
-        postalCode: invoice.customerPostalCode || '',
-        city: invoice.customerCity || '',
-        email: invoice.customerEmail || '',
-        phone: invoice.customerPhone || '',
+        id: customerData.id,
+        name: customerData.name,
+        taxId: customerData.tax_id || '',
+        address: customerData.address || '',
+        postalCode: customerData.postal_code || '',
+        city: customerData.city || '',
+        country: customerData.country || 'PL',
+        email: customerData.email || '',
+        phone: customerData.phone || '',
         customerType: 'odbiorca' as const,
         user_id: businessProfile.user_id
       };
       
-      // Convert KsefInvoice to full Invoice format
+      // Convert database business profile to BusinessProfile type
+      const mappedBusinessProfile = {
+        id: businessProfile.id,
+        name: businessProfile.name,
+        taxId: businessProfile.tax_id || businessProfile.taxId || '',
+        regon: businessProfile.regon,
+        address: businessProfile.address,
+        postalCode: businessProfile.postal_code,
+        city: businessProfile.city,
+        country: businessProfile.country,
+        email: businessProfile.email,
+        phone: businessProfile.phone,
+        user_id: businessProfile.user_id
+      };
+
+      // Convert database invoice to Invoice format with all required fields
       const fullInvoice = {
-        ...invoice,
+        id: fullInvoiceData.id,
+        number: fullInvoiceData.number,
+        date: fullInvoiceData.issue_date,
+        issueDate: fullInvoiceData.issue_date,
+        sellDate: fullInvoiceData.sell_date || fullInvoiceData.issue_date,
+        dueDate: fullInvoiceData.due_date,
+        businessProfileId: fullInvoiceData.business_profile_id,
+        customerId: fullInvoiceData.customer_id,
+        totalNetValue: parseFloat(fullInvoiceData.total_net_value || '0'),
+        totalVatValue: parseFloat(fullInvoiceData.total_vat_value || '0'),
+        totalGrossValue: parseFloat(fullInvoiceData.total_gross_value || '0'),
+        currency: fullInvoiceData.currency || 'PLN',
+        language: fullInvoiceData.language || 'pl',
+        paymentMethod: fullInvoiceData.payment_method || 'transfer',
+        status: fullInvoiceData.status || 'draft',
+        type: 'standard' as const,
+        transactionType: 'sale' as const,
+        isPaid: false,
+        paid: false,
+        totalAmount: parseFloat(fullInvoiceData.total_gross_value || '0'),
+        seller: mappedBusinessProfile,
+        buyer: customer,
         user_id: businessProfile.user_id,
-        type: 'standard',
-        transactionType: 'sale',
-        dueDate: invoice.dueDate || new Date(),
-        // Add any missing required fields
-        currency: invoice.currency || 'PLN',
-        language: invoice.language || 'pl',
-        paymentMethod: invoice.paymentMethod || 'transfer'
+        items: (fullInvoiceData.items || []).map((item: any) => ({
+          id: item.id,
+          name: item.name,
+          description: item.description,
+          quantity: parseFloat(item.quantity || '1'),
+          unit: item.unit || 'szt',
+          unitPrice: parseFloat(item.unit_price || '0'),
+          totalNetValue: parseFloat(item.total_net_value || '0'),
+          vatRate: parseFloat(item.vat_rate || '23'),
+          vatExempt: item.vat_exempt || false
+        }))
       };
       
       console.log('🔐 Submitting real invoice to KSeF...');
+      console.log('📋 Invoice data:', {
+        id: fullInvoice.id,
+        number: fullInvoice.number,
+        items: fullInvoice.items?.length || 0
+      });
       
       // Submit the invoice using the proper KSeF service
       const result = await ksefService.submitInvoice({
         invoice: fullInvoice,
-        businessProfile,
+        businessProfile: mappedBusinessProfile,
         customer,
         ksefToken: accessToken,
         supabaseClient: supabase
       });
+
+      console.log('✅ KSeF submission result:', result);
+
+      if (!result.success) {
+        throw new Error(result.error || 'Unknown submission error');
+      }
 
       toast({
         title: "Sukces",
         description: `Faktura ${invoice.number} została wysłana do KSeF${result.referenceNumber ? ` (Ref: ${result.referenceNumber})` : ''}`,
       });
 
-      // Update invoice status to submitted
+      // Update invoice status to submitted with real reference number
       if (result.referenceNumber || result.sessionReferenceNumber) {
+        const updateData: any = { 
+          ksef_status: 'submitted', 
+          ksef_reference_number: result.referenceNumber || result.sessionReferenceNumber,
+          ksef_uploaded_at: new Date().toISOString()
+        };
+
+        // Add UPO if available
+        if (result.upo) {
+          updateData.ksef_upo = result.upo;
+        }
+
+        // Add session reference if available
+        if (result.sessionReferenceNumber) {
+          updateData.ksef_session_reference_number = result.sessionReferenceNumber;
+        }
+
+        console.log('💾 Updating invoice in database:', updateData);
+
         await supabase
           .from('invoices')
-          .update({ 
-            ksef_status: 'submitted', 
-            ksef_reference_number: result.referenceNumber || result.sessionReferenceNumber,
-            ksef_uploaded_at: new Date().toISOString()
-          })
+          .update(updateData)
           .eq('id', invoice.id);
       }
 

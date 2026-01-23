@@ -157,10 +157,10 @@ export class KsefInvoiceValidator {
 
   /**
    * Check if invoice might be a duplicate
-   * Based on: Podmiot1:NIP + RodzajFaktury + P_2
+   * Based on: business_profile_id + RodzajFaktury + P_2
    */
   async checkDuplicate(
-    sellerNip: string,
+    businessProfileId: string,
     invoiceType: string,
     invoiceNumber: string,
     supabaseClient: any
@@ -172,7 +172,7 @@ export class KsefInvoiceValidator {
       const { data, error } = await supabaseClient
         .from('invoices')
         .select('id, ksef_reference_number')
-        .eq('businessProfileId', sellerNip) // Assuming this maps to seller
+        .eq('business_profile_id', businessProfileId)
         .eq('number', invoiceNumber)
         .eq('type', invoiceType)
         .not('ksef_reference_number', 'is', null)
@@ -248,21 +248,6 @@ export class KsefInvoiceValidator {
 
     // 3. Duplicate detection (using new service)
     if (this.duplicateDetection && businessProfile.id) {
-      try {
-        const duplicateResult = await this.duplicateDetection.checkDuplicate({
-          sellerNip: businessProfile.taxId || '',
-          invoiceType: invoice.type || 'VAT',
-          invoiceNumber: invoice.number,
-          businessProfileId: businessProfile.id,
-        });
-
-        if (duplicateResult.isDuplicate) {
-          errors.push(duplicateResult.errorMessage || 'Duplicate invoice detected');
-        }
-      } catch (error) {
-        console.error('Error checking duplicates:', error);
-        warnings.push('Could not verify duplicate status');
-      }
     }
 
     // 4. Encoding validation
@@ -272,9 +257,9 @@ export class KsefInvoiceValidator {
     }
 
     // 4. Duplicate check (if supabase client provided)
-    if (supabaseClient && businessProfile.taxId && invoice.number) {
+    if (supabaseClient && businessProfile.id && businessProfile.taxId && invoice.number) {
       const duplicateCheck = await this.checkDuplicate(
-        businessProfile.taxId,
+        businessProfile.id,
         invoice.type || 'VAT',
         invoice.number,
         supabaseClient

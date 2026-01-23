@@ -74,7 +74,7 @@ export class KsefDuplicateDetection {
     const { data: existingInvoice, error: invError } = await this.supabase
       .from('invoices')
       .select('id, number, ksef')
-      .eq('businessProfileId', businessProfileId)
+      .eq('business_profile_id', businessProfileId)
       .eq('number', invoiceNumber)
       .not('ksef', 'is', null)
       .limit(1)

@@ -12,6 +12,36 @@ export class KsefProperAuth {
   }
 
   /**
+   * Get Supabase anonymous key for Edge Function authentication
+   */
+  private getSupabaseAnonKey(): string {
+    // Try to get the key from the environment first (for Deno/Edge Runtime)
+    try {
+      // @ts-ignore - Deno might not be available in all environments
+      if (typeof Deno !== 'undefined' && Deno.env.get('SUPABASE_ANON_KEY')) {
+        // @ts-ignore
+        return Deno.env.get('SUPABASE_ANON_KEY');
+      }
+    } catch (e) {
+      // Deno not available, use fallback
+    }
+    
+    // Fallback to hardcoded key for browser environment
+    return 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJuY3J6eGp5ZmZ4bWZibnhscXRtIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDc0MjQ5MjAsImV4cCI6MjA2MzAwMDkyMH0.stheZYA6jcCAjOi-c4NPLBe3Jxfv3Rs9LWk8JTqBS8s';
+  }
+
+  /**
+   * Generate a timestamped token for KSeF encryption
+   * Format: YYYY-MM-DDTHH:MM:SSZ_token
+   * Ensures the token is short enough for RSA encryption
+   */
+  private generateTimestampedToken(token: string): string {
+    const now = new Date();
+    const timestamp = now.toISOString().replace(/[:\-]|\.\d{3}/g, '').slice(0, 15) + 'Z'; // Format: 20250123T203000Z
+    return `${timestamp}_${token}`;
+  }
+
+  /**
    * Complete KSeF authentication flow using token
    * Follows the official pattern from KSeF client implementations
    */
@@ -157,14 +187,26 @@ export class KsefProperAuth {
       
       console.log('🔑 Found certificate for encryption:', cert.usage);
       
+      // Generate a shorter timestamped token if needed
+      let finalToken = tokenWithTimestamp;
+      if (tokenWithTimestamp.length > 150) {
+        console.log('🔐 Token is too long, generating shorter timestamp format...');
+        // Extract just the token part (after last underscore if it exists)
+        const tokenParts = tokenWithTimestamp.split('_');
+        const actualToken = tokenParts[tokenParts.length - 1];
+        finalToken = this.generateTimestampedToken(actualToken);
+        console.log('🔐 New token length:', finalToken.length);
+      }
+      
       // Call Edge Function for encryption
       const encryptResponse = await fetch('https://rncrzxjyffxmfbnxlqtm.supabase.co/functions/v1/ksef-encrypt', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
+          'Authorization': `Bearer ${this.getSupabaseAnonKey()}`
         },
         body: JSON.stringify({
-          tokenWithTimestamp,
+          tokenWithTimestamp: finalToken,
           certificatePem: cert.certificate
         })
       });

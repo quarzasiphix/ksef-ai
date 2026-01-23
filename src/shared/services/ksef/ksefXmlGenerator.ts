@@ -15,20 +15,37 @@ export class KsefXmlGenerator {
     businessProfile: BusinessProfile,
     customer: Customer
   ): string {
-    const root = create({ version: '1.0', encoding: 'UTF-8' })
-      .ele('Faktura', {
-        'xmlns': this.config.namespace,
-        'xmlns:xsi': 'http://www.w3.org/2001/XMLSchema-instance',
+    try {
+      console.log('🔧 Generating XML for invoice:', {
+        invoiceNumber: invoice.number,
+        businessProfile: businessProfile.name,
+        customer: customer.name,
+        itemsCount: invoice.items?.length || 0
       });
 
-    this.addHeader(root, invoice);
-    this.addSeller(root, businessProfile);
-    this.addBuyer(root, customer);
-    this.addInvoiceDetails(root, invoice);
-    this.addInvoiceItems(root, invoice);
-    this.addSummary(root, invoice);
+      const root = create({ version: '1.0', encoding: 'UTF-8' })
+        .ele('Faktura', {
+          'xmlns': this.config.namespace,
+          'xmlns:xsi': 'http://www.w3.org/2001/XMLSchema-instance',
+        });
 
-    return root.end({ prettyPrint: true });
+      this.addHeader(root, invoice);
+      this.addSeller(root, businessProfile);
+      this.addBuyer(root, customer);
+      this.addInvoiceDetails(root, invoice);
+      this.addInvoiceItems(root, invoice);
+      this.addSummary(root, invoice);
+
+      const xml = root.end({ prettyPrint: true });
+      console.log('✅ XML generated successfully, length:', xml.length);
+      return xml;
+    } catch (error) {
+      console.error('❌ XML generation failed:', error);
+      console.error('Invoice data:', invoice);
+      console.error('Business profile:', businessProfile);
+      console.error('Customer:', customer);
+      throw new Error(`XML generation failed: ${error instanceof Error ? error.message : 'Unknown error'}`);
+    }
   }
 
   private addHeader(root: any, invoice: Invoice): void {
@@ -166,7 +183,8 @@ export class KsefXmlGenerator {
     summary.ele('P_15').txt(this.formatCurrency(invoice.totalGrossValue || 0));
   }
 
-  private formatNIP(nip: string): string {
+  private formatNIP(nip?: string): string {
+    if (!nip) return '';
     return nip.replace(/[-\s]/g, '');
   }
 
@@ -181,7 +199,15 @@ export class KsefXmlGenerator {
   }
 
   private sanitizeText(text: string, maxLength: number): string {
-    if (!text) return '';
+    if (text === undefined || text === null) {
+      console.warn('⚠️ sanitizeText received undefined/null value');
+      return '';
+    }
+    
+    if (typeof text !== 'string') {
+      console.warn('⚠️ sanitizeText received non-string value:', typeof text, text);
+      text = String(text);
+    }
     
     let sanitized = text
       .replace(/&/g, '&amp;')

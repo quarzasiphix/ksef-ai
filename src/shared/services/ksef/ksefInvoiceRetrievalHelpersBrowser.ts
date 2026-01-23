@@ -76,6 +76,7 @@ export async function generateEncryptionData(ksefPublicKeyPem: string): Promise<
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
+        'Authorization': 'Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJuY3J6eGp5ZmZ4bWZibnhscXRtIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDc0MjQ5MjAsImV4cCI6MjA2MzAwMDkyMH0.stheZYA6jcCAjOi-c4NPLBe3Jxfv3Rs9LWk8JTqBS8s'
       },
       body: JSON.stringify({
         tokenWithTimestamp: btoa(String.fromCharCode(...cipherKey)),
