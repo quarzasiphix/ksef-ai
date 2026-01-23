@@ -290,13 +290,13 @@ export class KsefAuthManager {
 
   /**
    * Complete authentication flow with KSeF token
-   * Handles challenge, authentication, status check, and token redemption
+   * Uses the proper implementation based on official KSeF clients
    */
   async authenticateComplete(
     ksefToken: string,
     contextNip: string,
-    maxStatusChecks: number = 10,
-    statusCheckDelayMs: number = 1000
+    maxStatusChecks: number = 30,
+    statusCheckDelayMs: number = 2000
   ): Promise<{
     accessToken: {
       token: string;
@@ -307,38 +307,18 @@ export class KsefAuthManager {
       expiresIn: number;
     };
   }> {
-    // Step 1: Authenticate with KSeF token
-    const authResult = await this.authenticateWithKsefToken(ksefToken, contextNip);
-
-    // Step 2: Wait for authentication to complete
-    let authCompleted = false;
-    for (let i = 0; i < maxStatusChecks; i++) {
-      const status = await this.checkAuthStatus(
-        authResult.referenceNumber,
-        authResult.authenticationToken
-      );
-
-      // Status codes:
-      // 100 - Authentication in progress
-      // 200 - Authentication successful
-      if (status.status.code === 200) {
-        authCompleted = true;
-        break;
-      }
-
-      if (status.status.code >= 400) {
-        throw new Error(`Authentication failed: ${status.status.description}`);
-      }
-
-      await new Promise(resolve => setTimeout(resolve, statusCheckDelayMs));
-    }
-
-    if (!authCompleted) {
-      throw new Error('Authentication timeout');
-    }
-
-    // Step 3: Redeem authentication token for access/refresh tokens
-    return await this.redeemToken(authResult.authenticationToken);
+    console.log('🔐 Starting complete KSeF authentication flow...');
+    
+    // Use the proper authentication service
+    const { KsefProperAuth } = await import('./ksefProperAuth');
+    const properAuth = new KsefProperAuth(this.config);
+    
+    return await properAuth.authenticateWithKsefToken(
+      ksefToken,
+      contextNip,
+      maxStatusChecks,
+      statusCheckDelayMs
+    );
   }
 
   /**

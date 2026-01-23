@@ -117,17 +117,38 @@ export function KsefSettingsDialog({ open, onOpenChange, businessProfileId }: Ks
 
         // Store the actual token in ksef_credentials table
         const encryptedToken = btoa(settings.token);
-        const { error: credentialError } = await supabase
+        
+        // First try to update existing record
+        const { data: existingCred, error: checkError } = await supabase
           .from('ksef_credentials')
-          .upsert({
-            provider_nip: profile?.tax_id || '',
-            auth_type: 'token',
-            secret_ref: encryptedToken,
-            expires_at: settings.expiresAt || '2026-12-31',
-            is_active: true,
-          }, {
-            onConflict: 'provider_nip'
-          });
+          .select('*')
+          .eq('provider_nip', profile?.tax_id || '')
+          .single();
+          
+        let credentialError;
+        if (existingCred) {
+          // Update existing record
+          ({ error: credentialError } = await supabase
+            .from('ksef_credentials')
+            .update({
+              auth_type: 'token',
+              secret_ref: encryptedToken,
+              expires_at: settings.expiresAt || '2026-12-31',
+              is_active: true,
+            })
+            .eq('provider_nip', profile?.tax_id || ''));
+        } else {
+          // Insert new record
+          ({ error: credentialError } = await supabase
+            .from('ksef_credentials')
+            .insert({
+              provider_nip: profile?.tax_id || '',
+              auth_type: 'token',
+              secret_ref: encryptedToken,
+              expires_at: settings.expiresAt || '2026-12-31',
+              is_active: true,
+            }));
+        }
 
         if (credentialError) throw credentialError;
 

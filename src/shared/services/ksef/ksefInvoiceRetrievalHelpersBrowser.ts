@@ -8,8 +8,8 @@ import crypto from 'crypto';
  */
 
 export interface EncryptionData {
-  cipherKey: Buffer;
-  cipherIv: Buffer;
+  cipherKey: number[];
+  cipherIv: number[];
   encryptedKey: string;
   iv: string;
 }
@@ -31,39 +31,102 @@ export interface InvoicePackageMetadata {
  * Generate encryption data for invoice export
  * Creates AES-256 key and IV, encrypts key with KSeF public key
  */
-export function generateEncryptionData(ksefPublicKeyPem: string): EncryptionData {
-  // Generate random AES-256 key (32 bytes) and IV (16 bytes)
-  const cipherKey = crypto.randomBytes(32);
-  const cipherIv = crypto.randomBytes(16);
+export async function generateEncryptionData(ksefPublicKeyPem: string): Promise<EncryptionData> {
+  // Generate random AES-256 key (32 bytes) and IV (16 bytes) using Web Crypto API
+  const cipherKey = new Uint8Array(32);
+  const cipherIv = new Uint8Array(16);
+  
+  // Fill with cryptographically secure random values
+  crypto.getRandomValues(cipherKey);
+  crypto.getRandomValues(cipherIv);
 
-  // Encrypt symmetric key with KSeF public key using RSA-OAEP
-  const encryptedKeyBuffer = crypto.publicEncrypt(
-    {
-      key: ksefPublicKeyPem,
-      padding: crypto.constants.RSA_PKCS1_OAEP_PADDING,
-      oaepHash: 'sha256',
-    },
-    cipherKey
-  );
+  try {
+    // Import the public key from PEM format
+    const publicKey = await crypto.subtle.importKey(
+      'spki',
+      // Convert PEM to binary (simplified - in real implementation, you'd need proper PEM parsing)
+      new Uint8Array(atob(ksefPublicKeyPem.replace(/-----BEGIN[^-]+-----|-----END[^-]+-----|\s/g, '')).split('').map(c => c.charCodeAt(0))),
+      {
+        name: 'RSA-OAEP',
+        hash: 'SHA-256'
+      },
+      false,
+      ['encrypt']
+    );
 
-  return {
-    cipherKey,
-    cipherIv,
-    encryptedKey: encryptedKeyBuffer.toString('base64'),
-    iv: cipherIv.toString('base64'),
-  };
+    // Encrypt symmetric key with KSeF public key using RSA-OAEP
+    const encryptedKeyBuffer = await crypto.subtle.encrypt(
+      {
+        name: 'RSA-OAEP',
+      },
+      publicKey,
+      cipherKey
+    );
+
+    return {
+      cipherKey: Array.from(cipherKey),
+      cipherIv: Array.from(cipherIv),
+      encryptedKey: btoa(String.fromCharCode(...new Uint8Array(encryptedKeyBuffer))),
+      iv: btoa(String.fromCharCode(...cipherIv)),
+    };
+  } catch (error) {
+    console.error('Failed to encrypt with Web Crypto API, falling back to Edge Function');
+    // Fallback: call Edge Function for encryption
+    const response = await fetch('https://rncrzxjyffxmfbnxlqtm.supabase.co/functions/v1/ksef-encrypt', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        tokenWithTimestamp: btoa(String.fromCharCode(...cipherKey)),
+        certificatePem: ksefPublicKeyPem
+      })
+    });
+
+    if (!response.ok) {
+      throw new Error('Failed to encrypt key');
+    }
+
+    const result = await response.json();
+    return {
+      cipherKey: Array.from(cipherKey),
+      cipherIv: Array.from(cipherIv),
+      encryptedKey: result.encryptedToken,
+      iv: btoa(String.fromCharCode(...cipherIv)),
+    };
+  }
 }
 
 /**
  * Decrypt data using AES-256-CBC
  */
-export function decryptAes256(
-  encrypted: Buffer,
-  key: Buffer,
-  iv: Buffer
-): Buffer {
-  const decipher = crypto.createDecipheriv('aes-256-cbc', key, iv);
-  return Buffer.concat([decipher.update(encrypted), decipher.final()]);
+export async function decryptAes256(
+  encrypted: number[],
+  key: number[],
+  iv: number[]
+): Promise<number[]> {
+  const encryptedArray = new Uint8Array(encrypted);
+  const keyArray = new Uint8Array(key);
+  const ivArray = new Uint8Array(iv);
+
+  const cryptoKey = await crypto.subtle.importKey(
+    'raw',
+    keyArray,
+    { name: 'AES-CBC' },
+    false,
+    ['decrypt']
+  );
+
+  const decrypted = await crypto.subtle.decrypt(
+    {
+      name: 'AES-CBC',
+      iv: ivArray,
+    },
+    cryptoKey,
+    encryptedArray
+  );
+
+  return Array.from(new Uint8Array(decrypted));
 }
 
 /**

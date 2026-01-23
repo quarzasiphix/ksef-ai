@@ -213,8 +213,23 @@ export class KsefCompanyClient {
     const startTime = Date.now();
     
     try {
+      console.log('🔐 Testing KSeF connection for NIP:', this.integration.providerNip);
+      
+      // Import the proper auth service directly
+      const { KsefProperAuth } = await import('./ksefProperAuth');
+      const config = {
+        environment: 'test' as const,
+        baseUrl: 'https://rncrzxjyffxmfbnxlqtm.supabase.co/functions/v1/ksef-challenge',
+        apiUrl: 'https://rncrzxjyffxmfbnxlqtm.supabase.co/functions/v1/ksef-challenge',
+        systemInfo: 'KsięgaI v1.0',
+        namespace: 'http://crd.gov.pl/wzor/2023/06/29/12648/',
+        schemaVersion: '1-0E',
+      };
+      
+      const properAuth = new KsefProperAuth(config);
+      
       // Get the stored KSeF token from credentials
-      const { data: credential } = await this.supabase
+      const { data: credential } = await this.contextManager.getSupabase()
         .from('ksef_credentials')
         .select('*')
         .eq('provider_nip', this.integration.providerNip)
@@ -225,12 +240,35 @@ export class KsefCompanyClient {
         throw new Error('No KSeF credentials found. Please configure KSeF token first.');
       }
       
+      console.log('🔑 Found credential:', credential.id);
+      
       // Decode the stored token
       const encryptedToken = credential.secret_ref;
       const ksefToken = atob(encryptedToken);
       
-      // Test connection with actual token
-      const result = await this.service.testConnection(ksefToken, this.integration.taxpayerNip);
+      console.log('🔓 Token decoded successfully, length:', ksefToken.length);
+      console.log('🔓 Token preview:', ksefToken.substring(0, 50) + '...');
+      
+      // Test connection with proper authentication flow
+      console.log('🧪 Starting authentication test...');
+      const result = await properAuth.authenticateWithKsefToken(ksefToken, this.integration.taxpayerNip, 3, 1000);
+      
+      console.log('✅ Authentication test successful');
+      
+      // Test basic API call to verify the token works
+      const testResponse = await fetch(`${config.baseUrl}/rate-limits`, {
+        method: 'GET',
+        headers: {
+          'Authorization': `Bearer ${result.accessToken.token}`,
+          'Content-Type': 'application/json',
+        },
+      });
+      
+      if (!testResponse.ok) {
+        throw new Error(`API test failed: ${testResponse.status} ${testResponse.statusText}`);
+      }
+      
+      console.log('✅ API test successful');
 
       await this.contextManager.logOperation({
         companyId: this.integration.companyId,
@@ -243,7 +281,7 @@ export class KsefCompanyClient {
         durationMs: Date.now() - startTime,
       });
 
-      return { success: result.success };
+      return { success: true };
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : 'Unknown error';
       
@@ -281,6 +319,13 @@ export class KsefContextManager {
     this.authManager = new KsefAuthManager(config);
     this.secretManager = createKsefSecretManager(supabase, useVault) as KsefSecretManager;
     this.tokenCache = new Map();
+  }
+
+  /**
+   * Get supabase client (for use in company client)
+   */
+  getSupabase(): SupabaseClient {
+    return this.supabase;
   }
 
   /**

@@ -345,12 +345,17 @@ export class KsefInvoiceRetrievalService {
    * Get last sync state for subject type
    */
   private async getLastSyncState(subjectType: SubjectType): Promise<any> {
-    const { data } = await this.supabase
+    const { data, error } = await this.supabase
       .from('ksef_sync_state')
       .select('*')
       .eq('business_profile_id', this.businessProfileId)
       .eq('subject_type', subjectType)
-      .single();
+      .maybeSingle();
+
+    // Return null if no sync state exists (this is normal for new setups)
+    if (error || !data) {
+      return null;
+    }
 
     return data;
   }
