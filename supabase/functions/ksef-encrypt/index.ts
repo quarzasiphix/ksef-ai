@@ -20,7 +20,17 @@ serve(async (req) => {
     const body = await req.json();
     const { tokenWithTimestamp, certificatePem } = body;
     
-    console.log('🔐 Token length:', tokenWithTimestamp.length);
+    if (!tokenWithTimestamp || !certificatePem) {
+      throw new Error('Missing required parameters: tokenWithTimestamp and certificatePem');
+    }
+    
+    console.log('🔐 Token with timestamp format:', tokenWithTimestamp.substring(0, 50) + '...');
+    console.log('🔐 Token length:', tokenWithTimestamp.length, 'bytes');
+    
+    // Validate token format (should be token|timestamp_milliseconds)
+    if (!tokenWithTimestamp.includes('|')) {
+      throw new Error('Invalid token format. Expected format: token|timestamp_milliseconds');
+    }
     
     // Get KSeF public key certificates
     const certsResponse = await fetch('https://api-test.ksef.mf.gov.pl/v2/security/public-key-certificates', {

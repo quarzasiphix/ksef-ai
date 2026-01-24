@@ -12,18 +12,28 @@ import {
   AlertCircle, 
   CheckCircle, 
   Clock,
-  ExternalLink
+  ExternalLink,
+  RefreshCw,
+  Inbox,
+  QrCode
 } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/shared/hooks/use-toast';
+import { useBusinessProfile } from '@/shared/context/BusinessProfileContext';
 import { KsefStatusBadge } from '@/modules/invoices/components/KsefStatusBadge';
 import { KsefSettingsDialog } from '@/modules/invoices/components/KsefSettingsDialog';
+import { KsefContextManager } from '@/shared/services/ksef/ksefContextManager';
+import { getKsefConfig } from '@/shared/services/ksef/config';
+import { getKsefSyncJob } from '@/services/ksefSyncJobInit';
+import { generateEncryptionData } from '@/shared/services/ksef/ksefInvoiceRetrievalHelpersBrowser';
 
 interface KsefStats {
   totalInvoices: number;
   submittedInvoices: number;
   pendingInvoices: number;
   errorInvoices: number;
+  receivedInvoices: number;
+  unprocessedReceived: number;
 }
 
 interface KsefInvoice {
@@ -36,49 +46,57 @@ interface KsefInvoice {
   ksefSubmittedAt?: string | null;
   ksefError?: string | null;
   issueDate: string;
+  ksef_qr_code?: string | null;
+  ksef_qr_url?: string | null;
 }
 
 export default function KsefPage() {
   const { toast } = useToast();
+  const { selectedProfileId } = useBusinessProfile();
   const [loading, setLoading] = useState(true);
+  const [syncing, setSyncing] = useState(false);
   const [stats, setStats] = useState<KsefStats>({
     totalInvoices: 0,
     submittedInvoices: 0,
     pendingInvoices: 0,
     errorInvoices: 0,
+    receivedInvoices: 0,
+    unprocessedReceived: 0,
   });
   const [invoices, setInvoices] = useState<KsefInvoice[]>([]);
-  const [selectedBusinessProfile, setSelectedBusinessProfile] = useState<string>('');
-  const [businessProfiles, setBusinessProfiles] = useState<any[]>([]);
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [activeTab, setActiveTab] = useState('overview');
+  const [ksefIntegration, setKsefIntegration] = useState<any>(null);
 
   useEffect(() => {
-    loadData();
-  }, [selectedBusinessProfile]);
+    if (selectedProfileId) {
+      loadData();
+    }
+  }, [selectedProfileId]);
 
   const loadData = async () => {
+    if (!selectedProfileId) return;
+
     try {
       setLoading(true);
       
-      // Load business profiles
-      const { data: profiles } = await supabase
-        .from('business_profiles')
+      // Load KSeF integration status
+      const { data: integration } = await supabase
+        .from('ksef_integrations')
         .select('*')
-        .order('name');
+        .eq('business_profile_id', selectedProfileId)
+        .eq('status', 'active')
+        .single();
 
-      if (profiles && profiles.length > 0) {
-        setBusinessProfiles(profiles);
-        if (!selectedBusinessProfile) {
-          setSelectedBusinessProfile(profiles[0].id);
-        }
-      }
+      setKsefIntegration(integration);
 
-      // Load invoices and stats
-      if (selectedBusinessProfile) {
-        await loadInvoices(selectedBusinessProfile);
-      }
+      // Load sent invoices
+      await loadSentInvoices(selectedProfileId);
+      
+      // Load received invoices stats
+      await loadReceivedInvoicesStats(selectedProfileId);
     } catch (error) {
+      console.error('Error loading KSeF data:', error);
       toast({
         title: 'Błąd',
         description: 'Nie udało się załadować danych KSeF',
@@ -89,41 +107,45 @@ export default function KsefPage() {
     }
   };
 
-  const loadInvoices = async (businessProfileId: string) => {
-    const { data: invoicesData } = await supabase
-      .from('invoices')
+  const loadSentInvoices = async (businessProfileId: string) => {
+    const { data: invoicesData, error: invoicesError } = await supabase
+      .from('invoices_with_customer_name')
       .select(`
         id,
         number,
-        customerName,
-        totalGrossValue,
+        customername,
+        total_gross_value,
         ksef_status,
         ksef_reference_number,
         ksef_submitted_at,
         ksef_error,
-        issueDate
+        issue_date,
+        ksef_qr_code,
+        ksef_qr_url
       `)
-      .eq('business_profile_id', businessProfileId)
-      .order('issueDate', { ascending: false })
+      .eq('business_profile_id', selectedProfileId)
+      .order('issue_date', { ascending: false })
       .limit(50);
 
     if (invoicesData) {
       const mappedInvoices = invoicesData.map((invoice: any) => ({
         id: invoice.id,
         number: invoice.number,
-        customerName: invoice.customerName,
-        totalGrossValue: invoice.totalGrossValue,
+        customerName: invoice.customername,
+        totalGrossValue: invoice.total_gross_value,
         ksefStatus: invoice.ksef_status || 'none',
         ksefReferenceNumber: invoice.ksef_reference_number,
         ksefSubmittedAt: invoice.ksef_submitted_at,
         ksefError: invoice.ksef_error,
-        issueDate: invoice.issueDate,
+        issueDate: invoice.issue_date,
+        ksef_qr_code: invoice.ksef_qr_code,
+        ksef_qr_url: invoice.ksef_qr_url,
       }));
       
       setInvoices(mappedInvoices);
       
-      // Calculate stats
-      const newStats = mappedInvoices.reduce((acc: KsefStats, invoice: KsefInvoice) => {
+      // Calculate stats for sent invoices
+      const sentStats = mappedInvoices.reduce((acc: any, invoice: KsefInvoice) => {
         acc.totalInvoices++;
         switch (invoice.ksefStatus) {
           case 'submitted':
@@ -144,23 +166,370 @@ export default function KsefPage() {
         errorInvoices: 0,
       });
       
-      setStats(newStats);
+      setStats(prev => ({ ...prev, ...sentStats }));
     }
   };
 
-  const currentProfile = businessProfiles.find(p => p.id === selectedBusinessProfile);
-  const isKsefEnabled = currentProfile?.ksef_enabled;
+  const loadReceivedInvoicesStats = async (businessProfileId: string) => {
+    // Count received invoices
+    const { count: receivedCount } = await supabase
+      .from('ksef_invoices_received')
+      .select('id', { count: 'exact', head: true })
+      .eq('business_profile_id', businessProfileId);
+
+    // Count unprocessed received invoices
+    const { count: unprocessedCount } = await supabase
+      .from('ksef_invoices_received')
+      .select('id', { count: 'exact', head: true })
+      .eq('business_profile_id', businessProfileId)
+      .eq('processed', false);
+
+    setStats(prev => ({
+      ...prev,
+      receivedInvoices: receivedCount || 0,
+      unprocessedReceived: unprocessedCount || 0,
+    }));
+  };
+
+  const handleManualSync = async () => {
+    if (!selectedProfileId) return;
+
+    setSyncing(true);
+    try {
+      const syncJob = getKsefSyncJob();
+      await syncJob.runManualSync(selectedProfileId);
+      
+      toast({
+        title: 'Sukces',
+        description: 'Synchronizacja faktur zakończona',
+      });
+      
+      // Reload data
+      await loadData();
+    } catch (error) {
+      console.error('Sync error:', error);
+      toast({
+        title: 'Błąd',
+        description: 'Nie udało się zsynchronizować faktur',
+        variant: 'destructive',
+      });
+    } finally {
+      setSyncing(false);
+    }
+  };
+
+  const handleTestConnection = async () => {
+    if (!selectedProfileId) return;
+
+    try {
+      const config = getKsefConfig('test');
+      const contextManager = new KsefContextManager(config, supabase);
+      const ksefClient = await contextManager.forCompany(selectedProfileId);
+      const result = await ksefClient.testConnection();
+
+      if (result.success) {
+        toast({
+          title: 'Sukces',
+          description: 'Połączenie z KSeF działa poprawnie',
+        });
+      } else {
+        toast({
+          title: 'Błąd',
+          description: result.error || 'Nie udało się połączyć z KSeF',
+          variant: 'destructive',
+        });
+      }
+    } catch (error) {
+      console.error('Connection test error:', error);
+      toast({
+        title: 'Błąd',
+        description: 'Nie udało się przetestować połączenia',
+        variant: 'destructive',
+      });
+    }
+  };
+
+  const handleUploadInvoice = async (invoice: KsefInvoice) => {
+    if (!selectedProfileId || !ksefIntegration) {
+      toast({
+        title: "Błąd",
+        description: "Brak aktywnej integracji KSeF",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    // Check if we have KSeF credentials before proceeding
+    try {
+      console.log('🔍 KSeF Integration object:', ksefIntegration);
+      console.log('🔍 Available properties:', Object.keys(ksefIntegration || {}));
+      
+      // Try different possible NIP field names
+      const providerNip = ksefIntegration?.providerNip || 
+                         ksefIntegration?.provider_nip || 
+                         ksefIntegration?.nip || 
+                         ksefIntegration?.taxpayerNip;
+      
+      console.log('🔍 Provider NIP found:', providerNip);
+      
+      if (!providerNip) {
+        toast({
+          title: "Błąd konfiguracji",
+          description: "Brak numeru NIP w konfiguracji integracji KSeF. Sprawdź ustawienia KSeF.",
+          variant: "destructive",
+        });
+        return;
+      }
+
+      const { data: credential } = await supabase
+        .from('ksef_credentials')
+        .select('*')
+        .eq('provider_nip', providerNip)
+        .eq('is_active', true)
+        .single();
+
+      if (!credential) {
+        toast({
+          title: "Błąd konfiguracji",
+          description: `Brak aktywnych poświadczeń KSeF dla NIP: ${providerNip}. Skonfiguruj poświadczenia w ustawieniach KSeF.`,
+          variant: "destructive",
+        });
+        return;
+      }
+    } catch (error) {
+      console.error('🔍 Credential check error:', error);
+      toast({
+        title: "Błąd konfiguracji",
+        description: "Nie można sprawdzić poświadczeń KSeF. Skonfiguruj poświadczenia w ustawieniach KSeF.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    try {
+      toast({
+        title: "Wysyłanie faktury",
+        description: `Rozpoczynanie wysyłania faktury ${invoice.number}...`,
+      });
+
+      // Get KSeF client and perform authentication
+      const config = getKsefConfig('test');
+      const contextManager = new KsefContextManager(config, supabase, false);
+      const ksefClient = await contextManager.forCompany(selectedProfileId);
+      
+      console.log('🔐 Starting KSeF authentication for invoice upload...');
+      const authResult = await ksefClient.getFreshAccessToken();
+      
+      if (!authResult || !authResult.token) {
+        throw new Error('Failed to authenticate with KSeF');
+      }
+
+      const accessToken = authResult.token;
+      console.log('🔐 Authentication successful, token length:', accessToken.length);
+
+      // Use the proper KSeF service to submit the invoice
+      const { KsefService } = await import('@/shared/services/ksef/ksefService');
+      const ksefService = new KsefService('test');
+      
+      console.log('📄 Starting real KSeF invoice submission...');
+      
+      // Get business profile and customer data
+      const { data: businessProfile } = await supabase
+        .from('business_profiles')
+        .select('*')
+        .eq('id', selectedProfileId)
+        .single();
+      
+      if (!businessProfile) {
+        throw new Error('Business profile not found');
+      }
+      
+      // Get the full invoice data with items from the database
+      const { data: fullInvoiceData, error: invoiceError } = await supabase
+        .from('invoices')
+        .select(`
+          *,
+          items:invoice_items(*)
+        `)
+        .eq('id', invoice.id)
+        .single();
+      
+      if (invoiceError || !fullInvoiceData) {
+        throw new Error('Failed to fetch invoice data: ' + (invoiceError?.message || 'Invoice not found'));
+      }
+
+      // Get the actual customer data from the database
+      const { data: customerData } = await supabase
+        .from('customers')
+        .select('*')
+        .eq('id', fullInvoiceData.customer_id)
+        .single();
+      
+      if (!customerData) {
+        throw new Error('Customer not found');
+      }
+      
+      // Create a proper customer object with all required fields
+      const customer = {
+        id: customerData.id,
+        name: customerData.name,
+        taxId: customerData.tax_id || '',
+        address: customerData.address || '',
+        postalCode: customerData.postal_code || '',
+        city: customerData.city || '',
+        country: customerData.country || 'PL',
+        email: customerData.email || '',
+        phone: customerData.phone || '',
+        customerType: 'odbiorca' as const,
+        user_id: businessProfile.user_id
+      };
+      
+      // Convert database business profile to BusinessProfile type
+      const mappedBusinessProfile = {
+        id: businessProfile.id,
+        name: businessProfile.name,
+        taxId: businessProfile.tax_id || businessProfile.taxId || '',
+        regon: businessProfile.regon,
+        address: businessProfile.address,
+        postalCode: businessProfile.postal_code,
+        city: businessProfile.city,
+        country: businessProfile.country,
+        email: businessProfile.email,
+        phone: businessProfile.phone,
+        user_id: businessProfile.user_id
+      };
+
+      // Convert database invoice to Invoice format with all required fields
+      const fullInvoice = {
+        id: fullInvoiceData.id,
+        number: fullInvoiceData.number,
+        date: fullInvoiceData.issue_date,
+        issueDate: fullInvoiceData.issue_date,
+        sellDate: fullInvoiceData.sell_date || fullInvoiceData.issue_date,
+        dueDate: fullInvoiceData.due_date,
+        businessProfileId: fullInvoiceData.business_profile_id,
+        customerId: fullInvoiceData.customer_id,
+        totalNetValue: parseFloat(fullInvoiceData.total_net_value || '0'),
+        totalVatValue: parseFloat(fullInvoiceData.total_vat_value || '0'),
+        totalGrossValue: parseFloat(fullInvoiceData.total_gross_value || '0'),
+        currency: fullInvoiceData.currency || 'PLN',
+        language: fullInvoiceData.language || 'pl',
+        paymentMethod: fullInvoiceData.payment_method || 'transfer',
+        status: fullInvoiceData.status || 'draft',
+        type: 'standard' as const,
+        transactionType: 'sale' as const,
+        isPaid: false,
+        paid: false,
+        totalAmount: parseFloat(fullInvoiceData.total_gross_value || '0'),
+        seller: mappedBusinessProfile,
+        buyer: customer,
+        user_id: businessProfile.user_id,
+        items: (fullInvoiceData.items || []).map((item: any) => ({
+          id: item.id,
+          name: item.name,
+          description: item.description,
+          quantity: parseFloat(item.quantity || '1'),
+          unit: item.unit || 'szt',
+          unitPrice: parseFloat(item.unit_price || '0'),
+          totalNetValue: parseFloat(item.total_net_value || '0'),
+          vatRate: parseFloat(item.vat_rate || '23'),
+          vatExempt: item.vat_exempt || false
+        }))
+      };
+      
+      console.log('🔐 Submitting real invoice to KSeF...');
+      console.log('📋 Invoice data:', {
+        id: fullInvoice.id,
+        number: fullInvoice.number,
+        items: fullInvoice.items?.length || 0
+      });
+      
+      // Submit the invoice using the proper KSeF service
+      const result = await ksefService.submitInvoice({
+        invoice: fullInvoice,
+        businessProfile: mappedBusinessProfile,
+        customer,
+        ksefToken: accessToken,
+        supabaseClient: supabase
+      });
+
+      console.log('✅ KSeF submission result:', result);
+
+      if (!result.success) {
+        throw new Error(result.error || 'Unknown submission error');
+      }
+
+      toast({
+        title: "Sukces",
+        description: `Faktura ${invoice.number} została wysłana do KSeF${result.referenceNumber ? ` (Ref: ${result.referenceNumber})` : ''}`,
+      });
+
+      // Update invoice status to submitted with real reference number
+      if (result.referenceNumber || result.sessionReferenceNumber) {
+        const updateData: any = { 
+          ksef_status: 'submitted', 
+          ksef_reference_number: result.referenceNumber || result.sessionReferenceNumber,
+          ksef_uploaded_at: new Date().toISOString()
+        };
+
+        // Add UPO if available
+        if (result.upo) {
+          updateData.ksef_upo = result.upo;
+        }
+
+        // Add session reference if available
+        if (result.sessionReferenceNumber) {
+          updateData.ksef_session_reference_number = result.sessionReferenceNumber;
+        }
+
+        console.log('💾 Updating invoice in database:', updateData);
+
+        await supabase
+          .from('invoices')
+          .update(updateData)
+          .eq('id', invoice.id);
+      }
+
+      // Refresh the invoice list
+      await loadSentInvoices(selectedProfileId);
+      
+    } catch (error) {
+      console.error('Error uploading invoice:', error);
+      toast({
+        title: "Błąd wysyłki",
+        description: `Nie udało się wysłać faktury ${invoice.number}: ${error instanceof Error ? error.message : 'Unknown error'}`,
+        variant: "destructive",
+      });
+    }
+  };
+
+  const isKsefEnabled = ksefIntegration?.status === 'active';
 
   return (
     <div className="container mx-auto py-6 space-y-6">
       <div className="flex justify-between items-center">
         <div>
-          <h1 className="text-3xl font-bold">KSeF</h1>
+          <h1 className="text-3xl font-bold">KSeF 2.0</h1>
           <p className="text-muted-foreground">
-            Krajowy System e-Faktur - Zarządzanie wysyłką i odbiorem faktur
+            Krajowy System e-Faktur - Wysyłka, odbiór i zarządzanie fakturami
           </p>
         </div>
         <div className="flex gap-2">
+          <Button
+            variant="outline"
+            onClick={handleManualSync}
+            disabled={!isKsefEnabled || syncing}
+          >
+            <RefreshCw className={`w-4 h-4 mr-2 ${syncing ? 'animate-spin' : ''}`} />
+            {syncing ? 'Synchronizacja...' : 'Synchronizuj faktury'}
+          </Button>
+          <Button
+            variant="outline"
+            onClick={handleTestConnection}
+            disabled={!isKsefEnabled}
+          >
+            Testuj połączenie
+          </Button>
           <Button
             variant="outline"
             onClick={() => setSettingsOpen(true)}
@@ -180,17 +549,15 @@ export default function KsefPage() {
               Kliknij "Ustawienia KSeF" aby skonfigurować integrację.
             </div>
             <div className="flex items-center gap-2">
-              <span>Potrzebujesz tokenu KSeF?</span>
+              <span>Dokumentacja API:</span>
               <a
                 href="https://api-test.ksef.mf.gov.pl/docs/v2"
                 target="_blank"
                 rel="noopener noreferrer"
                 className="text-blue-600 hover:text-blue-800 underline flex items-center gap-1"
               >
-                Otwórz testowy portal KSeF
-                <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
-                </svg>
+                KSeF 2.0 API (Test)
+                <ExternalLink className="w-3 h-3" />
               </a>
             </div>
           </AlertDescription>
@@ -200,36 +567,36 @@ export default function KsefPage() {
       <Tabs value={activeTab} onValueChange={setActiveTab}>
         <TabsList>
           <TabsTrigger value="overview">Przegląd</TabsTrigger>
-          <TabsTrigger value="invoices">Faktury</TabsTrigger>
+          <TabsTrigger value="sent">Wysłane faktury</TabsTrigger>
+          <TabsTrigger value="received">Odebrane faktury</TabsTrigger>
           <TabsTrigger value="queue">Kolejka</TabsTrigger>
-          <TabsTrigger value="logs">Logi</TabsTrigger>
         </TabsList>
 
         <TabsContent value="overview" className="space-y-6">
           {/* Stats Cards */}
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
             <Card>
               <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">Wszystkie faktury</CardTitle>
-                <FileText className="h-4 w-4 text-muted-foreground" />
+                <CardTitle className="text-sm font-medium">Wysłane do KSeF</CardTitle>
+                <Upload className="h-4 w-4 text-green-600" />
               </CardHeader>
               <CardContent>
-                <div className="text-2xl font-bold">{stats.totalInvoices}</div>
+                <div className="text-2xl font-bold text-green-600">{stats.submittedInvoices}</div>
                 <p className="text-xs text-muted-foreground">
-                  W systemie
+                  Z {stats.totalInvoices} faktur
                 </p>
               </CardContent>
             </Card>
 
             <Card>
               <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">Wysłane</CardTitle>
-                <CheckCircle className="h-4 w-4 text-green-600" />
+                <CardTitle className="text-sm font-medium">Odebrane z KSeF</CardTitle>
+                <Inbox className="h-4 w-4 text-blue-600" />
               </CardHeader>
               <CardContent>
-                <div className="text-2xl font-bold text-green-600">{stats.submittedInvoices}</div>
+                <div className="text-2xl font-bold text-blue-600">{stats.receivedInvoices}</div>
                 <p className="text-xs text-muted-foreground">
-                  Do KSeF
+                  {stats.unprocessedReceived} nieprzetworzonych
                 </p>
               </CardContent>
             </Card>
@@ -246,19 +613,6 @@ export default function KsefPage() {
                 </p>
               </CardContent>
             </Card>
-
-            <Card>
-              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">Błędy</CardTitle>
-                <AlertCircle className="h-4 w-4 text-red-600" />
-              </CardHeader>
-              <CardContent>
-                <div className="text-2xl font-bold text-red-600">{stats.errorInvoices}</div>
-                <p className="text-xs text-muted-foreground">
-                  Wymagają uwagi
-                </p>
-              </CardContent>
-            </Card>
           </div>
 
           {/* Quick Actions */}
@@ -267,24 +621,34 @@ export default function KsefPage() {
               <CardHeader>
                 <CardTitle>Szybkie akcje</CardTitle>
                 <CardDescription>
-                  Zarządzaj integracją KSeF
+                  Zarządzaj integracją KSeF 2.0
                 </CardDescription>
               </CardHeader>
               <CardContent className="space-y-3">
                 <Button 
                   className="w-full" 
-                  disabled={!isKsefEnabled}
+                  disabled={!isKsefEnabled || syncing}
+                  onClick={handleManualSync}
                 >
-                  <Upload className="w-4 h-4 mr-2" />
-                  Wyślij wszystkie oczekujące
+                  <RefreshCw className={`w-4 h-4 mr-2 ${syncing ? 'animate-spin' : ''}`} />
+                  Synchronizuj faktury teraz
                 </Button>
                 <Button 
                   variant="outline" 
                   className="w-full"
+                  onClick={() => setActiveTab('received')}
+                >
+                  <Inbox className="w-4 h-4 mr-2" />
+                  Zobacz odebrane faktury ({stats.receivedInvoices})
+                </Button>
+                <Button 
+                  variant="outline" 
+                  className="w-full"
+                  onClick={handleTestConnection}
                   disabled={!isKsefEnabled}
                 >
-                  <Download className="w-4 h-4 mr-2" />
-                  Pobierz UPO dla wysłanych
+                  <CheckCircle className="w-4 h-4 mr-2" />
+                  Testuj połączenie z KSeF
                 </Button>
               </CardContent>
             </Card>
@@ -293,14 +657,14 @@ export default function KsefPage() {
               <CardHeader>
                 <CardTitle>Status integracji</CardTitle>
                 <CardDescription>
-                  Aktualny stan konfiguracji KSeF
+                  KSeF 2.0 API - api-test.ksef.mf.gov.pl
                 </CardDescription>
               </CardHeader>
               <CardContent className="space-y-3">
                 <div className="flex justify-between items-center">
                   <span>Środowisko</span>
-                  <Badge variant={currentProfile?.ksef_environment === 'production' ? 'default' : 'secondary'}>
-                    {currentProfile?.ksef_environment === 'production' ? 'Produkcyjne' : 'Testowe'}
+                  <Badge variant={ksefIntegration?.environment === 'production' ? 'default' : 'secondary'}>
+                    {ksefIntegration?.environment === 'production' ? 'Produkcyjne' : 'Testowe'}
                   </Badge>
                 </div>
                 <div className="flex justify-between items-center">
@@ -310,9 +674,16 @@ export default function KsefPage() {
                   </Badge>
                 </div>
                 <div className="flex justify-between items-center">
-                  <span>Token</span>
-                  <Badge variant={currentProfile?.ksef_token_encrypted ? 'default' : 'secondary'}>
-                    {currentProfile?.ksef_token_encrypted ? 'Skonfigurowany' : 'Brak'}
+                  <span>Automatyczna synchronizacja</span>
+                  <Badge variant="default">
+                    Co 15 minut
+                  </Badge>
+                </div>
+                <div className="flex justify-between items-center">
+                  <span>Kody QR</span>
+                  <Badge variant="default">
+                    <QrCode className="w-3 h-3 mr-1" />
+                    Włączone
                   </Badge>
                 </div>
               </CardContent>
@@ -320,12 +691,12 @@ export default function KsefPage() {
           </div>
         </TabsContent>
 
-        <TabsContent value="invoices" className="space-y-4">
+        <TabsContent value="sent" className="space-y-4">
           <Card>
             <CardHeader>
-              <CardTitle>Faktury</CardTitle>
+              <CardTitle>Wysłane faktury</CardTitle>
               <CardDescription>
-                Status wysyłki faktur do KSeF
+                Faktury wysłane do KSeF z kodami QR
               </CardDescription>
             </CardHeader>
             <CardContent>
@@ -333,7 +704,7 @@ export default function KsefPage() {
                 <div className="text-center py-8">Ładowanie...</div>
               ) : (
                 <div className="space-y-4">
-                  {invoices.map((invoice) => (
+                  {invoices.filter(inv => inv.ksefStatus === 'submitted').map((invoice) => (
                     <div key={invoice.id} className="flex items-center justify-between p-4 border rounded-lg">
                       <div className="flex-1">
                         <div className="flex items-center gap-3">
@@ -344,23 +715,34 @@ export default function KsefPage() {
                             errorMessage={invoice.ksefError}
                             submittedAt={invoice.ksefSubmittedAt}
                           />
+                          {invoice.ksef_qr_code && (
+                            <Badge variant="outline" className="gap-1">
+                              <QrCode className="w-3 h-3" />
+                              Kod QR
+                            </Badge>
+                          )}
                         </div>
                         <div className="text-sm text-muted-foreground mt-1">
                           {invoice.customerName} • {new Date(invoice.issueDate).toLocaleDateString('pl-PL')} • 
                           {invoice.totalGrossValue.toFixed(2)} PLN
                         </div>
+                        {invoice.ksefReferenceNumber && (
+                          <div className="text-xs text-muted-foreground mt-1 font-mono">
+                            KSeF: {invoice.ksefReferenceNumber}
+                          </div>
+                        )}
                       </div>
                       <div className="flex gap-2">
-                        {invoice.ksefReferenceNumber && (
+                        {invoice.ksef_qr_code && (
                           <Button variant="outline" size="sm">
-                            <ExternalLink className="w-4 h-4 mr-1" />
-                            UPO
+                            <QrCode className="w-4 h-4 mr-1" />
+                            QR
                           </Button>
                         )}
-                        {invoice.ksefStatus === 'none' && (
-                          <Button size="sm" disabled={!isKsefEnabled}>
-                            <Upload className="w-4 h-4 mr-1" />
-                            Wyślij
+                        {invoice.ksefReferenceNumber && (
+                          <Button variant="outline" size="sm">
+                            <Download className="w-4 h-4 mr-1" />
+                            UPO
                           </Button>
                         )}
                       </div>
@@ -372,38 +754,91 @@ export default function KsefPage() {
           </Card>
         </TabsContent>
 
-        <TabsContent value="queue" className="space-y-4">
+        <TabsContent value="received" className="space-y-4">
           <Card>
             <CardHeader>
-              <CardTitle>Kolejka wysyłania</CardTitle>
-              <CardDescription>
-                Faktury oczekujące na wysyłkę (Offline24)
-              </CardDescription>
+              <div className="flex justify-between items-center">
+                <div>
+                  <CardTitle>Odebrane faktury</CardTitle>
+                  <CardDescription>
+                    Faktury automatycznie pobrane z KSeF
+                  </CardDescription>
+                </div>
+                <Button
+                  variant="outline"
+                  onClick={() => window.location.href = '/settings/ksef-inbox'}
+                >
+                  <Inbox className="w-4 h-4 mr-2" />
+                  Otwórz skrzynkę KSeF
+                </Button>
+              </div>
             </CardHeader>
             <CardContent>
-              <div className="text-center py-8 text-muted-foreground">
-                <Clock className="w-12 h-12 mx-auto mb-4 opacity-50" />
-                <p>Brak faktur w kolejce</p>
-                <p className="text-sm">Faktury zostaną dodane do kolejki automatycznie</p>
+              <div className="text-center py-8">
+                <Inbox className="w-16 h-16 mx-auto mb-4 text-muted-foreground opacity-50" />
+                <h3 className="text-lg font-medium mb-2">
+                  {stats.receivedInvoices} faktur odebranych
+                </h3>
+                <p className="text-sm text-muted-foreground mb-4">
+                  {stats.unprocessedReceived} oczekuje na przetworzenie
+                </p>
+                <Button
+                  onClick={() => window.location.href = '/settings/ksef-inbox'}
+                >
+                  Zobacz wszystkie odebrane faktury
+                </Button>
               </div>
             </CardContent>
           </Card>
         </TabsContent>
 
-        <TabsContent value="logs" className="space-y-4">
+        <TabsContent value="queue" className="space-y-4">
           <Card>
             <CardHeader>
-              <CardTitle>Logi operacji</CardTitle>
+              <CardTitle>Kolejka wysyłania</CardTitle>
               <CardDescription>
-                Historia operacji KSeF
+                Faktury oczekujące na wysyłkę do KSeF
               </CardDescription>
             </CardHeader>
             <CardContent>
-              <div className="text-center py-8 text-muted-foreground">
-                <FileText className="w-12 h-12 mx-auto mb-4 opacity-50" />
-                <p>Brak logów</p>
-                <p className="text-sm">Logi pojawią się po pierwszych operacjach KSeF</p>
-              </div>
+              {loading ? (
+                <div className="text-center py-8">Ładowanie...</div>
+              ) : (
+                <div className="space-y-4">
+                  {invoices.filter(inv => inv.ksefStatus === 'pending' || inv.ksefStatus === 'none').length > 0 ? (
+                    invoices.filter(inv => inv.ksefStatus === 'pending' || inv.ksefStatus === 'none').map((invoice) => (
+                      <div key={invoice.id} className="flex items-center justify-between p-4 border rounded-lg">
+                        <div className="flex-1">
+                          <div className="flex items-center gap-3">
+                            <h4 className="font-medium">{invoice.number}</h4>
+                            <Badge variant="secondary">
+                              <Clock className="w-3 h-3 mr-1" />
+                              Oczekuje
+                            </Badge>
+                          </div>
+                          <div className="text-sm text-muted-foreground mt-1">
+                            {invoice.customerName} • {new Date(invoice.issueDate).toLocaleDateString('pl-PL')} • 
+                            {invoice.totalGrossValue.toFixed(2)} PLN
+                          </div>
+                        </div>
+                        <Button 
+                          size="sm" 
+                          disabled={!isKsefEnabled}
+                          onClick={() => handleUploadInvoice(invoice)}
+                        >
+                          <Upload className="w-4 h-4 mr-1" />
+                          Wyślij teraz
+                        </Button>
+                      </div>
+                    ))
+                  ) : (
+                    <div className="text-center py-8 text-muted-foreground">
+                      <Clock className="w-12 h-12 mx-auto mb-4 opacity-50" />
+                      <p>Brak faktur w kolejce</p>
+                    </div>
+                  )}
+                </div>
+              )}
             </CardContent>
           </Card>
         </TabsContent>
@@ -412,7 +847,7 @@ export default function KsefPage() {
       <KsefSettingsDialog
         open={settingsOpen}
         onOpenChange={setSettingsOpen}
-        businessProfileId={selectedBusinessProfile}
+        businessProfileId={selectedProfileId || ''}
       />
     </div>
   );

@@ -239,16 +239,50 @@ export class KsefCompanyClient {
     
     console.log('🔑 Found credential:', credential.id);
     
-    // Decode the stored token
-    const encryptedToken = credential.secret_ref;
-    const ksefToken = atob(encryptedToken);
+    // Extract the raw KSeF token from the secret_ref
+    // The secret_ref is base64-encoded and contains: token|nip|hash
+    let ksefToken: string;
     
-    console.log('🔓 Token decoded successfully, length:', ksefToken.length);
-    console.log('🔓 Token preview:', ksefToken.substring(0, 50) + '...');
+    try {
+      // Decode the secret_ref
+      const decodedRef = atob(credential.secret_ref);
+      console.log('🔓 Decoded secret_ref:', decodedRef.substring(0, 100) + '...');
+      
+      // Parse the composite string: "TOKEN|nip-XXXXX|hash"
+      const parts = decodedRef.split('|');
+      console.log('🔍 Parsed parts:', parts.length);
+      console.log('🔍 Part 0 (token):', parts[0]);
+      console.log('🔍 Part 1 (nip):', parts[1]);
+      
+      if (parts.length >= 1 && parts[0]) {
+        // First part is the raw KSeF token
+        ksefToken = parts[0].trim();
+        console.log('✅ Extracted raw KSeF token:', ksefToken);
+        console.log('✅ Token length:', ksefToken.length, 'characters');
+        console.log('✅ Token format check - should be UUID-like:', /^[0-9A-Z\-]+$/i.test(ksefToken));
+        
+        // Validate token is not empty
+        if (!ksefToken || ksefToken.length === 0) {
+          throw new Error('Extracted token is empty. The secret_ref might not contain a valid token.');
+        }
+        
+        // Validate token format (should be alphanumeric with dashes)
+        if (!/^[0-9A-Z\-]+$/i.test(ksefToken)) {
+          throw new Error(`Invalid token format: "${ksefToken}". Expected alphanumeric with dashes.`);
+        }
+      } else {
+        throw new Error('Invalid secret_ref format. Expected: token|nip|hash, but first part is empty or missing');
+      }
+    } catch (parseError) {
+      console.error('❌ Failed to parse secret_ref:', parseError);
+      throw new Error(`Failed to extract KSeF token from credential: ${parseError instanceof Error ? parseError.message : 'Unknown error'}`);
+    }
     
     // Perform full authentication to get a fresh token
+    // IMPORTANT: Use the provider NIP (the one that owns the token), not the taxpayer NIP
     console.log('🧪 Starting full authentication flow...');
-    const result = await properAuth.authenticateWithKsefToken(ksefToken, this.integration.taxpayerNip, 3, 1000);
+    console.log('🔑 Using provider NIP for authentication:', this.integration.providerNip);
+    const result = await properAuth.authenticateWithKsefToken(ksefToken, this.integration.providerNip, 3, 1000);
     
     if (!result || !result.accessToken) {
       throw new Error('Failed to authenticate with KSeF');

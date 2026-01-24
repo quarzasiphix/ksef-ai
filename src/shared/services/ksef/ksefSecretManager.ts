@@ -40,8 +40,8 @@ export class KsefSecretManager {
     }
 
     try {
-      // Query KSeF credentials using simplified function
-      const { data, error } = await this.supabase.rpc('get_ksef_secret_simple', {
+      // Query KSeF credentials using vault function
+      const { data, error } = await this.supabase.rpc('get_ksef_secret', {
         secret_name: secretRef
       });
 
