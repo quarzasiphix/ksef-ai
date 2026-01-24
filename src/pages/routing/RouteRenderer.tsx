@@ -171,18 +171,6 @@ export const RouteRenderer: React.FC = () => {
       
       {/* CRM Token Handler - Support both formats */}
       <Route
-        path="/settings/token=*"
-        element={
-          (() => {
-            console.log('Settings token route with = matched!');
-            console.log('About to render CrmLinking');
-            const result = <CrmLinking />;
-            console.log('CrmLinking element created:', result);
-            return result;
-          })()
-        }
-      />
-      <Route
         path="/settings/token/*"
         element={
           (() => {

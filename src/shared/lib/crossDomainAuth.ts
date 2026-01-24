@@ -66,18 +66,28 @@ export const getCrossDomainAuthToken = (): CrossDomainAuthToken | null => {
 
 /**
  * Clear auth token from both cookie and localStorage
- * This ensures logout works across both domains
+ * This ensures logout works across both domains and prevents token reuse
  */
 export const clearCrossDomainAuthToken = (): void => {
   if (typeof window === 'undefined') return;
 
+  console.log('[crossDomainAuth] Clearing auth token from all storage');
+
   // Clear localStorage
   localStorage.removeItem(COOKIE_NAME);
 
-  // Clear cookie on parent domain
-  const domain = window.location.hostname.includes('localhost') 
-    ? 'localhost' 
-    : '.ksiegai.pl';
+  // Clear cookie on parent domain with multiple attempts to ensure it's gone
+  const domains = [
+    window.location.hostname.includes('localhost') ? 'localhost' : '.ksiegai.pl',
+    window.location.hostname,
+    'www.ksiegai.pl',
+    'ksiegai.pl'
+  ];
 
-  document.cookie = `${COOKIE_NAME}=; domain=${domain}; path=/; max-age=0`;
+  domains.forEach(domain => {
+    document.cookie = `${COOKIE_NAME}=; domain=${domain}; path=/; max-age=0; expires=Thu, 01 Jan 1970 00:00:00 GMT`;
+    document.cookie = `${COOKIE_NAME}=; domain=${domain}; path=/; max-age=0`;
+  });
+
+  console.log('[crossDomainAuth] Auth token cleared from all domains');
 };

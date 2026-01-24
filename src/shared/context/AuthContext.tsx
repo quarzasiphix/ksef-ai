@@ -118,7 +118,13 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
         if (error) {
           console.error("[AuthContext] Failed to restore cross-domain session:", error);
-          clearCrossDomainAuthToken();
+          
+          // If it's a refresh token reuse error, clear it immediately
+          if (error.message?.includes('refresh_token') || error.message?.includes('Already Used')) {
+            console.log("[AuthContext] Refresh token reuse detected, clearing token");
+            clearCrossDomainAuthToken();
+          }
+          
           return null;
         }
 
@@ -144,7 +150,13 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
           if (error) {
             console.error("[AuthContext] Retry failed:", error);
-            clearCrossDomainAuthToken();
+            
+            // If it's a refresh token reuse error, clear it immediately
+            if (error.message?.includes('refresh_token') || error.message?.includes('Already Used')) {
+              console.log("[AuthContext] Refresh token reuse detected in retry, clearing token");
+              clearCrossDomainAuthToken();
+            }
+            
             return null;
           }
 
@@ -241,12 +253,12 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const logout = async () => {
     try {
-      console.log("[AuthContext] Logging out - clearing all auth state");
+      console.log("[AuthContext] Starting logout process");
       
-      // Clear cross-domain token FIRST to prevent Next.js from auto-restoring
+      // Clear cross-domain token FIRST to prevent reuse
       clearCrossDomainAuthToken();
       
-      // Clean up local auth state
+      // Clear local auth state
       cleanupAuthState();
       
       // Attempt global sign out, but don't fail if it doesn't work.
