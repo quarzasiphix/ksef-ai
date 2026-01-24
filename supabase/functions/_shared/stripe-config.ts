@@ -51,11 +51,11 @@ export async function initializeStripe(): Promise<StripeConfig> {
 
   // Select appropriate keys based on mode
   const secretKey = mode === 'live' 
-    ? Deno.env.get('STRIPE_SECRET_KEY_LIVE')
+    ? Deno.env.get('STRIPE_SECRET_KEY_PROD')
     : Deno.env.get('STRIPE_SECRET_KEY_TEST');
 
   const webhookSecret = mode === 'live'
-    ? Deno.env.get('STRIPE_WEBHOOK_SECRET_LIVE')
+    ? Deno.env.get('STRIPE_WEBHOOK_SECRET_PROD')
     : Deno.env.get('STRIPE_WEBHOOK_SECRET_TEST');
 
   if (!secretKey) {
@@ -88,11 +88,11 @@ export async function initializeStripeConnect(): Promise<StripeConfig> {
   console.log(`[Stripe Connect] Initializing in ${mode} mode`);
 
   const secretKey = mode === 'live' 
-    ? Deno.env.get('STRIPE_SECRET_KEY_LIVE')
+    ? Deno.env.get('STRIPE_SECRET_KEY_PROD')
     : Deno.env.get('STRIPE_SECRET_KEY_TEST');
 
   const webhookSecret = mode === 'live'
-    ? Deno.env.get('STRIPE_CONNECT_WEBHOOK_SECRET_LIVE')
+    ? Deno.env.get('STRIPE_CONNECT_WEBHOOK_SECRET_PROD')
     : Deno.env.get('STRIPE_CONNECT_WEBHOOK_SECRET_TEST');
 
   if (!secretKey) {

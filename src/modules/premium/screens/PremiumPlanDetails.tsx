@@ -5,59 +5,42 @@ import { Badge } from "@/shared/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/shared/ui/card";
 import { Check, Crown, ArrowLeft, ArrowRight } from "lucide-react";
 import { useAuth } from "@/shared/hooks/useAuth";
+import { useStripeProduct, formatPrice, getIntervalLabel } from "@/modules/premium/hooks/useStripeProducts";
 
-const plans = {
-  monthly: {
-    id: "monthly",
-    name: "Miesięczny",
-    price: "19 zł",
-    interval: "miesiąc",
-    tagline: "Pełna kontrola nad spółką bez zobowiązań długoterminowych.",
-    badge: undefined,
-    highlights: [
-      "System decyzji i uchwał — pełna kontrola uprawnień",
-      "Nieograniczone dokumenty i eksporty (JPK, KSeF)",
-      "Niezależność od księgowej jako gatekeepera",
-    ],
-    whoFor: "Idealny dla założycieli testujących system lub firm z sezonową działalnością.",
-  },
-  annual: {
-    id: "annual",
-    name: "Roczny",
-    price: "150 zł",
-    interval: "rok",
-    tagline: "Najlepsza cena — spokój i kontrola przez cały rok.",
-    badge: "Najpopularniejszy",
-    highlights: [
-      "System decyzji i uchwał — pełna kontrola uprawnień",
-      "Nieograniczone dokumenty i eksporty (JPK, KSeF)",
-      "Niezależność od księgowej jako gatekeepera",
-    ],
-    whoFor: "Najlepszy wybór dla większości spółek — najlepsza cena, najmniej formalności, pełna funkcjonalność.",
-  },
-  lifetime: {
-    id: "lifetime",
-    name: "Enterprise",
-    price: "999 zł",
-    interval: "jednorazowo",
-    tagline: "Dedykowane wdrożenie, dostęp offline i pełna kontrola nad systemem.",
-    badge: "Oferta indywidualna",
-    highlights: [
-      "Wszystko z planu Rocznego",
-      "Dedykowane wdrożenie i szkolenie zespołu",
-      "Dostęp offline i pełna kontrola nad danymi",
-      "Priorytetowe wsparcie techniczne",
-    ],
-    whoFor: "Dla firm wymagających pełnej niezależności, kontroli nad infrastrukturą i dedykowanego wsparcia.",
-  },
-} as const;
 
 const PremiumPlanDetails = () => {
   const { planId } = useParams();
   const { user, openPremiumDialog } = useAuth();
+  
+  // Fetch product from database
+  const { data: product, isLoading } = useStripeProduct(planId || '');
+  
+  // Map product to display format
+  const plan = product ? {
+    id: product.plan_type,
+    name: product.name,
+    price: formatPrice(product.price_amount, product.currency),
+    interval: getIntervalLabel(product.interval, product.interval_count),
+    tagline: product.description || '',
+    badge: product.plan_type === 'annual' ? 'Najpopularniejszy' : product.plan_type === 'lifetime' ? 'Oferta indywidualna' : undefined,
+    highlights: product.features || [],
+    whoFor: product.plan_type === 'monthly' 
+      ? 'Idealny dla założycieli testujących system lub firm z sezonową działalnością.'
+      : product.plan_type === 'annual'
+      ? 'Najlepszy wybór dla większości spółek — najlepsza cena, najmniej formalności, pełna funkcjonalność.'
+      : 'Dla firm wymagających pełnej niezależności, kontroli nad infrastrukturą i dedykowanego wsparcia.',
+  } : null;
 
-  const planKey = (planId || "") as keyof typeof plans;
-  const plan = plans[planKey];
+  if (isLoading) {
+    return (
+      <div className="container mx-auto px-4 py-16">
+        <div className="text-center">
+          <div className="w-16 h-16 border-4 border-primary border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
+          <p className="text-muted-foreground">Ładowanie...</p>
+        </div>
+      </div>
+    );
+  }
 
   if (!plan) {
     return (

@@ -1,15 +1,12 @@
 import React, { useEffect, useState } from "react";
-import { loadStripe } from "@stripe/stripe-js";
 import { Elements, useStripe, useElements, PaymentElement } from "@stripe/react-stripe-js";
 import { useAuth } from "@/shared/context/AuthContext";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogClose } from "@/shared/ui/dialog";
 import { Button } from "@/shared/ui/button";
 import { toast } from "sonner";
 import { Smartphone } from "lucide-react";
-
-// Use the provided live publishable key
-const stripePromise = loadStripe("pk_live_51RUBwrHFbUxWftPspR2XyfylCIr3dI8bCKWrWeQZBXs65KV8dJ3JWdu4okrOxjBhwuuwTjCQFlWzJG5191mrHALL00i7TOuLbP");
-
+import { getStripe } from "@/shared/lib/stripeClient";
+import type { Stripe } from "@stripe/stripe-js";
 
 // Use env or fallback to Supabase project ref
 const SUPABASE_FUNCTIONS_URL = import.meta.env.VITE_SUPABASE_FUNCTIONS_URL || "https://rncrzxjyffxmfbnxlqtm.functions.supabase.co";
@@ -18,27 +15,37 @@ export function BlikPaymentModal({ isOpen, onClose, amount }) {
   const { user } = useAuth();
   const [clientSecret, setClientSecret] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+  const [stripePromise, setStripePromise] = useState<Promise<Stripe | null> | null>(null);
 
   useEffect(() => {
-    if (isOpen && user?.id) {
-      setLoading(true);
-      fetch(`${SUPABASE_FUNCTIONS_URL}/create-stripe-payment-intent`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          amount, // in grosze (e.g., 15000 for 150 PLN)
-          userId: user.id,
-          email: user.email,
-          currency: "pln",
-          description: "Zakup Premium BLIK"
-        }),
-      })
-        .then(res => res.json())
-        .then(data => {
-          setClientSecret(data.clientSecret);
+    if (isOpen) {
+      // Load Stripe with correct key
+      getStripe().then(stripe => {
+        if (stripe) {
+          setStripePromise(Promise.resolve(stripe));
+        }
+      });
+
+      if (user?.id) {
+        setLoading(true);
+        fetch(`${SUPABASE_FUNCTIONS_URL}/create-stripe-payment-intent`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            amount, // in grosze (e.g., 15000 for 150 PLN)
+            userId: user.id,
+            email: user.email,
+            currency: "pln",
+            description: "Zakup Premium BLIK"
+          }),
         })
-        .catch(() => toast.error("Błąd podczas inicjalizacji płatności."))
-        .finally(() => setLoading(false));
+          .then(res => res.json())
+          .then(data => {
+            setClientSecret(data.clientSecret);
+          })
+          .catch(() => toast.error("Błąd podczas inicjalizacji płatności."))
+          .finally(() => setLoading(false));
+      }
     }
   }, [isOpen, user, amount]);
 
@@ -53,7 +60,7 @@ export function BlikPaymentModal({ isOpen, onClose, amount }) {
             Płatność BLIK
           </DialogTitle>
         </DialogHeader>
-        {clientSecret ? (
+        {clientSecret && stripePromise ? (
           <Elements stripe={stripePromise} options={{ clientSecret }}>
             <BlikPaymentForm onClose={onClose} />
           </Elements>

@@ -1,6 +1,7 @@
-import { serve } from "https://deno.land/std@0.177.0/http/server.ts";
-import Stripe from "https://esm.sh/stripe@14.25.0?target=deno";
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2.43.2";
+import { serve } from 'https://deno.land/std@0.177.0/http/server.ts';
+import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.43.2';
+import { initializeStripe } from '../_shared/stripe-config.ts';
+import type Stripe from 'https://esm.sh/stripe@14.25.0?target=deno';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -86,12 +87,10 @@ serve(async (req) => {
 
       if (existingPayment) {
         // Return existing session - don't create duplicate
-        const stripe = new Stripe(Deno.env.get('STRIPE_SECRET_KEY_PROD') as string, {
-          apiVersion: '2024-04-10',
-        });
+        const { stripe: stripeForRetrieval } = await initializeStripe();
         
         try {
-          const session = await stripe.checkout.sessions.retrieve(invoice.stripe_checkout_session_id);
+          const session = await stripeForRetrieval.checkout.sessions.retrieve(invoice.stripe_checkout_session_id);
           if (session.status === 'open') {
             return new Response(
               JSON.stringify({ url: session.url }),
@@ -104,10 +103,9 @@ serve(async (req) => {
       }
     }
 
-    // Initialize Stripe
-    const stripe = new Stripe(Deno.env.get('STRIPE_SECRET_KEY_PROD') as string, {
-      apiVersion: '2024-04-10',
-    });
+    // Initialize Stripe with centralized config
+    const { stripe, mode } = await initializeStripe();
+    console.log(`[stripe-create-payment-checkout] Using ${mode} mode`);
 
     // Calculate amount in minor units (grosze)
     const amountMinor = invoice.amount_gross_minor || Math.round(invoice.total_gross_value * 100);

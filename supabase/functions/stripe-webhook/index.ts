@@ -1,11 +1,10 @@
 import { serve } from "https://deno.land/std@0.177.0/http/server.ts";
-import Stripe from "https://esm.sh/stripe@14.25.0?target=deno";
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2.43.2"; // Use Supabase JS client
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2.43.2";
+import { initializeStripe } from "../_shared/stripe-config.ts";
+import type Stripe from "https://esm.sh/stripe@14.25.0?target=deno";
 
 console.log("Stripe Webhook Edge Function started");
 
-// This function handles CORS preflight requests and the actual function logic.
-// Inlining CORS logic to avoid external file imports.
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
@@ -16,26 +15,27 @@ serve(async (req) => {
   if (req.method === 'OPTIONS') {
     return new Response('ok', { headers: corsHeaders })
   }
-  const stripeWebhookSecret = Deno.env.get('STRIPE_WEBHOOK_SECRET_PROD');
-  //const stripeWebhookSecret = Deno.env.get('STRIPE_WEBHOOK_SECRET_TEST');
+
   const supabaseServiceRoleKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
 
-  if (!stripeWebhookSecret || !supabaseServiceRoleKey) {
-    console.error("Missing Stripe Webhook Secret or Supabase Service Role Key");
+  if (!supabaseServiceRoleKey) {
+    console.error("Missing Supabase Service Role Key");
     return new Response(JSON.stringify({ error: "Internal server configuration error." }), {
       status: 500,
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
   }
 
-  // Initialize Stripe (using the Secret Key, NOT the webhook secret)
-  // This might not be strictly needed for just webhook verification,
-  // but good to have if you expand function logic.
-  const stripe = new Stripe(Deno.env.get('STRIPE_SECRET_KEY_PROD') as string, {
-  //const stripe = new Stripe(Deno.env.get('STRIPE_SECRET_KEY_TEST') as string, {
-    apiVersion: '2024-04-10',
-    typescript: true,
-  });
+  // Initialize Stripe with centralized config (reads mode from app_settings)
+  const { stripe, mode, webhookSecret } = await initializeStripe();
+  
+  if (!webhookSecret) {
+    console.error(`Stripe webhook secret not configured for ${mode} mode`);
+    return new Response(JSON.stringify({ error: "Webhook secret not configured." }), {
+      status: 500,
+      headers: { ...corsHeaders, "Content-Type": "application/json" },
+    });
+  }
 
   // Create a Supabase client with the Service Role Key
   const supabase = createClient(
@@ -54,12 +54,12 @@ serve(async (req) => {
   }
 
   try {
-    const rawBody = await req.text(); // Read the body as text for verification
+    const rawBody = await req.text();
 
     event = await stripe.webhooks.constructEventAsync(
       rawBody,
       signature,
-      stripeWebhookSecret
+      webhookSecret
     );
   } catch (err: any) {
     console.error(`⚠️  Webhook signature verification failed.`, err.message);

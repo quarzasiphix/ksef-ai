@@ -1,6 +1,7 @@
 import { serve } from "https://deno.land/std@0.177.0/http/server.ts";
-import Stripe from "https://esm.sh/stripe@14.25.0?target=deno";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.43.2";
+import { initializeStripeConnect } from "../_shared/stripe-config.ts";
+import type Stripe from "https://esm.sh/stripe@14.25.0?target=deno";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -56,10 +57,9 @@ serve(async (req) => {
       );
     }
 
-    // Initialize Stripe
-    const stripe = new Stripe(Deno.env.get('STRIPE_SECRET_KEY_PROD') as string, {
-      apiVersion: '2024-04-10',
-    });
+    // Initialize Stripe Connect with centralized config
+    const { stripe, mode } = await initializeStripeConnect();
+    console.log(`[stripe-connect-status] Using ${mode} mode`);
 
     // Fetch account details from Stripe
     const account = await stripe.accounts.retrieve(profile.stripe_connect_account_id);

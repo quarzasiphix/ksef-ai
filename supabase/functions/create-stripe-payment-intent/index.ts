@@ -1,5 +1,6 @@
-import { serve } from "https://deno.land/std@0.178.0/http/server.ts";
-import Stripe from "https://esm.sh/stripe@12.11.0?target=deno";
+import { serve } from "https://deno.land/std@0.177.0/http/server.ts";
+import { initializeStripe } from "../_shared/stripe-config.ts";
+import type Stripe from "https://esm.sh/stripe@14.25.0?target=deno";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -11,22 +12,10 @@ serve(async (req) => {
     return new Response('ok', { headers: corsHeaders });
   }
 
-  const stripeSecretKey = Deno.env.get('STRIPE_SECRET_KEY_PROD');
-  //const stripeSecretKey = Deno.env.get('STRIPE_SECRET_KEY_TEST'); // test key
-  if (!stripeSecretKey) {
-    return new Response(JSON.stringify({
-      error: "Stripe secret key not configured"
-    }), {
-      status: 500,
-      headers: { ...corsHeaders, "Content-Type": "application/json" }
-    });
-  }
-  const stripe = new Stripe(stripeSecretKey, {
-    apiVersion: '2023-08-16',
-    typescript: true,
-    host: 'api.stripe.com',
-    port: 443
-  });
+  // Initialize Stripe with centralized config
+  const { stripe, mode } = await initializeStripe();
+  console.log(`[create-stripe-payment-intent] Using ${mode} mode`);
+
   try {
     const { amount, userId, currency = 'pln', description, email } = await req.json();
     if (!amount || !userId) {

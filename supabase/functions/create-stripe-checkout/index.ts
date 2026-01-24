@@ -1,4 +1,5 @@
-import { serve } from "https://deno.land/std@0.178.0/http/server.ts";
+import { serve } from "https://deno.land/std@0.177.0/http/server.ts";
+import { initializeStripe } from "../_shared/stripe-config.ts";
 import Stripe from "https://esm.sh/stripe@12.11.0?target=deno"; // Using esm.sh for Deno compatibility
 
 // Add CORS headers (you might want a shared file for this)
@@ -13,25 +14,10 @@ serve(async (req)=>{
     return new Response('ok', { headers: corsHeaders });
   }
 
-  //const stripeSecretKey = Deno.env.get('STRIPE_SECRET_KEY_PROD');
-  const stripeSecretKey = Deno.env.get('STRIPE_SECRET_KEY_TEST'); // test key
-  if (!stripeSecretKey) {
-    return new Response(JSON.stringify({
-      error: "Stripe secret key not configured"
-    }), {
-      status: 500,
-      headers: { ...corsHeaders, "Content-Type": "application/json" }
-    });
-  }
-  const stripe = new Stripe(stripeSecretKey, {
-    apiVersion: '2023-08-16',
-    // Provide a unique identifier for the server-side application
-    // so that Stripe can accurately aggregate usage data.
-    // See https://stripe.com/docs/building-integrations#sending-requests-to-stripe
-    typescript: true,
-    host: 'api.stripe.com',
-    port: 443
-  });
+  // Initialize Stripe with centralized config
+  const { stripe, mode } = await initializeStripe();
+  console.log(`[create-stripe-checkout] Using ${mode} mode`);
+
   try {
     const { priceId, userId, paymentMethod, email } = await req.json(); // Added email
     if (!priceId || !userId) {

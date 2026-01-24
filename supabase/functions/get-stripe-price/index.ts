@@ -1,15 +1,11 @@
-import { serve } from "https://deno.land/std@0.177.0/http/server.ts"
-import Stripe from "https://esm.sh/stripe@14.25.0?target=deno";
-
-// Initialize Stripe with your secret key
-// Ensure STRIPE_SECRET_KEY is set in your Supabase secrets
-//const stripe = new Stripe(Deno.env.get('STRIPE_SECRET_KEY_PROD') as string, {
-const stripe = new Stripe(Deno.env.get('STRIPE_SECRET_KEY_TEST') as string, {
-  apiVersion: '2024-04-10',
-  typescript: true,
-});
+import { serve } from "https://deno.land/std@0.177.0/http/server.ts";
+import { initializeStripe } from "../_shared/stripe-config.ts";
 
 serve(async (req) => {
+  // Initialize Stripe with centralized config
+  const { stripe, mode } = await initializeStripe();
+  console.log(`[get-stripe-price] Using ${mode} mode`);
+
   // CORS handling (adjust origin as needed in production)
   if (req.method === 'OPTIONS') {
     return new Response('ok', { headers: { 'Access-Control-Allow-Origin': '*', 'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type' } });

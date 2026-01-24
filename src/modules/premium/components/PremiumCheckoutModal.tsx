@@ -11,6 +11,7 @@ import { RadioGroup, RadioGroupItem } from "@/shared/ui/radio-group";
 import { Label } from "@/shared/ui/label";
 import { BlikPaymentModal } from "./BlikPaymentModal";
 import { checkTrialEligibility } from "@/modules/premium/data/PremiumRepository";
+import { useStripeProducts, formatPrice, getIntervalLabel, getStripePriceId, type StripeProduct } from "@/modules/premium/hooks/useStripeProducts";
 
 interface PremiumCheckoutModalProps {
   isOpen: boolean;
@@ -18,51 +19,19 @@ interface PremiumCheckoutModalProps {
   initialPlanId?: string;
 }
 
-interface PlanDetails {
-  id: string;
-  name: string;
-  price: string;
-  cardPriceId: string;
-  blikPriceId: string;
-  interval: string;
-}
-
-const plans: PlanDetails[] = [
-  {
-    id: 'monthly',
-    name: 'Miesięczny',
-    price: '19 zł',
-    cardPriceId: 'price_1RWw1eHFbUxWftPsIEZ4PhhH',
-    blikPriceId: 'price_1RXInCHFbUxWftPsZfJCiZKM',
-    interval: 'miesiąc',
-  },
-  {
-    id: 'annual',
-    name: 'Roczny',
-    price: '150 zł',
-    cardPriceId: 'price_1RX4m0HFbUxWftPsK1uBmUM6',
-    blikPriceId: 'price_1RXInbHFbUxWftPsP3u34dst',
-    interval: 'rok',
-  },
-  {
-    id: 'lifetime',
-    name: 'Dożywotni',
-    price: '999 zł',
-    cardPriceId: 'price_1Ree8yHFbUxWftPsTXELigg7',
-    blikPriceId: 'price_1Ree8yHFbUxWftPsTXELigg7',
-    interval: 'jednorazowo',
-  }
-];
 
 const PremiumCheckoutModal: React.FC<PremiumCheckoutModalProps> = ({ isOpen, onClose, initialPlanId }) => {
   const navigate = useNavigate();
   const { user, supabase, isPremium, setIsPremium } = useAuth();
   const [isLoading, setIsLoading] = useState<string | null>(null);
-  const [selectedPlan, setSelectedPlan] = useState<PlanDetails | null>(null);
+  const [selectedPlan, setSelectedPlan] = useState<StripeProduct | null>(null);
   const [paymentMethod, setPaymentMethod] = useState<'card' | 'blik'>('card');
   const [showBlikModal, setShowBlikModal] = useState(false);
   const [isTrialEligible, setIsTrialEligible] = useState(false);
   const [checkingEligibility, setCheckingEligibility] = useState(true);
+  
+  // Fetch products from database
+  const { data: products, isLoading: productsLoading } = useStripeProducts();
 
   // Check trial eligibility when modal opens
   useEffect(() => {
@@ -89,13 +58,13 @@ const PremiumCheckoutModal: React.FC<PremiumCheckoutModalProps> = ({ isOpen, onC
       return;
     }
     
-    if (initialPlanId) {
-      const plan = plans.find((p) => p.id === initialPlanId);
+    if (initialPlanId && products) {
+      const plan = products.find((p) => p.plan_type === initialPlanId);
       if (plan) {
         setSelectedPlan(plan);
       }
     }
-  }, [isOpen, initialPlanId]);
+  }, [isOpen, initialPlanId, products]);
 
   const handleStartTrial = async () => {
     if (!user || !supabase) return;
@@ -142,18 +111,16 @@ const PremiumCheckoutModal: React.FC<PremiumCheckoutModalProps> = ({ isOpen, onC
     setIsLoading(selectedPlan.id);
 
     try {
-      const priceId = selectedPlan.cardPriceId;
-      const { data, error } = await supabase.functions.invoke('create-stripe-checkout', {
-        method: 'POST',
+      // Use new Edge Function that accepts product ID
+      const { data, error } = await supabase.functions.invoke('create-stripe-checkout-subscription', {
         body: {
-          priceId: priceId,
-          userId: user.id,
-          paymentMethod: 'card',
+          productId: selectedPlan.id,
         },
       });
 
       if (error) {
         toast.error("Nie udało się utworzyć sesji płatności. Spróbuj ponownie.");
+        console.error('Checkout error:', error);
         return;
       }
 
@@ -163,6 +130,7 @@ const PremiumCheckoutModal: React.FC<PremiumCheckoutModalProps> = ({ isOpen, onC
         toast.error("Nie otrzymano adresu przekierowania płatności.");
       }
     } catch (error) {
+      console.error('Checkout error:', error);
       toast.error("Wystąpił nieoczekiwany błąd podczas płatności.");
     } finally {
       setIsLoading(null);
@@ -196,12 +164,12 @@ const PremiumCheckoutModal: React.FC<PremiumCheckoutModalProps> = ({ isOpen, onC
           <DialogDescription className="text-sm text-muted-foreground">
             {showPlanSelection 
               ? 'Odblokuj pełne możliwości aplikacji'
-              : `${selectedPlan?.price}/${selectedPlan?.interval}`
+              : selectedPlan ? `${formatPrice(selectedPlan.price_amount, selectedPlan.currency)}/${getIntervalLabel(selectedPlan.interval, selectedPlan.interval_count)}` : ''
             }
           </DialogDescription>
         </DialogHeader>
 
-        {checkingEligibility ? (
+        {(checkingEligibility || productsLoading) ? (
           <div className="py-8 flex justify-center items-center">
             <svg className="animate-spin -ml-1 mr-3 h-5 w-5 text-primary" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
               <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
@@ -292,8 +260,8 @@ const PremiumCheckoutModal: React.FC<PremiumCheckoutModalProps> = ({ isOpen, onC
                     <p className="text-sm text-muted-foreground">Plan Premium</p>
                   </div>
                   <div className="text-right">
-                    <p className="text-2xl font-bold">{selectedPlan.price}</p>
-                    <p className="text-xs text-muted-foreground">/{selectedPlan.interval}</p>
+                    <p className="text-2xl font-bold">{formatPrice(selectedPlan.price_amount, selectedPlan.currency)}</p>
+                    <p className="text-xs text-muted-foreground">/{getIntervalLabel(selectedPlan.interval, selectedPlan.interval_count)}</p>
                   </div>
                 </div>
               </CardContent>
@@ -366,7 +334,7 @@ const PremiumCheckoutModal: React.FC<PremiumCheckoutModalProps> = ({ isOpen, onC
           <BlikPaymentModal
             isOpen={showBlikModal}
             onClose={() => setShowBlikModal(false)}
-            amount={parseInt(selectedPlan.price) * 100}
+            amount={selectedPlan.price_amount}
           />
         )}
 
