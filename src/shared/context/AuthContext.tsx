@@ -111,6 +111,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       console.log("[AuthContext] Attempting to restore session with token");
       
       try {
+        // Clear the token immediately to prevent reuse
+        clearCrossDomainAuthToken();
+        
         const { data, error } = await supabase.auth.setSession({
           access_token: token.access_token,
           refresh_token: token.refresh_token,
@@ -119,21 +122,15 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         if (error) {
           console.error("[AuthContext] Failed to restore cross-domain session:", error);
           
-          // If it's a refresh token reuse error, clear it immediately
+          // If it's a refresh token reuse error, it's already cleared
           if (error.message?.includes('refresh_token') || error.message?.includes('Already Used')) {
-            console.log("[AuthContext] Refresh token reuse detected, clearing token");
-            clearCrossDomainAuthToken();
+            console.log("[AuthContext] Refresh token reuse detected, token already cleared");
           }
           
           return null;
         }
 
         console.log("[AuthContext] Session restored successfully:", data.session?.user?.id);
-        
-        // CRITICAL: Clear the cross-domain token after successful restoration
-        // This prevents the token from being used again and ensures we rely on Supabase's session management
-        clearCrossDomainAuthToken();
-        
         return data.session ?? null;
       } catch (err) {
         console.error("[AuthContext] Network error during session restoration:", err);
@@ -151,21 +148,18 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           if (error) {
             console.error("[AuthContext] Retry failed:", error);
             
-            // If it's a refresh token reuse error, clear it immediately
+            // If it's a refresh token reuse error, it's already cleared
             if (error.message?.includes('refresh_token') || error.message?.includes('Already Used')) {
-              console.log("[AuthContext] Refresh token reuse detected in retry, clearing token");
-              clearCrossDomainAuthToken();
+              console.log("[AuthContext] Refresh token reuse detected in retry, token already cleared");
             }
             
             return null;
           }
 
           console.log("[AuthContext] Session restored successfully on retry:", data.session?.user?.id);
-          clearCrossDomainAuthToken();
           return data.session ?? null;
         } catch (retryErr) {
           console.error("[AuthContext] Retry also failed with network error:", retryErr);
-          clearCrossDomainAuthToken();
           return null;
         }
       }
@@ -243,6 +237,18 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   };
 
   const signInWithGoogle = async () => {
+    // For localhost development, redirect to marketing site for OAuth flow
+    const isLocalhost = window.location.hostname === 'localhost';
+    const port = window.location.port || '3000';
+    
+    if (isLocalhost) {
+      // Redirect to marketing site with localhost callback parameters
+      const marketingUrl = `https://ksiegai.pl?from=localhost&port=${port}&action=google_login`;
+      window.location.href = marketingUrl;
+      return;
+    }
+    
+    // Production: use normal OAuth flow
     await supabase.auth.signInWithOAuth({
       provider: 'google',
       options: {
@@ -277,9 +283,12 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       
       if (isLocalhost) {
         // Add localhost redirect parameters so ksiegai.pl can redirect back
-        const redirectUrl = `${parentDomain}?from=localhost&port=3000`;
+        const port = window.location.port || '3000';
+        const redirectUrl = `${parentDomain}?from=localhost&port=${port}`;
+        console.log("[AuthContext] Redirecting to localhost marketing site:", redirectUrl);
         window.location.href = redirectUrl;
       } else {
+        console.log("[AuthContext] Redirecting to production marketing site:", parentDomain);
         window.location.href = parentDomain;
       }
     } catch (err) {
@@ -290,9 +299,12 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       const parentDomain = getParentDomain();
       
       if (isLocalhost) {
-        const redirectUrl = `${parentDomain}?from=localhost&port=3000`;
+        const port = window.location.port || '3000';
+        const redirectUrl = `${parentDomain}?from=localhost&port=${port}`;
+        console.log("[AuthContext] Fallback: Redirecting to localhost marketing site:", redirectUrl);
         window.location.href = redirectUrl;
       } else {
+        console.log("[AuthContext] Fallback: Redirecting to production marketing site:", parentDomain);
         window.location.href = parentDomain;
       }
     }

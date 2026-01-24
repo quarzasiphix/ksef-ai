@@ -1,22 +1,35 @@
 export const getParentDomain = (): string => {
-  // In development, you might want to use localhost
-  // In production, use the actual parent domain
-  const isDevelopment = import.meta.env.DEV;
-  
-  if (isDevelopment) {
-    // For local development, you can test with localhost or use the production domain
-    return 'http://localhost:3000'; // Change this to your Next.js dev server port
+  if (typeof window === 'undefined') {
+    // Server-side: use environment variable or default
+    return import.meta.env.DEV ? 'http://localhost:3000' : 'https://ksiegai.pl';
   }
   
+  // Client-side: detect based on current hostname
+  const hostname = window.location.hostname;
+  
+  if (hostname === 'localhost' || hostname.includes('127.0.0.1')) {
+    // Development environment
+    return 'http://localhost:3000';
+  }
+  
+  // Production environment
   return 'https://ksiegai.pl';
 };
 
 export const getAppDomain = (): string => {
-  const isDevelopment = import.meta.env.DEV;
-  
-  if (isDevelopment) {
-    return 'http://localhost:8080';
+  if (typeof window === 'undefined') {
+    // Server-side: use environment variable or default
+    return import.meta.env.DEV ? 'http://localhost:3000' : 'https://app.ksiegai.pl';
   }
   
+  // Client-side: detect based on current hostname
+  const hostname = window.location.hostname;
+  
+  if (hostname === 'localhost' || hostname.includes('127.0.0.1')) {
+    // Development environment
+    return 'http://localhost:3000';
+  }
+  
+  // Production environment
   return 'https://app.ksiegai.pl';
 };
