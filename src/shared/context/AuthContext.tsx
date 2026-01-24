@@ -271,13 +271,30 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
       console.log("[AuthContext] Logout complete, redirecting to parent domain");
       
-      // Redirect to parent domain after logout
-      window.location.href = getParentDomain();
+      // Check if we're on localhost and add redirect parameters
+      const isLocalhost = window.location.hostname === 'localhost';
+      const parentDomain = getParentDomain();
+      
+      if (isLocalhost) {
+        // Add localhost redirect parameters so ksiegai.pl can redirect back
+        const redirectUrl = `${parentDomain}?from=localhost&port=3000`;
+        window.location.href = redirectUrl;
+      } else {
+        window.location.href = parentDomain;
+      }
     } catch (err) {
       console.error("Logout failed unexpectedly:", err);
       // As a fallback, still redirect to parent domain
       clearCrossDomainAuthToken();
-      window.location.href = getParentDomain();
+      const isLocalhost = window.location.hostname === 'localhost';
+      const parentDomain = getParentDomain();
+      
+      if (isLocalhost) {
+        const redirectUrl = `${parentDomain}?from=localhost&port=3000`;
+        window.location.href = redirectUrl;
+      } else {
+        window.location.href = parentDomain;
+      }
     }
   };
 
