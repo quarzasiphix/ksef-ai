@@ -55,6 +55,88 @@ export interface SubscriptionType {
 }
 
 /**
+ * Calculate if a subscription is currently active based on dates
+ */
+export function calculateSubscriptionActive(
+  startsAt?: string,
+  endsAt?: string,
+  trialEndsAt?: string
+): boolean {
+  const now = new Date();
+  
+  // Check if subscription has started
+  if (startsAt && new Date(startsAt) > now) {
+    return false;
+  }
+  
+  // Check if subscription has ended
+  if (endsAt && new Date(endsAt) <= now) {
+    return false;
+  }
+  
+  // If there's a trial end date and it's in the past, subscription is inactive
+  // (unless there's a regular end date that's still in the future)
+  if (trialEndsAt && new Date(trialEndsAt) <= now && !endsAt) {
+    return false;
+  }
+  
+  return true;
+}
+
+/**
+ * Calculate subscription status based on dates
+ */
+export function calculateSubscriptionStatus(
+  startsAt?: string,
+  endsAt?: string,
+  trialEndsAt?: string,
+  cancelAtPeriodEnd?: boolean
+): SubscriptionStatus {
+  const now = new Date();
+  
+  // Check if subscription has started
+  if (startsAt && new Date(startsAt) > now) {
+    return 'inactive';
+  }
+  
+  // Check if subscription has ended
+  if (endsAt && new Date(endsAt) <= now) {
+    return 'cancelled';
+  }
+  
+  // Check if in trial period
+  if (trialEndsAt && new Date(trialEndsAt) > now) {
+    return 'trial';
+  }
+  
+  // Check if will cancel at period end
+  if (cancelAtPeriodEnd) {
+    return 'past_due';
+  }
+  
+  return 'active';
+}
+
+/**
+ * Get days remaining in subscription
+ */
+export function getDaysRemaining(
+  endsAt?: string,
+  trialEndsAt?: string
+): number {
+  const now = new Date();
+  const endDate = endsAt ? new Date(endsAt) : trialEndsAt ? new Date(trialEndsAt) : null;
+  
+  if (!endDate || endDate <= now) {
+    return 0;
+  }
+  
+  const diffTime = endDate.getTime() - now.getTime();
+  const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+  return Math.max(0, diffDays);
+}
+
+/**
  * Get the effective subscription tier for a business based on user and business subscriptions
  * Implements the hierarchy: Enterprise benefits > Enhanced subscription > Business subscription
  */
@@ -80,16 +162,31 @@ export function getEffectiveTier(
   // Legacy premium for backward compatibility
   if (user.legacy_premium) return 'jdg_premium'; // Default to JDG premium for legacy
   
-  // Use enhanced subscription if available and active
-  if (enhancedSubscription?.is_active) {
-    if (enhancedSubscription.subscription_level === 'enterprise') return 'enterprise';
-    if (enhancedSubscription.subscription_level === 'company') return 'spolka_premium';
-    if (enhancedSubscription.subscription_level === 'user') return 'jdg_premium';
+  // Use enhanced subscription if available and active (calculated dynamically)
+  if (enhancedSubscription) {
+    const isActive = calculateSubscriptionActive(
+      enhancedSubscription.starts_at,
+      enhancedSubscription.ends_at,
+      enhancedSubscription.trial_ends_at
+    );
+    
+    if (isActive) {
+      if (enhancedSubscription.subscription_level === 'enterprise') return 'enterprise';
+      if (enhancedSubscription.subscription_level === 'company') return 'spolka_premium';
+      if (enhancedSubscription.subscription_level === 'user') return 'jdg_premium';
+    }
   }
   
   // Use business-level subscription
   if (business?.subscription_tier) {
-    return business.subscription_tier;
+    const isActive = calculateSubscriptionActive(
+      business.subscription_starts_at,
+      business.subscription_ends_at
+    );
+    
+    if (isActive) {
+      return business.subscription_tier;
+    }
   }
   
   return 'free';
@@ -152,65 +249,22 @@ export function getSubscriptionStatus(
   enhancedSubscription?: EnhancedSubscription | null
 ): SubscriptionStatus {
   // Use enhanced subscription status if available
-  if (enhancedSubscription?.is_active) {
-    if (enhancedSubscription.trial_ends_at && new Date(enhancedSubscription.trial_ends_at) > new Date()) {
-      return 'trial';
-    }
-    return 'active';
+  if (enhancedSubscription) {
+    return calculateSubscriptionStatus(
+      enhancedSubscription.starts_at,
+      enhancedSubscription.ends_at,
+      enhancedSubscription.trial_ends_at,
+      enhancedSubscription.cancel_at_period_end
+    );
   }
   
   // Fall back to business subscription
-  if (!business?.subscription_status) return 'inactive';
+  if (!business) return 'inactive';
   
-  const now = new Date();
-  const endDate = business.subscription_ends_at ? new Date(business.subscription_ends_at) : null;
-  
-  // Check if subscription is active
-  if (business.subscription_status === 'active' && (!endDate || endDate > now)) {
-    return 'active';
-  }
-  
-  // Check if trial is active
-  if (business.subscription_status === 'trial' && endDate && endDate > now) {
-    return 'trial';
-  }
-  
-  // Check if expired
-  if (endDate && endDate < now) {
-    return 'inactive';
-  }
-  
-  return business.subscription_status;
-}
-
-/**
- * Get days remaining in trial or subscription
- */
-export function getDaysRemaining(
-  business: BusinessSubscription | null | undefined,
-  enhancedSubscription?: EnhancedSubscription | null
-): number {
-  // Use enhanced subscription trial if available
-  if (enhancedSubscription?.trial_ends_at) {
-    const trialEnd = new Date(enhancedSubscription.trial_ends_at);
-    const now = new Date();
-    const diffTime = trialEnd.getTime() - now.getTime();
-    return Math.max(0, Math.ceil(diffTime / (1000 * 60 * 60 * 24)));
-  }
-  
-  // Fall back to business subscription
-  if (!business) return 0;
-  
-  const now = new Date();
-  const endDate = business.subscription_ends_at;
-  
-  if (!endDate) return 0;
-  
-  const end = new Date(endDate);
-  const diffTime = end.getTime() - now.getTime();
-  const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-  
-  return Math.max(0, diffDays);
+  return calculateSubscriptionStatus(
+    business.subscription_starts_at,
+    business.subscription_ends_at
+  );
 }
 
 /**

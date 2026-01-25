@@ -74,20 +74,57 @@ class SubscriptionService {
   }
 
   /**
-   * Get user's subscriptions across all levels
+   * Get user's subscriptions across all levels with dynamic is_active calculation
    */
   async getUserSubscriptions(userId: string): Promise<EnhancedSubscription[]> {
-    const { data, error } = await supabase
-      .from('enhanced_subscriptions')
-      .select(`
-        *,
-        subscription_type:subscription_types(*)
-      `)
-      .eq('user_id', userId)
-      .order('created_at', { ascending: false });
+    // Use edge function to calculate is_active dynamically
+    const { data, error } = await supabase.functions.invoke('calculate-subscription-status')
+    
+    if (error) {
+      // Fallback to direct query if edge function fails
+      const { data: fallbackData, error: fallbackError } = await supabase
+        .from('enhanced_subscriptions')
+        .select(`
+          *,
+          subscription_type:subscription_types(*)
+        `)
+        .eq('user_id', userId)
+        .order('created_at', { ascending: false });
 
-    if (error) throw error;
-    return data || [];
+      if (fallbackError) throw fallbackError;
+      
+      // Calculate is_active dynamically on the client side
+      return (fallbackData || []).map(sub => ({
+        ...sub,
+        is_active: this.calculateIsActive(sub)
+      }));
+    }
+    
+    return data.subscriptions || [];
+  }
+
+  /**
+   * Calculate is_active dynamically based on dates
+   */
+  private calculateIsActive(subscription: any): boolean {
+    const now = new Date();
+    
+    // Check if subscription has started
+    if (subscription.starts_at && new Date(subscription.starts_at) > now) {
+      return false;
+    }
+    
+    // Check if subscription has ended
+    if (subscription.ends_at && new Date(subscription.ends_at) <= now) {
+      return false;
+    }
+    
+    // If there's a trial end date and it's in the past, subscription is inactive
+    if (subscription.trial_ends_at && new Date(subscription.trial_ends_at) <= now && !subscription.ends_at) {
+      return false;
+    }
+    
+    return true;
   }
 
   /**

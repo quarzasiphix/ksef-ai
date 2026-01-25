@@ -6,9 +6,10 @@ import {
   getEffectiveTier, 
   hasCapability, 
   getSubscriptionStatus, 
-  getDaysRemaining, 
+  getDaysRemaining,
   getBusinessPricing,
   needsPremiumUpgrade,
+  calculateSubscriptionActive,
   type BusinessSubscription,
   type UserSubscription,
   type EnhancedSubscription,
@@ -114,7 +115,10 @@ export function useSubscriptionAccess() {
   // Calculate effective tier and status
   const effectiveTier = getEffectiveTier(userSubscription, businessSubscription, enhancedSubscription, enterpriseBenefits);
   const subscriptionStatus = getSubscriptionStatus(businessSubscription, enhancedSubscription);
-  const daysRemaining = getDaysRemaining(businessSubscription, enhancedSubscription);
+  const daysRemaining = getDaysRemaining(
+    businessSubscription?.subscription_ends_at,
+    enhancedSubscription?.trial_ends_at || enhancedSubscription?.ends_at
+  );
   const pricing = getBusinessPricing(entityType);
 
   // Helper functions
@@ -126,7 +130,14 @@ export function useSubscriptionAccess() {
     return needsPremiumUpgrade(userSubscription, businessSubscription, capability, enhancedSubscription, enterpriseBenefits);
   };
 
-  const isActive = effectiveTier !== 'free';
+  const isActive = calculateSubscriptionActive(
+  businessSubscription?.subscription_starts_at,
+  businessSubscription?.subscription_ends_at
+) || calculateSubscriptionActive(
+  enhancedSubscription?.starts_at,
+  enhancedSubscription?.ends_at,
+  enhancedSubscription?.trial_ends_at
+);
   const isExpired = subscriptionStatus === 'inactive';
   const isTrial = subscriptionStatus === 'trial';
   const isEnterprise = effectiveTier === 'enterprise';

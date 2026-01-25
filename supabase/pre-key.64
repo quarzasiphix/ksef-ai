@@ -1,0 +1,10 @@
+# gen with: 
+# If you have Node.js installed
+node -e "console.log(require('crypto').randomBytes(64).toString('base64'))"
+
+
+t/Td1bfyC2gFJP8ANpISvAgnEoa9ZgjUThuXrWjm4LeFtWPTUN/pIdoehBL/79Ta/c7hidZ0knCxV47P5bQA/A==
+
+add to: 
+PREMIUM_TOKEN_SECRET
+in supabase dashboard

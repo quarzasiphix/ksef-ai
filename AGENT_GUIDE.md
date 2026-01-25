@@ -991,6 +991,676 @@ export const MyComponent: React.FC<MyComponentProps> = ({ id }) => {
 
 ---
 
+## Premium System Rules
+
+### 🚫 NEVER DO - Premium Anti-Patterns
+
+- **NEVER** use old `isPremium` boolean from AuthContext (deprecated)
+- **NEVER** make direct API calls to `premium_subscriptions` or `enhanced_subscriptions` tables
+- **NEVER** trust client-side premium status checks
+- **NEVER** use stored `is_active` field from database
+- **NEVER** implement premium checks without server verification
+- **NEVER** store premium tokens in localStorage or sessionStorage
+
+### ✅ ALWAYS DO - Premium Best Practices
+
+- **ALWAYS** use `usePremiumSync()` hook for premium status
+- **ALWAYS** let SyncManager handle premium verification (integrated)
+- **ALWAYS** use server-side verification for sensitive operations
+- **ALWAYS** check premium token validity before API calls
+- **ALWAYS** rely on Edge Function `verify-premium-access` for verification
+- **ALWAYS** use `usePremiumFeature(feature)` for specific feature checks
+- **ALWAYS** protect premium routes with `usePremiumRoute()`
+
+### 🔐 Premium Security Architecture
+
+**Multi-Layer Security**:
+1. **Real-Time Sync** - WebSocket monitors subscription changes
+2. **Server Verification** - Edge Function validates and generates tokens
+3. **Token-Based Access** - 5-minute encrypted JWT tokens
+4. **Audit Logging** - All verification attempts tracked
+5. **Database RLS** - Final security layer
+
+**Premium Tiers**: `free` | `jdg_premium` | `spolka_premium` | `enterprise`
+
+**Subscription Priority**:
+1. Enterprise Benefits (highest)
+2. Enhanced Subscriptions
+3. Business Profile (legacy)
+
+### 📋 Premium Feature Requirements
+
+```typescript
+// Feature access by tier
+FEATURE_TIERS = {
+  'advanced_analytics': ['jdg_premium', 'spolka_premium', 'enterprise'],
+  'unlimited_invoices': ['jdg_premium', 'spolka_premium', 'enterprise'],
+  'ksef_integration': ['jdg_premium', 'spolka_premium', 'enterprise'],
+  'multi_business': ['enterprise'],
+  'api_access': ['enterprise'],
+  'priority_support': ['enterprise'],
+}
+```
+
+### 🎯 Premium Hook Usage
+
+**Main Premium Hook**:
+```typescript
+const { isActive, tier, token, isLoading } = usePremiumSync();
+```
+
+**Feature-Specific Hook**:
+```typescript
+const { hasAccess, isLoading } = usePremiumFeature('advanced_analytics');
+```
+
+**Route Protection Hook**:
+```typescript
+const { isAllowed, isLoading } = usePremiumRoute();
+```
+
+**Token Access Hook**:
+```typescript
+const { token, isValid } = usePremiumToken();
+```
+
+### 🚨 Premium Debugging
+
+**Check Status**:
+```typescript
+import { premiumSyncService } from '@/shared/services/premiumSyncService';
+const status = premiumSyncService.getStatus();
+```
+
+**Common Issues**:
+- Token expired → Auto-refreshes, check network
+- WebSocket disconnected → Auto-reconnects (max 5 attempts)
+- Verification failing → Check Edge Function logs
+- Old API calls → Remove direct table queries
+
+### 🔄 Migration Rules
+
+**Replace Old Code**:
+```typescript
+// ❌ OLD - Remove
+const { isPremium } = useAuth();
+
+// ✅ NEW - Use
+const { isActive } = usePremiumSync();
+```
+
+**Remove Direct Queries**:
+```typescript
+// ❌ OLD - Remove
+supabase.from('premium_subscriptions').select('*')
+
+// ✅ NEW - Use hooks
+const { isActive } = usePremiumSync();
+```
+
+### 📊 Premium Monitoring
+
+**Audit Logs**: Check `premium_access_logs` table
+**Edge Function**: Monitor `verify-premium-access` logs
+**Real-Time Status**: Use `premiumSyncService.getStatus()`
+
+### 🚀 Deployment
+
+**Edge Function**: Deployed via MCP tools
+**Secret**: `PREMIUM_TOKEN_SECRET` set via Supabase Dashboard (CLI not available)
+**Database**: `premium_access_logs` table with RLS policies
+
+---
+
+## 🚨 **IMPORTANT: CLI Limitations & Manual Setup**
+
+### **Supabase CLI Not Available**
+- ❌ **CLI commands don't work** in this environment
+- ✅ **Use MCP tools** for all database operations
+- ✅ **Use Supabase Dashboard** for secrets and manual setup
+- ✅ **Manual panel access** required for environment variables
+
+### **Setting Secrets Without CLI**
+
+Since Supabase CLI is not available, set secrets via Dashboard:
+
+1. **Go to Supabase Dashboard**: https://supabase.com/dashboard
+2. **Select Project**: `rncrzxjyffxmfbnxlqtm`
+3. **Navigate**: Settings → Edge Functions
+4. **Add Secret**: `PREMIUM_TOKEN_SECRET`
+5. **Set Value**: Your generated secure secret
+
+**Example Secret Value**:
+```
+YOUR_GENERATED_SECRET_HERE (use your own from pre-key.64 file)
+```
+
+### **Why Manual Setup is Required**
+
+- **MCP tools don't include** secret management functions
+- **CLI access restricted** in current environment  
+- **Dashboard provides** full control over environment variables
+- **Manual setup ensures** secrets are properly configured
+
+### **Alternative: Generate Secret via Node.js**
+
+```bash
+# Generate secure secret without OpenSSL
+node -e "console.log(require('crypto').randomBytes(64).toString('base64'))"
+```
+
+### **Verification Steps**
+
+After setting secret in Dashboard:
+
+1. **Test Edge Function**: Use browser or curl to test `verify-premium-access`
+2. **Check Logs**: Use `get_logs` MCP tool to verify function works
+3. **Monitor Premium System**: Check if premium verification works in app
+
+---
+
+---
+
+## MCP Supabase Tools - Complete Guide
+
+### 🔧 **Essential MCP Tools for Backend Management**
+
+**ALWAYS use MCP tools for Supabase operations** - never use direct SQL or CLI commands unless specifically instructed.
+
+---
+
+### 📚 **Documentation & Research Tools**
+
+#### **search_docs**
+**Purpose**: Search Supabase documentation using GraphQL
+**When to Use**: Always check docs before implementing features
+**Usage**:
+```typescript
+// Search for RLS policies
+search_docs(query: "Row Level Security policies", limit: 10)
+
+// Search for Edge Functions
+search_docs(query: "Edge Functions deployment", limit: 5)
+
+// Search for specific error codes
+search_docs(query: "PGRST116 error", limit: 3)
+```
+
+**Best Practices**:
+- ✅ **Always call this first** when unsure about implementation
+- ✅ Use for troubleshooting error codes
+- ✅ Check for latest patterns before coding
+
+---
+
+### 🏢 **Organization & Project Management**
+
+#### **list_organizations**
+**Purpose**: List all user organizations
+**When to Use**: Creating projects, checking costs
+**Usage**:
+```typescript
+// Get all organizations
+list_organizations()
+```
+
+#### **get_organization**
+**Purpose**: Get organization details including subscription
+**When to Use**: Understanding billing limits, features
+**Usage**:
+```typescript
+// Check organization subscription
+get_organization(id: "org-id-here")
+```
+
+#### **list_projects**
+**Purpose**: Discover all user projects
+**When to Use**: Finding project IDs, understanding setup
+**Usage**:
+```typescript
+// Find your project ID
+list_projects()
+```
+
+#### **get_project**
+**Purpose**: Get detailed project information
+**When to Use**: Checking project status, database info
+**Usage**:
+```typescript
+// Check project details
+get_project(id: "rncrzxjyffxmfbnxlqtm")
+```
+
+#### **get_cost**
+**Purpose**: Get cost for new projects/branches
+**When to Use**: Before creating resources
+**Usage**:
+```typescript
+// Check project creation cost
+get_cost(organization_id: "org-id", type: "project")
+
+// Check branch creation cost
+get_cost(organization_id: "org-id", type: "branch")
+```
+
+#### **confirm_cost**
+**Purpose**: Get user confirmation for costs
+**When to Use**: Required before create_project/create_branch
+**Usage**:
+```typescript
+// Get confirmation ID
+confirm_cost(type: "project", amount: 0.01, recurrence: "monthly")
+```
+
+#### **create_project**
+**Purpose**: Create new Supabase project
+**When to Use**: Setting up new environments
+**Usage**:
+```typescript
+// Create new project
+create_project(
+  name: "ksef-ai-staging",
+  region: "us-west-1",
+  organization_id: "org-id",
+  confirm_cost_id: "confirmation-id"
+)
+```
+
+#### **pause_project / restore_project**
+**Purpose**: Manage project lifecycle
+**When to Use**: Cost management, maintenance
+**Usage**:
+```typescript
+pause_project(id: "project-id")
+restore_project(id: "project-id")
+```
+
+---
+
+### 🗄️ **Database Management Tools**
+
+#### **list_tables**
+**Purpose**: List all database tables
+**When to Use**: Understanding schema, checking migrations
+**Usage**:
+```typescript
+// List all tables
+list_tables(project_id: "rncrzxjyffxmfbnxlqtm", schemas: ["public"])
+
+// List specific schema tables
+list_tables(project_id: "rncrzxjyffxmfbnxlqtm", schemas: ["auth", "public"])
+```
+
+#### **list_extensions**
+**Purpose**: List database extensions
+**When to Use**: Checking available extensions
+**Usage**:
+```typescript
+// Check available extensions
+list_extensions(project_id: "rncrzxjyffxmfbnxlqtm")
+```
+
+#### **list_migrations**
+**Purpose**: List all database migrations
+**When to Use**: Understanding database changes, debugging
+**Usage**:
+```typescript
+// Check migration history
+list_migrations(project_id: "rncrzxjyffxmfbnxlqtm")
+```
+
+#### **apply_migration**
+**Purpose**: Apply DDL migrations to database
+**When to Use**: Creating tables, adding columns, RLS policies
+**CRITICAL**: **ALWAYS use this for DDL operations**
+**Usage**:
+```typescript
+// Create new table
+apply_migration(
+  project_id: "rncrzxjyffxmfbnxlqtm",
+  name: "create_premium_logs_table",
+  query: `
+    CREATE TABLE premium_access_logs (
+      id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+      user_id uuid NOT NULL REFERENCES auth.users(id),
+      tier text NOT NULL,
+      verified boolean NOT NULL,
+      accessed_at timestamptz DEFAULT now()
+    );
+    
+    ALTER TABLE premium_access_logs ENABLE ROW LEVEL SECURITY;
+  `
+)
+
+// Add RLS policy
+apply_migration(
+  project_id: "rncrzxjyffxmfbnxlqtm",
+  name: "premium_logs_rls_policy",
+  query: `
+    CREATE POLICY "Users can view own logs" ON premium_access_logs
+    FOR SELECT USING (user_id = auth.uid());
+  `
+)
+```
+
+#### **execute_sql**
+**Purpose**: Execute raw SQL queries
+**When to Use**: Data queries, testing, debugging
+**CRITICAL**: **NEVER use for DDL operations**
+**Usage**:
+```typescript
+// Check table data
+execute_sql(
+  project_id: "rncrzxjyffxmfbnxlqtm",
+  query: "SELECT * FROM premium_access_logs WHERE user_id = 'user-id' LIMIT 10"
+)
+
+// Test RLS policies
+execute_sql(
+  project_id: "rncrzxjyffxmfbnxlqtm",
+  query: "SELECT COUNT(*) FROM enhanced_subscriptions"
+)
+```
+
+---
+
+### 📊 **Monitoring & Debugging Tools**
+
+#### **get_logs**
+**Purpose**: Get service logs for debugging
+**When to Use**: Troubleshooting Edge Functions, API issues
+**Usage**:
+```typescript
+// Get Edge Function logs
+get_logs(project_id: "rncrzxjyffxmfbnxlqtm", service: "edge-function")
+
+// Get API logs
+get_logs(project_id: "rncrzxjyffxmfbnxlqtm", service: "api")
+
+// Get database logs
+get_logs(project_id: "rncrzxjyffxmfbnxlqtm", service: "postgres")
+```
+
+#### **get_advisors**
+**Purpose**: Get security and performance recommendations
+**When to Use**: After database changes, security audits
+**Usage**:
+```typescript
+// Check for security issues
+get_advisors(project_id: "rncrzxjyffxmfbnxlqtm", type: "security")
+
+// Check performance recommendations
+get_advisors(project_id: "rncrzxjyffxmfbnxlqtm", type: "performance")
+```
+
+---
+
+### 🔑 **API & Keys Management**
+
+#### **get_project_url**
+**Purpose**: Get project API URL
+**When to Use**: Configuration, API setup
+**Usage**:
+```typescript
+// Get API URL
+get_project_url(project_id: "rncrzxjyffxmfbnxlqtm")
+```
+
+#### **get_publishable_keys**
+**Purpose**: Get API keys for frontend
+**When to Use**: Environment setup, key rotation
+**Usage**:
+```typescript
+// Get all publishable keys
+get_publishable_keys(project_id: "rncrzxjyffxmfbnxlqtm")
+```
+
+#### **generate_typescript_types**
+**Purpose**: Generate TypeScript types from database
+**When to Use**: After schema changes, type safety
+**Usage**:
+```typescript
+// Generate types
+generate_typescript_types(project_id: "rncrzxjyffxmfbnxlqtm")
+```
+
+---
+
+### ⚡ **Edge Functions Management**
+
+#### **list_edge_functions**
+**Purpose**: List all deployed Edge Functions
+**When to Use**: Checking deployment status
+**Usage**:
+```typescript
+// List all functions
+list_edge_functions(project_id: "rncrzxjyffxmfbnxlqtm")
+```
+
+#### **get_edge_function**
+**Purpose**: Get Edge Function source code
+**When to Use**: Debugging, reviewing code
+**Usage**:
+```typescript
+// Get function code
+get_edge_function(
+  project_id: "rncrzxjyffxmfbnxlqtm", 
+  function_slug: "verify-premium-access"
+)
+```
+
+#### **deploy_edge_function**
+**Purpose**: Deploy Edge Function
+**When to Use**: Creating/updating functions
+**Usage**:
+```typescript
+// Deploy new function
+deploy_edge_function(
+  project_id: "rncrzxjyffxmfbnxlqtm",
+  name: "verify-premium-access",
+  entrypoint_path: "index.ts",
+  verify_jwt: true,
+  files: [
+    {
+      name: "index.ts",
+      content: `
+        import "jsr:@supabase/functions-js/edge-runtime.d.ts";
+        
+        Deno.serve(async (req: Request) => {
+          const data = { message: "Hello from Edge Function!" };
+          return new Response(JSON.stringify(data), {
+            headers: { 'Content-Type': 'application/json' }
+          });
+        });
+      `
+    }
+  ]
+)
+```
+
+---
+
+### 🌿 **Branch Management**
+
+#### **create_branch**
+**Purpose**: Create development branch
+**When to Use**: Feature development, testing
+**Usage**:
+```typescript
+// Create dev branch
+create_branch(
+  project_id: "rncrzxjyffxmfbnxlqtm",
+  name: "feature-premium-upgrade",
+  confirm_cost_id: "confirmation-id"
+)
+```
+
+#### **list_branches**
+**Purpose**: List all development branches
+**When to Use**: Checking branch status
+**Usage**:
+```typescript
+// List all branches
+list_branches(project_id: "rncrzxjyffxmfbnxlqtm")
+```
+
+#### **merge_branch**
+**Purpose**: Merge branch to production
+**When to Use**: Deploying features
+**Usage**:
+```typescript
+// Merge branch
+merge_branch(branch_id: "branch-id-here")
+```
+
+#### **rebase_branch**
+**Purpose**: Rebase branch on production
+**When to Use**: Syncing with main branch
+**Usage**:
+```typescript
+// Rebase branch
+rebase_branch(branch_id: "branch-id-here")
+```
+
+#### **reset_branch**
+**Purpose**: Reset branch to clean state
+**When to Use**: Starting over, fixing issues
+**Usage**:
+```typescript
+// Reset branch
+reset_branch(branch_id: "branch-id-here")
+```
+
+#### **delete_branch**
+**Purpose**: Delete development branch
+**When to Use**: Cleanup, finished features
+**Usage**:
+```typescript
+// Delete branch
+delete_branch(branch_id: "branch-id-here")
+```
+
+---
+
+### 🎯 **Best Practices for MCP Tools**
+
+#### **🔒 Security Rules**
+- ✅ **ALWAYS** use `apply_migration` for DDL operations
+- ✅ **NEVER** hardcode generated IDs in migrations
+- ✅ **ALWAYS** check RLS policies with advisors
+- ✅ **NEVER** expose sensitive data in responses
+
+#### **📋 Workflow Patterns**
+
+**1. Database Changes**:
+```typescript
+// 1. Check current schema
+list_tables(project_id: "rncrzxjyffxmfbnxlqtm")
+
+// 2. Apply migration
+apply_migration(project_id: "rncrzxjyffxmfbnxlqtm", name: "...", query: "...")
+
+// 3. Verify changes
+list_tables(project_id: "rncrzxjyffxmfbnxlqtm")
+
+// 4. Check advisors
+get_advisors(project_id: "rncrzxjyffxmfbnxlqtm", type: "security")
+```
+
+**2. Edge Function Deployment**:
+```typescript
+// 1. Check existing functions
+list_edge_functions(project_id: "rncrzxjyffxmfbnxlqtm")
+
+// 2. Deploy function
+deploy_edge_function(project_id: "rncrzxjyffxmfbnxlqtm", ...)
+
+// 3. Verify deployment
+list_edge_functions(project_id: "rncrzxjyffxmfbnxlqtm")
+
+// 4. Check logs if issues
+get_logs(project_id: "rncrzxjyffxmfbnxlqtm", service: "edge-function")
+```
+
+**3. Troubleshooting**:
+```typescript
+// 1. Check logs
+get_logs(project_id: "rncrzxjyffxmfbnxlqtm", service: "api")
+
+// 2. Check advisors
+get_advisors(project_id: "rncrzxjyffxmfbnxlqtm", type: "security")
+
+// 3. Test with execute_sql
+execute_sql(project_id: "rncrzxjyffxmfbnxlqtm", query: "SELECT ...")
+
+// 4. Search docs if needed
+search_docs(query: "error code explanation", limit: 5)
+```
+
+#### **🚨 Common Issues & Solutions**
+
+**Migration Fails**:
+1. Check `get_logs` for database errors
+2. Verify SQL syntax with `search_docs`
+3. Use `execute_sql` to test query first
+
+**Edge Function Issues**:
+1. Check `get_logs` for edge-function service
+2. Verify function code with `get_edge_function`
+3. Check JWT settings in deployment
+
+**RLS Policy Issues**:
+1. Run `get_advisors` for security recommendations
+2. Test with `execute_sql` as different users
+3. Review policy logic carefully
+
+**Performance Issues**:
+1. Check `get_advisors` for performance tips
+2. Review recent migrations
+3. Check query patterns
+
+---
+
+### 📚 **Quick Reference**
+
+| Tool | Purpose | When to Use |
+|------|---------|-------------|
+| `search_docs` | Documentation | Always check docs first |
+| `apply_migration` | DDL changes | Schema modifications |
+| `execute_sql` | Data queries | Testing, debugging |
+| `deploy_edge_function` | Deploy functions | Function updates |
+| `get_logs` | Debugging | Troubleshooting |
+| `get_advisors` | Security/Performance | After changes |
+| `list_tables` | Schema review | Understanding structure |
+| `list_edge_functions` | Function status | Deployment checks |
+
+---
+
+### 🎯 **Project-Specific Usage**
+
+**For ksef-ai Project**:
+- **Project ID**: `rncrzxjyffxmfbnxlqtm`
+- **Key Tables**: `business_profiles`, `enhanced_subscriptions`, `enterprise_benefits`
+- **Key Functions**: `verify-premium-access`, `sync-check`
+- **Regular Tasks**: Check advisors, monitor logs, verify RLS
+
+**Example Workflow**:
+```typescript
+// 1. Check project status
+get_project(id: "rncrzxjyffxmfbnxlqtm")
+
+// 2. Check for security issues
+get_advisors(project_id: "rncrzxjyffxmfbnxlqtm", type: "security")
+
+// 3. Review recent logs
+get_logs(project_id: "rncrzxjyffxmfbnxlqtm", service: "edge-function")
+
+// 4. Generate types if schema changed
+generate_typescript_types(project_id: "rncrzxjyffxmfbnxlqtm")
+```
+
+---
+
 ## Where to Change What
 
 ### Adding a New Module
