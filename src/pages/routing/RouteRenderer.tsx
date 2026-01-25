@@ -13,11 +13,12 @@ import TokenTest from '@/modules/auth/screens/TokenTest';
 import CrmLinking from '@/modules/settings/screens/CrmLinking';
 import TokenHandler from '@/modules/auth/screens/TokenHandler';
 import { routes, flattenRoutes, type RouteConfig } from '@/shared/config/routes';
-import { AppGate, ProtectedGate, PremiumGate, PublicGate } from './AppGate';
+import { AppGate, ProtectedGate, PremiumGate } from './AppGate';
 import { useAuth } from '@/shared/hooks/useAuth';
 import { redirectToLogin } from '@/shared/utils/domainHelpers';
 import { supabase } from '@/integrations/supabase/client';
 import { ContentLoadingSpinner } from '@/components/layout/ContentLoadingSpinner';
+import { PremiumRouteGuard } from '@/modules/premium/components/PremiumRouteGuard';
 
 const AppLoadingScreen = () => (
   <div className="flex items-center justify-center h-screen">
@@ -199,22 +200,8 @@ export const RouteRenderer: React.FC = () => {
         }
       >
         {/* Auth routes */}
-        <Route
-          path="/auth/login"
-          element={
-            <PublicGate>
-              <Login />
-            </PublicGate>
-          }
-        />
-        <Route
-          path="/auth/register"
-          element={
-            <PublicGate>
-              <Register />
-            </PublicGate>
-          }
-        />
+        <Route path="/auth/login" element={<Login />} />
+        <Route path="/auth/register" element={<Register />} />
         <Route path="/auth/callback" element={<AuthCallback />} />
 
         {/* Onboarding */}

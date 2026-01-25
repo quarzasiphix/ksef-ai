@@ -21,21 +21,24 @@ import {
   SidebarMenuButton,
   SidebarMenuItem,
   SidebarTrigger,
-  useSidebar,
 } from "@/shared/ui/sidebar";
-import { useAuth } from "@/shared/hooks/useAuth";
 import { Button } from "@/shared/ui/button";
-import { BusinessProfileSwitcher } from "./BusinessProfileSwitcher";
-import { ThemeToggle } from "@/components/theme/ThemeToggle";
+import { ScrollArea } from "@/shared/ui/scroll-area";
+import { useSidebar } from "@/shared/ui/sidebar";
+import { useAuth } from "@/shared/hooks/useAuth";
+import { usePremium } from "@/shared/context/PremiumContext";
 import { useBusinessProfile } from "@/shared/context/BusinessProfileContext";
 import SidebarGroupHeader from "./sidebar/SidebarGroupHeader";
 import SidebarNavItem from "./sidebar/SidebarNavItem";
 import { buildNavGroups } from "./sidebar/navConfig";
+import { ThemeToggle } from "@/components/theme/ThemeToggle";
+import { BusinessProfileSwitcher } from "./BusinessProfileSwitcher";
 
 const AppSidebar = () => {
   const { state } = useSidebar();
   const location = useLocation();
-  const { isPremium, openPremiumDialog, user, logout } = useAuth();
+  const { openPremiumDialog, user, logout } = useAuth();
+  const { hasPremium } = usePremium();
   const { profiles, selectedProfileId } = useBusinessProfile();
   const isCollapsed = state === "collapsed";
   const navigate = useNavigate();
@@ -49,8 +52,8 @@ const AppSidebar = () => {
   const navContext = React.useMemo(() => ({
     entityType,
     bankPath,
-    hasPremium: isPremium,
-  }), [entityType, bankPath, isPremium]);
+    hasPremium: hasPremium,
+  }), [entityType, bankPath, hasPremium]);
 
   const navGroups = React.useMemo(() => buildNavGroups(navContext), [navContext]);
 
@@ -117,10 +120,10 @@ const AppSidebar = () => {
     if (!user) return null;
     const Avatar = (
       <div
-        className={`relative w-10 h-10 rounded-full flex items-center justify-center ${isPremium ? "bg-gradient-to-br from-amber-500 to-amber-700" : "bg-muted"}`}
+        className={`relative w-10 h-10 rounded-full flex items-center justify-center ${hasPremium ? "bg-gradient-to-br from-amber-500 to-amber-700" : "bg-muted"}`}
       >
         <User className="h-5 w-5 text-white" />
-        {isPremium && (
+        {hasPremium && (
           <div className="absolute -top-1 -right-1 bg-amber-500 rounded-full p-0.5">
             <Crown className="h-3 w-3 text-white" />
           </div>
@@ -142,7 +145,7 @@ const AppSidebar = () => {
               <p className="text-sm font-medium truncate group-hover:underline">
                 {user.email}
               </p>
-              {isPremium && (
+              {hasPremium && (
                 <span className="inline-flex items-center gap-1 bg-gradient-to-r from-amber-500 to-amber-600 text-white text-[10px] px-1.5 py-0.5 rounded-full">
                   <Crown className="h-2.5 w-2.5" />
                   <span>PREMIUM</span>
@@ -259,7 +262,7 @@ const AppSidebar = () => {
         })}
 
         {/* Upsell Premium Section (visible only for non-premium users) */}
-        {!isPremium && (
+        {!hasPremium && (
           <SidebarGroup>
             <div className="flex items-center justify-between px-2 py-2">
               {!isCollapsed && (

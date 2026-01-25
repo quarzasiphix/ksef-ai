@@ -1,28 +1,31 @@
 import { useEffect, useRef } from "react";
 import { useAuth } from "@/shared/context/AuthContext";
+import { useBusinessProfile } from "@/shared/context/BusinessProfileContext";
 import { supabase } from "@/integrations/supabase/client";
 
-function usePremiumRealtime(userId: string | undefined, onStatus: (status: any) => void) {
+function usePremiumRealtime(userId: string | undefined, businessId: string | undefined, onStatus: (status: any) => void) {
   useEffect(() => {
-    if (!userId) return;
+    if (!userId || !businessId) return;
+    
+    // Monitor business_premium_subscriptions table
     const channel = supabase
-      .channel("premium_subscriptions")
+      .channel("business_premium_subscriptions")
       .on(
         "postgres_changes",
         {
           event: "*",
           schema: "public",
-          table: "premium_subscriptions",
+          table: "business_premium_subscriptions",
           filter: `user_id=eq.${userId}`,
         },
         (payload) => {
           // payload.new is the new row (for INSERT/UPDATE), payload.old for DELETE
           const row = payload.new;
-          if (row && typeof row === 'object' && 'is_active' in row) {
+          if (row && typeof row === 'object' && 'status' in row) {
             onStatus({
-              premium: row.is_active && (!row.ends_at || new Date(row.ends_at) > new Date()),
-              premium_until: row.ends_at ?? null,
-              banned: false, // You can add a similar listener for banned_users
+              premium: row.status === 'active' && (!row.current_period_end || new Date(row.current_period_end) > new Date()),
+              premium_until: row.current_period_end ?? null,
+              banned: false,
               ban_reason: null,
             });
           } else {
@@ -34,7 +37,7 @@ function usePremiumRealtime(userId: string | undefined, onStatus: (status: any) 
     return () => {
       supabase.removeChannel(channel);
     };
-  }, [userId, onStatus]);
+  }, [userId, businessId, onStatus]);
 }
 
 export function useHeartbeat({
@@ -43,10 +46,11 @@ export function useHeartbeat({
   onStatus?: (status: { premium: boolean; premium_until: string | null; banned: boolean; ban_reason: string | null }) => void;
 } = {}) {
   const { user } = useAuth();
+  const { selectedProfileId } = useBusinessProfile();
   const lastStatus = useRef<any>(null);
 
   // Realtime listener only
-  usePremiumRealtime(user?.id, (status) => {
+  usePremiumRealtime(user?.id, selectedProfileId, (status) => {
     if (onStatus && JSON.stringify(status) !== JSON.stringify(lastStatus.current)) {
       onStatus(status);
       lastStatus.current = status;

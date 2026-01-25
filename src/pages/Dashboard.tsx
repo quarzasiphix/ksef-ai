@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { useIsMobile } from "@/shared/hooks/use-mobile";
 import { useGlobalData } from "@/shared/hooks/use-global-data";
 import { useAuth } from "@/shared/hooks/useAuth";
+import { usePremium } from "@/shared/context/PremiumContext";
 import { calculateIncomeTax } from "@/shared/lib/tax-utils";
 import { useBusinessProfile } from "@/shared/context/BusinessProfileContext";
 import { Crown } from "lucide-react";
@@ -11,6 +12,7 @@ import { getInvoiceValueInPLN } from "@/shared/lib/invoice-utils";
 import { Button } from "@/shared/ui/button";
 import SpoolkaDashboard from "@/modules/dashboard/components/SpoolkaDashboard";
 import JDGDashboard from "@/modules/dashboard/components/JDGDashboard";
+import { usePremiumGuard } from "@/modules/premium/hooks/usePremiumGuard";
 
 const Dashboard = () => {
   const [monthlySummaries, setMonthlySummaries] = useState<any[]>([]);
@@ -19,7 +21,15 @@ const Dashboard = () => {
   const navigate = useNavigate();
   
   const { invoices: { data: invoices, isLoading: isLoadingInvoices }, expenses: { data: expenses, isLoading: isLoadingExpenses } } = useGlobalData();
-  const { isPremium, openPremiumDialog } = useAuth();
+  const { hasPremium } = usePremium();
+  
+  const selectedProfile = profiles?.find((p) => p.id === selectedProfileId);
+  const entityType = selectedProfile?.entityType === 'sp_zoo' || selectedProfile?.entityType === 'sa' ? 'spolka' : 'jdg';
+  const { requirePremium, PremiumGuardComponent } = usePremiumGuard({ 
+    businessName: selectedProfile?.name,
+    entityType,
+    businessProfileId: selectedProfileId
+  });
   
   const isLoading = isLoadingInvoices || isLoadingExpenses || isLoadingProfiles;
 
@@ -30,8 +40,6 @@ const Dashboard = () => {
       navigate('/welcome', { replace: true });
     }
   }, [isLoadingProfiles, profiles, navigate]);
-
-  const selectedProfile = profiles?.find((p) => p.id === selectedProfileId);
   const isSpoolka = selectedProfile?.entityType === 'sp_zoo' || selectedProfile?.entityType === 'sa';
 
   const missingSpoolkaBasics =
@@ -120,9 +128,9 @@ const Dashboard = () => {
             {selectedProfile?.name || 'Twoja działalność'}
           </p>
         </div>
-        {!isPremium && (
+        {!hasPremium && (
           <Button 
-            onClick={() => openPremiumDialog()}
+            onClick={() => requirePremium()}
             size="sm"
             className="bg-gradient-to-r from-amber-500 to-orange-600 hover:from-amber-600 hover:to-orange-700 text-white w-full sm:w-auto"
           >
@@ -143,7 +151,7 @@ const Dashboard = () => {
             taxEstimate={taxEstimate}
             unpaidInvoices={unpaidInvoices}
             totalInvoices={totalInvoices}
-            isPremium={isPremium}
+            isPremium={hasPremium}
           />
         ) : (
           <JDGDashboard
@@ -154,12 +162,14 @@ const Dashboard = () => {
             taxEstimate={taxEstimate}
             unpaidInvoices={unpaidInvoices}
             totalInvoices={totalInvoices}
-            isPremium={isPremium}
+            isPremium={hasPremium}
             monthlySummaries={monthlySummaries}
             isMobile={isMobile}
           />
         )
       )}
+      <AccountOnboardingWidget />
+      <PremiumGuardComponent />
     </div>
   );
 };

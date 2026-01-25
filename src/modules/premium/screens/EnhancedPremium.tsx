@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { useQuery } from '@tanstack/react-query';
 import { useAuth } from '@/shared/context/AuthContext';
 import { subscriptionService, type EnterprisePricing, type CompanyInfo } from '@/shared/services/subscriptionService';
 import { Button } from '@/shared/ui/button';
@@ -6,6 +7,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/shared/ui/card';
 import { Badge } from '@/shared/ui/badge';
 import { Crown, Building2, Users, Check, ArrowRight, Plus, Sparkles } from 'lucide-react';
 import { Link } from 'react-router-dom';
+import { supabase } from '@/integrations/supabase/client';
 
 const EnhancedPremium: React.FC = () => {
   const { user, openPremiumDialog } = useAuth();
@@ -13,6 +15,31 @@ const EnhancedPremium: React.FC = () => {
   const [enterprisePricing, setEnterprisePricing] = useState<EnterprisePricing | null>(null);
   const [loading, setLoading] = useState(true);
   const [selectedPlan, setSelectedPlan] = useState<string | null>(null);
+
+  // Fetch currency settings
+  const { data: currencySettings } = useQuery({
+    queryKey: ['currency-settings'],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('app_settings')
+        .select('currency, currency_symbol, blik_enabled')
+        .eq('id', '00000000-0000-0000-0000-000000000001')
+        .single();
+      if (error) throw error;
+      return data;
+    },
+    staleTime: 5 * 60 * 1000, // Cache for 5 minutes
+  });
+
+  const formatPrice = (amount: number) => {
+    const currency = currencySettings?.currency || 'EUR';
+    const locale = currency === 'PLN' ? 'pl-PL' : 'de-DE';
+    
+    return new Intl.NumberFormat(locale, {
+      style: 'currency',
+      currency: currency,
+    }).format(amount / 100);
+  };
 
   useEffect(() => {
     if (user) {
@@ -37,10 +64,6 @@ const EnhancedPremium: React.FC = () => {
     } finally {
       setLoading(false);
     }
-  };
-
-  const formatPrice = (priceInGrosze: number) => {
-    return (priceInGrosze / 100).toFixed(0);
   };
 
   const getEntityTypeDisplay = (entityType: string) => {
@@ -312,12 +335,14 @@ const EnhancedPremium: React.FC = () => {
                 <div className="border-t border-neutral-700 pt-6 text-center">
                   <p className="text-sm text-neutral-300">
                     <span className="font-semibold text-white">
-                      Twoja cena Enterprise: {formatPrice(enterprisePricing.total_monthly_price)} zł/miesiąc
+                      Twoja cena Enterprise: {formatPrice(enterprisePricing.total_monthly_price)}/miesiąc
                     </span>
                     <br />
                     <span className="text-xs text-neutral-400">
-                      vs {enterprisePricing.jdg_count} × 19 zł + {enterprisePricing.spolka_count} × 89 zł = 
-                      {' '}{formatPrice(enterprisePricing.jdg_count * 1900 + enterprisePricing.spolka_count * 8900)} zł/miesiąc
+                      vs {enterprisePricing.jdg_count} × {formatPrice(currencySettings?.currency === 'EUR' ? 500 : 1900)} + {enterprisePricing.spolka_count} × {formatPrice(currencySettings?.currency === 'EUR' ? 2100 : 8900)} = 
+                      {' '}{formatPrice(currencySettings?.currency === 'EUR' 
+                        ? enterprisePricing.jdg_count * 500 + enterprisePricing.spolka_count * 2100
+                        : enterprisePricing.jdg_count * 1900 + enterprisePricing.spolka_count * 8900)}/miesiąc
                     </span>
                   </p>
                 </div>

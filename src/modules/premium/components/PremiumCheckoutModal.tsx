@@ -137,24 +137,9 @@ const PremiumCheckoutModal: React.FC<PremiumCheckoutModalProps> = ({ isOpen, onC
     setIsLoading(selectedPlan.id);
 
     try {
-      // Use new Edge Function that accepts product ID
-      const { data, error } = await supabase.functions.invoke('create-stripe-checkout-subscription', {
-        body: {
-          productId: selectedPlan.id,
-        },
-      });
-
-      if (error) {
-        toast.error("Nie udało się utworzyć sesji płatności. Spróbuj ponownie.");
-        console.error('Checkout error:', error);
-        return;
-      }
-
-      if (data && data.url) {
-        window.location.href = data.url;
-      } else {
-        toast.error("Nie otrzymano adresu przekierowania płatności.");
-      }
+      // Force redirect with cache busting to ensure new code is loaded
+      console.log('Redirecting to premium checkout...');
+      window.location.replace('/premium/checkout?t=' + Date.now());
     } catch (error) {
       console.error('Checkout error:', error);
       toast.error("Wystąpił nieoczekiwany błąd podczas płatności.");

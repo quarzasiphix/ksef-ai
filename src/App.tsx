@@ -5,6 +5,7 @@ import { Toaster } from '@/shared/ui/toaster';
 import { ThemeProvider } from '@/components/theme/ThemeProvider';
 import { TooltipProvider } from '@/shared/ui/tooltip';
 import { AuthProvider } from '@/shared/context/AuthContext';
+import { PremiumProvider } from '@/shared/context/PremiumContext';
 import { WorkspaceTabsProvider } from '@/shared/context/WorkspaceTabsContext';
 import { DepartmentProvider } from '@/shared/context/DepartmentContext';
 import { BusinessProfileProviderWithModal } from '@/components/BusinessProfileProviderWithModal';
@@ -53,9 +54,11 @@ const App = () => {
             <AuthProvider>
               <DepartmentProvider>
                 <BusinessProfileProviderWithModal>
-                  <WorkspaceTabsProvider>
-                    <RouteRenderer />
-                  </WorkspaceTabsProvider>
+                  <PremiumProvider>
+                    <WorkspaceTabsProvider>
+                      <RouteRenderer />
+                    </WorkspaceTabsProvider>
+                  </PremiumProvider>
                 </BusinessProfileProviderWithModal>
               </DepartmentProvider>
             </AuthProvider>

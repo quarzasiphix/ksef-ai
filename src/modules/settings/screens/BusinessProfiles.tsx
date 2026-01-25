@@ -1,22 +1,28 @@
 
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ArrowLeft, Building2, Check, Shield, Sparkles, Users } from 'lucide-react';
+import { ArrowLeft, Building2, Check, Shield, Sparkles, Users, Crown } from 'lucide-react';
 import { Button } from '@/shared/ui/button';
 import { Badge } from '@/shared/ui/badge';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/shared/ui/card';
 import { Separator } from '@/shared/ui/separator';
 import { Skeleton } from '@/shared/ui/skeleton';
 import { useBusinessProfile } from '@/shared/context/BusinessProfileContext';
+import { usePremium } from '@/shared/context/PremiumContext';
 import type { BusinessProfile } from '@/shared/types';
 
 const BusinessProfiles = () => {
   const navigate = useNavigate();
   const { profiles, selectedProfileId, selectProfile, isLoadingProfiles } = useBusinessProfile();
+  const { allBusinessesStatus } = usePremium();
   const selectedProfile = profiles.find((p) => p.id === selectedProfileId) || null;
 
   const handleCreateProfile = () => navigate('/settings/business-profiles/new');
   const handleEditProfile = (profileId: string) => navigate(`/settings/business-profiles/${profileId}/edit`);
+  
+  const getBusinessPremiumStatus = (businessId: string) => {
+    return allBusinessesStatus.find(status => status.business_profile_id === businessId);
+  };
 
   if (isLoadingProfiles) {
     return (
@@ -36,6 +42,10 @@ const BusinessProfiles = () => {
 
   const renderProfileCard = (profile: BusinessProfile) => {
     const isActive = profile.id === selectedProfileId;
+    const businessPremiumStatus = getBusinessPremiumStatus(profile.id);
+    const hasBusinessPremium = businessPremiumStatus?.has_premium;
+    const isEnterpriseCovered = businessPremiumStatus?.covers_all_businesses;
+    
     return (
       <Card
         key={profile.id}
@@ -46,6 +56,12 @@ const BusinessProfiles = () => {
             <CardTitle className="text-xl flex items-center gap-2">
               <Building2 className="h-5 w-5 text-primary" />
               {profile.name}
+              {(hasBusinessPremium || isEnterpriseCovered) && (
+                <Badge variant="default" className="ml-1 bg-gradient-to-r from-amber-500 to-amber-600 text-white">
+                  <Crown className="h-3 w-3 mr-1" />
+                  {isEnterpriseCovered ? 'Enterprise' : 'Premium'}
+                </Badge>
+              )}
               {profile.isDefault && (
                 <Badge variant="secondary" className="ml-1">
                   Domyślna
@@ -59,6 +75,11 @@ const BusinessProfiles = () => {
             </CardTitle>
             <CardDescription className="text-sm text-muted-foreground">
               {profile.entityType?.toUpperCase() || 'Forma prawna nieznana'}
+              {isEnterpriseCovered && (
+                <span className="ml-2 text-amber-500">
+                  ⭐ Pokryta przez enterprise
+                </span>
+              )}
             </CardDescription>
           </div>
 
@@ -76,6 +97,17 @@ const BusinessProfiles = () => {
                 'Ustaw jako aktywną'
               )}
             </Button>
+            {!hasBusinessPremium && !isEnterpriseCovered && (
+              <Button
+                variant="default"
+                size="sm"
+                className="bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-600 hover:to-amber-700 text-white"
+                onClick={() => navigate(`/premium/checkout?business=${profile.id}`)}
+              >
+                <Crown className="h-4 w-4 mr-1" />
+                Kup Premium
+              </Button>
+            )}
             <Button variant="ghost" size="sm" onClick={() => handleEditProfile(profile.id)}>
               Edytuj
             </Button>
@@ -133,7 +165,8 @@ const BusinessProfiles = () => {
           <div>
             <h1 className="text-2xl font-bold">Profile biznesowe</h1>
             <p className="text-muted-foreground">
-              Zarządzaj firmami i decyduj, która jest aktywna w systemie.
+              Zarządzaj firmami i decyduj, która jest aktywna w systemie. 
+              Każda firma może mieć własną subskrypcję premium.
             </p>
           </div>
         </div>
@@ -145,7 +178,7 @@ const BusinessProfiles = () => {
           <CardContent className="py-12 text-center space-y-3">
             <Building2 className="h-10 w-10 text-muted-foreground mx-auto" />
             <p className="text-lg font-medium">Nie masz jeszcze żadnej firmy</p>
-            <p className="text-muted-foreground">Dodaj profil, aby wystawiać dokumenty i zapraszać zespół.</p>
+            <p className="text-muted-foreground">Dodaj nieograniczoną liczbę firm. Każda może mieć własną subskrypcję premium.</p>
             <Button onClick={handleCreateProfile} className="mt-2">
               Utwórz pierwszy profil
             </Button>

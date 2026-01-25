@@ -1,5 +1,7 @@
 import { useAuth } from "@/shared/hooks/useAuth";
 import { useBusinessProfile } from "@/shared/context/BusinessProfileContext";
+import { useQuery } from '@tanstack/react-query';
+import { supabase } from '@/integrations/supabase/client';
 import { Button } from "@/shared/ui/button";
 import { Check, Crown, Sparkles, ArrowRight, FileText, Shield, Building2 } from "lucide-react";
 import { Link } from "react-router-dom";
@@ -70,6 +72,31 @@ const Premium = () => {
   const { user, openPremiumDialog } = useAuth();
   const { selectedProfileId, profiles } = useBusinessProfile();
 
+  // Fetch currency settings
+  const { data: currencySettings } = useQuery({
+    queryKey: ['currency-settings'],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('app_settings')
+        .select('currency, currency_symbol, blik_enabled')
+        .eq('id', '00000000-0000-0000-0000-000000000001')
+        .single();
+      if (error) throw error;
+      return data;
+    },
+    staleTime: 5 * 60 * 1000, // Cache for 5 minutes
+  });
+
+  const formatPrice = (amount: number) => {
+    const currency = currencySettings?.currency || 'EUR';
+    const locale = currency === 'PLN' ? 'pl-PL' : 'de-DE';
+    
+    return new Intl.NumberFormat(locale, {
+      style: 'currency',
+      currency: currency,
+    }).format(amount / 100);
+  };
+
   // Get current business profile
   const currentProfile = profiles?.find(p => p.id === selectedProfileId);
   const entityType = currentProfile?.entityType || 'dzialalnosc';
@@ -116,12 +143,12 @@ const Premium = () => {
             {isJDG ? (
               <>
                 <span className="text-white font-semibold">Prosty system księgowości dla jednoosobowej działalności gospodarczej.</span><br />
-                Wszystko czego potrzebujesz za 19 zł/miesiąc.
+                Wszystko czego potrzebujesz za {formatPrice(currencySettings?.currency === 'EUR' ? 500 : 1900)}/miesiąc.
               </>
             ) : isSpolka ? (
               <>
                 <span className="text-white font-semibold">Pełen system governance i odpowiedzialności dla spółek.</span><br />
-                Profesjonalne zarządzanie za 89 zł/miesiąc.
+                Profesjonalne zarządzanie za {formatPrice(currencySettings?.currency === 'EUR' ? 2100 : 8900)}/miesiąc.
               </>
             ) : (
               <>
@@ -184,7 +211,10 @@ const Premium = () => {
                     
                     <div className="bg-neutral-900/50 rounded-lg p-4">
                       <div className="text-4xl font-extrabold">
-                        {recommendedPlan.price} zł
+                        {isJDG 
+                          ? formatPrice(currencySettings?.currency === 'EUR' ? 500 : 1900)
+                          : formatPrice(currencySettings?.currency === 'EUR' ? 2100 : 8900)
+                        }
                         <span className="text-lg font-medium text-neutral-300">/{recommendedPlan.interval}</span>
                       </div>
                       {recommendedPlan.trial && (
@@ -275,7 +305,12 @@ const Premium = () => {
                     {plan.price !== null ? (
                       <div>
                         <div className="text-2xl font-extrabold">
-                          {plan.price} zł
+                          {plan.id === 'jdg' 
+                            ? formatPrice(currencySettings?.currency === 'EUR' ? 500 : 1900)
+                            : plan.id === 'spolka'
+                            ? formatPrice(currencySettings?.currency === 'EUR' ? 2100 : 8900)
+                            : `${plan.price} zł`
+                          }
                           <span className="text-sm font-medium text-neutral-300">/{plan.interval}</span>
                         </div>
                         {plan.trial && (
@@ -367,7 +402,7 @@ const Premium = () => {
               </div>
               <div className="border-t border-neutral-700 pt-6 text-center">
                 <p className="text-sm text-neutral-300">
-                  <span className="font-semibold text-white">JDG + 1 spółka</span> = 19 zł + 89 zł = 108 zł/miesiąc<br />
+                  <span className="font-semibold text-white">JDG + 1 spółka</span> = {formatPrice(currencySettings?.currency === 'EUR' ? 500 : 1900)} + {formatPrice(currencySettings?.currency === 'EUR' ? 2100 : 8900)} = {formatPrice(currencySettings?.currency === 'EUR' ? 2600 : 10800)}/miesiąc<br />
                   <span className="text-xs text-neutral-400">Każdy podmiot rozliczany osobno. Czysto, uczciwie, intuicyjnie.</span>
                 </p>
               </div>
@@ -380,7 +415,7 @@ const Premium = () => {
           <Card className="bg-gradient-to-br from-neutral-900/80 to-neutral-900/60 border-amber-500/30 text-white">
             <CardContent className="p-8 space-y-6">
               <div className="text-center">
-                <h3 className="text-xl font-bold mb-3">Dla spółek: 89 zł to nie za dużo</h3>
+                <h3 className="text-xl font-bold mb-3">Dla spółek: {formatPrice(currencySettings?.currency === 'EUR' ? 2100 : 8900)} to nie za dużo</h3>
                 <p className="text-neutral-300">To tańsze niż konsekwencje</p>
               </div>
               <div className="grid md:grid-cols-3 gap-4 text-sm">

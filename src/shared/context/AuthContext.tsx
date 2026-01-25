@@ -3,7 +3,6 @@ import React, { createContext, useState, useEffect, useContext } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useQueryClient } from "@tanstack/react-query";
 import { User, Session } from "@supabase/supabase-js";
-import { checkPremiumStatus } from "@/modules/premium/data/PremiumRepository";
 import { cleanupAuthState } from "@/shared/lib/auth-utils";
 import { getParentDomain } from "@/shared/config/domains";
 import { clearCrossDomainAuthToken, getCrossDomainAuthToken } from "@/shared/lib/crossDomainAuth";
@@ -18,7 +17,7 @@ export interface AuthContextType {
   register: (email: string, password: string) => Promise<{ user: User | null; session: Session | null }>;
   logout: () => Promise<void>;
   isPremium: boolean;
-  setIsPremium: (value: boolean) => void;
+  setIsPremium: (value: boolean) => void; // No-op - kept for backward compatibility
   openPremiumDialog: (initialPlanId?: string) => void;
   closePremiumDialog: () => void;
   isPremiumModalOpen: boolean;
@@ -40,12 +39,12 @@ export const useAuth = () => {
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
-  const [isPremium, setIsPremium] = useState(false);
   const [showPremiumModal, setShowPremiumModal] = useState(false);
   const [premiumDialogInitialPlanId, setPremiumDialogInitialPlanId] = useState<string | null>(null);
   const [bootstrapComplete, setBootstrapComplete] = useState(false);
   const queryClient = useQueryClient();
-
+  
+  
   const openPremiumDialog = (initialPlanId?: string) => {
     setPremiumDialogInitialPlanId(initialPlanId ?? null);
     setShowPremiumModal(true);
@@ -81,14 +80,12 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         // Set user FIRST before checking premium to avoid race condition
         setUser(session.user);
         
-        const premium = await checkPremiumStatus(session.user.id);
+        // Premium status is now handled by PremiumContext
         if (mounted) {
-          setIsPremium(premium);
           setLoading(false);
         }
       } else {
         setUser(null);
-        setIsPremium(false);
         if (mounted) {
           setLoading(false);
         }
@@ -184,15 +181,13 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       // Set user and loading state together to prevent intermediate renders
       if (activeSession && activeSession.user) {
         setUser(activeSession.user);
-        const premium = await checkPremiumStatus(activeSession.user.id);
+        // Premium status is now handled by PremiumContext
         if (mounted) {
-          setIsPremium(premium);
           setLoading(false);
           setBootstrapComplete(true);
         }
       } else {
         setUser(null);
-        setIsPremium(false);
         if (mounted) {
           setLoading(false);
           setBootstrapComplete(true);
@@ -279,7 +274,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       
       // Step 4: Clear React state
       setUser(null);
-      setIsPremium(false);
       queryClient.clear();
 
       console.log("[AuthContext] Logout complete, redirecting to parent domain with logout flag");
@@ -312,8 +306,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       login, 
       register, 
       logout, 
-      isPremium, 
-      setIsPremium, 
+      isPremium: false, // Premium status is managed by PremiumContext 
+      setIsPremium: () => {}, // No-op - premium status is managed by PremiumContext
       openPremiumDialog, 
       closePremiumDialog,
       isPremiumModalOpen: showPremiumModal,

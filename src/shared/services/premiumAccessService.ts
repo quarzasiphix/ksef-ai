@@ -283,43 +283,19 @@ export async function upgradeToEnterpriseUmbrella(
   userId: string,
   stripeSubscriptionId: string
 ): Promise<void> {
-  // Check if user already has a subscription
-  const { data: existing } = await supabase
-    .from('premium_subscriptions')
-    .select('id')
-    .eq('user_id', userId)
-    .eq('is_active', true)
-    .single();
+  // Use the new premium service to create enterprise subscription
+  const { upsertUserPremiumSubscription } = await import('./premiumService');
   
-  if (existing) {
-    // Update existing subscription to enterprise
-    const { error } = await supabase
-      .from('premium_subscriptions')
-      .update({
-        subscription_level: 'enterprise',
-        is_umbrella: true,
-        stripe_subscription_id: stripeSubscriptionId
-      })
-      .eq('id', existing.id);
-    
-    if (error) {
-      throw new Error(`Failed to upgrade to enterprise: ${error.message}`);
-    }
-  } else {
-    // Create new enterprise subscription
-    const { error } = await supabase
-      .from('premium_subscriptions')
-      .insert({
-        user_id: userId,
-        subscription_level: 'enterprise',
-        is_umbrella: true,
-        is_active: true,
-        stripe_subscription_id: stripeSubscriptionId,
-        starts_at: new Date().toISOString()
-      });
-    
-    if (error) {
-      throw new Error(`Failed to create enterprise subscription: ${error.message}`);
-    }
+  try {
+    await upsertUserPremiumSubscription(
+      userId,
+      'enterprise',
+      true, // covers all businesses
+      stripeSubscriptionId,
+      new Date().toISOString(),
+      new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString() // 30 days
+    );
+  } catch (error) {
+    throw new Error(`Failed to upgrade to enterprise: ${error.message}`);
   }
 }

@@ -1,4 +1,7 @@
 import React from 'react';
+import { PremiumPage } from '@/modules/premium/screens/PremiumPage';
+import { PremiumCheckout } from '@/modules/premium/screens/PremiumCheckout';
+import { PremiumSuccess } from '@/modules/premium/screens/PremiumSuccess';
 import { Navigate } from 'react-router-dom';
 import { TransactionType } from '@/shared/types/common';
 
@@ -784,13 +787,22 @@ export const routes: RouteConfig[] = [
   // Premium
   {
     path: '/premium',
-    element: <Premium />,
+    element: <PremiumPage />,
     title: 'Premium',
     hideInNav: true,
   },
   {
-    path: '/premium/plan/:planId',
-    element: <PremiumPlanDetails />,
+    path: '/premium/checkout',
+    element: <PremiumCheckout />,
+    guard: 'protected',
+    title: 'Premium Checkout',
+    hideInNav: true,
+  },
+  {
+    path: '/premium/success',
+    element: <PremiumSuccess />,
+    guard: 'protected',
+    title: 'Premium Success',
     hideInNav: true,
   },
 

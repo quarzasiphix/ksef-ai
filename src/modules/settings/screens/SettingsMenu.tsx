@@ -33,34 +33,7 @@ const SettingsMenu = () => {
     enabled: !!user,
   });
 
-  // Fetch last subscription to detect expired trial or premium
-  const { data: lastSubscription } = useQuery({
-    queryKey: ["lastSubscription", user?.id],
-    // If user is not logged in simply resolve to null
-    queryFn: async () => {
-      if (!user) return null;
-      const { data, error } = await supabase
-        .from("premium_subscriptions")
-        .select("id, stripe_subscription_id, is_active, ends_at")
-        .eq("user_id", user.id)
-        .order("ends_at", { ascending: false })
-        .limit(1)
-        .maybeSingle();
-      if (error) throw error;
-      return data;
-    },
-    enabled: !!user,
-    staleTime: 60 * 1000,
-  });
-
-  const now = new Date();
-  const trialExpired = !!lastSubscription &&
-    lastSubscription.stripe_subscription_id === "FREE_TRIAL" &&
-    (!lastSubscription.is_active || (lastSubscription.ends_at && new Date(lastSubscription.ends_at) < now));
-
-  const premiumExpired = !!lastSubscription &&
-    lastSubscription.stripe_subscription_id !== "FREE_TRIAL" &&
-    (!lastSubscription.is_active || (lastSubscription.ends_at && new Date(lastSubscription.ends_at) < now));
+  // Premium status is maintained by websocket, no need for extra API call
 
   useEffect(() => {
     const status = searchParams.get('status');
@@ -117,33 +90,7 @@ const SettingsMenu = () => {
         </div>
       </div>
 
-      {/* Expired Trial / Premium Notice */}
-      {(trialExpired || premiumExpired) && (
-        <Card className="border-2 border-red-200 bg-red-50">
-          <CardHeader className="flex items-center gap-2">
-            <AlertCircle className="h-5 w-5 text-red-600" />
-            <CardTitle className="text-red-700 text-base sm:text-lg">
-              {trialExpired ? "Twój darmowy okres próbny wygasł" : "Twoja subskrypcja Premium wygasła"}
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-              <p className="text-sm text-muted-foreground">
-                {trialExpired
-                  ? "Aby nadal korzystać ze wszystkich funkcji aplikacji, przejdź na wersję Premium."
-                  : "Odnów subskrypcję Premium, aby ponownie odblokować wszystkie funkcje."}
-              </p>
-              <Button
-                onClick={() => setShowPremiumModal(true)}
-                className="bg-gradient-to-r from-amber-500 to-yellow-600 hover:from-amber-600 hover:to-yellow-700 text-white font-semibold px-6"
-              >
-                {trialExpired ? "Kup Premium" : "Odnów Premium"}
-              </Button>
-            </div>
-          </CardContent>
-        </Card>
-      )}
-
+      
       {/* Konto (global scope) */}
       <section className="space-y-4">
         <div>
