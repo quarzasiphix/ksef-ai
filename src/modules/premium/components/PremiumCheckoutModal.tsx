@@ -2,8 +2,9 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/shared/ui/dialog";
 import { Button } from "@/shared/ui/button";
-import { Check, CreditCard, Smartphone, Crown, Gift, Sparkles, ArrowRight } from "lucide-react";
+import { Check, CreditCard, Smartphone, Crown, Gift, Sparkles, ArrowRight, Building2, Users } from "lucide-react";
 import { useAuth } from "@/shared/context/AuthContext";
+import { useBusinessProfile } from "@/shared/context/BusinessProfileContext";
 import { toast } from "sonner";
 import { Card, CardContent, CardHeader, CardTitle } from "@/shared/ui/card";
 import { Badge } from "@/shared/ui/badge";
@@ -23,6 +24,7 @@ interface PremiumCheckoutModalProps {
 const PremiumCheckoutModal: React.FC<PremiumCheckoutModalProps> = ({ isOpen, onClose, initialPlanId }) => {
   const navigate = useNavigate();
   const { user, supabase, isPremium, setIsPremium } = useAuth();
+  const { selectedProfileId, profiles, isLoadingProfiles } = useBusinessProfile();
   const [isLoading, setIsLoading] = useState<string | null>(null);
   const [selectedPlan, setSelectedPlan] = useState<StripeProduct | null>(null);
   const [paymentMethod, setPaymentMethod] = useState<'card' | 'blik'>('card');
@@ -32,6 +34,45 @@ const PremiumCheckoutModal: React.FC<PremiumCheckoutModalProps> = ({ isOpen, onC
   
   // Fetch products from database
   const { data: products, isLoading: productsLoading } = useStripeProducts();
+
+  // Get current business profile
+  const currentProfile = profiles?.find(p => p.id === selectedProfileId);
+  const entityType = currentProfile?.entityType || 'dzialalnosc';
+
+  // Auto-select plan based on entity type when modal opens
+  useEffect(() => {
+    if (!isOpen || !products || !entityType) return;
+    
+    // If no initial plan provided, auto-select based on entity type
+    if (!initialPlanId) {
+      const jdgPlan = products.find(p => 
+        p.name.toLowerCase().includes('jdg') || 
+        p.name.toLowerCase().includes('działalność') ||
+        p.name.toLowerCase().includes('jednoosobowa')
+      );
+      const spolkaPlan = products.find(p => 
+        p.name.toLowerCase().includes('spółka') || 
+        p.name.toLowerCase().includes('spolka') ||
+        p.name.toLowerCase().includes('zoo') ||
+        p.name.toLowerCase().includes('akcyjna')
+      );
+      
+      if (entityType === 'dzialalnosc' && jdgPlan) {
+        setSelectedPlan(jdgPlan);
+      } else if ((entityType === 'sp_zoo' || entityType === 'sa') && spolkaPlan) {
+        setSelectedPlan(spolkaPlan);
+      } else {
+        // Fallback to first available plan
+        setSelectedPlan(products[0]);
+      }
+    } else {
+      // Use provided initial plan ID
+      const plan = products.find((p) => p.plan_type === initialPlanId);
+      if (plan) {
+        setSelectedPlan(plan);
+      }
+    }
+  }, [isOpen, initialPlanId, products, entityType]);
 
   // Check trial eligibility when modal opens
   useEffect(() => {
@@ -49,22 +90,6 @@ const PremiumCheckoutModal: React.FC<PremiumCheckoutModalProps> = ({ isOpen, onC
     };
     checkStatus();
   }, [isOpen, isPremium, user]);
-
-  // Preselect plan when modal is opened with initialPlanId
-  useEffect(() => {
-    if (!isOpen) {
-      setSelectedPlan(null);
-      setPaymentMethod('card');
-      return;
-    }
-    
-    if (initialPlanId && products) {
-      const plan = products.find((p) => p.plan_type === initialPlanId);
-      if (plan) {
-        setSelectedPlan(plan);
-      }
-    }
-  }, [isOpen, initialPlanId, products]);
 
   const handleStartTrial = async () => {
     if (!user || !supabase) return;
@@ -164,7 +189,20 @@ const PremiumCheckoutModal: React.FC<PremiumCheckoutModalProps> = ({ isOpen, onC
           <DialogDescription className="text-sm text-muted-foreground">
             {showPlanSelection 
               ? 'Odblokuj pełne możliwości aplikacji'
-              : selectedPlan ? `${formatPrice(selectedPlan.price_amount, selectedPlan.currency)}/${getIntervalLabel(selectedPlan.interval, selectedPlan.interval_count)}` : ''
+              : selectedPlan ? (
+                <div className="space-y-1">
+                  <div>{formatPrice(selectedPlan.price_amount, selectedPlan.currency)}/{getIntervalLabel(selectedPlan.interval, selectedPlan.interval_count)}</div>
+                  {currentProfile && (
+                    <div className="flex items-center gap-1 text-xs">
+                      <Building2 className="h-3 w-3" />
+                      <span>Dla firmy: {currentProfile.name}</span>
+                      <Badge variant="outline" className="text-xs">
+                        {entityType === 'dzialalnosc' ? 'JDG' : entityType === 'sp_zoo' ? 'Sp. z o.o.' : 'S.A.'}
+                      </Badge>
+                    </div>
+                  )}
+                </div>
+              ) : ''
             }
           </DialogDescription>
         </DialogHeader>
@@ -251,10 +289,33 @@ const PremiumCheckoutModal: React.FC<PremiumCheckoutModalProps> = ({ isOpen, onC
         ) : selectedPlan ? (
           // Plan selected - show payment method selection
           <div className="space-y-4">
-            {/* Plan summary */}
-            <Card className="border-amber-200 bg-amber-50/50 dark:bg-amber-950/20 dark:border-amber-800">
+            {/* Current business profile info */}
+            {currentProfile && (
+              <Card className="border-blue-200 bg-blue-50/50 dark:bg-blue-950/20 dark:border-blue-800">
+                <CardContent className="p-4">
+                  <div className="flex items-center gap-2 mb-2">
+                    <Building2 className="h-4 w-4 text-blue-600 dark:text-blue-400" />
+                    <span className="text-sm font-medium">Wybrana firma:</span>
+                  </div>
+                  <div className="space-y-1">
+                    <p className="font-medium">{currentProfile.name}</p>
+                    <Badge variant="secondary" className="text-xs">
+                      {entityType === 'dzialalnosc' ? 'Jednoosobowa Działalność Gospodarcza' : 
+                       entityType === 'sp_zoo' ? 'Spółka z o.o.' : 'Spółka Akcyjna'}
+                    </Badge>
+                  </div>
+                </CardContent>
+              </Card>
+            )}
+
+            {/* Single plan display - show only the relevant plan */}
+            <Card className={
+              entityType === 'dzialalnosc' 
+                ? 'border-emerald-200 bg-emerald-50/50 dark:bg-emerald-950/20 dark:border-emerald-800'
+                : 'border-amber-200 bg-amber-50/50 dark:bg-amber-950/20 dark:border-amber-800'
+            }>
               <CardContent className="p-4">
-                <div className="flex items-center justify-between">
+                <div className="flex items-center justify-between mb-2">
                   <div>
                     <p className="font-semibold">{selectedPlan.name}</p>
                     <p className="text-sm text-muted-foreground">Plan Premium</p>
@@ -263,6 +324,93 @@ const PremiumCheckoutModal: React.FC<PremiumCheckoutModalProps> = ({ isOpen, onC
                     <p className="text-2xl font-bold">{formatPrice(selectedPlan.price_amount, selectedPlan.currency)}</p>
                     <p className="text-xs text-muted-foreground">/{getIntervalLabel(selectedPlan.interval, selectedPlan.interval_count)}</p>
                   </div>
+                </div>
+                
+                {/* Entity type indicator */}
+                <div className={`flex items-center gap-2 pt-2 border-t ${
+                  entityType === 'dzialalnosc' 
+                    ? 'border-emerald-200/50 dark:border-emerald-800/50'
+                    : 'border-amber-200/50 dark:border-amber-800/50'
+                }`}>
+                  <Building2 className={`h-4 w-4 ${
+                    entityType === 'dzialalnosc' 
+                      ? 'text-emerald-600 dark:text-emerald-400'
+                      : 'text-amber-600 dark:text-amber-400'
+                  }`} />
+                  <div className="flex-1">
+                    <p className="text-sm font-medium">{currentProfile?.name || 'Wybrana firma'}</p>
+                    <div className="flex items-center gap-2">
+                      <Badge variant="secondary" className="text-xs">
+                        {entityType === 'dzialalnosc' ? 'Jednoosobowa Działalność Gospodarcza' : 
+                         entityType === 'sp_zoo' ? 'Spółka z o.o.' : 'Spółka Akcyjna'}
+                      </Badge>
+                      <span className="text-xs text-muted-foreground">
+                        {entityType === 'dzialalnosc' ? 'Cena dla JDG' : 'Cena dla spółki'}
+                      </span>
+                    </div>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* Features for this plan */}
+            <Card>
+              <CardHeader className="pb-3">
+                <CardTitle className="text-sm">Co zawiera plan?</CardTitle>
+              </CardHeader>
+              <CardContent className="pt-0">
+                <div className="space-y-2">
+                  {entityType === 'dzialalnosc' ? (
+                    <>
+                      <div className="flex items-center gap-2 text-sm">
+                        <Check className="h-4 w-4 text-emerald-500" />
+                        <span>Nieograniczone faktury i dokumenty</span>
+                      </div>
+                      <div className="flex items-center gap-2 text-sm">
+                        <Check className="h-4 w-4 text-emerald-500" />
+                        <span>Podstawowa księgowość</span>
+                      </div>
+                      <div className="flex items-center gap-2 text-sm">
+                        <Check className="h-4 w-4 text-emerald-500" />
+                        <span>Eksport JPK</span>
+                      </div>
+                      <div className="flex items-center gap-2 text-sm">
+                        <Check className="h-4 w-4 text-emerald-500" />
+                        <span>Uproszczony system decyzji</span>
+                      </div>
+                    </>
+                  ) : (
+                    <>
+                      <div className="flex items-center gap-2 text-sm">
+                        <Check className="h-4 w-4 text-amber-500" />
+                        <span>System uchwał i decyzji</span>
+                      </div>
+                      <div className="flex items-center gap-2 text-sm">
+                        <Check className="h-4 w-4 text-amber-500" />
+                        <span>Zarządzanie aktywami (nieruchomości, pojazdy, IP)</span>
+                      </div>
+                      <div className="flex items-center gap-2 text-sm">
+                        <Check className="h-4 w-4 text-amber-500" />
+                        <span>Decyzje powiązane z wydatkami</span>
+                      </div>
+                      <div className="flex items-center gap-2 text-sm">
+                        <Check className="h-4 w-4 text-amber-500" />
+                        <span>Ścieżka audytu i odpowiedzialność</span>
+                      </div>
+                      <div className="flex items-center gap-2 text-sm">
+                        <Check className="h-4 w-4 text-amber-500" />
+                        <span>Śledzenie kapitału i wspólników</span>
+                      </div>
+                      <div className="flex items-center gap-2 text-sm">
+                        <Check className="h-4 w-4 text-amber-500" />
+                        <span>Nieograniczone dokumenty</span>
+                      </div>
+                      <div className="flex items-center gap-2 text-sm">
+                        <Check className="h-4 w-4 text-amber-500" />
+                        <span>Architektura gotowa na KSeF</span>
+                      </div>
+                    </>
+                  )}
                 </div>
               </CardContent>
             </Card>

@@ -8,7 +8,7 @@ export const getParentDomain = (): string => {
   const hostname = window.location.hostname;
   
   if (hostname === 'localhost' || hostname.includes('127.0.0.1')) {
-    // Development environment
+    // Development environment - marketing site is on port 3000
     return 'http://localhost:3000';
   }
   
@@ -19,15 +19,15 @@ export const getParentDomain = (): string => {
 export const getAppDomain = (): string => {
   if (typeof window === 'undefined') {
     // Server-side: use environment variable or default
-    return import.meta.env.DEV ? 'http://localhost:3000' : 'https://app.ksiegai.pl';
+    return import.meta.env.DEV ? 'http://localhost:8080' : 'https://app.ksiegai.pl';
   }
   
   // Client-side: detect based on current hostname
   const hostname = window.location.hostname;
   
   if (hostname === 'localhost' || hostname.includes('127.0.0.1')) {
-    // Development environment
-    return 'http://localhost:3000';
+    // Development environment - React app is on port 8080
+    return 'http://localhost:8080';
   }
   
   // Production environment

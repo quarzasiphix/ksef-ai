@@ -20,6 +20,8 @@ export interface AuthContextType {
   isPremium: boolean;
   setIsPremium: (value: boolean) => void;
   openPremiumDialog: (initialPlanId?: string) => void;
+  closePremiumDialog: () => void;
+  isPremiumModalOpen: boolean;
   supabase: typeof supabase;
   signInWithGoogle: () => Promise<void>;
   isModalOpen: boolean;
@@ -239,7 +241,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const signInWithGoogle = async () => {
     // For localhost development, redirect to marketing site for OAuth flow
     const isLocalhost = window.location.hostname === 'localhost';
-    const port = window.location.port || '3000';
+    const port = window.location.port || '8080';
     
     if (isLocalhost) {
       // Redirect to marketing site with localhost callback parameters
@@ -255,6 +257,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         redirectTo: `${window.location.origin}/auth/callback`,
       },
     });
+  };
+
+  const closePremiumDialog = () => {
+    setShowPremiumModal(false);
+    setPremiumDialogInitialPlanId(null);
   };
 
   const logout = async () => {
@@ -283,7 +290,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       
       if (isLocalhost) {
         // Add localhost redirect parameters so ksiegai.pl can redirect back
-        const port = window.location.port || '3000';
+        const port = window.location.port || '8080';
         const redirectUrl = `${parentDomain}?from=localhost&port=${port}`;
         console.log("[AuthContext] Redirecting to localhost marketing site:", redirectUrl);
         window.location.href = redirectUrl;
@@ -299,7 +306,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       const parentDomain = getParentDomain();
       
       if (isLocalhost) {
-        const port = window.location.port || '3000';
+        const port = window.location.port || '8080';
         const redirectUrl = `${parentDomain}?from=localhost&port=${port}`;
         console.log("[AuthContext] Fallback: Redirecting to localhost marketing site:", redirectUrl);
         window.location.href = redirectUrl;
@@ -311,20 +318,23 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   };
 
   return (
-    <AuthContext.Provider value={{ user, isLoading: loading, loading: loading, login, register, logout, isPremium, setIsPremium, openPremiumDialog, supabase, signInWithGoogle, isModalOpen: showPremiumModal }}>
+    <AuthContext.Provider value={{ 
+      user, 
+      isLoading: loading, 
+      loading: loading, 
+      login, 
+      register, 
+      logout, 
+      isPremium, 
+      setIsPremium, 
+      openPremiumDialog, 
+      closePremiumDialog,
+      isPremiumModalOpen: showPremiumModal,
+      supabase, 
+      signInWithGoogle, 
+      isModalOpen: showPremiumModal 
+    }}>
       {children}
-      {showPremiumModal && (
-        <React.Suspense fallback={null}>
-          <PremiumCheckoutModalLazy
-            isOpen={showPremiumModal}
-            onClose={() => {
-              setShowPremiumModal(false);
-              setPremiumDialogInitialPlanId(null);
-            }}
-            initialPlanId={premiumDialogInitialPlanId ?? undefined}
-          />
-        </React.Suspense>
-      )}
     </AuthContext.Provider>
   );
 };

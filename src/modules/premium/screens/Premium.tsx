@@ -1,6 +1,7 @@
 import { useAuth } from "@/shared/hooks/useAuth";
+import { useBusinessProfile } from "@/shared/context/BusinessProfileContext";
 import { Button } from "@/shared/ui/button";
-import { Check, Crown, Sparkles, ArrowRight, FileText, Shield } from "lucide-react";
+import { Check, Crown, Sparkles, ArrowRight, FileText, Shield, Building2 } from "lucide-react";
 import { Link } from "react-router-dom";
 import { Card, CardContent, CardHeader, CardTitle } from "@/shared/ui/card";
 import { Badge } from "@/shared/ui/badge";
@@ -67,6 +68,22 @@ const entityPlans = [
 
 const Premium = () => {
   const { user, openPremiumDialog } = useAuth();
+  const { selectedProfileId, profiles } = useBusinessProfile();
+
+  // Get current business profile
+  const currentProfile = profiles?.find(p => p.id === selectedProfileId);
+  const entityType = currentProfile?.entityType || 'dzialalnosc';
+
+  // Determine which plan to highlight based on entity type
+  const isJDG = entityType === 'dzialalnosc';
+  const isSpolka = entityType === 'sp_zoo' || entityType === 'sa';
+
+  // Filter plans to show the recommended one first
+  const recommendedPlan = isJDG 
+    ? entityPlans.find(p => p.id === 'jdg')
+    : isSpolka 
+      ? entityPlans.find(p => p.id === 'spolka')
+      : null;
 
   return (
     <div className="relative py-20 bg-gradient-to-b from-neutral-950 via-purple-950/20 to-neutral-950 text-white overflow-hidden">
@@ -78,10 +95,40 @@ const Premium = () => {
           <div className="inline-flex items-center justify-center bg-gradient-to-br from-amber-400 to-amber-600 rounded-full w-16 h-16 shadow-xl">
             <Crown className="h-8 w-8 text-white" />
           </div>
-          <h1 className="text-4xl md:text-5xl font-extrabold tracking-tight">Płacisz za podmiot,<br />nie za użytkownika</h1>
+          
+          {/* Current Business Profile Badge */}
+          {currentProfile && (
+            <div className="flex items-center justify-center gap-2 mb-4">
+              <Building2 className="h-5 w-5 text-emerald-400" />
+              <span className="text-sm text-neutral-300">
+                Aktualnie wybrany podmiot: <span className="font-semibold text-white">{currentProfile.name}</span>
+              </span>
+              <Badge variant="secondary" className="text-xs">
+                {isJDG ? 'JDG' : isSpolka ? 'Spółka' : 'Inny'}
+              </Badge>
+            </div>
+          )}
+
+          <h1 className="text-4xl md:text-5xl font-extrabold tracking-tight">
+            {isJDG ? 'Plan Premium dla JDG' : isSpolka ? 'Plan Premium dla Spółek' : 'Płacisz za podmiot, nie za użytkownika'}
+          </h1>
           <p className="text-lg text-neutral-300 max-w-2xl mx-auto">
-            <span className="text-white font-semibold">JDG to księgowość. Spółka to odpowiedzialność.</span><br />
-            My wyceniamy odpowiedzialność.
+            {isJDG ? (
+              <>
+                <span className="text-white font-semibold">Prosty system księgowości dla jednoosobowej działalności gospodarczej.</span><br />
+                Wszystko czego potrzebujesz za 19 zł/miesiąc.
+              </>
+            ) : isSpolka ? (
+              <>
+                <span className="text-white font-semibold">Pełen system governance i odpowiedzialności dla spółek.</span><br />
+                Profesjonalne zarządzanie za 89 zł/miesiąc.
+              </>
+            ) : (
+              <>
+                <span className="text-white font-semibold">JDG to księgowość. Spółka to odpowiedzialność.</span><br />
+                My wyceniamy odpowiedzialność.
+              </>
+            )}
           </p>
           <div className="flex items-center justify-center gap-8 text-sm text-neutral-400 pt-4">
             <div className="flex items-center gap-2">
@@ -95,98 +142,194 @@ const Premium = () => {
           </div>
         </header>
 
-        {/* Entity-based Plans */}
+        {/* Entity-based Plans - Show recommended plan prominently */}
         <section className="max-w-6xl mx-auto mb-16">
-          <div className="text-center mb-8">
-            <h2 className="text-2xl font-bold mb-2">Wybierz typ podmiotu</h2>
-            <p className="text-neutral-400">Jednostka wartości to podmiot prawny, nie użytkownik</p>
-          </div>
-          <div className="grid gap-6 md:grid-cols-3">
-            {entityPlans.map((plan) => (
-              <Card
-                key={plan.id}
-                className={
-                  plan.id === 'spolka'
-                    ? 'bg-neutral-900/70 border-amber-500/60 text-white shadow-lg'
-                    : 'bg-neutral-900/60 border-neutral-800 text-white'
-                }
-              >
-                <CardHeader className="space-y-3">
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <CardTitle className="text-lg">{plan.name}</CardTitle>
-                      <p className="text-xs text-neutral-400 mt-1">{plan.subtitle}</p>
-                    </div>
-                    {plan.badge && (
-                      <Badge className="bg-amber-500 text-white border-amber-400">{plan.badge}</Badge>
-                    )}
-                  </div>
-                  <div className="border-t border-neutral-700 pt-3">
-                    <p className="text-xs text-neutral-400 mb-1">Typ podmiotu</p>
-                    <p className="text-sm font-medium">{plan.entityType}</p>
-                  </div>
-                  {plan.price !== null ? (
-                    <div>
-                      <div className="text-3xl font-extrabold">
-                        {plan.price} zł
-                        <span className="text-sm font-medium text-neutral-300">/{plan.interval}</span>
+          {recommendedPlan && (
+            <>
+              <div className="text-center mb-8">
+                <h2 className="text-2xl font-bold mb-2">
+                  {isJDG ? 'Twój plan: JDG Premium' : 'Twój plan: Spółka Premium'}
+                </h2>
+                <p className="text-neutral-400">
+                  Dopasowany do typu Twojego podmiotu: {currentProfile?.name}
+                </p>
+              </div>
+              
+              {/* Recommended Plan - Large Card */}
+              <div className="max-w-2xl mx-auto mb-12">
+                <Card className={
+                  isJDG 
+                    ? 'bg-gradient-to-br from-emerald-900/40 to-emerald-950/60 border-emerald-500/60 text-white shadow-2xl'
+                    : 'bg-gradient-to-br from-amber-900/40 to-amber-950/60 border-amber-500/60 text-white shadow-2xl'
+                }>
+                  <CardHeader className="space-y-4 pb-6">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <CardTitle className="text-2xl">{recommendedPlan.name}</CardTitle>
+                        <p className="text-sm text-neutral-300 mt-1">{recommendedPlan.subtitle}</p>
                       </div>
-                      {plan.trial && (
-                        <p className="text-xs text-emerald-400 mt-1">{plan.trial}</p>
+                      <Badge className={
+                        isJDG
+                          ? 'bg-emerald-500 text-white border-emerald-400'
+                          : 'bg-amber-500 text-white border-amber-400'
+                      }>
+                        Polecane dla Ciebie
+                      </Badge>
+                    </div>
+                    
+                    <div className="border-t border-neutral-700 pt-4">
+                      <p className="text-xs text-neutral-400 mb-1">Typ podmiotu</p>
+                      <p className="text-base font-medium">{recommendedPlan.entityType}</p>
+                    </div>
+                    
+                    <div className="bg-neutral-900/50 rounded-lg p-4">
+                      <div className="text-4xl font-extrabold">
+                        {recommendedPlan.price} zł
+                        <span className="text-lg font-medium text-neutral-300">/{recommendedPlan.interval}</span>
+                      </div>
+                      {recommendedPlan.trial && (
+                        <p className="text-sm text-emerald-400 mt-2">{recommendedPlan.trial}</p>
                       )}
                     </div>
-                  ) : (
-                    <div className="text-2xl font-extrabold">Oferta indywidualna</div>
-                  )}
-                  <p className="text-sm text-neutral-300">{plan.tagline}</p>
-                </CardHeader>
-                <CardContent className="space-y-4">
-                  <div className="space-y-2">
-                    {plan.features.map((feature) => (
-                      <div key={feature} className="flex items-start gap-3">
-                        <div className="flex-shrink-0 bg-emerald-600/20 rounded-full p-1.5 mt-0.5">
-                          <Check className="h-4 w-4 text-emerald-400" />
+                    
+                    <p className="text-base text-neutral-200">{recommendedPlan.tagline}</p>
+                  </CardHeader>
+                  
+                  <CardContent className="space-y-6">
+                    <div className="space-y-3">
+                      {recommendedPlan.features.map((feature) => (
+                        <div key={feature} className="flex items-start gap-3">
+                          <div className={`flex-shrink-0 rounded-full p-1.5 mt-0.5 ${
+                            isJDG ? 'bg-emerald-600/20' : 'bg-amber-600/20'
+                          }`}>
+                            <Check className={`h-5 w-5 ${
+                              isJDG ? 'text-emerald-400' : 'text-amber-400'
+                            }`} />
+                          </div>
+                          <p className="text-base text-neutral-100">{feature}</p>
                         </div>
-                        <p className="text-sm text-neutral-200">{feature}</p>
-                      </div>
-                    ))}
-                  </div>
+                      ))}
+                    </div>
 
-                  <div className="grid gap-2">
-                    {plan.id === 'enterprise' ? (
-                      <Button asChild variant="outline" className="w-full border-neutral-700 text-neutral-100 hover:bg-neutral-800">
-                        <a href="mailto:kontakt@ksiegai.pl?subject=Enterprise%20%E2%80%94%20oferta%20indywidualna">
-                          Skontaktuj się
-                        </a>
-                      </Button>
-                    ) : (
-                      <>
-                        <Link to={`/premium/plan/${plan.id}`}>
-                          <Button
-                            className={
-                              plan.id === 'spolka'
-                                ? 'w-full bg-gradient-to-r from-amber-500 to-yellow-600 hover:from-amber-600 hover:to-yellow-700'
-                                : 'w-full'
-                            }
-                          >
-                            {plan.trial ? 'Rozpocznij trial' : 'Wybierz plan'}
-                          </Button>
-                        </Link>
-                        {user && (
-                          <Button
-                            variant="outline"
-                            className="w-full border-neutral-700 text-neutral-100 hover:bg-neutral-800"
-                            onClick={() => openPremiumDialog(plan.id)}
-                          >
-                            Kup teraz
-                          </Button>
+                    <div className="grid gap-3 pt-4">
+                      {user && (
+                        <Button
+                          size="lg"
+                          className={
+                            isJDG
+                              ? 'w-full bg-gradient-to-r from-emerald-500 to-emerald-600 hover:from-emerald-600 hover:to-emerald-700 text-lg'
+                              : 'w-full bg-gradient-to-r from-amber-500 to-yellow-600 hover:from-amber-600 hover:to-yellow-700 text-lg'
+                          }
+                          onClick={() => openPremiumDialog(recommendedPlan.id)}
+                        >
+                          {recommendedPlan.trial ? 'Rozpocznij 7-dniowy trial' : 'Aktywuj plan premium'}
+                          <Sparkles className="h-5 w-5 ml-2" />
+                        </Button>
+                      )}
+                      <Link to={`/premium/plan/${recommendedPlan.id}`}>
+                        <Button
+                          variant="outline"
+                          size="lg"
+                          className="w-full border-neutral-600 text-neutral-100 hover:bg-neutral-800"
+                        >
+                          Zobacz szczegóły planu
+                          <ArrowRight className="h-4 w-4 ml-2" />
+                        </Button>
+                      </Link>
+                    </div>
+                  </CardContent>
+                </Card>
+              </div>
+            </>
+          )}
+
+          {/* Other Plans */}
+          <div className="text-center mb-8">
+            <h3 className="text-xl font-bold mb-2">Inne dostępne plany</h3>
+            <p className="text-sm text-neutral-400">Możesz również wybrać inny plan dla swojego podmiotu</p>
+          </div>
+          <div className="grid gap-6 md:grid-cols-3">
+            {entityPlans.map((plan) => {
+              const isRecommended = plan.id === recommendedPlan?.id;
+              if (isRecommended) return null; // Skip recommended plan as it's shown above
+              
+              return (
+                <Card
+                  key={plan.id}
+                  className="bg-neutral-900/60 border-neutral-800 text-white"
+                >
+                  <CardHeader className="space-y-3">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <CardTitle className="text-lg">{plan.name}</CardTitle>
+                        <p className="text-xs text-neutral-400 mt-1">{plan.subtitle}</p>
+                      </div>
+                      {plan.badge && (
+                        <Badge className="bg-neutral-700 text-white border-neutral-600">{plan.badge}</Badge>
+                      )}
+                    </div>
+                    <div className="border-t border-neutral-700 pt-3">
+                      <p className="text-xs text-neutral-400 mb-1">Typ podmiotu</p>
+                      <p className="text-sm font-medium">{plan.entityType}</p>
+                    </div>
+                    {plan.price !== null ? (
+                      <div>
+                        <div className="text-2xl font-extrabold">
+                          {plan.price} zł
+                          <span className="text-sm font-medium text-neutral-300">/{plan.interval}</span>
+                        </div>
+                        {plan.trial && (
+                          <p className="text-xs text-emerald-400 mt-1">{plan.trial}</p>
                         )}
-                      </>
+                      </div>
+                    ) : (
+                      <div className="text-xl font-extrabold">Oferta indywidualna</div>
                     )}
-                  </div>
-                </CardContent>
-              </Card>
-            ))}
+                    <p className="text-sm text-neutral-300">{plan.tagline}</p>
+                  </CardHeader>
+                  <CardContent className="space-y-4">
+                    <div className="space-y-2">
+                      {plan.features.slice(0, 4).map((feature) => (
+                        <div key={feature} className="flex items-start gap-2">
+                          <div className="flex-shrink-0 bg-neutral-700/20 rounded-full p-1 mt-0.5">
+                            <Check className="h-3 w-3 text-neutral-400" />
+                          </div>
+                          <p className="text-xs text-neutral-300">{feature}</p>
+                        </div>
+                      ))}
+                    </div>
+
+                    <div className="grid gap-2">
+                      {plan.id === 'enterprise' ? (
+                        <Button asChild variant="outline" size="sm" className="w-full border-neutral-700 text-neutral-100 hover:bg-neutral-800">
+                          <a href="mailto:kontakt@ksiegai.pl?subject=Enterprise%20%E2%80%94%20oferta%20indywidualna">
+                            Skontaktuj się
+                          </a>
+                        </Button>
+                      ) : (
+                        <>
+                          <Link to={`/premium/plan/${plan.id}`}>
+                            <Button variant="outline" size="sm" className="w-full border-neutral-700 text-neutral-100 hover:bg-neutral-800">
+                              Zobacz szczegóły
+                            </Button>
+                          </Link>
+                          {user && (
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              className="w-full text-neutral-400 hover:text-neutral-100"
+                              onClick={() => openPremiumDialog(plan.id)}
+                            >
+                              Wybierz ten plan
+                            </Button>
+                          )}
+                        </>
+                      )}
+                    </div>
+                  </CardContent>
+                </Card>
+              );
+            })}
           </div>
         </section>
 

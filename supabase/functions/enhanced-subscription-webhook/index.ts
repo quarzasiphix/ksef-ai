@@ -149,10 +149,40 @@ async function handleSubscriptionCreated(
   const userId = subscription.metadata?.user_id
   const subscriptionLevel = subscription.metadata?.subscription_level
   const businessProfileId = subscription.metadata?.business_profile_id
+  const entityType = subscription.metadata?.entity_type
 
   if (!userId || !subscriptionLevel) {
     console.error('Missing required metadata in subscription')
     return
+  }
+
+  // Determine premium tier based on subscription level and entity type
+  let premiumTier = 'jdg_premium'
+  if (subscriptionLevel === 'enterprise') {
+    premiumTier = 'enterprise'
+  } else if (entityType === 'sp_zoo' || entityType === 'sa') {
+    premiumTier = 'spolka_premium'
+  }
+
+  // If business_profile_id is provided, update the business profile
+  if (businessProfileId) {
+    const { error: businessError } = await supabase
+      .from('business_profiles')
+      .update({
+        subscription_tier: premiumTier,
+        stripe_subscription_id: subscription.id,
+        subscription_starts_at: new Date(subscription.current_period_start * 1000).toISOString(),
+        subscription_ends_at: subscription.cancel_at_period_end ? 
+          new Date(subscription.current_period_end * 1000).toISOString() : null,
+        subscription_status: subscription.status
+      })
+      .eq('id', businessProfileId)
+
+    if (businessError) {
+      console.error('Error updating business profile premium status:', businessError)
+    } else {
+      console.log(`Business profile ${businessProfileId} updated with premium status`)
+    }
   }
 
   // Get subscription type
@@ -160,7 +190,7 @@ async function handleSubscriptionCreated(
     .from('subscription_types')
     .select('*')
     .eq('name', subscriptionLevel === 'enterprise' ? 'enterprise' : 
-        subscription.metadata?.entity_type || 'jdg')
+        entityType || 'jdg')
     .single()
 
   if (!subscriptionType) {
@@ -213,6 +243,30 @@ async function handleSubscriptionUpdated(
 ) {
   console.log('Subscription updated:', subscription.id)
 
+  // Update business profile if subscription is linked to one
+  const { data: businessProfile } = await supabase
+    .from('business_profiles')
+    .select('id')
+    .eq('stripe_subscription_id', subscription.id)
+    .single()
+
+  if (businessProfile) {
+    const { error: businessError } = await supabase
+      .from('business_profiles')
+      .update({
+        subscription_ends_at: subscription.cancel_at_period_end ? 
+          new Date(subscription.current_period_end * 1000).toISOString() : null,
+        subscription_status: subscription.status
+      })
+      .eq('id', businessProfile.id)
+
+    if (businessError) {
+      console.error('Error updating business profile premium status:', businessError)
+    } else {
+      console.log(`Business profile ${businessProfile.id} premium status updated`)
+    }
+  }
+
   // Update subscription record
   const { error } = await supabase
     .from('enhanced_subscriptions')
@@ -258,6 +312,29 @@ async function handleSubscriptionDeleted(
   supabase: any
 ) {
   console.log('Subscription deleted:', subscription.id)
+
+  // Update business profile if subscription is linked to one
+  const { data: businessProfile } = await supabase
+    .from('business_profiles')
+    .select('id')
+    .eq('stripe_subscription_id', subscription.id)
+    .single()
+
+  if (businessProfile) {
+    const { error: businessError } = await supabase
+      .from('business_profiles')
+      .update({
+        subscription_ends_at: new Date().toISOString(),
+        subscription_status: 'canceled'
+      })
+      .eq('id', businessProfile.id)
+
+    if (businessError) {
+      console.error('Error updating business profile on subscription deletion:', businessError)
+    } else {
+      console.log(`Business profile ${businessProfile.id} premium status removed`)
+    }
+  }
 
   // Mark subscription as inactive
   const { data: enhancedSub } = await supabase
