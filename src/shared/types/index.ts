@@ -56,6 +56,12 @@ export interface BusinessProfile {
   nip_8_filed_date?: string;
   cit_advance_type?: 'monthly' | 'quarterly';
   is_small_taxpayer?: boolean;
+  
+  // Subscription fields (matching actual database structure)
+  subscription_tier?: 'free' | 'jdg_premium' | 'spolka_premium';
+  subscription_status?: 'active' | 'trial' | 'inactive' | 'cancelled' | 'past_due';
+  subscription_ends_at?: string;
+  subscription_starts_at?: string;
 }
 
 export interface BoardMember {

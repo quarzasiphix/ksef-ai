@@ -13,6 +13,7 @@ import { Label } from "@/shared/ui/label";
 import { BlikPaymentModal } from "./BlikPaymentModal";
 import { checkTrialEligibility } from "@/modules/premium/data/PremiumRepository";
 import { useStripeProducts, formatPrice, getIntervalLabel, getStripePriceId, type StripeProduct } from "@/modules/premium/hooks/useStripeProducts";
+import RequirePremium from "@/components/auth/RequirePremium";
 
 interface PremiumCheckoutModalProps {
   isOpen: boolean;
@@ -271,20 +272,8 @@ const PremiumCheckoutModal: React.FC<PremiumCheckoutModalProps> = ({ isOpen, onC
               </div>
             )}
 
-            {/* Go to plans page */}
-            <div className="text-center space-y-4">
-              <p className="text-sm text-muted-foreground">
-                Wybierz plan dopasowany do Twoich potrzeb
-              </p>
-              <Button 
-                onClick={handleViewPlans}
-                variant="outline"
-                className="w-full"
-              >
-                Zobacz wszystkie plany
-                <ArrowRight className="h-4 w-4 ml-2" />
-              </Button>
-            </div>
+            {/* Show business-specific premium popup */}
+            <RequirePremium feature="Pełna funkcjonalność aplikacji" />
           </div>
         ) : selectedPlan ? (
           // Plan selected - show payment method selection
