@@ -81,19 +81,6 @@ lineItems.push({
 });
 ```
 
-## 🔧 Environment Variables
-
-Make sure these are set in your Supabase Edge Functions:
-
-```bash
-# Test Mode
-STRIPE_SECRET_KEY_TEST=sk_test_xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
-STRIPE_WEBHOOK_SECRET_TEST=whsec_xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
-
-# Production Mode (when ready)
-STRIPE_SECRET_KEY_PROD=sk_live_xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
-STRIPE_WEBHOOK_SECRET_PROD=whsec_xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
-```
 
 ## 🎯 How It Works
 
