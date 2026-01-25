@@ -1130,7 +1130,7 @@ Since Supabase CLI is not available, set secrets via Dashboard:
 4. **Add Secret**: `PREMIUM_TOKEN_SECRET`
 5. **Set Value**: Your generated secure secret
 
-**Example Secret Value**:
+**Example Secret Value**:YOYO
 ```
 YOUR_GENERATED_SECRET_HERE (use your own from pre-key.64 file)
 ```
@@ -1158,6 +1158,407 @@ After setting secret in Dashboard:
 3. **Monitor Premium System**: Check if premium verification works in app
 
 ---
+
+---
+
+## Premium Invoicing System
+
+### 🎯 **Multi-Company Billing Architecture**
+
+**Core Principle**: Users receive ONE consolidated invoice for ALL their premium companies.
+
+### **Billing Model**
+- **One invoice per user per billing period**
+- **Multiple line items** - one per premium company
+- **Aggregated total** - sum of all company subscriptions
+- **Automatic generation** - 1st of each month
+- **Payment methods** - Stripe (card, BLIK, Przelewy24)
+
+### **Example Scenario**
+```
+User has 3 companies:
+- Company A: JDG Premium (19 PLN/month)
+- Company B: Spółka Premium (89 PLN/month)
+- Company C: Spółka Premium (89 PLN/month)
+
+Invoice Total: 197 PLN + 23% VAT = 242.31 PLN
+```
+
+---
+
+### 📊 **Database Tables**
+
+#### **subscription_invoices**
+Main invoice records with status tracking
+- `invoice_number` - Format: INV-YYYY-MM-NNNN
+- `subtotal_amount` - In grosze (cents)
+- `tax_amount` - 23% VAT
+- `total_amount` - Final amount to pay
+- `status` - draft, pending, paid, failed, cancelled, overdue
+- `billing_period_start/end` - Period covered
+- `due_date` - Payment deadline (7 days default)
+- `stripe_checkout_session_id` - Stripe session reference
+- `pdf_url` - Generated invoice PDF
+
+#### **subscription_invoice_items**
+Line items showing each company in invoice
+- `business_profile_id` - Company reference
+- `subscription_id` - Subscription reference
+- `description` - "Premium JDG - Company Name"
+- `subscription_type` - jdg_premium, spolka_premium
+- `billing_cycle` - monthly, annual
+- `unit_price` - Price in grosze
+- `period_start/end` - Coverage period
+
+#### **invoice_payment_attempts**
+Payment tracking and audit trail
+- `invoice_id` - Invoice reference
+- `amount` - Payment amount
+- `payment_method` - stripe_checkout, bank_transfer, blik
+- `status` - pending, succeeded, failed, cancelled
+- `stripe_payment_intent_id` - Stripe payment reference
+
+---
+
+### ⚡ **Edge Functions**
+
+#### **generate-subscription-invoice**
+**Purpose**: Generate consolidated invoice for all user's premium companies
+
+**Usage**:
+```typescript
+// Auto-generate for current month
+const { data, error } = await supabase.functions.invoke(
+  'generate-subscription-invoice'
+);
+
+// Generate for specific period
+const { data, error } = await supabase.functions.invoke(
+  'generate-subscription-invoice',
+  {
+    body: {
+      billingPeriodStart: '2026-01-01',
+      billingPeriodEnd: '2026-01-31'
+    }
+  }
+);
+```
+
+**Response**:
+```typescript
+{
+  success: true,
+  invoice: {
+    id: "uuid",
+    invoice_number: "INV-2026-01-0001",
+    total_amount: 24231, // in grosze
+    items: [...]
+  },
+  summary: {
+    invoice_number: "INV-2026-01-0001",
+    total_companies: 3,
+    subtotal: 197.00,
+    tax: 45.31,
+    total: 242.31,
+    due_date: "2026-01-08T00:00:00Z"
+  }
+}
+```
+
+**Key Features**:
+- Aggregates ALL active premium subscriptions
+- Calculates VAT (23%)
+- Generates unique invoice number
+- Creates line items per company
+- Sets due date (7 days)
+
+#### **create-invoice-checkout**
+**Purpose**: Create Stripe checkout session for invoice payment
+
+**Usage**:
+```typescript
+const { data, error } = await supabase.functions.invoke(
+  'create-invoice-checkout',
+  {
+    body: {
+      invoiceId: 'invoice-uuid',
+      successUrl: 'https://app.com/invoices/success',
+      cancelUrl: 'https://app.com/invoices'
+    }
+  }
+);
+
+// Redirect to checkout
+window.location.href = data.checkout_url;
+```
+
+**Response**:
+```typescript
+{
+  success: true,
+  checkout_url: "https://checkout.stripe.com/...",
+  session_id: "cs_xxx",
+  invoice: {
+    id: "uuid",
+    invoice_number: "INV-2026-01-0001",
+    total_amount: 242.31,
+    currency: "pln"
+  }
+}
+```
+
+**Key Features**:
+- Multi-company line items
+- Polish payment methods (card, BLIK, P24)
+- VAT included
+- Automatic customer creation
+- Payment attempt logging
+
+---
+
+### 🔄 **Invoice Generation Flow**
+
+```
+1. Monthly Cron Job (1st of month)
+   ↓
+2. Get all users with active premium subscriptions
+   ↓
+3. For each user:
+   - Get all premium companies
+   - Calculate total (sum of all subscriptions)
+   - Generate invoice with line items
+   - Set due date (7 days)
+   ↓
+4. Invoice created with status: pending
+   ↓
+5. User receives email notification
+```
+
+### 💳 **Payment Flow**
+
+```
+User → Invoice List → Select Invoice → Pay Now
+  ↓
+Create Checkout Session (Edge Function)
+  ↓
+Stripe Checkout (card/BLIK/P24)
+  ↓
+Payment Success Webhook
+  ↓
+Update Invoice Status → paid
+Update Subscriptions → active
+Generate PDF Invoice
+Send Email with PDF
+```
+
+---
+
+### 📝 **Invoice Queries**
+
+#### **Get User Invoices**
+```typescript
+const { data: invoices } = await supabase
+  .from('subscription_invoices')
+  .select(`
+    *,
+    items:subscription_invoice_items (
+      *,
+      business_profile:business_profiles (
+        id,
+        name
+      )
+    )
+  `)
+  .order('issued_at', { ascending: false });
+```
+
+#### **Get Pending Invoices**
+```typescript
+const { data: pending } = await supabase
+  .from('subscription_invoices')
+  .select('*')
+  .eq('status', 'pending')
+  .lt('due_date', new Date().toISOString())
+  .order('due_date', { ascending: true });
+```
+
+#### **Get Invoice by Number**
+```typescript
+const { data: invoice } = await supabase
+  .from('subscription_invoices')
+  .select(`
+    *,
+    items:subscription_invoice_items (*)
+  `)
+  .eq('invoice_number', 'INV-2026-01-0001')
+  .single();
+```
+
+---
+
+### 🎨 **Frontend Integration**
+
+#### **Invoice List Component**
+```typescript
+import { useQuery } from '@tanstack/react-query';
+import { supabase } from '@/shared/lib/supabaseClient';
+
+function InvoiceList() {
+  const { data: invoices } = useQuery({
+    queryKey: ['invoices'],
+    queryFn: async () => {
+      const { data } = await supabase
+        .from('subscription_invoices')
+        .select('*, items:subscription_invoice_items(*)')
+        .order('issued_at', { ascending: false });
+      return data;
+    }
+  });
+
+  return (
+    <div>
+      {invoices?.map(invoice => (
+        <InvoiceCard key={invoice.id} invoice={invoice} />
+      ))}
+    </div>
+  );
+}
+```
+
+#### **Pay Invoice Button**
+```typescript
+async function handlePayInvoice(invoiceId: string) {
+  const { data, error } = await supabase.functions.invoke(
+    'create-invoice-checkout',
+    {
+      body: {
+        invoiceId,
+        successUrl: `${window.location.origin}/invoices/success`,
+        cancelUrl: `${window.location.origin}/invoices`
+      }
+    }
+  );
+
+  if (error) {
+    toast.error('Failed to create checkout session');
+    return;
+  }
+
+  // Redirect to Stripe
+  window.location.href = data.checkout_url;
+}
+```
+
+---
+
+### 🔐 **Security & RLS**
+
+**RLS Policies**:
+- ✅ Users can only view their own invoices
+- ✅ Users can only view their own invoice items
+- ✅ Service role can manage all invoices
+- ✅ Payment attempts are user-scoped
+
+**Payment Security**:
+- ✅ Stripe handles all payment processing
+- ✅ No card details stored in database
+- ✅ Webhook signature verification required
+- ✅ Invoice IDs in metadata for verification
+
+---
+
+### 📊 **Pricing Reference**
+
+| Plan | Monthly | Annual |
+|------|---------|--------|
+| JDG Premium | 19 PLN | 190 PLN |
+| Spółka Premium | 89 PLN | 890 PLN |
+| Enterprise | Custom | Custom |
+
+### 🧾 **VAT Handling**
+
+**Dynamic VAT Status**: VAT calculated per company based on business profile settings
+
+**VAT Status Options**:
+- **exempt** (zwolniony) - 0% VAT for VAT-exempt companies
+- **zero** - 0% VAT rate
+- **standard** - 23% VAT rate
+- **reduced** - Reduced VAT rate (future use)
+
+**Example Mixed Scenario**:
+```
+Company A: JDG Premium (19 PLN) - VAT exempt → 19.00 PLN
+Company B: Spółka Premium (89 PLN) - Standard VAT → 109.47 PLN (89 + 23%)
+Company C: Spółka Premium (89 PLN) - VAT exempt → 89.00 PLN
+
+Invoice Total: 217.47 PLN
+- Net: 197.00 PLN
+- VAT: 20.47 PLN (only from Company B)
+```
+
+**Quick VAT Registration**: Use VatStatusManager component to instantly switch companies from VAT-exempt to standard VAT when ready for registration.
+
+---
+
+### 🚀 **Deployment Steps**
+
+1. **Database Schema**: ✅ Already created via migration
+2. **Deploy Edge Functions**:
+   ```bash
+   # Using MCP tools
+   mcp1_deploy_edge_function(
+     project_id: "rncrzxjyffxmfbnxlqtm",
+     name: "generate-subscription-invoice",
+     entrypoint_path: "index.ts",
+     verify_jwt: true,
+     files: [...]
+   )
+   
+   mcp1_deploy_edge_function(
+     project_id: "rncrzxjyffxmfbnxlqtm",
+     name: "create-invoice-checkout",
+     entrypoint_path: "index.ts",
+     verify_jwt: true,
+     files: [...]
+   )
+   ```
+
+3. **Set Stripe Secret**: In Supabase Dashboard → Settings → Edge Functions
+   - `STRIPE_SECRET_KEY` = your Stripe secret key
+
+4. **Configure Webhook**: In Stripe Dashboard
+   - URL: `https://rncrzxjyffxmfbnxlqtm.supabase.co/functions/v1/invoice-payment-webhook`
+   - Events: `checkout.session.completed`, `payment_intent.succeeded`
+
+5. **Test Flow**:
+   - Generate test invoice
+   - Create checkout session
+   - Complete test payment
+   - Verify invoice marked as paid
+
+---
+
+### 📚 **Related Documentation**
+
+- **Design Doc**: `docs/PREMIUM_INVOICING_SYSTEM.md`
+- **Implementation Summary**: `docs/INVOICING_IMPLEMENTATION_SUMMARY.md`
+- **Subscription Types**: `src/shared/types/subscriptions.ts`
+- **Premium Security**: `docs/PREMIUM_SECURITY_IMPLEMENTATION.md`
+
+---
+
+### 🎯 **Key Concepts for AI Agents**
+
+1. **Multi-Company Billing**: ONE invoice per user for ALL companies
+2. **Automatic Generation**: Cron job on 1st of month
+3. **Stripe Integration**: Use existing Stripe setup
+4. **Polish VAT**: Always add 23% tax
+5. **Payment Methods**: Card, BLIK, Przelewy24
+6. **Invoice Numbers**: Auto-generated (INV-YYYY-MM-NNNN)
+7. **Due Date**: 7 days from issue date
+8. **Status Flow**: draft → pending → paid/failed/overdue
+9. **RLS Security**: Users only see their own invoices
+10. **MCP Tools**: Always use for database operations
 
 ---
 

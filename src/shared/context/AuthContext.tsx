@@ -268,52 +268,39 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     try {
       console.log("[AuthContext] Starting logout process");
       
-      // Clear cross-domain token FIRST to prevent reuse
+      // Step 1: Sign out from Supabase FIRST (this clears the session properly)
+      await supabase.auth.signOut({ scope: 'local' }); // Use 'local' not 'global'
+      
+      // Step 2: Clear cross-domain token
       clearCrossDomainAuthToken();
       
-      // Clear local auth state
+      // Step 3: Clean up all auth state
       cleanupAuthState();
       
-      // Attempt global sign out, but don't fail if it doesn't work.
-      // The cleanup and page reload will handle the client state.
-      await supabase.auth.signOut({ scope: 'global' }).catch(console.error);
-
+      // Step 4: Clear React state
       setUser(null);
       setIsPremium(false);
       queryClient.clear();
 
-      console.log("[AuthContext] Logout complete, redirecting to parent domain");
+      console.log("[AuthContext] Logout complete, redirecting to parent domain with logout flag");
       
-      // Check if we're on localhost and add redirect parameters
+      // Step 5: Redirect to marketing site with logout flag to clear their session too
       const isLocalhost = window.location.hostname === 'localhost';
-      const parentDomain = getParentDomain();
+      const parentDomain = isLocalhost 
+        ? 'http://localhost:3000/?logout=true'
+        : 'https://ksiegai.pl/?logout=true';
       
-      if (isLocalhost) {
-        // Add localhost redirect parameters so ksiegai.pl can redirect back
-        const port = window.location.port || '8080';
-        const redirectUrl = `${parentDomain}?from=localhost&port=${port}`;
-        console.log("[AuthContext] Redirecting to localhost marketing site:", redirectUrl);
-        window.location.href = redirectUrl;
-      } else {
-        console.log("[AuthContext] Redirecting to production marketing site:", parentDomain);
-        window.location.href = parentDomain;
-      }
+      window.location.href = parentDomain;
     } catch (err) {
       console.error("Logout failed unexpectedly:", err);
-      // As a fallback, still redirect to parent domain
+      // Fallback: still clear everything and redirect
       clearCrossDomainAuthToken();
+      cleanupAuthState();
       const isLocalhost = window.location.hostname === 'localhost';
-      const parentDomain = getParentDomain();
-      
-      if (isLocalhost) {
-        const port = window.location.port || '8080';
-        const redirectUrl = `${parentDomain}?from=localhost&port=${port}`;
-        console.log("[AuthContext] Fallback: Redirecting to localhost marketing site:", redirectUrl);
-        window.location.href = redirectUrl;
-      } else {
-        console.log("[AuthContext] Fallback: Redirecting to production marketing site:", parentDomain);
-        window.location.href = parentDomain;
-      }
+      const parentDomain = isLocalhost 
+        ? 'http://localhost:3000/?logout=true'
+        : 'https://ksiegai.pl/?logout=true';
+      window.location.href = parentDomain;
     }
   };
 
