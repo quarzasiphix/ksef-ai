@@ -742,10 +742,6 @@ export const routes: RouteConfig[] = [
         element: <BusinessProfiles />,
       },
       {
-        path: 'business-profiles/new',
-        element: <NewBusinessProfile />,
-      },
-      {
         path: 'business-profiles/:id/edit',
         element: <EditBusinessProfile />,
       },
@@ -774,6 +770,14 @@ export const routes: RouteConfig[] = [
         element: <EventLog />,
       },
     ],
+  },
+
+  // New Business Profile - Full screen without global sidebar
+  {
+    path: '/settings/business-profiles/new',
+    element: <NewBusinessProfile />,
+    guard: 'protected',
+    hideInNav: true,
   },
 
   // Legacy departmnets path -> settings departments
