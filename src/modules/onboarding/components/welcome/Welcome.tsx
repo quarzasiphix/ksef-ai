@@ -28,11 +28,13 @@ import OnboardingProfileForm, { OnboardingProfileFormHandle } from './Onboarding
 import StepNavigation from './StepNavigation';
 import { BankAccountEditDialog } from '@/modules/banking/components/BankAccountEditDialog';
 import { getBankAccountsForProfile, addBankAccount } from '@/modules/banking/data/bankAccountRepository';
+import { OnboardingPremiumSuccess } from '../premium/OnboardingPremiumSuccess';
+import { JDGWizard } from '../wizard/JDGWizard';
 import { toast } from 'sonner';
 import { useBusinessProfile } from '@/shared/context/BusinessProfileContext';
 import { motion } from 'framer-motion';
 
-type WizardMode = 'welcome' | 'invitations' | 'choose-type' | 'jdg' | 'sp_zoo' | 'sa' | 'profile' | 'bank' | 'customer' | 'product' | 'complete';
+type WizardMode = 'welcome' | 'invitations' | 'choose-type' | 'jdg' | 'sp_zoo' | 'sa' | 'profile' | 'bank' | 'customer' | 'product' | 'complete' | 'premium';
 
 const Welcome = () => {
   const { user } = useAuth();
@@ -123,9 +125,9 @@ const Welcome = () => {
         if (result.business_profile_id) {
           selectProfile(result.business_profile_id);
         }
-        // If no more invitations, proceed
+        // If no more invitations, proceed to premium recommendation
         if (pendingInvitations.length <= 1) {
-          setMode('complete');
+          setMode('premium');
         }
       } else {
         toast.error(result.error || 'Nie udało się zaakceptować zaproszenia');
@@ -373,12 +375,11 @@ const Welcome = () => {
           </div>
         );
 
-      // JDG form
+      // JDG wizard
       case 'jdg':
         return (
           <div className="w-full">
-            <BusinessProfileForm
-              lockedEntityType="dzialalnosc"
+            <JDGWizard
               onCancel={() => setMode('choose-type')}
               onComplete={handleCompanyCreated}
             />
@@ -520,7 +521,7 @@ const Welcome = () => {
             </p>
             <OnboardingProductForm
               ref={productFormRef}
-              onSuccess={() => setMode('complete')}
+              onSuccess={() => setMode('premium')}
             />
             <div className="w-full max-w-lg mt-8">
               <StepNavigation
@@ -528,10 +529,19 @@ const Welcome = () => {
                 onBack={() => setMode('customer')}
                 onNext={() => productFormRef.current?.submit()}
                 nextLabel="Dodaj i zakończ"
-                onSkip={() => setMode('complete')}
+                onSkip={() => setMode('premium')}
               />
             </div>
           </div>
+        );
+
+      // Premium Recommendation
+      case 'premium':
+        return (
+          <OnboardingPremiumSuccess
+            onSkip={() => setMode('complete')}
+            onComplete={() => navigate('/dashboard')}
+          />
         );
 
       // Complete
@@ -563,16 +573,16 @@ const Welcome = () => {
 
   // Calculate progress for progress bar
   const getProgress = () => {
-    const progressSteps: WizardMode[] = ['profile', 'bank', 'customer', 'product', 'complete'];
+    const progressSteps: WizardMode[] = ['profile', 'bank', 'customer', 'product', 'premium', 'complete'];
     const currentIndex = progressSteps.indexOf(mode);
     if (currentIndex === -1) return 0;
     return ((currentIndex + 1) / progressSteps.length) * 100;
   };
 
-  const showProgressBar = ['profile', 'bank', 'customer', 'product'].includes(mode);
+  const showProgressBar = ['profile', 'bank', 'customer', 'product', 'premium'].includes(mode);
 
-  // For JDG/Spółka wizards and company-type selection, render full-screen
-  if (mode === 'jdg' || mode === 'sp_zoo' || mode === 'sa' || mode === 'choose-type') {
+  // For JDG/Spółka wizards, company-type selection, and premium recommendation, render full-screen
+  if (mode === 'jdg' || mode === 'sp_zoo' || mode === 'sa' || mode === 'choose-type' || mode === 'premium') {
     return (
       <div className="min-h-screen bg-gradient-to-br from-background via-background to-muted/20">
         {renderContent()}

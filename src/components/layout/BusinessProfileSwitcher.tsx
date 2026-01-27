@@ -1,5 +1,5 @@
 import React from 'react';
-import { ChevronDown, Plus, Building2, Crown } from 'lucide-react';
+import { ChevronDown, Plus, Building2 } from 'lucide-react';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -32,11 +32,7 @@ export const BusinessProfileSwitcher: React.FC<BusinessProfileSwitcherProps> = (
   });
 
   const handleAddProfile = () => {
-    if (!isPremium) {
-      openPremiumDialog();
-      return;
-    }
-    // Navigate to add new profile
+    // Allow all users to add new profiles, premium will be checked during creation
     window.location.href = '/settings/business-profiles/new';
   };
 
@@ -137,7 +133,6 @@ export const BusinessProfileSwitcher: React.FC<BusinessProfileSwitcherProps> = (
           <DropdownMenuItem onClick={handleAddProfile} className="cursor-pointer">
             <Plus className="h-4 w-4 mr-2" />
             <span>Dodaj profil</span>
-            {!isPremium && <Crown className="h-4 w-4 ml-auto text-amber-500" />}
           </DropdownMenuItem>
           <DropdownMenuItem
             onClick={() => window.location.href = '/settings/business-profiles'}

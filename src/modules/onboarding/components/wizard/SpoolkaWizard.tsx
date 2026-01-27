@@ -7,7 +7,6 @@ import { Label } from '@/shared/ui/label';
 import { Textarea } from '@/shared/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/shared/ui/select';
 import { Checkbox } from '@/shared/ui/checkbox';
-import { Progress } from '@/shared/ui/progress';
 import { Badge } from '@/shared/ui/badge';
 import { 
   Building2, Users, Briefcase, FolderOpen, CheckCircle2, 
@@ -23,6 +22,7 @@ import type { BusinessProfile } from '@/shared/types';
 import { useAuth } from '@/shared/hooks/useAuth';
 import { useQuery } from '@tanstack/react-query';
 import { sendOnboardingWelcomeEmail } from '@/shared/utils/emailService';
+import { OnboardingLayout } from '../OnboardingLayout';
 
 interface SpoolkaWizardProps {
   onComplete?: (profileId: string) => void;
@@ -130,6 +130,7 @@ export const SpoolkaWizard: React.FC<SpoolkaWizardProps> = ({ onComplete, onCanc
   const { user } = useAuth();
   const [currentStep, setCurrentStep] = useState(1);
   const [loading, setLoading] = useState(false);
+  const [completedSteps, setCompletedSteps] = useState<number[]>([]);
   const hasLoadedDraftRef = useRef(false);
   
   const [wizardData, setWizardData] = useState<WizardData>({
@@ -212,14 +213,26 @@ export const SpoolkaWizard: React.FC<SpoolkaWizardProps> = ({ onComplete, onCanc
   const progress = (currentStep / STEPS.length) * 100;
 
   const handleNext = () => {
-    if (currentStep < STEPS.length) {
-      setCurrentStep(prev => prev + 1);
+    if (canProceed()) {
+      if (!completedSteps.includes(currentStep)) {
+        setCompletedSteps(prev => [...prev, currentStep]);
+      }
+      
+      if (currentStep < STEPS.length) {
+        setCurrentStep(prev => prev + 1);
+      }
     }
   };
 
   const handleBack = () => {
     if (currentStep > 1) {
       setCurrentStep(prev => prev - 1);
+    }
+  };
+
+  const handleStepClick = (stepId: number) => {
+    if (completedSteps.includes(stepId) || stepId <= currentStep) {
+      setCurrentStep(stepId);
     }
   };
 
@@ -362,6 +375,27 @@ export const SpoolkaWizard: React.FC<SpoolkaWizardProps> = ({ onComplete, onCanc
     }
   };
 
+  const getStepSubtitle = () => {
+    switch (currentStep) {
+      case 1:
+        return "Wybierz typ spółki i wprowadź podstawowe dane";
+      case 2:
+        return "Dodaj wspólników i ich udziały";
+      case 3:
+        return "Zdefiniuj skład zarządu";
+      case 4:
+        return "Ustaw zgody i uprawnienia";
+      case 5:
+        return "Określ potrzeby dokumentowe";
+      case 6:
+        return "Opisz usługi i działalność";
+      case 7:
+        return "Skonfiguruj strukturę folderów";
+      default:
+        return "";
+    }
+  };
+
   const canProceed = () => {
     switch (currentStep) {
       case 1:
@@ -383,81 +417,44 @@ export const SpoolkaWizard: React.FC<SpoolkaWizardProps> = ({ onComplete, onCanc
   };
 
   return (
-    <div className="max-w-4xl mx-auto p-6">
-      {/* Progress Bar */}
-      <div className="mb-8">
-        <div className="flex items-center justify-between mb-2">
-          <h2 className="text-2xl font-bold">Kreator nowej spółki</h2>
-          <span className="text-sm text-muted-foreground">
-            Krok {currentStep} z {STEPS.length}
-          </span>
-        </div>
-        <Progress value={progress} className="h-2" />
-      </div>
-
-      {/* Step Indicators */}
-      <div className="flex items-center justify-between mb-8">
-        {STEPS.map((step, index) => (
-          <div
-            key={step.id}
-            className={`flex flex-col items-center ${
-              index < STEPS.length - 1 ? 'flex-1' : ''
-            }`}
-          >
-            <div
-              className={`flex items-center justify-center w-10 h-10 rounded-full border-2 ${
-                step.id === currentStep
-                  ? 'border-primary bg-primary text-primary-foreground'
-                  : step.id < currentStep
-                  ? 'border-green-600 bg-green-600 text-white'
-                  : 'border-muted bg-background text-muted-foreground'
-              }`}
-            >
-              {step.id < currentStep ? (
-                <CheckCircle2 className="h-5 w-5" />
-              ) : (
-                <step.icon className="h-5 w-5" />
-              )}
-            </div>
-            <span className="text-xs mt-2 text-center hidden md:block">{step.title}</span>
-            {index < STEPS.length - 1 && (
-              <div className="flex-1 h-0.5 bg-muted mx-2 mt-5 hidden md:block" />
-            )}
-          </div>
-        ))}
-      </div>
-
-      {/* Step Content */}
-      <Card className="mb-6">
-        <CardContent className="pt-6">
-          {renderStep()}
-        </CardContent>
-      </Card>
-
-      {/* Navigation Buttons */}
-      <div className="flex items-center justify-between">
-        <Button
-          variant="outline"
-          onClick={currentStep === 1 ? onCancel : handleBack}
-          disabled={loading}
-        >
-          <ArrowLeft className="h-4 w-4 mr-2" />
-          {currentStep === 1 ? 'Anuluj' : 'Wstecz'}
-        </Button>
+    <OnboardingLayout
+      currentStep={currentStep}
+      totalSteps={STEPS.length}
+      completedSteps={completedSteps}
+      onStepClick={handleStepClick}
+      onCancel={onCancel}
+      companyType={initialCompanyType || 'sp_zoo'}
+      title={STEPS[currentStep - 1]?.title}
+      subtitle={getStepSubtitle()}
+    >
+      <div className="space-y-6">
+        {renderStep()}
         
-        {currentStep < STEPS.length ? (
-          <Button onClick={handleNext} disabled={!canProceed() || loading}>
-            Dalej
-            <ArrowRight className="h-4 w-4 ml-2" />
+        {/* Navigation Buttons */}
+        <div className="flex items-center justify-between">
+          <Button
+            variant="outline"
+            onClick={currentStep === 1 ? onCancel : handleBack}
+            disabled={loading}
+          >
+            <ArrowLeft className="h-4 w-4 mr-2" />
+            {currentStep === 1 ? 'Anuluj' : 'Wstecz'}
           </Button>
-        ) : (
-          <Button onClick={handleComplete} disabled={!canProceed() || loading}>
-            {loading ? 'Tworzenie...' : 'Zakończ'}
-            <CheckCircle2 className="h-4 w-4 ml-2" />
-          </Button>
-        )}
+          
+          {currentStep < STEPS.length ? (
+            <Button onClick={handleNext} disabled={!canProceed() || loading}>
+              Dalej
+              <ArrowRight className="h-4 w-4 ml-2" />
+            </Button>
+          ) : (
+            <Button onClick={handleComplete} disabled={!canProceed() || loading}>
+              {loading ? 'Tworzenie...' : 'Zakończ'}
+              <CheckCircle2 className="h-4 w-4 ml-2" />
+            </Button>
+          )}
+        </div>
       </div>
-    </div>
+    </OnboardingLayout>
   );
 };
 

@@ -1,6 +1,7 @@
 import { supabase } from "../../../integrations/supabase/client";
 import type { BusinessProfile } from "../../../shared/types";
 import { queryClient } from "../../../shared/lib/queryClient";
+import { subscriptionService } from "../../../shared/services/subscriptionService";
 
 function normalizeEmptyString(value: unknown): string | null {
   if (typeof value !== 'string') return value as any;
@@ -372,6 +373,17 @@ export async function saveBusinessProfile(profile: BusinessProfile): Promise<Bus
 
       if (error) throw error;
       result = data;
+      
+      // Handle enterprise benefits for new profiles
+      if (!profile.id && result?.id) {
+        try {
+          await subscriptionService.handleNewBusinessProfile(result.id, profile.user_id);
+          console.log('Enterprise benefits handled for new business profile:', result.id);
+        } catch (enterpriseError) {
+          console.warn('Failed to handle enterprise benefits:', enterpriseError);
+          // Don't fail the profile creation if enterprise benefits fail
+        }
+      }
     }
     
     // Invalidate relevant queries after successful save

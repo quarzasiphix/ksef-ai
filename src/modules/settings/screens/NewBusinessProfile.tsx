@@ -5,6 +5,7 @@ import { Button } from '@/shared/ui/button';
 import { useBusinessProfile } from '@/shared/context/BusinessProfileContext';
 import BusinessProfileForm from './BusinessProfileForm';
 import SpoolkaWizard from '@/modules/onboarding/components/wizard/SpoolkaWizard';
+import { JDGWizard } from '@/modules/onboarding/components/wizard/JDGWizard';
 import { useAuth } from '@/shared/hooks/useAuth';
 
 const NewBusinessProfile = () => {
@@ -157,8 +158,7 @@ const NewBusinessProfile = () => {
 
       {mode === 'jdg' && (
         <div className="min-h-screen">
-          <BusinessProfileForm
-            lockedEntityType="dzialalnosc"
+          <JDGWizard
             onCancel={() => setMode('choose')}
             onComplete={handleComplete}
           />
