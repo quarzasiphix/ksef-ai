@@ -1,4 +1,4 @@
-import QRCode from 'qrcode';
+import * as QRCode from 'qrcode';
 import { calculateSha256Base64Url } from './ksefInvoiceRetrievalHelpersBrowser';
 
 // Polyfill Buffer for browser compatibility
