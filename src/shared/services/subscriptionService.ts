@@ -150,6 +150,8 @@ class SubscriptionService {
    * Get company-level subscription
    */
   async getCompanySubscription(businessProfileId: string): Promise<EnhancedSubscription | null> {
+    console.log(`Getting company subscription for profile: ${businessProfileId}`);
+    
     const { data, error } = await supabase
       .from('enhanced_subscriptions')
       .select(`
@@ -161,7 +163,12 @@ class SubscriptionService {
       .eq('is_active', true)
       .single();
 
-    if (error && error.code !== 'PGRST116') throw error;
+    console.log('Company subscription query result:', { data, error });
+    
+    if (error && error.code !== 'PGRST116') {
+      console.error('Error getting company subscription:', error);
+      throw error;
+    }
     return data;
   }
 
@@ -212,9 +219,15 @@ class SubscriptionService {
    * Check if a business profile has premium access
    */
   async hasPremiumAccess(businessProfileId: string, userId: string): Promise<boolean> {
+    console.log(`Checking premium access for user ${userId}, profile ${businessProfileId}`);
+    
     // Check company-level subscription
     const companySub = await this.getCompanySubscription(businessProfileId);
-    if (companySub?.is_active) return true;
+    console.log('Company subscription:', companySub);
+    if (companySub?.is_active) {
+      console.log('Found active company subscription');
+      return true;
+    }
 
     // Check enterprise benefits
     const { data, error } = await supabase
@@ -226,8 +239,13 @@ class SubscriptionService {
       .eq('is_active', true)
       .single();
 
+    console.log('Enterprise benefits:', { data, error });
     if (error && error.code !== 'PGRST116') throw error;
-    return !!data;
+    
+    const hasEnterpriseBenefits = !!data;
+    console.log('Has enterprise benefits:', hasEnterpriseBenefits);
+    
+    return hasEnterpriseBenefits;
   }
 
   /**
@@ -394,7 +412,7 @@ class SubscriptionService {
   /**
    * Get subscription type by name
    */
-  private async getSubscriptionTypeByName(name: string): Promise<SubscriptionType | null> {
+  public async getSubscriptionTypeByName(name: string): Promise<SubscriptionType | null> {
     const { data, error } = await supabase
       .from('subscription_types')
       .select('*')

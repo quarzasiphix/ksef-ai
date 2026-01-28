@@ -83,6 +83,10 @@ const TeamManagement = React.lazy(() => import('@/modules/settings/screens/TeamM
 const SettingsPremium = React.lazy(() => import('@/modules/settings/screens/SettingsPremium'));
 const SharedLinksPage = React.lazy(() => import('@/pages/SharedLinks'));
 const NotFound = React.lazy(() => import('@/pages/NotFound'));
+const EnterpriseAdmin = React.lazy(() => import('@/modules/premium/components/EnterpriseAdmin'));
+const PremiumDebug = React.lazy(() => import('@/modules/premium/components/PremiumDebug'));
+const SubscriptionFix = React.lazy(() => import('@/modules/premium/components/SubscriptionFix'));
+const BusinessPremiumDebug = React.lazy(() => import('@/modules/premium/components/BusinessPremiumDebug'));
 const DepartmentsScreen = React.lazy(() =>
   import('@/modules/projects/screens/DepartmentScreen').then((module) => ({
     default: module.default ?? module.DepartmentScreen,
@@ -807,6 +811,32 @@ export const routes: RouteConfig[] = [
     element: <PremiumSuccess />,
     guard: 'protected',
     title: 'Premium Success',
+    hideInNav: true,
+  },
+
+  // Admin tools (temporary)
+  {
+    path: '/admin/enterprise',
+    element: <EnterpriseAdmin />,
+    guard: 'protected',
+    hideInNav: true,
+  },
+  {
+    path: '/admin/premium-debug',
+    element: <PremiumDebug />,
+    guard: 'protected',
+    hideInNav: true,
+  },
+  {
+    path: '/admin/subscription-fix',
+    element: <SubscriptionFix />,
+    guard: 'protected',
+    hideInNav: true,
+  },
+  {
+    path: '/admin/business-premium-debug',
+    element: <BusinessPremiumDebug />,
+    guard: 'protected',
     hideInNav: true,
   },
 

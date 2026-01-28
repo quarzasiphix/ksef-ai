@@ -27,6 +27,7 @@ import { ScrollArea } from "@/shared/ui/scroll-area";
 import { useSidebar } from "@/shared/ui/sidebar";
 import { useAuth } from "@/shared/hooks/useAuth";
 import { usePremium } from "@/shared/context/PremiumContext";
+import { useEnterpriseStatus } from "@/modules/premium/hooks/useEnterpriseStatus";
 import { useBusinessProfile } from "@/shared/context/BusinessProfileContext";
 import SidebarGroupHeader from "./sidebar/SidebarGroupHeader";
 import SidebarNavItem from "./sidebar/SidebarNavItem";
@@ -38,7 +39,8 @@ const AppSidebar = () => {
   const { state } = useSidebar();
   const location = useLocation();
   const { openPremiumDialog, user, logout } = useAuth();
-  const { hasPremium } = usePremium();
+  const { hasPremium, level, subscriptionType } = usePremium();
+  const { hasEnterprise } = useEnterpriseStatus();
   const { profiles, selectedProfileId } = useBusinessProfile();
   const isCollapsed = state === "collapsed";
   const navigate = useNavigate();
@@ -120,11 +122,11 @@ const AppSidebar = () => {
     if (!user) return null;
     const Avatar = (
       <div
-        className={`relative w-10 h-10 rounded-full flex items-center justify-center ${hasPremium ? "bg-gradient-to-br from-amber-500 to-amber-700" : "bg-muted"}`}
+        className={`relative w-10 h-10 rounded-full flex items-center justify-center ${hasEnterprise ? "bg-gradient-to-br from-purple-500 to-purple-700" : "bg-muted"}`}
       >
         <User className="h-5 w-5 text-white" />
-        {hasPremium && (
-          <div className="absolute -top-1 -right-1 bg-amber-500 rounded-full p-0.5">
+        {hasEnterprise && (
+          <div className="absolute -top-1 -right-1 bg-purple-500 rounded-full p-0.5">
             <Crown className="h-3 w-3 text-white" />
           </div>
         )}
@@ -133,7 +135,7 @@ const AppSidebar = () => {
     return (
       <div className={cn(
         "flex items-center",
-        isCollapsed ? "justify-center" : "gap-3"
+        isCollapsed ? "justify-center" : "gap-3 flex-1 min-w-0"
       )}>
         <NavLink to="/settings" className={cn(
           "flex items-center group",
@@ -145,10 +147,10 @@ const AppSidebar = () => {
               <p className="text-sm font-medium truncate group-hover:underline">
                 {user.email}
               </p>
-              {hasPremium && (
-                <span className="inline-flex items-center gap-1 bg-gradient-to-r from-amber-500 to-amber-600 text-white text-[10px] px-1.5 py-0.5 rounded-full">
+              {hasEnterprise && (
+                <span className="inline-flex items-center gap-1 bg-gradient-to-r from-purple-500 to-purple-600 text-white text-[10px] px-1.5 py-0.5 rounded-full">
                   <Crown className="h-2.5 w-2.5" />
-                  <span>PREMIUM</span>
+                  <span>ENTERPRISE</span>
                 </span>
               )}
             </div>
