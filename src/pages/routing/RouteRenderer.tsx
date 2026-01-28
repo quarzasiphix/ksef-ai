@@ -159,6 +159,12 @@ export const RouteRenderer: React.FC = () => {
 
   console.log('RouteRenderer loaded!');
   console.log('Current path:', window.location.pathname);
+  console.log('All routes:', flatRoutes.map(r => ({ path: r.path, elementName: (r.element as any)?.type?.name })));
+  
+  // Debug premium route specifically
+  const premiumRoute = flatRoutes.find(r => r.path === '/premium');
+  console.log('Premium route found:', premiumRoute);
+  console.log('Premium route element:', (premiumRoute?.element as any)?.type?.name);
 
   return (
     <Routes>

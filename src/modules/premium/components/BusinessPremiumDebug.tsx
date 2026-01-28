@@ -1,7 +1,8 @@
 import React from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/shared/ui/card';
 import { Button } from '@/shared/ui/button';
-import { usePremium } from '@/shared/context/PremiumContext';
+import { usePremium } from '@/modules/premium/context/PremiumContext';
+import type { PremiumContextType } from '@/modules/premium/context/PremiumContext';
 import { useBusinessProfile } from '@/shared/context/BusinessProfileContext';
 import { useAuth } from '@/shared/hooks/useAuth';
 import { Badge } from '@/shared/ui/badge';
@@ -11,19 +12,21 @@ import { Crown, Building, User, CheckCircle, XCircle, AlertCircle, RefreshCw } f
 export const BusinessPremiumDebug: React.FC = () => {
   const { user } = useAuth();
   const { profiles, selectedProfileId } = useBusinessProfile();
-  const { hasPremium, level, subscriptionType, features, expiresAt, source, isLoading } = usePremium();
+  const { hasPremium, level, subscriptionType, features, expiresAt, source, isLoading, hasUserLevelPremium } = usePremium();
   const queryClient = useQueryClient();
+
+  // TEMPORARY DEBUG: Check if force override is active
+  const forceBusinessChecks = true; // Should match PremiumContext
 
   const selectedProfile = profiles?.find((p) => p.id === selectedProfileId);
 
   const refreshPremiumStatus = () => {
     console.log('[BusinessPremiumDebug] Manually refreshing premium status');
     // Invalidate all premium-related queries aggressively
-    queryClient.invalidateQueries({ queryKey: ['premium-access'] });
-    queryClient.removeQueries({ queryKey: ['premium-access'] });
-    // Also clear any related queries
-    queryClient.invalidateQueries({ queryKey: ['company-premium'] });
-    queryClient.invalidateQueries({ queryKey: ['enterprise-subscription'] });
+    queryClient.invalidateQueries({ queryKey: ['user-level-premium'] });
+    queryClient.invalidateQueries({ queryKey: ['business-premium'] });
+    queryClient.removeQueries({ queryKey: ['user-level-premium'] });
+    queryClient.removeQueries({ queryKey: ['business-premium'] });
   };
 
   const StatusIcon = ({ status }: { status: boolean }) => {
@@ -78,6 +81,37 @@ export const BusinessPremiumDebug: React.FC = () => {
             </div>
           </div>
 
+          {/* Hierarchical Premium Check Status */}
+          <div className="p-4 border rounded-lg bg-blue-50 dark:bg-blue-950">
+            <h4 className="font-medium mb-2 flex items-center gap-2">
+              <Crown className="h-4 w-4 text-blue-500" />
+              Hierarchical Premium Check
+            </h4>
+            <div className="space-y-2 text-sm">
+              <div className="flex items-center gap-2">
+                <StatusIcon status={hasUserLevelPremium} />
+                <span className="font-medium">User-Level Premium:</span>
+                <Badge className={hasUserLevelPremium ? 'bg-green-500' : 'bg-gray-500'}>
+                  {hasUserLevelPremium ? 'YES - Covers All Businesses' : 'NO - Check Per Business'}
+                </Badge>
+              </div>
+              {hasUserLevelPremium ? (
+                <div className="ml-6 p-2 bg-green-100 dark:bg-green-900 rounded text-xs">
+                  ✓ User has enterprise or user-level premium. Business-level checks are skipped for performance.
+                </div>
+              ) : (
+                <div className="ml-6 p-2 bg-amber-100 dark:bg-amber-900 rounded text-xs">
+                  → User is on free tier. Premium is checked per business when switching profiles.
+                </div>
+              )}
+              {forceBusinessChecks && (
+                <div className="ml-6 p-2 bg-red-100 dark:bg-red-900 rounded text-xs">
+                  🚨 DEBUG OVERRIDE: Business checks are FORCED regardless of user-level premium
+                </div>
+              )}
+            </div>
+          </div>
+
           {/* Business Profile Info */}
           <div className="p-4 border rounded-lg">
             <h4 className="font-medium mb-2">Selected Business Profile</h4>
@@ -86,7 +120,7 @@ export const BusinessPremiumDebug: React.FC = () => {
                 <div className="flex items-center gap-2">
                   <Building className="h-4 w-4" />
                   <span className="font-medium">{selectedProfile.name}</span>
-                  <Badge variant="outline">{selectedProfile.entity_type}</Badge>
+                  <Badge variant="outline">{selectedProfile.entityType}</Badge>
                 </div>
                 <div className="text-sm text-muted-foreground">
                   <p>ID: {selectedProfile.id}</p>
@@ -194,7 +228,7 @@ export const BusinessPremiumDebug: React.FC = () => {
                       <div className="flex items-center gap-2">
                         <Building className="h-4 w-4" />
                         <span className="font-medium">{profile.name}</span>
-                        <Badge variant="outline">{profile.entity_type}</Badge>
+                        <Badge variant="outline">{profile.entityType}</Badge>
                       </div>
                       {profile.id === selectedProfileId && (
                         <Badge className="bg-blue-500">Selected</Badge>

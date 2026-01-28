@@ -22,10 +22,10 @@ import { useToast } from '@/shared/hooks/use-toast';
 import { useBusinessProfile } from '@/shared/context/BusinessProfileContext';
 import { KsefStatusBadge } from '@/modules/invoices/components/KsefStatusBadge';
 import { KsefSettingsDialog } from '@/modules/invoices/components/KsefSettingsDialog';
-import { KsefContextManager } from '@/shared/services/ksef/ksefContextManager';
-import { getKsefConfig } from '@/shared/services/ksef/config';
+import { KsefContextManager } from '@/modules/ksef/components/ksefContextManager';
+import { getKsefConfig } from '@/modules/ksef/components/config';
 import { getKsefSyncJob } from '@/services/ksefSyncJobInit';
-import { generateEncryptionData } from '@/shared/services/ksef/ksefInvoiceRetrievalHelpersBrowser';
+import { generateEncryptionData } from '@/modules/ksef/components/ksefInvoiceRetrievalHelpersBrowser';
 
 interface KsefStats {
   totalInvoices: number;
@@ -328,7 +328,7 @@ export default function KsefPage() {
       console.log('🔐 Authentication successful, token length:', accessToken.length);
 
       // Use the proper KSeF service to submit the invoice
-      const { KsefService } = await import('@/shared/services/ksef/ksefService');
+      const { KsefService } = await import('@/modules/ksef/components/ksefService');
       const ksefService = new KsefService('test');
       
       console.log('📄 Starting real KSeF invoice submission...');

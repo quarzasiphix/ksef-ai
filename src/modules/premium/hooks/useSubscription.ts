@@ -2,6 +2,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { subscriptionService } from '@/shared/services/subscriptionService';
 import { useAuth } from '@/shared/hooks/useAuth';
 import { useToast } from '@/shared/hooks/use-toast';
+import { usePremiumSync } from '@/shared/hooks/usePremiumSync';
 
 export const useSubscription = () => {
   const { user } = useAuth();
@@ -18,14 +19,17 @@ export const useSubscription = () => {
     enabled: !!user
   });
 
-  const {
-    data: enterpriseSubscription,
-    isLoading: enterpriseLoading
-  } = useQuery({
-    queryKey: ['enterprise-subscription', user?.id],
-    queryFn: () => user ? subscriptionService.getEnterpriseSubscription(user.id) : Promise.resolve(null),
-    enabled: !!user
-  });
+  // Use premium sync service instead of direct database queries
+  const { isActive: hasEnterprise, tier, isLoading: enterpriseLoading } = usePremiumSync();
+  
+  // Create enterprise subscription object from sync service data
+  const enterpriseSubscription = hasEnterprise && tier === 'enterprise' ? {
+    id: 'sync-enterprise',
+    user_id: user?.id,
+    subscription_level: 'enterprise' as const,
+    is_active: true,
+    tier: 'enterprise'
+  } : null;
 
   const {
     data: companies,
@@ -84,18 +88,15 @@ export const useSubscription = () => {
 
 export const useCompanyPremiumStatus = (businessProfileId?: string) => {
   const { user } = useAuth();
-
-  const { data: hasPremium, isLoading } = useQuery({
-    queryKey: ['company-premium', businessProfileId, user?.id],
-    queryFn: () => {
-      if (!user || !businessProfileId) return Promise.resolve(false);
-      return subscriptionService.hasPremiumAccess(businessProfileId, user.id);
-    },
-    enabled: !!user && !!businessProfileId
-  });
+  
+  // Use premium sync service instead of direct database queries
+  const { isActive, tier, isLoading } = usePremiumSync();
+  
+  // Map sync service data to expected format
+  const hasPremium = isActive && tier !== 'free';
 
   return {
-    hasPremium: hasPremium ?? false,
+    hasPremium,
     isLoading
   };
 };

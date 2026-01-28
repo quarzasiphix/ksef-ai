@@ -106,7 +106,7 @@ export async function debugKsefAuthentication() {
     
     try {
       // Import the proper auth service
-      const { KsefProperAuth } = await import('../shared/services/ksef/ksefProperAuth');
+      const { KsefProperAuth } = await import('../modules/ksef/components/ksefProperAuth');
       const config = {
         environment: 'test',
         baseUrl: 'https://rncrzxjyffxmfbnxlqtm.supabase.co/functions/v1/ksef-challenge',

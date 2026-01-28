@@ -4,9 +4,11 @@ import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { Button } from "@/shared/ui/button";
 import { Check, Crown, Sparkles, ArrowRight, FileText, Shield, Building2 } from "lucide-react";
-import { Link } from "react-router-dom";
+import { Link, Routes, Route } from "react-router-dom";
 import { Card, CardContent, CardHeader, CardTitle } from "@/shared/ui/card";
 import { Badge } from "@/shared/ui/badge";
+import PremiumJDG from "./PremiumJDG";
+import PremiumSpolka from "./PremiumSpolka";
 
 // Entity-based pricing: JDG vs Spółka
 const entityPlans = [
@@ -111,6 +113,15 @@ const Premium = () => {
     : isSpolka 
       ? entityPlans.find(p => p.id === 'spolka')
       : null;
+
+  // Route to entity-specific pages if business profile is selected
+  if (currentProfile) {
+    if (isJDG) {
+      return <PremiumJDG />;
+    } else if (isSpolka) {
+      return <PremiumSpolka />;
+    }
+  }
 
   return (
     <div className="relative py-20 bg-gradient-to-b from-neutral-950 via-purple-950/20 to-neutral-950 text-white overflow-hidden">

@@ -87,6 +87,7 @@ const EnterpriseAdmin = React.lazy(() => import('@/modules/premium/components/En
 const PremiumDebug = React.lazy(() => import('@/modules/premium/components/PremiumDebug'));
 const SubscriptionFix = React.lazy(() => import('@/modules/premium/components/SubscriptionFix'));
 const BusinessPremiumDebug = React.lazy(() => import('@/modules/premium/components/BusinessPremiumDebug'));
+const DatabaseInvestigation = React.lazy(() => import('@/modules/premium/components/DatabaseInvestigation'));
 const DepartmentsScreen = React.lazy(() =>
   import('@/modules/projects/screens/DepartmentScreen').then((module) => ({
     default: module.default ?? module.DepartmentScreen,
@@ -795,7 +796,7 @@ export const routes: RouteConfig[] = [
   // Premium
   {
     path: '/premium',
-    element: <PremiumPage />,
+    element: <Premium />,
     title: 'Premium',
     hideInNav: true,
   },
@@ -836,6 +837,12 @@ export const routes: RouteConfig[] = [
   {
     path: '/admin/business-premium-debug',
     element: <BusinessPremiumDebug />,
+    guard: 'protected',
+    hideInNav: true,
+  },
+  {
+    path: '/admin/database-investigation',
+    element: <DatabaseInvestigation />,
     guard: 'protected',
     hideInNav: true,
   },

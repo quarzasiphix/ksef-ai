@@ -1,7 +1,7 @@
 import React, { useEffect } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '@/shared/context/AuthContext';
-import { usePremium } from '@/shared/context/PremiumContext';
+import { usePremium } from '@/modules/premium/context/PremiumContext';
 import { PremiumUpgradeDialog } from './PremiumUpgradeDialog';
 import { usePremiumGuard } from '../hooks/usePremiumGuard';
 

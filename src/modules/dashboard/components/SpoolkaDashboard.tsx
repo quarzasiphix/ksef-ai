@@ -28,6 +28,9 @@ import {
   Gavel,
   TrendingDown,
   Plus,
+  Crown,
+  Sparkles,
+  Lock,
 } from 'lucide-react';
 import { cn } from '@/shared/lib/utils';
 import NextActionPanel from '@/modules/accounting/components/NextActionPanel';
@@ -206,6 +209,58 @@ const SpoolkaDashboard: React.FC<SpoolkaDashboardProps> = ({
           </div>
         </CardContent>
       </Card>
+
+      {/* Premium Upgrade Section - Only show when not premium */}
+      {!isPremium && (
+        <Card className="border-0 bg-gradient-to-br from-amber-50 to-orange-100/50 dark:from-amber-950/90 dark:to-orange-950/80">
+          <CardContent className="p-6">
+            <div className="flex items-start gap-4">
+              <div className="h-12 w-12 rounded-xl bg-gradient-to-br from-amber-500 to-orange-600 flex items-center justify-center shadow-lg">
+                <Crown className="h-6 w-6 text-white" />
+              </div>
+              <div className="flex-1">
+                <h3 className="text-lg font-bold text-amber-900 dark:text-amber-100 mb-2">
+                  Odblokuj pełen system governance
+                </h3>
+                <p className="text-sm text-amber-700 dark:text-amber-300 mb-4">
+                  Dla spółek potrzebujesz pełnej kontroli: uchwały, ścieżka audytu, zarządzanie kapitałem i decyzje powiązane z wydatkami.
+                </p>
+                
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-3 mb-4">
+                  <div className="flex items-center gap-2 text-xs text-amber-700 dark:text-amber-300">
+                    <Lock className="h-3 w-3" />
+                    <span>System uchwał i decyzji</span>
+                  </div>
+                  <div className="flex items-center gap-2 text-xs text-amber-700 dark:text-amber-300">
+                    <Lock className="h-3 w-3" />
+                    <span>Ścieżka audytu i odpowiedzialność</span>
+                  </div>
+                  <div className="flex items-center gap-2 text-xs text-amber-700 dark:text-amber-300">
+                    <Lock className="h-3 w-3" />
+                    <span>Zarządzanie kapitałem i wspólnikami</span>
+                  </div>
+                  <div className="flex items-center gap-2 text-xs text-amber-700 dark:text-amber-300">
+                    <Lock className="h-3 w-3" />
+                    <span>Decyzje powiązane z wydatkami</span>
+                  </div>
+                </div>
+                
+                <div className="flex items-center gap-3">
+                  <Button asChild className="bg-gradient-to-r from-amber-500 to-orange-600 hover:from-amber-600 hover:to-orange-700 text-white">
+                    <Link to="/premium">
+                      <Sparkles className="h-4 w-4 mr-2" />
+                      Aktywuj Premium Spółka
+                    </Link>
+                  </Button>
+                  <div className="text-sm text-amber-700 dark:text-amber-300">
+                    <span className="font-semibold">89 zł</span>/miesiąc
+                  </div>
+                </div>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      )}
 
       {/* Governance & Compliance Status */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-3">

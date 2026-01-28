@@ -77,30 +77,40 @@ class SubscriptionService {
    * Get user's subscriptions across all levels with dynamic is_active calculation
    */
   async getUserSubscriptions(userId: string): Promise<EnhancedSubscription[]> {
-    // Use edge function to calculate is_active dynamically
-    const { data, error } = await supabase.functions.invoke('calculate-subscription-status')
-    
-    if (error) {
-      // Fallback to direct query if edge function fails
-      const { data: fallbackData, error: fallbackError } = await supabase
+    try {
+      // Direct query without nested select
+      const { data, error } = await supabase
         .from('enhanced_subscriptions')
-        .select(`
-          *,
-          subscription_type:subscription_types(*)
-        `)
+        .select('*')
         .eq('user_id', userId)
         .order('created_at', { ascending: false });
 
-      if (fallbackError) throw fallbackError;
+      if (error) {
+        console.error('Error fetching user subscriptions:', error);
+        return [];
+      }
       
-      // Calculate is_active dynamically on the client side
-      return (fallbackData || []).map(sub => ({
+      if (!data || data.length === 0) return [];
+      
+      // Fetch subscription types separately
+      const typeIds = [...new Set(data.map(sub => sub.subscription_type_id).filter(Boolean))];
+      const { data: types } = await supabase
+        .from('subscription_types')
+        .select('*')
+        .in('id', typeIds);
+      
+      const typesMap = new Map(types?.map(t => [t.id, t]) || []);
+      
+      // Calculate is_active dynamically and attach subscription types
+      return data.map(sub => ({
         ...sub,
-        is_active: this.calculateIsActive(sub)
+        is_active: this.calculateIsActive(sub),
+        subscription_type: sub.subscription_type_id ? typesMap.get(sub.subscription_type_id) : undefined
       }));
+    } catch (error) {
+      console.error('Exception in getUserSubscriptions:', error);
+      return [];
     }
-    
-    return data.subscriptions || [];
   }
 
   /**
@@ -131,19 +141,40 @@ class SubscriptionService {
    * Get user's active enterprise subscription
    */
   async getEnterpriseSubscription(userId: string): Promise<EnhancedSubscription | null> {
-    const { data, error } = await supabase
-      .from('enhanced_subscriptions')
-      .select(`
-        *,
-        subscription_type:subscription_types(*)
-      `)
-      .eq('user_id', userId)
-      .eq('subscription_level', 'enterprise')
-      .eq('is_active', true)
-      .single();
+    try {
+      const { data, error } = await supabase
+        .from('enhanced_subscriptions')
+        .select('*')
+        .eq('user_id', userId)
+        .eq('subscription_level', 'enterprise')
+        .eq('is_active', true)
+        .maybeSingle();
 
-    if (error && error.code !== 'PGRST116') throw error;
-    return data;
+      if (error) {
+        console.error('Error fetching enterprise subscription:', error);
+        return null;
+      }
+      
+      if (!data) return null;
+      
+      // Fetch subscription type separately if needed
+      if (data.subscription_type_id) {
+        const { data: subType } = await supabase
+          .from('subscription_types')
+          .select('*')
+          .eq('id', data.subscription_type_id)
+          .maybeSingle();
+        
+        if (subType) {
+          return { ...data, subscription_type: subType };
+        }
+      }
+      
+      return data;
+    } catch (error) {
+      console.error('Exception in getEnterpriseSubscription:', error);
+      return null;
+    }
   }
 
   /**
@@ -152,24 +183,42 @@ class SubscriptionService {
   async getCompanySubscription(businessProfileId: string): Promise<EnhancedSubscription | null> {
     console.log(`Getting company subscription for profile: ${businessProfileId}`);
     
-    const { data, error } = await supabase
-      .from('enhanced_subscriptions')
-      .select(`
-        *,
-        subscription_type:subscription_types(*)
-      `)
-      .eq('business_profile_id', businessProfileId)
-      .eq('subscription_level', 'company')
-      .eq('is_active', true)
-      .single();
+    try {
+      const { data, error } = await supabase
+        .from('enhanced_subscriptions')
+        .select('*')
+        .eq('business_profile_id', businessProfileId)
+        .eq('subscription_level', 'company')
+        .eq('is_active', true)
+        .maybeSingle();
 
-    console.log('Company subscription query result:', { data, error });
-    
-    if (error && error.code !== 'PGRST116') {
-      console.error('Error getting company subscription:', error);
-      throw error;
+      console.log('Company subscription query result:', { data, error });
+      
+      if (error) {
+        console.error('Error getting company subscription:', error);
+        return null;
+      }
+      
+      if (!data) return null;
+      
+      // Fetch subscription type separately if needed
+      if (data.subscription_type_id) {
+        const { data: subType } = await supabase
+          .from('subscription_types')
+          .select('*')
+          .eq('id', data.subscription_type_id)
+          .maybeSingle();
+        
+        if (subType) {
+          return { ...data, subscription_type: subType };
+        }
+      }
+      
+      return data;
+    } catch (error) {
+      console.error('Exception in getCompanySubscription:', error);
+      return null;
     }
-    return data;
   }
 
   /**
@@ -355,10 +404,7 @@ class SubscriptionService {
           current_price: price
         }
       })
-      .select(`
-        *,
-        subscription_type:subscription_types(*)
-      `)
+      .select('*')
       .single();
 
     if (error) throw error;
@@ -397,10 +443,7 @@ class SubscriptionService {
         stripe_subscription_id: stripeSubscriptionId,
         is_active: true
       })
-      .select(`
-        *,
-        subscription_type:subscription_types(*)
-      `)
+      .select('*')
       .single();
 
     if (error) throw error;

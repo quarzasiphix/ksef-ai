@@ -1,5 +1,5 @@
 import React from "react";
-import { NavLink, useLocation, useNavigate } from "react-router-dom";
+import { NavLink, Link, useLocation, useNavigate } from "react-router-dom";
 import { 
   Settings, 
   Crown,
@@ -26,7 +26,7 @@ import { Button } from "@/shared/ui/button";
 import { ScrollArea } from "@/shared/ui/scroll-area";
 import { useSidebar } from "@/shared/ui/sidebar";
 import { useAuth } from "@/shared/hooks/useAuth";
-import { usePremium } from "@/shared/context/PremiumContext";
+import { usePremium } from '@/modules/premium/context/PremiumContext';
 import { useEnterpriseStatus } from "@/modules/premium/hooks/useEnterpriseStatus";
 import { useBusinessProfile } from "@/shared/context/BusinessProfileContext";
 import SidebarGroupHeader from "./sidebar/SidebarGroupHeader";
@@ -46,6 +46,16 @@ const AppSidebar = () => {
   const navigate = useNavigate();
 
   const selectedProfile = profiles?.find((p) => p.id === selectedProfileId);
+
+  // Debug premium status
+  console.log('[AppSidebar] Premium status:', {
+    hasPremium,
+    level,
+    subscriptionType,
+    selectedProfileId,
+    selectedProfileName: selectedProfile?.name,
+    entityType: selectedProfile?.entityType
+  });
   const isSpZoo = selectedProfile?.entityType === 'sp_zoo' || selectedProfile?.entityType === 'sa';
   const bankPath = isSpZoo ? '/accounting/bank' : '/bank';
 
@@ -262,6 +272,34 @@ const AppSidebar = () => {
             </SidebarGroup>
           );
         })}
+
+        {/* Premium Status Section */}
+        {hasPremium && (
+          <SidebarGroup>
+            <div className="flex items-center justify-between px-2 py-2">
+              {!isCollapsed && (
+                <SidebarGroupLabel className="flex items-center gap-2">
+                  PREMIUM
+                  <div className="h-2 w-2 rounded-full bg-green-500" />
+                </SidebarGroupLabel>
+              )}
+            </div>
+            <SidebarGroupContent>
+              <SidebarMenu>
+                <SidebarMenuItem>
+                  <SidebarMenuButton asChild>
+                    <Link to="/premium" className="flex items-center gap-3">
+                      <Crown className="h-4 w-4 text-amber-500" />
+                      {!isCollapsed && (
+                        <span className="text-sm">Zarządzaj Premium</span>
+                      )}
+                    </Link>
+                  </SidebarMenuButton>
+                </SidebarMenuItem>
+              </SidebarMenu>
+            </SidebarGroupContent>
+          </SidebarGroup>
+        )}
 
         {/* Upsell Premium Section (visible only for non-premium users) */}
         {!hasPremium && (

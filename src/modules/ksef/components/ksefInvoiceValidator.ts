@@ -1,4 +1,4 @@
-import { Invoice, BusinessProfile, Customer } from '../../types';
+import { Invoice, BusinessProfile, Customer } from '../../../shared/types';
 import { KsefDuplicateDetection } from './ksefDuplicateDetection';
 import type { SupabaseClient } from '@supabase/supabase-js';
 

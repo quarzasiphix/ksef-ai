@@ -1,4 +1,4 @@
-import { Invoice, BusinessProfile, Customer } from '../../types';
+import { Invoice, BusinessProfile, Customer } from '../../../shared/types';
 import { KsefAuthManager } from './ksefAuthManager';
 import { KsefSessionManager } from './ksefSessionManager';
 import { KsefInvoiceValidator } from './ksefInvoiceValidator';

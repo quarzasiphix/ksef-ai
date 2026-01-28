@@ -8,7 +8,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/sha
 import { Separator } from '@/shared/ui/separator';
 import { Skeleton } from '@/shared/ui/skeleton';
 import { useBusinessProfile } from '@/shared/context/BusinessProfileContext';
-import { usePremium } from '@/shared/context/PremiumContext';
+import { usePremium } from '@/modules/premium/context/PremiumContext';
 import type { BusinessProfile } from '@/shared/types';
 
 const BusinessProfiles = () => {

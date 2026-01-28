@@ -3,7 +3,7 @@ import { Button } from '@/shared/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/shared/ui/card';
 import { useAuth } from '@/shared/hooks/useAuth';
 import { useBusinessProfile } from '@/shared/context/BusinessProfileContext';
-import { usePremium } from '@/shared/context/PremiumContext';
+import { usePremium } from '@/modules/premium/context/PremiumContext';
 import { useEnterpriseStatus } from '../hooks/useEnterpriseStatus';
 import { subscriptionService } from '@/shared/services/subscriptionService';
 import { toast } from 'sonner';

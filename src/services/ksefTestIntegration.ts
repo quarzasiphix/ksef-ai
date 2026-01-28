@@ -1,6 +1,6 @@
 import { supabase } from '@/integrations/supabase/client';
-import { KsefContextManager } from '@/shared/services/ksef/ksefContextManager';
-import { getKsefConfig } from '@/shared/services/ksef/config';
+import { KsefContextManager } from '@/modules/ksef/components/ksefContextManager';
+import { getKsefConfig } from '@/modules/ksef/components/config';
 import { getKsefSyncJob } from './ksefSyncJobInit';
 
 /**

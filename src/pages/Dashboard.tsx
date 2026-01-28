@@ -3,7 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { useIsMobile } from "@/shared/hooks/use-mobile";
 import { useGlobalData } from "@/shared/hooks/use-global-data";
 import { useAuth } from "@/shared/hooks/useAuth";
-import { usePremium } from "@/shared/context/PremiumContext";
+import { usePremium } from '@/modules/premium/context/PremiumContext';
 import { calculateIncomeTax } from "@/shared/lib/tax-utils";
 import { useBusinessProfile } from "@/shared/context/BusinessProfileContext";
 import { Crown } from "lucide-react";

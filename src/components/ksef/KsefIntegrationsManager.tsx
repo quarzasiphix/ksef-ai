@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { createClient } from '@supabase/supabase-js';
-import { KsefContextManager, KsefIntegration } from '@/shared/services/ksef/ksefContextManager';
-import { getKsefConfig } from '@/shared/services/ksef/config';
+import { KsefContextManager, KsefIntegration } from '@/modules/ksef/components/ksefContextManager';
+import { getKsefConfig } from '@/modules/ksef/components/config';
 import { Button } from '@/shared/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/shared/ui/card';
 import { Badge } from '@/shared/ui/badge';
