@@ -57,7 +57,7 @@ export class KsefProperAuth {
       console.log('📋 Got challenge:', challenge.challenge);
       console.log('📋 Challenge timestamp:', challenge.timestamp);
 
-      // Step 2: Prepare token with timestamp (with defensive checks)
+      // Step 2: Add timestamp to token (use challenge timestamp with detailed logging)
       let timestampMs: number;
       
       if (!challenge.timestamp) {
@@ -65,14 +65,28 @@ export class KsefProperAuth {
         throw new Error('Challenge timestamp is undefined');
       }
       
+      console.log('📋 Raw challenge timestamp:', challenge.timestamp);
+      console.log('📋 Challenge timestamp type:', typeof challenge.timestamp);
+      
       try {
-        const timestampDate = new Date(challenge.timestamp);
-        if (isNaN(timestampDate.getTime())) {
-          console.error('❌ Invalid challenge timestamp:', challenge.timestamp);
-          throw new Error(`Invalid challenge timestamp: ${challenge.timestamp}`);
+        // Try parsing as ISO string first
+        const challengeDate = new Date(challenge.timestamp);
+        console.log('📋 Parsed date object:', challengeDate);
+        console.log('� Date is valid:', !isNaN(challengeDate.getTime()));
+        
+        if (!isNaN(challengeDate.getTime())) {
+          timestampMs = challengeDate.getTime();
+          console.log('✅ Using challenge timestamp (ms):', timestampMs);
+        } else {
+          // Try parsing as Unix timestamp (seconds)
+          const timestampNum = parseInt(challenge.timestamp, 10);
+          if (!isNaN(timestampNum)) {
+            timestampMs = timestampNum * 1000; // Convert to milliseconds
+            console.log('✅ Using challenge timestamp (seconds converted to ms):', timestampMs);
+          } else {
+            throw new Error('Unable to parse challenge timestamp');
+          }
         }
-        timestampMs = timestampDate.getTime();
-        console.log('✅ Timestamp parsed successfully:', timestampMs);
       } catch (dateError) {
         console.error('❌ Failed to parse timestamp:', dateError);
         throw new Error(`Failed to parse timestamp: ${challenge.timestamp}`);
@@ -89,7 +103,7 @@ export class KsefProperAuth {
       const authRequest = {
         challenge: challenge.challenge,
         contextIdentifier: {
-          type: 'NIP',
+          type: 'nip',  // KSEF 2.0 uses lowercase 'nip'
           value: contextNip
         },
         encryptedToken: encryptedToken

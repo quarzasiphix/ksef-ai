@@ -24,7 +24,7 @@ import { KsefStatusBadge } from '@/modules/invoices/components/KsefStatusBadge';
 import { KsefSettingsDialog } from '@/modules/invoices/components/KsefSettingsDialog';
 import { KsefContextManager } from '@/modules/ksef/components/ksefContextManager';
 import { getKsefConfig } from '@/modules/ksef/components/config';
-import { getKsefSyncJob } from '@/services/ksefSyncJobInit';
+import { getKsefSyncJob } from '@/modules/ksef/services/ksefSyncJobInit';
 import { generateEncryptionData } from '@/modules/ksef/components/ksefInvoiceRetrievalHelpersBrowser';
 
 interface KsefStats {

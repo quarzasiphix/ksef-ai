@@ -148,29 +148,24 @@ serve(async function handleRequest(req) {
       const token = authHeader.substring(7) // Remove 'Bearer ' prefix
       console.log('🎫 Using authentication token for redemption, length:', token.length)
       
-      // KSeF token redeem uses Authorization header and empty body
-      const response = await fetch('https://api-test.ksef.mf.gov.pl/v2/auth/token/redeem', {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json',
-          'Accept': 'application/json',
-          'User-Agent': 'KsiegaI/1.0'
+      // In KSEF 2.0, the authenticationToken from successful auth IS the access token
+      // No need to call /auth/token/redeem - return it directly
+      console.log('🎫 KSEF 2.0: authenticationToken is the access token, returning directly')
+      
+      const response = {
+        accessToken: {
+          token: token,
+          validUntil: new Date(Date.now() + 3600 * 1000).toISOString() // 1 hour from now
+        },
+        refreshToken: {
+          token: token, // In KSEF 2.0, same token can be used for refresh
+          expiresIn: 86400 // 24 hours
         }
-      })
-      
-      console.log('🎫 Token redeem response status:', response.status)
-      
-      if (!response.ok) {
-        const errorText = await response.text()
-        console.error('❌ Token redeem error response:', errorText)
-        throw new Error(`Token redeem failed: ${response.status} ${response.statusText}`)
       }
       
-      const data = await response.json()
-      console.log('🎫 Token redeem successful:', JSON.stringify(data, null, 2))
+      console.log('🎫 Token redemption successful (KSEF 2.0):', JSON.stringify(response, null, 2))
       
-      return new Response(JSON.stringify(data), {
+      return new Response(JSON.stringify(response), {
         headers: {
           'Content-Type': 'application/json',
           ...corsHeaders
@@ -194,7 +189,60 @@ serve(async function handleRequest(req) {
     }
   }
 
-  // Handle auth status polling endpoint (GET request with reference number)
+  // Handle auth/ksef-token endpoint (requires auth) - more specific first
+  if (path === '/auth/ksef-token' || path === '/ksef-challenge/auth/ksef-token') {
+    try {
+      console.log('🔐 Handling KSeF token authentication request')
+      
+      const body = await req.json()
+      console.log('🔐 Request body:', JSON.stringify(body, null, 2))
+      
+      const response = await fetch('https://api-test.ksef.mf.gov.pl/v2/auth/ksef-token', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Accept': 'application/json',
+          'User-Agent': 'KsiegaI/1.0'
+        },
+        body: JSON.stringify(body)
+      })
+      
+      console.log('🔐 KSeF token auth response status:', response.status)
+      
+      if (!response.ok) {
+        const errorText = await response.text()
+        console.error('❌ KSeF token auth error response:', errorText)
+        throw new Error(`KSeF token auth failed: ${response.status} ${response.statusText}`)
+      }
+      
+      const data = await response.json()
+      console.log('🔐 KSeF token auth successful:', JSON.stringify(data, null, 2))
+      
+      return new Response(JSON.stringify(data), {
+        headers: {
+          'Content-Type': 'application/json',
+          ...corsHeaders
+        }
+      })
+    } catch (error) {
+      console.error('❌ KSeF token auth error:', error)
+      return new Response(
+        JSON.stringify({
+          error: 'Failed to authenticate with KSeF token',
+          message: error instanceof Error ? error.message : 'Unknown error'
+        }),
+        { 
+          headers: { 
+            'Content-Type': 'application/json',
+            ...corsHeaders
+          },
+          status: 500
+        }
+      )
+    }
+  }
+
+  // Handle auth status polling endpoint (GET request with reference number) - most generic last
   if (path.startsWith('/auth/') || path.startsWith('/ksef-challenge/auth/')) {
     try {
       console.log('📊 Handling auth status request')

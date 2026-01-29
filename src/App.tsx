@@ -15,10 +15,10 @@ import { routeChangeHandler } from '@/shared/lib/routeChangeHandler';
 import { initializeQueryPersistence, restoreAllCachedQueries } from '@/shared/lib/queryPersistence';
 
 // Initialize KSeF sync job
-import './services/ksefSyncJobInit';
+import './modules/ksef/services/ksefSyncJobInit';
 
 // Import KSeF test integration (for debugging)
-import './services/ksefTestIntegration';
+import './modules/ksef/services/ksefTestIntegration';
 
 /**
  * New App.tsx with route config system

@@ -3,7 +3,7 @@ import { KsefService } from './ksefService';
 import { KsefAuthManager } from './ksefAuthManager';
 import { KsefSessionManager } from './ksefSessionManager';
 import { SupabaseClient } from '@supabase/supabase-js';
-import { KsefSecretManager, createKsefSecretManager } from './ksefSecretManager';
+import { KsefSecretManager, KsefSecretManagerFallback, createKsefSecretManager } from './ksefSecretManager';
 
 /**
  * KSeF Context Manager
@@ -364,14 +364,14 @@ export class KsefContextManager {
   private config: KsefConfig;
   private supabase: SupabaseClient;
   private authManager: KsefAuthManager;
-  private secretManager: KsefSecretManager;
+  private secretManager: KsefSecretManager | KsefSecretManagerFallback;
   private tokenCache: Map<string, { token: string; expiresAt: number }>;
 
-  constructor(config: KsefConfig, supabase: SupabaseClient, useVault: boolean = true) {
+  constructor(config: KsefConfig, supabase: SupabaseClient, useVault: boolean = false) {
     this.config = config;
     this.supabase = supabase;
     this.authManager = new KsefAuthManager(config);
-    this.secretManager = createKsefSecretManager(supabase, useVault) as KsefSecretManager;
+    this.secretManager = createKsefSecretManager(supabase, useVault);
     this.tokenCache = new Map();
   }
 
@@ -483,19 +483,60 @@ export class KsefContextManager {
       return cached.token;
     }
     
-    // Retrieve from secret storage using provider NIP
-    const encryptedToken = await this.secretManager.getSecret(credential.providerNip);
+    // Extract the raw KSeF token from the secret_ref (same logic as getFreshAccessToken)
+    let ksefToken: string;
     
-    // Decode the base64 token
-    const token = atob(encryptedToken);
+    try {
+      // Decode the secret_ref
+      const decodedRef = atob(credential.secretRef);
+      
+      // Parse the composite string: "TOKEN|nip-XXXXX|hash"
+      const parts = decodedRef.split('|');
+      
+      if (parts.length >= 1 && parts[0]) {
+        // Try using just the token identifier (first part) as per Java examples
+        // The full string might be for storage, but KSEF API expects just the token
+        ksefToken = parts[0].trim(); // Use only the first part (token identifier)
+        
+        console.log('🔑 Using KSEF token identifier:', ksefToken);
+        console.log('🔑 Token length:', ksefToken.length);
+        console.log('🔑 Full token context:', decodedRef);
+        console.log('🔑 Token parts:', parts.length);
+        
+        // Debug tests disabled - they cause CORS issues when calling KSEF directly
+        console.log('🧪 Debug tests disabled - using edge function proxy');
+      } else {
+        throw new Error('Invalid secret_ref format. Expected: token|nip|hash, but first part is empty or missing');
+      }
+    } catch (parseError) {
+      throw new Error(`Failed to extract KSeF token from credential: ${parseError instanceof Error ? parseError.message : 'Unknown error'}`);
+    }
     
-    // Cache for 55 minutes (tokens typically valid for 60 minutes)
+    // Perform full authentication to get a fresh JWT token
+    const { KsefProperAuth } = await import('./ksefProperAuth');
+    const config = {
+      environment: 'test' as const,
+      baseUrl: 'https://rncrzxjyffxmfbnxlqtm.supabase.co/functions/v1/ksef-challenge',
+      apiUrl: 'https://rncrzxjyffxmfbnxlqtm.supabase.co/functions/v1/ksef-challenge',
+      systemInfo: 'KsięgaI v1.0',
+      namespace: 'http://crd.gov.pl/wzor/2023/06/29/12648/',
+      schemaVersion: '1-0E',
+    };
+    
+    const properAuth = new KsefProperAuth(config);
+    const result = await properAuth.authenticateWithKsefToken(ksefToken, credential.providerNip, 3, 1000);
+    
+    if (!result || !result.accessToken) {
+      throw new Error('Failed to authenticate with KSeF');
+    }
+    
+    // Cache the JWT token for 55 minutes (tokens typically valid for 60 minutes)
     this.tokenCache.set(cacheKey, {
-      token,
+      token: result.accessToken.token,
       expiresAt: Date.now() + (55 * 60 * 1000)
     });
     
-    return token;
+    return result.accessToken.token;
   }
 
   /**
