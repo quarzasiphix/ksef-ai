@@ -11,10 +11,10 @@ export default defineConfig(({ mode }) => ({
   },
   plugins: [
     react(),
-    sitemap({
+    mode === 'production' && sitemap({
       hostname: 'https://ksiegai.pl',
       outDir: 'dist',
-      generateRobotsTxt: true,
+      generateRobotsTxt: false, // Don't generate robots.txt since it already exists in public
       exclude: ['/404', '/500', '/api/*', '/_*'],
       // List of URLs to include in the sitemap
       urls: [
