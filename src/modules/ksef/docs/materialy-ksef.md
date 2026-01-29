@@ -1,0 +1,93 @@
+# Materiały dla programistów i integratorów KSeF
+
+## Ministery of Finance Links
+
+- https://github.com/CIRFMF/ksef-docs
+- https://ksef.podatki.gov.pl/
+- https://ksef.podatki.gov.pl/media/cq3laefg/podrecznik-ksef-2-0-cz-i-rozpoczecie-korzystania-z-ksef.pdf
+- https://ksef.podatki.gov.pl/media/3zidazbw/podrecznik-ksef-2-0-cz-ii-wystawianie-i-otrzymywane-faktur-w-ksef.pdf
+- https://ksef.podatki.gov.pl/media/ruthftwo/podrecznik-ksef-2-0-cz-iii-dodatkowe-funkcjonalnosci-ksef.pdf
+- https://ksef.podatki.gov.pl/media/c4zo3glh/podrecznik-ksef-2-0-cz-iv-ksef-w-jst-i-gv-oraz-pozostale-modele-uprawnien.pdf
+- https://ksef.podatki.gov.pl/media/0ivha0ua/broszura-informacyjna-dotyczaca-struktury-logicznej-fa-3.pdf
+- https://ksef.podatki.gov.pl/media/0iafuqe5/podrecznik-uzytkownika-modulu-certyfikatow-i-uprawnien-mcu.pdf
+- https://ksef.podatki.gov.pl/media/iipln3md/tryby-wystawiania-faktur-tabela-wersja-12.pdf
+- https://www.podatki.gov.pl/media/9512/broszura-informacyjna-struktury-logicznej-fa-2.pdf
+- https://www.podatki.gov.pl/ksef/baza-wiedzy-ksef/pliki-do-pobrania-ksef/
+- https://www.podatki.gov.pl/ksef/baza-wiedzy-ksef/uprawnienia-ksef/
+
+English (out of date) documentation for FA (1) https://www.podatki.gov.pl/media/8803/broszura-informacyjna-struktury-logicznej-e-faktury-fa-1-wersja-angloj%C4%99zyczna.pdf
+
+### Technical Announcements
+
+- https://www.podatki.gov.pl/komunikaty-techniczne
+
+### MF Webinars (Polish)
+
+- https://www.youtube.com/watch?v=758GFdhaVFE
+- https://www.youtube.com/watch?v=dnBGO6IPtzA
+- https://www.youtube.com/watch?v=flPCer5-bm0
+
+## Webinars, Podcasts etc
+
+- https://youtu.be/mqvjQDEgwyM?si=4lINESLHvLtdAzej
+- https://spotify.link/XwzooKBU6Db
+- https://youtu.be/OLg0QO2nBAg
+
+## Other information
+
+- https://4programmers.net/Forum/Nietuzinkowe_tematy/355933-krajowy_system_e_faktur
+
+## Invocice and UPO visualization
+
+- https://github.com/asoio/ksef-xslt (oryginal) and it fork https://github.com/ksef4dev/ksef-xslt
+- https://github.com/ksef4dev/ksef-api-metadata/tree/main/fa-schema
+- https://github.com/ksef4dev/ksef-fop (production ready)
+
+## KSeF Envirnoment
+
+- TEST: https://api-test.ksef.mf.gov.pl
+- DEMO: https://api-demo.ksef.mf.gov.pl
+- PROD: https://api.ksef.mf.gov.pl
+
+## Web application
+
+- TEST (KSeF 2.0): https://ap-test.ksef.mf.gov.pl
+- DEMO (KSeF 2.0): https://ap-demo.ksef.mf.gov.pl
+- PROD (KSeF 1.0): https://ap.ksef.mf.gov.pl (starting at at 01.02.2026)
+- MCU: https://mcu.mf.gov.pl/web (will stop working on 26.01.2026!)
+
+## Java KSeF 
+
+- [KSeF 2.0 Java Rest Client - forked and just working](https://github.com/alapierre/ksef-client-java-mf-fork)
+- https://github.com/alapierre/ksef-fa-java
+- https://github.com/CIRFMF/ksef-client-java (official KSeF SDK - no comments)
+
+## GO KSeF
+
+- https://github.com/alapierre/go-ksef-client
+- https://github.com/alapierre/go-ksef-cli
+- https://github.com/toudi/ksef
+- https://github.com/alapierre/ksef-qr-generator
+
+## GOBL - open source JSON format for global business documents
+
+- https://docs.gobl.org/quick-start/invoices
+- https://github.com/invopop/gobl.ksef
+- https://github.com/alapierre/gobl.java
+- https://github.com/alapierre/gobl.java.ksef
+
+## godss - XAdES signature in GO with PKCS#11 support
+
+- https://github.com/alapierre/godss
+
+## .NET KSeF
+
+- https://github.com/CIRFMF/ksef-client-csharp (official C# KSeF client)
+- https://github.com/gbbsoft/GbbKSeF2
+- https://github.com/tailored-apps/KSeF
+
+
+## Python KseF
+
+- https://github.com/m32/ksef
+- https://github.com/JakubSzwajka/ksef-python-client
