@@ -70,7 +70,7 @@ const PremiumJDG = () => {
         "Kategorie kosztów (JDG-friendly)",
         "Podpięcie konta bankowego",
         "Przypisywanie wydatków do faktur",
-        Kontrola kosztów "do limitu"
+        "Kontrola kosztów \"do limitu\""
       ]
     },
     {
