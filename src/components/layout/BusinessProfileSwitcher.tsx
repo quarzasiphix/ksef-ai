@@ -25,11 +25,11 @@ export const BusinessProfileSwitcher: React.FC<BusinessProfileSwitcherProps> = (
   const selectedProfile = profiles.find(p => p.id === selectedProfileId);
   
   // Debug logging
-  console.log('BusinessProfileSwitcher:', {
-    selectedProfileId,
-    profiles: profiles.map(p => ({ id: p.id, name: p.name, is_vat_exempt: p.is_vat_exempt })),
-    selectedProfile: selectedProfile ? { id: selectedProfile.id, name: selectedProfile.name, is_vat_exempt: selectedProfile.is_vat_exempt } : null
-  });
+  // console.log('BusinessProfileSwitcher:', { // Disabled to reduce console spam
+  //   selectedProfileId,
+  //   profiles: profiles.map(p => ({ id: p.id, name: p.name, is_vat_exempt: p.is_vat_exempt })),
+  //   selectedProfile: selectedProfile ? { id: selectedProfile.id, name: selectedProfile.name, is_vat_exempt: selectedProfile.is_vat_exempt } : null
+  // });
 
   const handleAddProfile = () => {
     // Allow all users to add new profiles, premium will be checked during creation

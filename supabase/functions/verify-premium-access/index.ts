@@ -177,7 +177,43 @@ serve(async (req) => {
       )
     }
 
-    // Check enterprise benefits first (highest priority)
+    // Check user-level premium subscriptions first (highest priority for user badges)
+    const { data: userSubscription, error: userSubError } = await supabaseClient
+      .from('enhanced_subscriptions')
+      .select('*')
+      .eq('user_id', user.id)
+      .is_('business_profile_id', null) // User-level subscriptions have no business_profile_id
+      .maybeSingle()
+
+    if (!userSubError && userSubscription) {
+      const isActive = calculateIsActive(userSubscription);
+      
+      if (isActive) {
+        const tier = getTierFromSubscription(userSubscription);
+        const expiry = Date.now() + 5 * 60 * 1000; // 5 minutes
+        const token = await generatePremiumToken({
+          userId: user.id,
+          businessId,
+          tier,
+          expiry
+        });
+
+        await logPremiumAccess(supabaseClient, user.id, businessId, tier, true);
+
+        return new Response(
+          JSON.stringify({ 
+            verified: true, 
+            token,
+            expiry,
+            tier,
+            source: 'user_premium_subscription'
+          }),
+          { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        )
+      }
+    }
+
+    // Check enterprise benefits for this specific business (second priority)
     const { data: enterpriseBenefits, error: benefitsError } = await supabaseClient
       .from('enterprise_benefits')
       .select('*')

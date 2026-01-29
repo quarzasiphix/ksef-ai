@@ -40,6 +40,7 @@ import { cn } from '@/shared/lib/utils';
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle, SheetTrigger } from '@/shared/ui/sheet';
 import { Button } from '@/shared/ui/button';
 import { useAuth } from '@/shared/hooks/useAuth';
+import { usePremium } from '@/modules/premium/context/PremiumContext';
 import { BusinessProfileSwitcher } from './BusinessProfileSwitcher';
 import { useBusinessProfile } from '@/shared/context/BusinessProfileContext';
 import { buildNavGroups } from './sidebar/navConfig';
@@ -51,6 +52,7 @@ const MobileNavigation = () => {
   const { theme, setTheme } = useTheme();
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
   const { isPremium, openPremiumDialog, user, logout } = useAuth();
+  const { hasUserLevelPremium } = usePremium();
   const { profiles, selectedProfileId } = useBusinessProfile();
   const navigate = useNavigate();
 
@@ -62,8 +64,8 @@ const MobileNavigation = () => {
   const navContext: NavContext = React.useMemo(() => ({
     entityType: isSpZoo ? 'spoolka' : 'jdg',
     bankPath,
-    hasPremium: isPremium || false,
-  }), [isSpZoo, bankPath, isPremium]);
+    hasPremium: hasUserLevelPremium || false,
+  }), [isSpZoo, bankPath, hasUserLevelPremium]);
 
   // Get navigation groups from the same configuration as desktop
   const navGroups = React.useMemo(() => buildNavGroups(navContext), [navContext]);
@@ -149,8 +151,8 @@ const MobileNavigation = () => {
           {/* Scrollable content area */}
           <div className="flex-1 overflow-y-auto scrollbar-hide pt-6">
             <div className="flex flex-col space-y-6 px-6">
-              {/* Premium badge at top if premium */}
-              {isPremium && (
+              {/* Premium badge at top if user has premium */}
+              {hasUserLevelPremium && (
                 <div className="flex items-center justify-between mb-3 px-2">
                   <h3 className="text-sm font-semibold text-muted-foreground">PREMIUM</h3>
                   <div className="flex items-center gap-1">
@@ -322,7 +324,8 @@ const MobileNavigation = () => {
 };
 
 const UserMenuFooter = () => {
-  const { user, logout, isPremium } = useAuth();
+  const { user, logout } = useAuth();
+  const { hasUserLevelPremium } = usePremium();
   const navigate = useNavigate();
   const { profiles, selectedProfileId } = useBusinessProfile();
 
@@ -343,9 +346,9 @@ const UserMenuFooter = () => {
       {/* User Info */}
       <div className="flex items-center gap-3">
         <div className="flex-shrink-0">
-          <div className={`relative w-10 h-10 rounded-full flex items-center justify-center ${isPremium ? 'bg-gradient-to-br from-amber-500 to-amber-700' : 'bg-muted'}`}>
+          <div className={`relative w-10 h-10 rounded-full flex items-center justify-center ${hasUserLevelPremium ? 'bg-gradient-to-br from-amber-500 to-amber-700' : 'bg-muted'}`}>
             <User className="h-5 w-5 text-white" />
-            {isPremium && (
+            {hasUserLevelPremium && (
               <div className="absolute -top-1 -right-1 bg-amber-500 rounded-full p-0.5">
                 <Crown className="h-3 w-3 text-white" />
               </div>
@@ -357,7 +360,7 @@ const UserMenuFooter = () => {
             <p className="text-sm font-medium truncate group-hover:underline">
               {user.email}
             </p>
-            {isPremium && (
+            {hasUserLevelPremium && (
               <span className="inline-flex items-center gap-1 bg-gradient-to-r from-amber-500 to-amber-600 text-white text-[10px] px-1.5 py-0.5 rounded-full">
                 <Crown className="h-2.5 w-2.5" />
                 <span>PREMIUM</span>

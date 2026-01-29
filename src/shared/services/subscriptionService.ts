@@ -268,13 +268,13 @@ class SubscriptionService {
    * Check if a business profile has premium access
    */
   async hasPremiumAccess(businessProfileId: string, userId: string): Promise<boolean> {
-    console.log(`Checking premium access for user ${userId}, profile ${businessProfileId}`);
+    // console.log(`Checking premium access for user ${userId}, profile ${businessProfileId}`); // Disabled to reduce console spam
     
     // Check company-level subscription
     const companySub = await this.getCompanySubscription(businessProfileId);
-    console.log('Company subscription:', companySub);
+    // console.log('Company subscription:', companySub); // Disabled to reduce console spam
     if (companySub?.is_active) {
-      console.log('Found active company subscription');
+      // console.log('Found active company subscription'); // Disabled to reduce console spam
       return true;
     }
 

@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { Outlet, useSearchParams, useLocation, useNavigate } from 'react-router-dom';
 import { Settings, Building2, Star, User, CreditCard, FileText, Plus, Edit2, ArrowLeft, AlertCircle, Users, Network, Shield, AlertTriangle } from "lucide-react";
 import { useAuth } from "@/shared/context/AuthContext";
+import { usePremium } from "@/modules/premium/context/PremiumContext";
 import { toast } from "sonner";
 import { cn } from "@/shared/lib/utils";
 import { Card, CardContent, CardHeader, CardTitle } from "@/shared/ui/card";
@@ -17,7 +18,8 @@ import { getBusinessProfiles } from "@/modules/settings/data/businessProfileRepo
 import { useBusinessProfile } from "@/shared/context/BusinessProfileContext";
 
 const SettingsMenu = () => {
-  const { isPremium, user, supabase } = useAuth();
+  const { user, supabase } = useAuth();
+  const { hasUserLevelPremium } = usePremium();
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
   const [showPremiumModal, setShowPremiumModal] = useState(false);
@@ -109,7 +111,7 @@ const SettingsMenu = () => {
               {
                 icon: <CreditCard className="h-4 w-4 text-slate-500" />,
                 title: "Plan usługi",
-                desc: `Status: ${isPremium ? "Aktywny – wszystkie funkcje odblokowane" : "Plan podstawowy – ograniczony dostęp"}`,
+                desc: `Status: ${hasUserLevelPremium ? "Aktywny – wszystkie funkcje odblokowane" : "Plan podstawowy – ograniczony dostęp"}`,
                 actionLabel: "Zarządzaj subskrypcją",
                 onClick: () => setShowPremiumModal(true),
                 disabled: false,

@@ -29,11 +29,11 @@ class RpcPremiumService {
    * This is the most reliable method as it runs server-side
    */
   async getPremiumAccess(userId: string, businessProfileId?: string): Promise<PremiumAccessResult> {
-    console.log(`[RpcPremiumService] Checking premium via Edge Function for user ${userId}, business ${businessProfileId}`);
+    // console.log(`[RpcPremiumService] Checking premium via Edge Function for user ${userId}, business ${businessProfileId}`); // Disabled to reduce console spam
     
     // If no business profile, return free tier
     if (!businessProfileId) {
-      console.log('[RpcPremiumService] No business profile provided, returning free tier');
+      // console.log('[RpcPremiumService] No business profile provided, returning free tier'); // Disabled to reduce console spam
       return {
         hasAccess: false,
         level: 'free',
@@ -53,7 +53,7 @@ class RpcPremiumService {
       );
 
       if (error) {
-        console.error('[RpcPremiumService] Edge Function error:', error);
+        // console.error('[RpcPremiumService] Edge Function error:', error); // Disabled to reduce console spam
         // Fallback to free on error
         return {
           hasAccess: false,
@@ -65,7 +65,7 @@ class RpcPremiumService {
       }
 
       if (!data) {
-        console.warn('[RpcPremiumService] No data returned from Edge Function');
+        // console.warn('[RpcPremiumService] No data returned from Edge Function'); // Disabled to reduce console spam
         return {
           hasAccess: false,
           level: 'free',
@@ -75,7 +75,7 @@ class RpcPremiumService {
         };
       }
 
-      console.log('[RpcPremiumService] Edge Function response:', data);
+      // console.log('[RpcPremiumService] Edge Function response:', data); // Disabled to reduce console spam
       
       // Convert Edge Function response to PremiumAccessResult
       const tier = data.tier || 'free';

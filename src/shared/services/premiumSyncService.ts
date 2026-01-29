@@ -39,12 +39,15 @@ class PremiumSyncService {
   private readonly TOKEN_REFRESH_THRESHOLD_MS = 1 * 60 * 1000; // Refresh 1 min before expiry
   private readonly RECONNECT_DELAY_MS = 5000;
   private readonly AUTO_VERIFY_INTERVAL_MS = 30 * 1000; // Re-verify every 30 seconds
+  
+  // Debug flag - set to false to reduce console spam
+  private readonly DEBUG = false;
 
   /**
    * Start real-time subscription monitoring for premium status
    */
   async startRealtimeSync(userId: string, businessId: string): Promise<void> {
-    console.log('[PremiumSync] Starting real-time sync', { userId, businessId });
+    if (this.DEBUG) console.log('[PremiumSync] Starting real-time sync', { userId, businessId });
     
     // Clean up existing subscription
     if (this.subscription) {
@@ -66,7 +69,7 @@ class PremiumSyncService {
         table: 'enhanced_subscriptions',
         filter: `user_id=eq.${userId}`
       }, (payload) => {
-        console.log('[PremiumSync] Subscription change detected', payload);
+        if (this.DEBUG) console.log('[PremiumSync] Subscription change detected', payload);
         this.handleSubscriptionChange(payload);
       })
       .on('postgres_changes', {
@@ -75,11 +78,11 @@ class PremiumSyncService {
         table: 'enterprise_benefits',
         filter: `user_id=eq.${userId}`
       }, (payload) => {
-        console.log('[PremiumSync] Enterprise benefit change detected', payload);
+        if (this.DEBUG) console.log('[PremiumSync] Enterprise benefit change detected', payload);
         this.handleSubscriptionChange(payload);
       })
       .subscribe((status) => {
-        console.log('[PremiumSync] Subscription status:', status);
+        if (this.DEBUG) console.log('[PremiumSync] Subscription status:', status);
         if (status === 'SUBSCRIBED') {
           this.reconnectAttempts = 0;
           this.startAutoRefresh();
@@ -93,7 +96,7 @@ class PremiumSyncService {
    * Stop real-time sync and clean up
    */
   async stopRealtimeSync(): Promise<void> {
-    console.log('[PremiumSync] Stopping real-time sync');
+    if (this.DEBUG) console.log('[PremiumSync] Stopping real-time sync');
     
     if (this.subscription) {
       await supabase.removeChannel(this.subscription);
@@ -115,25 +118,25 @@ class PremiumSyncService {
    */
   async verifyPremiumAccess(): Promise<boolean> {
     if (this.verificationInProgress) {
-      console.log('[PremiumSync] Verification already in progress');
+      if (this.DEBUG) console.log('[PremiumSync] Verification already in progress');
       return false;
     }
 
     // Check if current token is still valid
     if (this.isTokenValid()) {
-      console.log('[PremiumSync] Token still valid');
+      if (this.DEBUG) console.log('[PremiumSync] Token still valid');
       return true;
     }
 
     if (!this.currentUserId || !this.currentBusinessId) {
-      console.error('[PremiumSync] Missing userId or businessId');
+      if (this.DEBUG) console.error('[PremiumSync] Missing userId or businessId');
       return false;
     }
 
     this.verificationInProgress = true;
 
     try {
-      console.log('[PremiumSync] Verifying premium access with server');
+      if (this.DEBUG) console.log('[PremiumSync] Verifying premium access with server');
       
       const { data, error } = await supabase.functions.invoke<PremiumVerificationResponse>(
         'verify-premium-access',
@@ -145,13 +148,13 @@ class PremiumSyncService {
       );
 
       if (error) {
-        console.error('[PremiumSync] Verification error:', error);
+        if (this.DEBUG) console.error('[PremiumSync] Verification error:', error);
         this.notifyListeners(false, 'free');
         return false;
       }
 
       if (!data?.verified || !data.token) {
-        console.log('[PremiumSync] Verification failed:', data?.message);
+        if (this.DEBUG) console.log('[PremiumSync] Verification failed:', data?.message);
         this.verificationToken = null;
         this.notifyListeners(false, 'free');
         return false;
@@ -166,12 +169,12 @@ class PremiumSyncService {
         tier: data.tier || 'free'
       };
 
-      console.log('[PremiumSync] Verification successful', { tier: data.tier });
+      if (this.DEBUG) console.log('[PremiumSync] Verification successful', { tier: data.tier });
       this.notifyListeners(true, data.tier || 'free');
       return true;
 
     } catch (error) {
-      console.error('[PremiumSync] Verification exception:', error);
+      if (this.DEBUG) console.error('[PremiumSync] Verification exception:', error);
       this.notifyListeners(false, 'free');
       return false;
     } finally {
@@ -223,7 +226,7 @@ class PremiumSyncService {
    * Handle subscription change from real-time listener
    */
   private async handleSubscriptionChange(payload: any): Promise<void> {
-    console.log('[PremiumSync] Handling subscription change', payload);
+    if (this.DEBUG) console.log('[PremiumSync] Handling subscription change', payload);
     
     // Invalidate current token
     this.verificationToken = null;
@@ -236,10 +239,10 @@ class PremiumSyncService {
    * Handle disconnection and attempt reconnect
    */
   private async handleDisconnect(): Promise<void> {
-    console.warn('[PremiumSync] Disconnected from real-time subscription');
+    if (this.DEBUG) console.warn('[PremiumSync] Disconnected from real-time subscription');
     
     if (this.reconnectAttempts >= this.maxReconnectAttempts) {
-      console.error('[PremiumSync] Max reconnect attempts reached');
+      if (this.DEBUG) console.error('[PremiumSync] Max reconnect attempts reached');
       this.notifyListeners(false, 'free');
       return;
     }
@@ -248,7 +251,7 @@ class PremiumSyncService {
     
     setTimeout(async () => {
       if (this.currentUserId && this.currentBusinessId) {
-        console.log('[PremiumSync] Attempting reconnect', { attempt: this.reconnectAttempts });
+        if (this.DEBUG) console.log('[PremiumSync] Attempting reconnect', { attempt: this.reconnectAttempts });
         await this.startRealtimeSync(this.currentUserId, this.currentBusinessId);
       }
     }, this.RECONNECT_DELAY_MS * this.reconnectAttempts);
@@ -270,7 +273,7 @@ class PremiumSyncService {
 
       // Refresh token if it's about to expire
       if (timeUntilExpiry < this.TOKEN_REFRESH_THRESHOLD_MS) {
-        console.log('[PremiumSync] Token expiring soon, refreshing');
+        if (this.DEBUG) console.log('[PremiumSync] Token expiring soon, refreshing');
         await this.verifyPremiumAccess();
       }
     }, this.AUTO_VERIFY_INTERVAL_MS);
@@ -311,7 +314,7 @@ class PremiumSyncService {
       try {
         listener(status);
       } catch (error) {
-        console.error('[PremiumSync] Error notifying listener:', error);
+        if (this.DEBUG) console.error('[PremiumSync] Error notifying listener:', error);
       }
     });
   }

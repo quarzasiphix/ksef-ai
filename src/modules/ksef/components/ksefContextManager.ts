@@ -237,6 +237,10 @@ export class KsefCompanyClient {
       throw new Error('No KSeF credentials found. Please configure KSeF token first.');
     }
     
+    // DEBUG: Log the actual credential data from database
+    console.log('🔍 DEBUG - Raw credential from DB:', credential);
+    console.log('🔍 DEBUG - Credential secret_ref:', credential.secret_ref);
+    console.log('🔍 DEBUG - Credential provider_nip:', credential.provider_nip);
     console.log('🔑 Found credential:', credential.id);
     
     // Extract the raw KSeF token from the secret_ref
@@ -244,6 +248,10 @@ export class KsefCompanyClient {
     let ksefToken: string;
     
     try {
+      // DEBUG: Log the actual secret_ref value
+      console.log('🔍 DEBUG - Raw secret_ref (getFreshAccessToken):', credential.secret_ref);
+      console.log('🔍 DEBUG - Secret_ref length (getFreshAccessToken):', credential.secret_ref.length);
+      
       // Decode the secret_ref
       const decodedRef = atob(credential.secret_ref);
       console.log('🔓 Decoded secret_ref:', decodedRef.substring(0, 100) + '...');
@@ -487,6 +495,10 @@ export class KsefContextManager {
     let ksefToken: string;
     
     try {
+      // DEBUG: Log the actual secret_ref value
+      console.log('🔍 DEBUG - Raw secret_ref:', credential.secretRef);
+      console.log('🔍 DEBUG - Secret_ref length:', credential.secretRef.length);
+      
       // Decode the secret_ref
       const decodedRef = atob(credential.secretRef);
       

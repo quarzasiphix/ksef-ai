@@ -27,7 +27,6 @@ import { ScrollArea } from "@/shared/ui/scroll-area";
 import { useSidebar } from "@/shared/ui/sidebar";
 import { useAuth } from "@/shared/hooks/useAuth";
 import { usePremium } from '@/modules/premium/context/PremiumContext';
-import { useEnterpriseStatus } from "@/modules/premium/hooks/useEnterpriseStatus";
 import { useBusinessProfile } from "@/shared/context/BusinessProfileContext";
 import SidebarGroupHeader from "./sidebar/SidebarGroupHeader";
 import SidebarNavItem from "./sidebar/SidebarNavItem";
@@ -39,8 +38,7 @@ const AppSidebar = () => {
   const { state } = useSidebar();
   const location = useLocation();
   const { openPremiumDialog, user, logout } = useAuth();
-  const { hasPremium, level, subscriptionType } = usePremium();
-  const { hasEnterprise } = useEnterpriseStatus();
+  const { hasPremium, hasUserLevelPremium, level, subscriptionType } = usePremium();
   const { profiles, selectedProfileId } = useBusinessProfile();
   const isCollapsed = state === "collapsed";
   const navigate = useNavigate();
@@ -48,14 +46,14 @@ const AppSidebar = () => {
   const selectedProfile = profiles?.find((p) => p.id === selectedProfileId);
 
   // Debug premium status
-  console.log('[AppSidebar] Premium status:', {
-    hasPremium,
-    level,
-    subscriptionType,
-    selectedProfileId,
-    selectedProfileName: selectedProfile?.name,
-    entityType: selectedProfile?.entityType
-  });
+  // console.log('[AppSidebar] Premium status:', { // Disabled to reduce console spam
+  //   hasPremium,
+  //   level,
+  //   subscriptionType,
+  //   selectedProfileId,
+  //   selectedProfileName: selectedProfile?.name,
+  //   entityType: selectedProfile?.entityType
+  // });
   const isSpZoo = selectedProfile?.entityType === 'sp_zoo' || selectedProfile?.entityType === 'sa';
   const bankPath = isSpZoo ? '/accounting/bank' : '/bank';
 
@@ -132,11 +130,11 @@ const AppSidebar = () => {
     if (!user) return null;
     const Avatar = (
       <div
-        className={`relative w-10 h-10 rounded-full flex items-center justify-center ${hasEnterprise ? "bg-gradient-to-br from-purple-500 to-purple-700" : "bg-muted"}`}
+        className={`relative w-10 h-10 rounded-full flex items-center justify-center ${hasUserLevelPremium ? "bg-gradient-to-br from-amber-500 to-amber-700" : "bg-muted"}`}
       >
         <User className="h-5 w-5 text-white" />
-        {hasEnterprise && (
-          <div className="absolute -top-1 -right-1 bg-purple-500 rounded-full p-0.5">
+        {hasUserLevelPremium && (
+          <div className="absolute -top-1 -right-1 bg-amber-500 rounded-full p-0.5">
             <Crown className="h-3 w-3 text-white" />
           </div>
         )}
@@ -157,10 +155,10 @@ const AppSidebar = () => {
               <p className="text-sm font-medium truncate group-hover:underline">
                 {user.email}
               </p>
-              {hasEnterprise && (
-                <span className="inline-flex items-center gap-1 bg-gradient-to-r from-purple-500 to-purple-600 text-white text-[10px] px-1.5 py-0.5 rounded-full">
+              {hasUserLevelPremium && (
+                <span className="inline-flex items-center gap-1 bg-gradient-to-r from-amber-500 to-amber-600 text-white text-[10px] px-1.5 py-0.5 rounded-full">
                   <Crown className="h-2.5 w-2.5" />
-                  <span>ENTERPRISE</span>
+                  <span>PREMIUM</span>
                 </span>
               )}
             </div>

@@ -67,22 +67,29 @@ export class KsefProperAuth {
       
       console.log('📋 Raw challenge timestamp:', challenge.timestamp);
       console.log('📋 Challenge timestamp type:', typeof challenge.timestamp);
+      console.log('📋 Challenge timestamp length:', challenge.timestamp?.length);
       
       try {
         // Try parsing as ISO string first
         const challengeDate = new Date(challenge.timestamp);
         console.log('📋 Parsed date object:', challengeDate);
-        console.log('� Date is valid:', !isNaN(challengeDate.getTime()));
+        console.log('📋 Date is valid:', !isNaN(challengeDate.getTime()));
+        console.log('📋 Date getTime():', challengeDate.getTime());
         
         if (!isNaN(challengeDate.getTime())) {
           timestampMs = challengeDate.getTime();
           console.log('✅ Using challenge timestamp (ms):', timestampMs);
+          console.log('✅ Timestamp as string:', String(timestampMs));
+          console.log('✅ Timestamp length:', String(timestampMs).length);
         } else {
           // Try parsing as Unix timestamp (seconds)
           const timestampNum = parseInt(challenge.timestamp, 10);
+          console.log('📋 Parsed as number:', timestampNum);
           if (!isNaN(timestampNum)) {
             timestampMs = timestampNum * 1000; // Convert to milliseconds
             console.log('✅ Using challenge timestamp (seconds converted to ms):', timestampMs);
+            console.log('✅ Timestamp as string:', String(timestampMs));
+            console.log('✅ Timestamp length:', String(timestampMs).length);
           } else {
             throw new Error('Unable to parse challenge timestamp');
           }
@@ -93,7 +100,9 @@ export class KsefProperAuth {
       }
       
       const tokenWithTimestamp = `${ksefToken}|${timestampMs}`;
+      console.log('📋 Token with timestamp:', tokenWithTimestamp);
       console.log('📋 Token with timestamp length:', tokenWithTimestamp.length);
+      console.log('📋 Token with timestamp bytes:', new TextEncoder().encode(tokenWithTimestamp).length);
 
       // Step 3: Encrypt token with KSeF public key
       const encryptedToken = await this.encryptToken(tokenWithTimestamp);
@@ -297,6 +306,11 @@ export class KsefProperAuth {
       }
 
       if (status.status.code >= 400) {
+        console.error('❌ KSEF Authentication Error Details:');
+        console.error('❌ Status Code:', status.status.code);
+        console.error('❌ Description:', status.status.description);
+        console.error('❌ Details:', (status.status as any).details || 'No details provided');
+        console.error('❌ Full Status Object:', JSON.stringify(status, null, 2));
         throw new Error(`Authentication failed: ${status.status.description}`);
       }
 

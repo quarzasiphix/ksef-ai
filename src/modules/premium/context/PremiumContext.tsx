@@ -42,10 +42,10 @@ export const PremiumProvider: React.FC<PremiumProviderProps> = ({ children }) =>
 
   // Debug business profile changes
   useEffect(() => {
-    console.log('[PremiumContext] Business profile changed:', {
-      selectedProfileId,
-      userId: user?.id
-    });
+    // console.log('[PremiumContext] Business profile changed:', { // Disabled to reduce console spam
+    //   selectedProfileId,
+    //   userId: user?.id
+    // });
     
     // Invalidate premium cache when business profile changes
     if (selectedProfileId) {
@@ -54,21 +54,21 @@ export const PremiumProvider: React.FC<PremiumProviderProps> = ({ children }) =>
       
       // Force verify premium status for new business profile
       setTimeout(() => {
-        console.log('[PremiumContext] Force verifying premium for new business profile');
+        // console.log('[PremiumContext] Force verifying premium for new business profile'); // Disabled to reduce console spam
         forceVerify();
       }, 100);
     }
   }, [selectedProfileId, user?.id, queryClient, forceVerify]);
 
-  // Fallback RPC query when sync service is not ready
+  // Fallback RPC query when sync service is not ready OR for business-specific checks
   const { data: rpcData, isLoading: rpcLoading } = useQuery({
     queryKey: ['fallback-premium', selectedProfileId, user?.id],
     queryFn: async () => {
       if (!user || !selectedProfileId) return null;
-      console.log('[PremiumContext] Fallback RPC call for premium check');
+      // console.log('[PremiumContext] Fallback RPC call for premium check'); // Disabled to reduce console spam
       return rpcPremiumService.getPremiumAccess(user.id, selectedProfileId);
     },
-    enabled: !!user && !!selectedProfileId && (syncLoading || (!syncActive && !lastVerified)),
+    enabled: !!user && !!selectedProfileId, // Always run when user and business are available
     staleTime: 0,
     gcTime: 0,
   });
@@ -77,11 +77,11 @@ export const PremiumProvider: React.FC<PremiumProviderProps> = ({ children }) =>
   const useSyncData = !syncLoading && (syncActive || lastVerified);
   const isLoading = syncLoading || (rpcLoading && !useSyncData);
   
-  const isActive = useSyncData ? syncActive : (rpcData?.hasAccess ?? false);
-  const tier = useSyncData ? syncTier : (rpcData?.subscriptionType ?? 'free');
+  // Determine if user has user-level premium (enterprise or user tier)
+  const hasUserLevelPremium = syncTier === 'enterprise' || syncTier === 'jdg_premium';
 
   // Map sync service data to PremiumContext format
-  const hasPremium = isActive && tier !== 'free';
+  const hasPremium = syncActive && syncTier !== 'free';
   
   // Map tier names to expected levels
   const getLevelFromTier = (tier: string): 'free' | 'user' | 'business' | 'enterprise' => {
@@ -91,8 +91,14 @@ export const PremiumProvider: React.FC<PremiumProviderProps> = ({ children }) =>
     return 'free';
   };
 
-  const level = getLevelFromTier(tier);
+  const level = getLevelFromTier(syncTier);
   
+  // For users with user-level premium, use sync data
+  // For users without user-level premium, use RPC data to check business-specific premium
+  const shouldUseRpcForBusinessCheck = !hasUserLevelPremium && rpcData;
+  const isActive = shouldUseRpcForBusinessCheck ? (rpcData?.hasAccess ?? false) : (useSyncData ? syncActive : (rpcData?.hasAccess ?? false));
+  const tier = shouldUseRpcForBusinessCheck ? (rpcData?.subscriptionType ?? 'free') : (useSyncData ? syncTier : (rpcData?.subscriptionType ?? 'free'));
+
   // Get features for the current tier
   const getFeaturesForTier = (tier: string): Record<string, any> => {
     const features: Record<string, any> = {
@@ -128,9 +134,6 @@ export const PremiumProvider: React.FC<PremiumProviderProps> = ({ children }) =>
   };
 
   const features = getFeaturesForTier(tier);
-  
-  // Determine if user has user-level premium (enterprise or user tier)
-  const hasUserLevelPremium = tier === 'enterprise' || tier === 'jdg_premium';
 
   const canAccessFeature = (feature: string): boolean => {
     if (isLoading || !isActive) return false;
@@ -155,31 +158,31 @@ export const PremiumProvider: React.FC<PremiumProviderProps> = ({ children }) =>
     hasUserLevelPremium,
   };
 
-  console.log('[PremiumContext] Premium data source:', {
-    useSyncData,
-    syncActive,
-    syncTier,
-    syncLoading,
-    rpcData: rpcData?.hasAccess,
-    rpcLoading,
-    finalIsActive: isActive,
-    finalTier: tier,
-    hasPremium,
-    level,
-    isLoading,
-    selectedProfileId,
-    userId: user?.id,
-    token,
-    tokenExpiry,
-    lastVerified
-  });
+  // console.log('[PremiumContext] Premium data source:', { // Disabled to reduce console spam
+  //   useSyncData,
+  //   syncActive,
+  //   syncTier,
+  //   syncLoading,
+  //   rpcData: rpcData?.hasAccess,
+  //   rpcLoading,
+  //   finalIsActive: isActive,
+  //   finalTier: tier,
+  //   hasPremium,
+  //   level,
+  //   isLoading,
+  //   selectedProfileId,
+  //   userId: user?.id,
+  //   token,
+  //   tokenExpiry,
+  //   lastVerified
+  // });
 
   // Additional debugging for sync service state
-  console.log('[PremiumContext] Full sync state available:', {
-    hasUser: !!user,
-    hasBusiness: !!selectedProfileId,
-    shouldSync: !!(user && selectedProfileId)
-  });
+  // console.log('[PremiumContext] Full sync state available:', { // Disabled to reduce console spam
+  //   hasUser: !!user,
+  //   hasBusiness: !!selectedProfileId,
+  //   shouldSync: !!(user && selectedProfileId)
+  // });
 
   return (
     <PremiumContext.Provider value={value}>
