@@ -48,6 +48,7 @@ import type { CashAccount } from '@/modules/accounting/kasa';
 import { DiscussionPanel } from "@/modules/invoices/components/discussion/DiscussionPanel";
 import { Wallet } from 'lucide-react';
 import LinkedAccountingEntries from '@/modules/invoices/components/LinkedAccountingEntries';
+import { InvoiceHistoryDialog } from '@/modules/invoices/components/history/InvoiceHistoryDialog';
 import InvoiceLifecycleStatus from '@/modules/invoices/components/InvoiceLifecycleStatus';
 import DecisionStateCard from '@/modules/invoices/components/DecisionStateCard';
 import FinancialImpactSummary from '@/modules/invoices/components/FinancialImpactSummary';
@@ -86,6 +87,13 @@ const InvoiceDetail: React.FC<InvoiceDetailProps> = ({ type }) => {
   const [showPDF, setShowPDF] = useState(false);
   const [showShareDialog, setShowShareDialog] = useState(false);
   const [showPostDialog, setShowPostDialog] = useState(false);
+  const [showHistory, setShowHistory] = useState(false);
+
+  // Debug handler for history
+  const handleHistory = () => {
+    console.log('History button clicked, invoice:', { id: invoice.id, number: invoice.number, businessProfileId: invoice.businessProfileId });
+    setShowHistory(true);
+  };
   const [isUpdatingPaid, setIsUpdatingPaid] = useState(false);
   const [selectedBankAccount, setSelectedBankAccount] = useState<any>(null);
   const [bankAccounts, setBankAccounts] = useState<BankAccount[]>([]);
@@ -97,18 +105,41 @@ const InvoiceDetail: React.FC<InvoiceDetailProps> = ({ type }) => {
   // Use cached invoice from global data (sync system)
   const baseInvoice = invoices.find(inv => inv.id === id) || null;
   
+  // Debug: Check if invoice is in cache
+  console.log('InvoiceDetail - Looking for invoice:', id);
+  console.log('InvoiceDetail - Available invoices in cache:', invoices.map(inv => ({ id: inv.id, number: inv.number })));
+  console.log('InvoiceDetail - Found in cache:', !!baseInvoice);
+  
+  // Debug: Log the actual invoice structure
+  if (baseInvoice) {
+    console.log('InvoiceDetail - Base invoice structure:', Object.keys(baseInvoice));
+    console.log('InvoiceDetail - Full base invoice:', baseInvoice);
+  }
+  
   // Only fetch from database if not in cache (fallback)
   const {
     data: invoice,
     isLoading: isLoadingInvoice,
     isFetching: isFetchingInvoice,
   } = useQuery<Invoice | null>({
-    queryKey: ["invoice", id],
+    queryKey: ["invoice", id, invoices.length], // Include invoices length to force re-run when cache changes
     queryFn: async () => {
       if (!id) return null;
       
-      // If we have the invoice in cache, use it
-      if (baseInvoice) {
+      // Debug: Check items specifically
+      console.log('Items check:', { 
+        hasBaseInvoice: !!baseInvoice,
+        hasItems: !!baseInvoice?.items,
+        itemsLength: baseInvoice?.items?.length,
+        itemsValue: baseInvoice?.items,
+        itemsType: typeof baseInvoice?.items
+      });
+      
+      // If we have the invoice in cache but it lacks items, fetch full data
+      if (baseInvoice && (!baseInvoice.items || baseInvoice.items.length === 0)) {
+        console.log('Invoice found in cache but missing items, fetching full data...');
+        // Fall through to database fetch
+      } else if (baseInvoice) {
         console.log('Using cached invoice from sync system:', baseInvoice);
         return baseInvoice;
       }
@@ -259,11 +290,13 @@ const InvoiceDetail: React.FC<InvoiceDetailProps> = ({ type }) => {
   }, [invoice?.businessProfileId]);
 
   // Preprocess items to ensure correct VAT values using calculateInvoiceTotals
-  const { items: processedItems, totalNetValue, totalVatValue, totalGrossValue } = calculateInvoiceTotals(invoice?.items || []);
+  const invoiceItems = (invoice as any)?.invoice_items || invoice?.items || [];
+  const { items: processedItems, totalNetValue, totalVatValue, totalGrossValue } = calculateInvoiceTotals(invoiceItems);
   
   // Debug logging
   console.log('Processed items:', processedItems);
-  console.log('Raw invoice items:', invoice?.items);
+  console.log('Raw invoice items:', invoiceItems);
+  console.log('Invoice fields:', { has_items: !!invoice?.items, has_invoice_items: !!(invoice as any)?.invoice_items });
   const fakturaBezVAT = invoice?.fakturaBezVAT || invoice?.vat === false;
   
   const totals = {
@@ -477,6 +510,7 @@ const InvoiceDetail: React.FC<InvoiceDetailProps> = ({ type }) => {
         onDelete={handleDelete}
         onTogglePaid={handleTogglePaid}
         onPost={() => setShowPostDialog(true)}
+        onHistory={handleHistory}
         isOwner={isOwner}
       />
 
@@ -853,6 +887,15 @@ const InvoiceDetail: React.FC<InvoiceDetailProps> = ({ type }) => {
           />
         );
       })()}
+
+      {/* Invoice History Dialog */}
+      <InvoiceHistoryDialog
+        open={showHistory}
+        onOpenChange={setShowHistory}
+        invoiceId={invoice.id}
+        invoiceNumber={invoice.number}
+        businessProfileId={invoice.businessProfileId || ''}
+      />
     </div>
   );
 };

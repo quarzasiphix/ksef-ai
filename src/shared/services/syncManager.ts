@@ -15,6 +15,7 @@ interface SyncTimestamps {
   operationsDrivers?: string;
   operationsVehicles?: string;
   cashRegister?: string;
+  auditTrail?: string;
 }
 
 interface SyncCheckResponse {
@@ -30,6 +31,7 @@ interface SyncCheckResponse {
     operationsDrivers: boolean;
     operationsVehicles: boolean;
     cashRegister: boolean;
+    auditTrail: boolean;
   };
   latestTimestamps: {
     invoices: string | null;
@@ -43,6 +45,7 @@ interface SyncCheckResponse {
     operationsDrivers: string | null;
     operationsVehicles: string | null;
     cashRegister: string | null;
+    auditTrail: string | null;
   };
   counts: {
     invoices: number;
@@ -56,6 +59,7 @@ interface SyncCheckResponse {
     operationsDrivers: number;
     operationsVehicles: number;
     cashRegister: number;
+    auditTrail: number;
   };
 }
 
@@ -269,6 +273,11 @@ class SyncManager {
         invalidations.push(queryClient.invalidateQueries({ queryKey: ['cash-register', businessProfileId] }));
         invalidations.push(queryClient.invalidateQueries({ queryKey: ['cash-accounts', businessProfileId] }));
         invalidations.push(queryClient.invalidateQueries({ queryKey: ['cash-transactions'] }));
+      }
+
+      if (data.hasUpdates.auditTrail) {
+        console.log('[SyncManager] Invalidating audit trail queries');
+        invalidations.push(queryClient.invalidateQueries({ queryKey: ['invoice-audit-trail', businessProfileId] }));
       }
 
       // Wait for all invalidations to complete

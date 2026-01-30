@@ -16,8 +16,9 @@ export interface InvoiceSnapshot {
   issue_date: string;
   sale_date: string;
   due_date: string;
-  status: string;
+  type?: string;
   payment_status: string;
+  is_paid?: boolean;
   business_profile_id: string;
   customer_id: string;
   total_amount: number;
@@ -25,7 +26,8 @@ export interface InvoiceSnapshot {
   total_vat: number;
   currency: string;
   payment_method: string;
-  notes: string | null;
+  comments?: string | null;
+  notes?: string | null;
   items: InvoiceItemSnapshot[];
 }
 
@@ -73,12 +75,23 @@ export interface InvoiceAuditTrail {
   invoice_id: string;
   invoice_number: string;
   current_status: string;
+  current_type: string;
   is_locked: boolean;
   current_version_number: number;
   versions: InvoiceVersion[];
   events: InvoiceEvent[];
   verification: ChainVerification;
   retrieved_at: string;
+  current_invoice_data?: {
+    is_paid: boolean;
+    payment_status: string;
+    paid_at: string | null;
+    ryczalt_account_id: string | null;
+    ryczalt_rate: number | null;
+    ryczalt_category_id: string | null;
+    accounting_status: string | null;
+    accounting_state: string | null;
+  };
 }
 
 export interface AuditProof {

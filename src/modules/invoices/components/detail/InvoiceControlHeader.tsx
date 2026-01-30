@@ -11,7 +11,8 @@ import {
   Trash2,
   FilePlus,
   DollarSign,
-  FileText
+  FileText,
+  History
 } from 'lucide-react';
 import { formatCurrency } from '@/shared/lib/invoice-utils';
 import { cn } from '@/shared/lib/utils';
@@ -43,6 +44,7 @@ interface InvoiceControlHeaderProps {
   onDelete?: () => void;
   onTogglePaid?: () => void;
   onPost?: () => void;
+  onHistory?: () => void;
   isOwner?: boolean;
   showActions?: boolean;
 }
@@ -89,6 +91,7 @@ export const InvoiceControlHeader: React.FC<InvoiceControlHeaderProps> = ({
   onDelete,
   onTogglePaid,
   onPost,
+  onHistory,
   isOwner,
   showActions = true,
 }) => {
@@ -213,6 +216,16 @@ export const InvoiceControlHeader: React.FC<InvoiceControlHeaderProps> = ({
                     </Button>
                   </DropdownMenuTrigger>
                   <DropdownMenuContent align="end">
+                    {onHistory && (
+                      <DropdownMenuItem onClick={() => {
+                        console.log('History menu item clicked');
+                        onHistory?.();
+                      }}>
+                        <History className="h-4 w-4 mr-2" />
+                        Historia / Audit trail
+                      </DropdownMenuItem>
+                    )}
+                    {onHistory && <DropdownMenuSeparator />}
                     {onShare && (
                       <DropdownMenuItem onClick={onShare}>
                         <Share2 className="h-4 w-4 mr-2" />

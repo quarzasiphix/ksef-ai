@@ -20,6 +20,7 @@ interface SyncCheckRequest {
     operationsDrivers?: string;
     operationsVehicles?: string;
     cashRegister?: string;
+    auditTrail?: string;
   };
 }
 
@@ -36,6 +37,7 @@ interface SyncCheckResponse {
     operationsDrivers: boolean;
     operationsVehicles: boolean;
     cashRegister: boolean;
+    auditTrail: boolean;
   };
   latestTimestamps: {
     invoices: string | null;
@@ -49,6 +51,7 @@ interface SyncCheckResponse {
     operationsDrivers: string | null;
     operationsVehicles: string | null;
     cashRegister: string | null;
+    auditTrail: string | null;
   };
   counts: {
     invoices: number;
@@ -62,6 +65,7 @@ interface SyncCheckResponse {
     operationsDrivers: number;
     operationsVehicles: number;
     cashRegister: number;
+    auditTrail: number;
   };
 }
 
@@ -214,6 +218,14 @@ Deno.serve(async (req: Request) => {
         .eq('business_profile_id', businessProfileId)
         .order('updated_at', { ascending: false })
         .limit(1),
+
+      // Audit trail (invoice_versions)
+      supabaseClient
+        .from('invoice_versions')
+        .select('changed_at', { count: 'exact', head: false })
+        .eq('business_profile_id', businessProfileId)
+        .order('changed_at', { ascending: false })
+        .limit(1),
     ]);
 
     const [
@@ -228,6 +240,7 @@ Deno.serve(async (req: Request) => {
       driversResult,
       vehiclesResult,
       cashRegisterResult,
+      auditTrailResult,
     ] = checks;
 
     // Build response
@@ -244,6 +257,7 @@ Deno.serve(async (req: Request) => {
         operationsDrivers: false,
         operationsVehicles: false,
         cashRegister: false,
+        auditTrail: false,
       },
       latestTimestamps: {
         invoices: invoicesResult.data?.[0]?.updated_at || null,
@@ -257,6 +271,7 @@ Deno.serve(async (req: Request) => {
         operationsDrivers: driversResult.data?.[0]?.updated_at || null,
         operationsVehicles: vehiclesResult.data?.[0]?.updated_at || null,
         cashRegister: cashRegisterResult.data?.[0]?.updated_at || null,
+        auditTrail: auditTrailResult.data?.[0]?.changed_at || null,
       },
       counts: {
         invoices: invoicesResult.count || 0,
@@ -270,6 +285,7 @@ Deno.serve(async (req: Request) => {
         operationsDrivers: driversResult.count || 0,
         operationsVehicles: vehiclesResult.count || 0,
         cashRegister: cashRegisterResult.count || 0,
+        auditTrail: auditTrailResult.count || 0,
       },
     };
 
@@ -338,6 +354,12 @@ Deno.serve(async (req: Request) => {
       response.hasUpdates.cashRegister = new Date(response.latestTimestamps.cashRegister) > new Date(lastSyncTimestamps.cashRegister);
     } else if (response.latestTimestamps.cashRegister) {
       response.hasUpdates.cashRegister = true;
+    }
+
+    if (lastSyncTimestamps.auditTrail && response.latestTimestamps.auditTrail) {
+      response.hasUpdates.auditTrail = new Date(response.latestTimestamps.auditTrail) > new Date(lastSyncTimestamps.auditTrail);
+    } else if (response.latestTimestamps.auditTrail) {
+      response.hasUpdates.auditTrail = true;
     }
 
     return new Response(
