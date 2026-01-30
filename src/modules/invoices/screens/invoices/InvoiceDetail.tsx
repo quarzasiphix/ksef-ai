@@ -823,13 +823,15 @@ const InvoiceDetail: React.FC<InvoiceDetailProps> = ({ type }) => {
         businessProfileId={invoice.businessProfileId}
       />
 
-      {/* Discussion Panel */}
-      <div ref={discussionRef} className="scroll-mt-24">
-        <DiscussionPanel 
-          invoiceId={invoice.id} 
-          invoiceNumber={invoice.number} 
-        />
-      </div>
+      {/* Discussion Panel - Only show for invoices the user owns */}
+      {invoice.user_id === user?.id && (
+        <div ref={discussionRef} className="scroll-mt-24">
+          <DiscussionPanel 
+            invoiceId={invoice.id} 
+            invoiceNumber={invoice.number} 
+          />
+        </div>
+      )}
       </div>
 
       {/* Right sidebar - Financial Threads Panel */}

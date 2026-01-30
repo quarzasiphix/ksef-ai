@@ -48,6 +48,7 @@ export interface DiscussionParticipant {
 
 /**
  * Get or create a discussion thread for an invoice
+ * Only allows threads for invoices the user owns
  */
 export async function getOrCreateThreadForInvoice(
   invoiceId: string,
@@ -55,6 +56,21 @@ export async function getOrCreateThreadForInvoice(
   title?: string
 ): Promise<DiscussionThread | null> {
   try {
+    // First validate that the user owns this invoice
+    const { data: { user } } = await supabase.auth.getUser();
+    const { data: invoice, error: invoiceError } = await supabase
+      .from('invoices')
+      .select('id, user_id, business_profile_id')
+      .eq('id', invoiceId)
+      .eq('user_id', user?.id)
+      .eq('business_profile_id', businessProfileId)
+      .single();
+
+    if (invoiceError || !invoice) {
+      console.warn('User does not own this invoice or invoice not found:', invoiceId);
+      return null;
+    }
+
     // First, try to get existing thread
     const { data: existing, error: fetchError } = await supabase
       .from('discussion_threads')

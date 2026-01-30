@@ -41,6 +41,39 @@ export const DiscussionPanel: React.FC<DiscussionPanelProps> = ({
   const scrollRef = useRef<HTMLDivElement>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
+  // Validate invoice ownership before showing discussion
+  const { data: invoiceOwnership, isLoading: isLoadingOwnership } = useQuery({
+    queryKey: ['invoice-ownership', invoiceId, selectedProfileId],
+    queryFn: async () => {
+      if (!invoiceId || !selectedProfileId || !user?.id) return false;
+      
+      const { data, error } = await supabase
+        .from('invoices')
+        .select('business_profile_id, user_id')
+        .eq('id', invoiceId)
+        .eq('user_id', user.id)
+        .eq('business_profile_id', selectedProfileId)
+        .single();
+      
+      return !error && data !== null;
+    },
+    enabled: !!invoiceId && !!selectedProfileId && !!user?.id,
+  });
+
+  // Don't render discussion if user doesn't own the invoice
+  if (isLoadingOwnership) {
+    return (
+      <Card className={`h-[100px] flex items-center justify-center ${className}`}>
+        <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+      </Card>
+    );
+  }
+
+  if (!invoiceOwnership) {
+    // User doesn't own this invoice - don't show discussion
+    return null;
+  }
+
   // 1. Fetch or create thread
   const { data: thread, isLoading: isLoadingThread } = useQuery({
     queryKey: ['discussion-thread', invoiceId],
