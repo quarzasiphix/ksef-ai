@@ -3,7 +3,7 @@ import { formatLedgerAmount } from '@/shared/lib/ledger-utils';
 import { useNavigate } from 'react-router-dom';
 import { useBusinessProfile } from '@/shared/context/BusinessProfileContext';
 import { Badge } from '@/shared/ui/badge';
-import { MoreVertical, Eye, Download, Edit, Trash2, Share2, Copy, CreditCard, BookOpen } from 'lucide-react';
+import { MoreVertical, Eye, Download, Edit, Trash2, Share2, Copy, CreditCard, BookOpen, ExternalLink } from 'lucide-react';
 import { cn } from '@/shared/lib/utils';
 import {
   DropdownMenu,
@@ -159,8 +159,8 @@ export function LedgerRow({
           <DropdownMenuContent align="end" className="w-48">
             {onView && (
               <DropdownMenuItem onClick={(e) => { e.stopPropagation(); onView(invoice.id); }}>
-                <Eye className="mr-2 h-4 w-4" />
-                Podgląd
+                <ExternalLink className="mr-2 h-4 w-4" />
+                Otwórz
               </DropdownMenuItem>
             )}
             {onPreview && (

@@ -48,7 +48,6 @@ export interface DiscussionParticipant {
 
 /**
  * Get or create a discussion thread for an invoice
- * Only allows threads for invoices the user owns
  */
 export async function getOrCreateThreadForInvoice(
   invoiceId: string,
@@ -56,27 +55,12 @@ export async function getOrCreateThreadForInvoice(
   title?: string
 ): Promise<DiscussionThread | null> {
   try {
-    // First validate that the user owns this invoice
-    const { data: { user } } = await supabase.auth.getUser();
-    const { data: invoice, error: invoiceError } = await supabase
-      .from('invoices')
-      .select('id, user_id, business_profile_id')
-      .eq('id', invoiceId)
-      .eq('user_id', user?.id)
-      .eq('business_profile_id', businessProfileId)
-      .single();
-
-    if (invoiceError || !invoice) {
-      console.warn('User does not own this invoice or invoice not found:', invoiceId);
-      return null;
-    }
-
     // First, try to get existing thread
     const { data: existing, error: fetchError } = await supabase
       .from('discussion_threads')
       .select('*')
       .eq('invoice_id', invoiceId)
-      .single();
+      .maybeSingle(); // Use maybeSingle() to handle no rows gracefully
 
     if (existing) {
       return existing;
@@ -95,6 +79,21 @@ export async function getOrCreateThreadForInvoice(
       .single();
 
     if (createError) throw createError;
+
+    // Add the current user as a participant
+    const { data: { user } } = await supabase.auth.getUser();
+    if (user && newThread) {
+      await supabase
+        .from('discussion_participants')
+        .insert({
+          thread_id: newThread.id,
+          user_id: user.id,
+          business_profile_id: businessProfileId,
+          role: 'owner',
+          notifications_enabled: true,
+        });
+    }
+
     return newThread;
   } catch (error) {
     console.error('Error getting/creating thread:', error);
@@ -110,7 +109,11 @@ export async function getThreadMessages(threadId: string): Promise<DiscussionMes
     .from('discussion_messages')
     .select(`
       *,
-      profile:profiles!discussion_messages_user_id_fkey(full_name, avatar_url)
+      business_profile:business_profiles!discussion_messages_business_profile_id_fkey(
+        id,
+        name,
+        user_id
+      )
     `)
     .eq('thread_id', threadId)
     .order('created_at', { ascending: true });
@@ -120,7 +123,14 @@ export async function getThreadMessages(threadId: string): Promise<DiscussionMes
     return [];
   }
 
-  return data || [];
+  // Transform the data to match the expected interface
+  return (data || []).map(msg => ({
+    ...msg,
+    profile: msg.business_profile ? {
+      full_name: msg.business_profile.name,
+      avatar_url: null, // TODO: Add avatar_url to business_profiles if needed
+    } : null
+  }));
 }
 
 /**
@@ -139,10 +149,19 @@ export async function postMessage(
     attachmentSize?: number;
   }
 ): Promise<DiscussionMessage | null> {
+  // Get the current user
+  const { data: { user } } = await supabase.auth.getUser();
+  
+  if (!user) {
+    console.error('No authenticated user found');
+    return null;
+  }
+
   const { data, error } = await supabase
     .from('discussion_messages')
     .insert({
       thread_id: threadId,
+      user_id: user.id, // Add the user_id to satisfy RLS policy
       message,
       business_profile_id: businessProfileId,
       message_type: options?.messageType || 'text',
@@ -154,7 +173,11 @@ export async function postMessage(
     })
     .select(`
       *,
-      profile:user_id(full_name, avatar_url)
+      business_profile:business_profiles!discussion_messages_business_profile_id_fkey(
+        id,
+        name,
+        user_id
+      )
     `)
     .single();
 
@@ -163,7 +186,14 @@ export async function postMessage(
     return null;
   }
 
-  return data;
+  // Transform the data to match the expected interface
+  return data ? {
+    ...data,
+    profile: data.business_profile ? {
+      full_name: data.business_profile.name,
+      avatar_url: null, // TODO: Add avatar_url to business_profiles if needed
+    } : null
+  } : null;
 }
 
 /**
@@ -259,13 +289,25 @@ export function subscribeToThreadMessages(
           .from('discussion_messages')
           .select(`
             *,
-            profile:user_id(full_name, avatar_url)
+            business_profile:business_profiles!discussion_messages_business_profile_id_fkey(
+              id,
+              name,
+              user_id
+            )
           `)
           .eq('id', payload.new.id)
           .single();
 
         if (data) {
-          callback(data);
+          // Transform the data to match the expected interface
+          const transformedData = {
+            ...data,
+            profile: data.business_profile ? {
+              full_name: data.business_profile.name,
+              avatar_url: null, // TODO: Add avatar_url to business_profiles if needed
+            } : null
+          };
+          callback(transformedData);
         }
       }
     )

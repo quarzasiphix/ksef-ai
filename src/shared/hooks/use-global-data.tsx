@@ -5,8 +5,9 @@ import { getCustomers } from "@/modules/customers/data/customerRepository";
 import { getProducts } from "@/modules/products/data/productRepository";
 import { getExpenses } from "@/modules/invoices/data/expenseRepository";
 import { useAuth } from "@/shared/hooks/useAuth";
-import React, { useEffect, useRef } from "react";
+import React, { useEffect, useRef, useMemo } from "react";
 import { useBusinessProfile } from "@/shared/context/BusinessProfileContext";
+import { matchConnectedClients, createConnectedClientsMap } from "@/shared/lib/client-connection-matcher";
 
 // Custom hook for prefetching and caching global data
 export function useGlobalData(selectedPeriod?: string, fetchAllInvoices?: boolean) {
@@ -145,6 +146,24 @@ export function useGlobalData(selectedPeriod?: string, fetchAllInvoices?: boolea
   // We're completely disabling automatic refetching on visibility change
   // Data will only be refreshed when explicitly requested or when a mutation occurs
 
+  // Compute connected clients (customers who are also users of the app)
+  // This matches customers with business profiles via tax_id (NIP)
+  const connectedClients = useMemo(() => {
+    const customers = customersQuery.data || [];
+    const businessProfiles = businessProfilesQuery.data || [];
+    
+    if (customers.length === 0 || businessProfiles.length === 0) {
+      return [];
+    }
+    
+    return matchConnectedClients(customers, businessProfiles);
+  }, [customersQuery.data, businessProfilesQuery.data]);
+
+  // Create fast lookup map for connected clients
+  const connectedClientsMap = useMemo(() => {
+    return createConnectedClientsMap(connectedClients);
+  }, [connectedClients]);
+
   return {
     invoices: {
       data: invoicesQuery.data || [],
@@ -171,6 +190,9 @@ export function useGlobalData(selectedPeriod?: string, fetchAllInvoices?: boolea
       isLoading: expensesQuery.isLoading,
       error: expensesQuery.error,
     },
+    // Connected clients - customers who are also users (matched via tax_id)
+    connectedClients,
+    connectedClientsMap,
     refreshAllData,
     isLoading: 
       invoicesQuery.isLoading || 

@@ -12,7 +12,8 @@ import {
   FilePlus,
   DollarSign,
   FileText,
-  History
+  History,
+  MessageSquare
 } from 'lucide-react';
 import { formatCurrency } from '@/shared/lib/invoice-utils';
 import { cn } from '@/shared/lib/utils';
@@ -45,6 +46,7 @@ interface InvoiceControlHeaderProps {
   onTogglePaid?: () => void;
   onPost?: () => void;
   onHistory?: () => void;
+  onDiscussion?: () => void;
   isOwner?: boolean;
   showActions?: boolean;
 }
@@ -92,6 +94,7 @@ export const InvoiceControlHeader: React.FC<InvoiceControlHeaderProps> = ({
   onTogglePaid,
   onPost,
   onHistory,
+  onDiscussion,
   isOwner,
   showActions = true,
 }) => {
@@ -223,6 +226,12 @@ export const InvoiceControlHeader: React.FC<InvoiceControlHeaderProps> = ({
                       }}>
                         <History className="h-4 w-4 mr-2" />
                         Historia / Audit trail
+                      </DropdownMenuItem>
+                    )}
+                    {onDiscussion && (
+                      <DropdownMenuItem onClick={onDiscussion}>
+                        <MessageSquare className="h-4 w-4 mr-2" />
+                        Dyskusja z kontrahentem
                       </DropdownMenuItem>
                     )}
                     {onHistory && <DropdownMenuSeparator />}

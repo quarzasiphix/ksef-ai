@@ -45,7 +45,9 @@ import { getCashAccounts } from '@/modules/accounting/data/kasaRepository';
 import { useEffect, useRef } from 'react';
 import { BankAccount } from '@/modules/banking/bank';
 import type { CashAccount } from '@/modules/accounting/kasa';
-import { DiscussionPanel } from "@/modules/invoices/components/discussion/DiscussionPanel";
+import { DiscussionButton } from "@/modules/invoices/components/discussion/DiscussionButton";
+import { DiscussionDialog } from "@/modules/invoices/components/discussion/DiscussionDialog";
+import { isCustomerConnected, getConnectedClient } from "@/shared/lib/client-connection-matcher";
 import { Wallet } from 'lucide-react';
 import LinkedAccountingEntries from '@/modules/invoices/components/LinkedAccountingEntries';
 import { InvoiceHistoryDialog } from '@/modules/invoices/components/history/InvoiceHistoryDialog';
@@ -83,11 +85,16 @@ const InvoiceDetail: React.FC<InvoiceDetailProps> = ({ type }) => {
   const location = useLocation();
   const { user, isPremium, openPremiumDialog } = useAuth();
   const { profiles: businessProfiles, selectedProfileId } = useBusinessProfile();
-  const { invoices: { data: invoices, isLoading }, refreshAllData } = useGlobalData();
+  const { 
+    invoices: { data: invoices, isLoading }, 
+    connectedClientsMap,
+    refreshAllData 
+  } = useGlobalData();
   const [showPDF, setShowPDF] = useState(false);
   const [showShareDialog, setShowShareDialog] = useState(false);
   const [showPostDialog, setShowPostDialog] = useState(false);
   const [showHistory, setShowHistory] = useState(false);
+  const [showDiscussionDialog, setShowDiscussionDialog] = useState(false);
 
   // Debug handler for history
   const handleHistory = () => {
@@ -511,6 +518,10 @@ const InvoiceDetail: React.FC<InvoiceDetailProps> = ({ type }) => {
         onTogglePaid={handleTogglePaid}
         onPost={() => setShowPostDialog(true)}
         onHistory={handleHistory}
+        onDiscussion={(() => {
+          const isClientConnected = isCustomerConnected(invoice.customerId, connectedClientsMap);
+          return isClientConnected ? () => setShowDiscussionDialog(true) : undefined;
+        })()}
         isOwner={isOwner}
       />
 
@@ -527,6 +538,7 @@ const InvoiceDetail: React.FC<InvoiceDetailProps> = ({ type }) => {
         />
       )}
 
+      
       {/* Accounting Details - Collapsible for Accountants */}
       <div className="border border-white/5 rounded-lg overflow-hidden">
         <button
@@ -823,15 +835,21 @@ const InvoiceDetail: React.FC<InvoiceDetailProps> = ({ type }) => {
         businessProfileId={invoice.businessProfileId}
       />
 
-      {/* Discussion Panel - Only show for invoices the user owns */}
-      {invoice.user_id === user?.id && (
-        <div ref={discussionRef} className="scroll-mt-24">
-          <DiscussionPanel 
-            invoiceId={invoice.id} 
-            invoiceNumber={invoice.number} 
+      {/* Discussion - Only show if customer is a connected user */}
+      {(() => {
+        const isClientConnected = isCustomerConnected(invoice.customerId, connectedClientsMap);
+        const connectedClient = getConnectedClient(invoice.customerId, connectedClientsMap);
+        
+        return isClientConnected && connectedClient ? (
+          <DiscussionDialog
+            open={showDiscussionDialog}
+            onOpenChange={setShowDiscussionDialog}
+            invoiceId={invoice.id}
+            invoiceNumber={invoice.number}
+            connectedClient={connectedClient}
           />
-        </div>
-      )}
+        ) : null;
+      })()}
       </div>
 
       {/* Right sidebar - Financial Threads Panel */}

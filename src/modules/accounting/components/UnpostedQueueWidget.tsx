@@ -7,6 +7,7 @@ import { AutoPostingButton } from './AutoPostingButton';
 import { supabase } from '@/integrations/supabase/client';
 import { format } from 'date-fns';
 import { pl } from 'date-fns/locale';
+import { useAccountingPeriod } from '../hooks/useAccountingPeriod';
 import type { PeriodKey } from '../hooks/useAccountingPeriod';
 
 interface UnpostedInvoice {
@@ -20,22 +21,25 @@ interface UnpostedInvoice {
 
 interface UnpostedQueueWidgetProps {
   businessProfileId: string;
-  period: PeriodKey;
   onNavigateToInvoice?: (invoiceId: string) => void;
 }
 
-export function UnpostedQueueWidget({ businessProfileId, period, onNavigateToInvoice }: UnpostedQueueWidgetProps) {
+export function UnpostedQueueWidget({ businessProfileId, onNavigateToInvoice }: UnpostedQueueWidgetProps) {
   const [unpostedInvoices, setUnpostedInvoices] = useState<UnpostedInvoice[]>([]);
   const [loading, setLoading] = useState(true);
   const [expanded, setExpanded] = useState(false);
+  
+  // Get current period from hook
+  const { period } = useAccountingPeriod();
+  const periodKey = period.key;
 
   // Calculate period boundaries for date filtering
-  const periodStart = new Date(period.year, period.month - 1, 1);
-  const periodEnd = new Date(period.year, period.month, 0, 23, 59, 59);
+  const periodStart = new Date(periodKey.year, periodKey.month - 1, 1);
+  const periodEnd = new Date(periodKey.year, periodKey.month, 0, 23, 59, 59);
 
   useEffect(() => {
     loadUnpostedInvoices();
-  }, [businessProfileId, period.year, period.month]);
+  }, [businessProfileId, periodKey.year, periodKey.month]);
 
   const loadUnpostedInvoices = async () => {
     setLoading(true);
@@ -116,7 +120,7 @@ export function UnpostedQueueWidget({ businessProfileId, period, onNavigateToInv
               Niezaksięgowane dokumenty
             </CardTitle>
             <CardDescription>
-              {unpostedInvoices.length} {unpostedInvoices.length === 1 ? 'dokument' : unpostedInvoices.length < 5 ? 'dokumenty' : 'dokumentów'} w okresie {format(new Date(period.year, period.month - 1), 'MMMM yyyy', { locale: pl })}
+              {unpostedInvoices.length} {unpostedInvoices.length === 1 ? 'dokument' : unpostedInvoices.length < 5 ? 'dokumenty' : 'dokumentów'} w okresie {format(new Date(periodKey.year, periodKey.month - 1), 'MMMM yyyy', { locale: pl })}
             </CardDescription>
           </div>
           <Button
