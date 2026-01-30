@@ -11,7 +11,7 @@ import { Badge } from "@/shared/ui/badge";
 import PremiumCheckoutModal from "@/modules/premium/components/PremiumCheckoutModal";
 import PremiumSuccessMessage from "@/modules/premium/components/PremiumSuccessMessage";
 import SupportFooter from "@/components/layout/SupportFooter";
-import { useHeartbeat } from "@/shared/hooks/useHeartbeat";
+// import { useHeartbeat } from "@/shared/hooks/useHeartbeat"; // Disabled - duplicate socket connection
 import AccountOnboardingWidget from '@/modules/onboarding/components/welcome/AccountOnboardingWidget';
 import { useQuery } from "@tanstack/react-query";
 import { getBusinessProfiles } from "@/modules/settings/data/businessProfileRepository";
@@ -51,18 +51,20 @@ const SettingsMenu = () => {
   }, [searchParams, setSearchParams]);
 
   // Heartbeat: show success only on transition from false to true
-  useHeartbeat({
-    onStatus: (status) => {
-      if (lastPremium.current === null) {
-        lastPremium.current = status.premium;
-        return;
-      }
-      if (lastPremium.current === false && status.premium === true) {
-        setShowSuccessModal(true);
-      }
-      lastPremium.current = status.premium;
-    }
-  });
+  // DISABLED - Using PremiumSyncService instead to avoid duplicate socket connections
+  // useHeartbeat({
+  //   onStatus: (status) => {
+  //     if (lastPremium.current === null) {
+  //       lastPremium.current = status.premium;
+  //       if (status.premium) {
+  //         setShowPremiumModal(true);
+  //       }
+  //     } else if (!lastPremium.current && status.premium) {
+  //       setShowPremiumModal(true);
+  //     }
+  //     lastPremium.current = status.premium;
+  //   },
+  // });
 
   React.useEffect(() => {
     const invoices = (window as any).__INVOICES__ || [];

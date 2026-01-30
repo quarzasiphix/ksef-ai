@@ -72,6 +72,8 @@ const EwidencjaPrzychodow = React.lazy(() => import('@/modules/accounting/screen
 const KpirPage = React.lazy(() => import('@/modules/accounting/screens/KpirPage'));
 const VatPage = React.lazy(() => import('@/modules/accounting/screens/VatPage'));
 const PitPage = React.lazy(() => import('@/modules/accounting/screens/PitPage'));
+const ProfitLoss = React.lazy(() => import('@/modules/accounting/screens/ProfitLoss'));
+const VatLedger = React.lazy(() => import('@/modules/accounting/screens/VatLedger'));
 const EventsShell = React.lazy(() => import('@/modules/events/components/EventsShell'));
 const EventsTimeline = React.lazy(() => import('@/modules/events/screens/EventsTimeline'));
 const EventsPosting = React.lazy(() => import('@/modules/events/screens/EventsPosting'));
@@ -582,12 +584,28 @@ export const routes: RouteConfig[] = [
         element: <EventLog />,
       },
       {
+        path: '/accounting/ledger',
+        element: <LedgerPage />,
+      },
+      {
         path: '/accounting/general-ledger',
         element: <GeneralLedger />,
       },
       {
+        path: '/accounting/chart-of-accounts',
+        element: <ChartOfAccounts />,
+      },
+      {
         path: '/accounting/coa',
         element: <ChartOfAccounts />,
+      },
+      {
+        path: '/accounting/profit-loss',
+        element: <ProfitLoss />,
+      },
+      {
+        path: '/accounting/vat-ledger',
+        element: <VatLedger />,
       },
       {
         path: '/accounting/ryczalt-categories',

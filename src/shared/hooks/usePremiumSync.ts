@@ -73,6 +73,27 @@ export function usePremiumSync(): PremiumSyncStatus & {
 
     const initializeSync = async () => {
       try {
+        // Check if service is already running with same parameters
+        const currentStatus = premiumSyncService.getStatus();
+        const currentUserId = premiumSyncService.getCurrentUserId();
+        const currentBusinessId = premiumSyncService.getCurrentBusinessId();
+        
+        // Only restart if:
+        // 1. User or business ID actually changed
+        // 2. Service is not connected
+        // 3. Token is invalid
+        const shouldRestart = currentUserId !== user.id || 
+                              currentBusinessId !== selectedProfileId || 
+                              !currentStatus.isConnected || 
+                              !currentStatus.hasValidToken;
+        
+        if (!shouldRestart) {
+          if (mounted) {
+            updateStatus();
+          }
+          return;
+        }
+        
         await premiumSyncService.startRealtimeSync(user.id, selectedProfileId);
         
         if (mounted) {
@@ -127,7 +148,7 @@ export function usePremiumSync(): PremiumSyncStatus & {
 
   // Periodically update status to keep UI in sync
   useEffect(() => {
-    const interval = setInterval(updateStatus, 5000); // Update every 5 seconds
+    const interval = setInterval(updateStatus, 30000); // Update every 30 seconds (reduced from 5 seconds)
     return () => clearInterval(interval);
   }, [updateStatus]);
 

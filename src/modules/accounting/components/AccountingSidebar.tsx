@@ -137,32 +137,11 @@ const spolkaNavSections: NavSection[] = [
         color: 'text-emerald-500',
       },
       {
-        label: 'Ewidencja VAT',
-        href: '/accounting/vat-ledger',
-        icon: <Calculator className="h-5 w-5" />,
-        description: 'Sprawozdania VAT',
-        color: 'text-violet-500',
-      },
-      {
-        label: 'Bilans',
-        href: '/accounting/balance-sheet',
-        icon: <TrendingUp className="h-5 w-5" />,
-        description: 'Aktywa i pasywa',
-        color: 'text-sky-500',
-      },
-      {
-        label: 'Kapitał',
-        href: '/accounting/capital-events',
-        icon: <DollarSign className="h-5 w-5" />,
-        description: 'Transakcje kapitałowe',
-        color: 'text-emerald-500',
-      },
-      {
-        label: 'Wspólnicy',
-        href: '/accounting/shareholders',
-        icon: <Users className="h-5 w-5" />,
-        description: 'Struktura kapitałowa',
-        color: 'text-violet-500',
+        label: 'Plan kont',
+        href: '/accounting/chart-of-accounts',
+        icon: <FolderOpen className="h-5 w-5" />,
+        description: 'Zarządzaj kontami',
+        color: 'text-amber-500',
       },
     ],
   },
@@ -171,9 +150,9 @@ const spolkaNavSections: NavSection[] = [
     items: [
       {
         label: 'Ewidencja VAT',
-        href: '/accounting/vat',
+        href: '/accounting/vat-ledger',
         icon: <Calculator className="h-5 w-5" />,
-        description: 'Ewidencja VAT',
+        description: 'Sprawozdania VAT',
         color: 'text-violet-500',
       },
       {
@@ -196,10 +175,22 @@ const spolkaNavSections: NavSection[] = [
         color: 'text-sky-500',
       },
       {
-        label: 'Kapitał',
+        label: 'Rachunek zysków i strat',
+        href: '/accounting/profit-loss',
+        icon: <TrendingUp className="h-5 w-5" />,
+        description: 'Przychody i koszty',
+        color: 'text-emerald-500',
+      },
+    ],
+  },
+  {
+    title: 'KAPITAŁ',
+    items: [
+      {
+        label: 'Zdarzenia kapitałowe',
         href: '/accounting/capital-events',
         icon: <DollarSign className="h-5 w-5" />,
-        description: 'Transakcje kapitałowe',
+        description: 'Dopłaty i wypłaty',
         color: 'text-emerald-500',
       },
       {
@@ -304,7 +295,20 @@ export const AccountingSidebar: React.FC<AccountingSidebarProps> = ({
         }).filter(Boolean) as NavItem[]
       }));
     }
-    return spolkaNavSections;
+    
+    // For Spółka: filter based on VAT status
+    const isZwolnionyVat = selectedProfile?.is_vat_exempt === true;
+    
+    return spolkaNavSections.map(section => ({
+      ...section,
+      items: section.items.filter(item => {
+        // Hide Ewidencja VAT for zwolniony VAT entities
+        if (isZwolnionyVat && item.href === '/accounting/vat-ledger') {
+          return false;
+        }
+        return true;
+      })
+    })).filter(section => section.items.length > 0); // Remove empty sections
   };
   
   const navSections = getFilteredNavSections();

@@ -32,13 +32,15 @@ class PremiumSyncService {
   private verificationInProgress = false;
   private autoRefreshInterval: number | null = null;
   private reconnectAttempts = 0;
-  private maxReconnectAttempts = 5;
+  private lastForceVerifyTime = 0; // Track last force verify to prevent spam
+  private globalVerificationLock = false; // Global lock to prevent multiple simultaneous verifications
   
   // Configuration
   private readonly TOKEN_EXPIRY_MS = 5 * 60 * 1000; // 5 minutes
   private readonly TOKEN_REFRESH_THRESHOLD_MS = 1 * 60 * 1000; // Refresh 1 min before expiry
-  private readonly RECONNECT_DELAY_MS = 5000;
-  private readonly AUTO_VERIFY_INTERVAL_MS = 30 * 1000; // Re-verify every 30 seconds
+  private readonly RECONNECT_DELAY_MS = 10000; // Increased from 5000ms to 10000ms
+  private readonly AUTO_VERIFY_INTERVAL_MS = 5 * 60 * 1000; // Re-verify every 5 minutes (increased from 2 minutes)
+  private readonly MAX_RECONNECT_ATTEMPTS = 3; // Reduced from 5 to 3
   
   // Debug flag - set to false to reduce console spam
   private readonly DEBUG = false;
@@ -48,6 +50,12 @@ class PremiumSyncService {
    */
   async startRealtimeSync(userId: string, businessId: string): Promise<void> {
     if (this.DEBUG) console.log('[PremiumSync] Starting real-time sync', { userId, businessId });
+    
+    // Check if already running with same parameters
+    if (this.currentUserId === userId && this.currentBusinessId === businessId && this.subscription) {
+      if (this.DEBUG) console.log('[PremiumSync] Already running with same parameters, skipping');
+      return;
+    }
     
     // Clean up existing subscription
     if (this.subscription) {
@@ -114,17 +122,21 @@ class PremiumSyncService {
   }
 
   /**
-   * Verify premium access with server and get encrypted token
+   * Verify premium access with server
    */
-  async verifyPremiumAccess(): Promise<boolean> {
-    if (this.verificationInProgress) {
-      if (this.DEBUG) console.log('[PremiumSync] Verification already in progress');
-      return false;
+  private async verifyPremiumAccess(): Promise<boolean> {
+    // Global lock to prevent multiple simultaneous verifications
+    if (this.globalVerificationLock) {
+      if (this.DEBUG) console.log('[PremiumSync] Verification already in progress, skipping');
+      return this.hasPremiumAccess();
     }
 
-    // Check if current token is still valid
+    this.globalVerificationLock = true;
+    
+    // Early return if token is still valid
     if (this.isTokenValid()) {
-      if (this.DEBUG) console.log('[PremiumSync] Token still valid');
+      if (this.DEBUG) console.log('[PremiumSync] Token still valid, skipping verification');
+      this.globalVerificationLock = false; // Release lock immediately
       return true;
     }
 
@@ -179,6 +191,7 @@ class PremiumSyncService {
       return false;
     } finally {
       this.verificationInProgress = false;
+      this.globalVerificationLock = false; // Release global lock
     }
   }
 
@@ -241,7 +254,7 @@ class PremiumSyncService {
   private async handleDisconnect(): Promise<void> {
     if (this.DEBUG) console.warn('[PremiumSync] Disconnected from real-time subscription');
     
-    if (this.reconnectAttempts >= this.maxReconnectAttempts) {
+    if (this.reconnectAttempts >= this.MAX_RECONNECT_ATTEMPTS) {
       if (this.DEBUG) console.error('[PremiumSync] Max reconnect attempts reached');
       this.notifyListeners(false, 'free');
       return;
@@ -323,6 +336,14 @@ class PremiumSyncService {
    * Force immediate verification (useful for testing or manual refresh)
    */
   async forceVerify(): Promise<boolean> {
+    // Debounce force verify calls to prevent spam
+    const now = Date.now();
+    if (now - this.lastForceVerifyTime < 2000) { // 2 second debounce
+      if (this.DEBUG) console.log('[PremiumSync] ForceVerify debounced, skipping');
+      return this.getStatus().hasValidToken;
+    }
+    
+    this.lastForceVerifyTime = now;
     this.verificationToken = null;
     return await this.verifyPremiumAccess();
   }
@@ -337,11 +358,26 @@ class PremiumSyncService {
     tokenExpiry: Date | null;
   } {
     return {
-      isConnected: this.subscription?.state === 'joined',
-      hasValidToken: this.isTokenValid(),
-      tier: this.getTier(),
-      tokenExpiry: this.verificationToken ? new Date(this.verificationToken.expiry) : null
+      isConnected: !!this.subscription,
+      hasValidToken: !!this.verificationToken && 
+        new Date() < new Date(this.verificationToken.expiry),
+      tokenExpiry: this.verificationToken?.expiry ? new Date(this.verificationToken.expiry) : null,
+      tier: this.verificationToken?.tier || 'free',
     };
+  }
+
+  /**
+   * Get current user ID
+   */
+  getCurrentUserId(): string | null {
+    return this.currentUserId;
+  }
+
+  /**
+   * Get current business ID
+   */
+  getCurrentBusinessId(): string | null {
+    return this.currentBusinessId;
   }
 }
 

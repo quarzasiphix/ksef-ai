@@ -2,6 +2,7 @@ import React, { createContext, useContext, ReactNode, useEffect, useState } from
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { usePremiumSync } from '@/shared/hooks/usePremiumSync';
 import { rpcPremiumService } from '../services/rpcPremiumService';
+import { premiumSyncService } from "@/shared/services/premiumSyncService";
 import { useBusinessProfile } from '@/shared/context/BusinessProfileContext';
 import { useAuth } from '@/shared/hooks/useAuth';
 
@@ -40,41 +41,65 @@ export const PremiumProvider: React.FC<PremiumProviderProps> = ({ children }) =>
     forceVerify 
   } = usePremiumSync();
 
+  // Get sync service status for token validation
+  const syncStatus = premiumSyncService.getStatus();
+
   // Debug business profile changes
   useEffect(() => {
-    // console.log('[PremiumContext] Business profile changed:', { // Disabled to reduce console spam
-    //   selectedProfileId,
-    //   userId: user?.id
-    // });
-    
-    // Invalidate premium cache when business profile changes
+    // Only invalidate premium cache when business profile actually changes (not just re-renders)
     if (selectedProfileId) {
-      queryClient.invalidateQueries({ queryKey: ['fallback-premium'] });
-      queryClient.invalidateQueries({ queryKey: ['premium-sync'] });
+      // Check if this is a genuine profile change that affects premium status
+      const currentStatus = premiumSyncService.getStatus();
+      const currentBusinessId = premiumSyncService.getCurrentBusinessId();
       
-      // Force verify premium status for new business profile
-      setTimeout(() => {
-        // console.log('[PremiumContext] Force verifying premium for new business profile'); // Disabled to reduce console spam
-        forceVerify();
-      }, 100);
+      // Only re-verify if:
+      // 1. No current business ID (first load)
+      // 2. Business profile actually changed
+      // 3. Current token is invalid or expired
+      const shouldReverify = !currentBusinessId || 
+                             currentBusinessId !== selectedProfileId || 
+                             !currentStatus.hasValidToken;
+      
+      if (!shouldReverify) {
+        // Skip if premium is still valid for the new profile
+        return;
+      }
+      
+      // Debounce the invalidation to prevent spam
+      const timeoutId = setTimeout(() => {
+        queryClient.invalidateQueries({ queryKey: ['fallback-premium'] });
+        queryClient.invalidateQueries({ queryKey: ['premium-sync'] });
+        
+        // Force verify premium status for new business profile (but only if token is invalid)
+        setTimeout(() => {
+          // Only force verify if we don't have a valid token
+          if (!token || !syncStatus.hasValidToken) {
+            forceVerify();
+          }
+        }, 1000); // Further increased timeout
+      }, 500); // Increased debounce to 500ms
+      
+      return () => clearTimeout(timeoutId);
     }
-  }, [selectedProfileId, user?.id, queryClient, forceVerify]);
+  }, [selectedProfileId, user?.id, queryClient, forceVerify, token, syncStatus.hasValidToken]);
+
+  // Determine which data source to use
+  const useSyncData = !syncLoading && (syncActive || lastVerified);
 
   // Fallback RPC query when sync service is not ready OR for business-specific checks
   const { data: rpcData, isLoading: rpcLoading } = useQuery({
     queryKey: ['fallback-premium', selectedProfileId, user?.id],
     queryFn: async () => {
       if (!user || !selectedProfileId) return null;
-      // console.log('[PremiumContext] Fallback RPC call for premium check'); // Disabled to reduce console spam
       return rpcPremiumService.getPremiumAccess(user.id, selectedProfileId);
     },
-    enabled: !!user && !!selectedProfileId, // Always run when user and business are available
-    staleTime: 0,
-    gcTime: 0,
+    enabled: !!user && !!selectedProfileId && !useSyncData && !token, // Only run when sync data is not available AND no token
+    staleTime: 60000, // Cache for 1 minute to further reduce spam
+    gcTime: 120000, // Keep in cache for 2 minutes
+    refetchOnWindowFocus: false, // Don't refetch on window focus
+    refetchOnReconnect: false, // Don't refetch on reconnect
   });
 
-  // Determine which data source to use
-  const useSyncData = !syncLoading && (syncActive || lastVerified);
   const isLoading = syncLoading || (rpcLoading && !useSyncData);
   
   // Determine if user has user-level premium (enterprise or user tier)
