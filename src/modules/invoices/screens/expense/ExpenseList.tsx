@@ -90,7 +90,9 @@ export default function ExpenseList() {
       // Period filtering (mobile)
       let matchesPeriod = true;
       if (selectedYear !== null) {
-        const expenseDate = new Date(expense.issueDate);
+        // Use issue_date for expenses
+        const dateString = expense.date || expense.issueDate;
+        const expenseDate = new Date(dateString);
         const expenseYear = expenseDate.getFullYear();
         const expenseMonth = expenseDate.getMonth() + 1;
         

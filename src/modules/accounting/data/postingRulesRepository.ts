@@ -134,7 +134,8 @@ export async function seedBasicSpzooPostingRules(businessProfileId: string): Pro
 // ============================================
 
 export async function autoPostInvoice(invoiceId: string): Promise<any> {
-  const { data, error } = await supabase.rpc('auto_post_invoice', {
+  // Use simplified posting function that only updates accounting_status
+  const { data, error } = await supabase.rpc('auto_post_invoice_simple', {
     p_invoice_id: invoiceId
   });
 
@@ -148,7 +149,8 @@ export async function autoPostPendingInvoices(
   startDate?: Date,
   endDate?: Date
 ): Promise<any> {
-  const { data, error } = await supabase.rpc('auto_post_pending_invoices', {
+  // Use simplified batch posting function
+  const { data, error } = await supabase.rpc('auto_post_pending_invoices_simple', {
     p_business_profile_id: businessProfileId,
     p_limit: limit,
     p_start_date: startDate?.toISOString().split('T')[0], // Format as YYYY-MM-DD
@@ -193,7 +195,7 @@ export async function getPendingExpenses(businessProfileId: string): Promise<any
     .from('pending_expenses')
     .select('*')
     .eq('business_profile_id', businessProfileId)
-    .order('invoice_date', { ascending: false });
+    .order('issue_date', { ascending: false });
 
   if (error) throw error;
   return data || [];

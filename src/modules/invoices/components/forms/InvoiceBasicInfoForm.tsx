@@ -65,10 +65,12 @@ export const InvoiceBasicInfoForm: React.FC<InvoiceBasicInfoFormProps> = ({
   const [isLoadingAccounts, setIsLoadingAccounts] = useState(false);
 
   // Determine if ryczałt selection should be shown (optional)
+  const isSpolka = profileEntityType === 'sp_zoo' || profileEntityType === 'sa';
   const isJdgRyczaltIncome = 
     profileEntityType === 'dzialalnosc' && 
     profileTaxType === 'ryczalt' && 
-    transactionType === TransactionType.INCOME;
+    transactionType === TransactionType.INCOME &&
+    !isSpolka;
 
   // Fetch ryczałt categories when needed
   useEffect(() => {

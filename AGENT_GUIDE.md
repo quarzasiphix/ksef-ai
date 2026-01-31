@@ -1,16 +1,32 @@
 # ksef-ai Agent Guide
 
+## 🚨 CRITICAL: MCP SUPABASE TOOLS REQUIRED
+
+**NEVER make backend changes without using MCP Supabase tools first!**
+
+**MANDATORY WORKFLOW**:
+1. **ALWAYS** use `mcp1_list_tables` to see current database structure
+2. **ALWAYS** use `mcp1_execute_sql` to examine table schemas before changes  
+3. **ALWAYS** validate assumptions with actual database queries
+4. **ALWAYS** use `mcp1_apply_migration` for schema changes - NEVER create migration files manually
+5. **ALWAYS** generate migration file after successful MCP migration for version control
+6. **NEVER** guess column names, data types, or table structures
+
+**FAILURE TO FOLLOW THIS RULE WILL CAUSE DATA CORRUPTION AND DEPLOYMENT FAILURES**
+
+**🚨 THIS IS AGENT RULES ONLY - NO DEV LOGS OR CODE EXAMPLES**
+- These rules are for AI agents working on this project
+- Do not write development logs, progress updates, or implementation notes IN HERE
+- This file is for rules, patterns, and constraints only
+- New agents should load this and start working immediately
+
+---
+
 ## Application Overview
 
 **Name**: ksef-ai (KsięgaI Accounting Application)  
-**URL**: `app.ksiegai.pl`  
 **Tech Stack**: React 18 + Vite + TypeScript + TanStack Query + Supabase  
-**Purpose**: Full-featured Polish accounting system with KSeF e-invoicing integration
-
-**User Personas**:
-- Polish business owners (JDG, sp. z o.o., SA)
-- Accountants managing multiple clients
-- Power users requiring advanced tax compliance
+**Purpose**: Polish accounting system with KSeF e-invoicing integration
 
 ---
 
@@ -26,568 +42,62 @@
 ### Non-Negotiables:
 - **Correctness > Speed**: Accounting errors have legal/financial consequences
 - **KSeF Test Mode**: Default to test environment unless explicitly production
-- **Supabase MCP**: ALWAYS use MCP tools for backend queries
+- **Supabase MCP**: ALWAYS use MCP tools for backend queries and schema changes - NEVER guess
+- **Schema Verification**: ALWAYS check database structure with MCP before any backend changes
 - **Reference Validation**: Check `z-all-ksef-repos/` for KSeF patterns
 
 ---
 
 ## Project Structure
 
-```
-ksef-ai/
-├── src/
-│   ├── App.tsx                    # Main app entry, provider hierarchy
-│   ├── main.tsx                   # Vite entry point
-│   ├── components/                # Shared components (legacy, being migrated)
-│   ├── data/                      # Static data, constants
-│   ├── integrations/
-│   │   ├── supabase/              # Auto-generated Supabase client
-│   │   └── ksef/                  # KSeF integration helpers
-│   ├── modules/                   # Feature modules (primary structure)
-│   │   ├── accounting/            # Księgowość (ledger, balance sheet, etc.)
-│   │   ├── auth/                  # Authentication screens
-│   │   ├── banking/               # Bank accounts
-│   │   ├── contracts/             # Contracts (legacy, migrating to documents)
-│   │   ├── customers/             # Kontrahenci (business partners)
-│   │   ├── decisions/             # Company decisions (governance)
-│   │   ├── documents/             # Document management system
-│   │   ├── employees/             # HR, labour hours
-│   │   ├── events/                # Event-driven accounting system
-│   │   ├── inbox/                 # Business inbox, discussions
-│   │   ├── invoices/              # Invoice management (income/expense)
-│   │   ├── ksef/                  # KSeF screens
-│   │   ├── onboarding/            # User onboarding flow
-│   │   ├── operations/            # Operations module (transport, funeral, etc.)
-│   │   ├── premium/               # Premium subscription
-│   │   ├── products/              # Product/service catalog
-│   │   ├── projects/              # Departments/projects
-│   │   ├── settings/              # Settings screens
-│   │   └── spolka/                # Sp. z o.o. specific features
-│   ├── pages/                     # Page components, routing
-│   │   └── routing/               # Route renderer, guards
-│   ├── services/                  # Legacy services (being migrated to shared)
-│   ├── shared/                    # Shared utilities (preferred location)
-│   │   ├── components/            # Reusable components
-│   │   ├── config/                # Configuration files
-│   │   │   ├── routes.tsx         # ⭐ CENTRALIZED ROUTE CONFIG
-│   │   │   └── domains.ts         # Domain configuration
-│   │   ├── context/               # React contexts
-│   │   │   ├── AuthContext.tsx    # ⭐ Auth state, premium status
-│   │   │   ├── BusinessProfileContext.tsx
-│   │   │   ├── DepartmentContext.tsx
-│   │   │   └── WorkspaceTabsContext.tsx
-│   │   ├── hooks/                 # Custom React hooks
-│   │   ├── lib/                   # Utility libraries
-│   │   │   ├── queryClient.ts     # TanStack Query config
-│   │   │   ├── queryPersistence.ts # Cache persistence
-│   │   │   ├── auth-utils.ts      # Auth helpers
-│   │   │   └── crossDomainAuth.ts # Cross-domain token flow
-│   │   ├── services/              # ⭐ Service layer (business logic)
-│   │   │   ├── ksef/              # ⭐ KSeF integration services
-│   │   │   ├── emailService.ts
-│   │   │   ├── storageService.ts
-│   │   │   └── syncManager.ts
-│   │   ├── types/                 # TypeScript types
-│   │   │   ├── supabase.ts        # Auto-generated Supabase types
-│   │   │   └── common.ts          # Shared types
-│   │   ├── ui/                    # shadcn/ui components
-│   │   └── utils/                 # Utility functions
-│   └── vite-env.d.ts
-├── docs/                          # Documentation
-│   ├── ksef/                      # ⭐ KSeF documentation
-│   │   ├── official-docs/         # Official KSeF docs
-│   │   └── dev-logs/              # Development logs
-│   └── *.md                       # Feature documentation
-├── supabase/                      # Supabase config (if local dev)
-├── package.json
-├── vite.config.ts
-├── tsconfig.json
-└── tailwind.config.js
-```
+**Key Modules**:
+- `src/modules/accounting/` - Accounting features, ledger, balance sheet
+- `src/modules/invoices/` - Invoice management (income/expense)
+- `src/modules/ksef/` - KSeF integration UI and services
+- `src/modules/customers/` - Business partners (kontrahenci)
+- `src/shared/` - Reusable components, utilities, context
+
+**Important Files**:
+- `src/shared/config/routes.tsx` - Centralized route configuration
+- `src/shared/context/AuthContext.tsx` - Auth and premium state
+- `src/shared/context/BusinessProfileContext.tsx` - Active profile management
 
 ---
 
-## Routing Architecture
+## Routing Rules
 
-### Centralized Route Configuration
-
-**File**: `@/src/shared/config/routes.tsx`
-
-**Pattern**: Declarative route config with metadata for nav generation
-
-```typescript
-export interface RouteConfig {
-  path: string;
-  element?: React.ReactNode;
-  guard?: 'public' | 'protected' | 'premium' | 'onboarding';
-  children?: RouteConfig[];
-  title?: string;        // For nav generation
-  icon?: string;         // Lucide icon name
-  section?: string;      // Nav section grouping
-  hideInNav?: boolean;   // Hide from sidebar
-}
-
-export const routes: RouteConfig[] = [
-  {
-    path: '/dashboard',
-    element: <Dashboard />,
-    guard: 'protected',
-    title: 'Dashboard',
-    icon: 'LayoutDashboard',
-    section: 'main',
-  },
-  // ... more routes
-];
-```
-
-**Route Guards**:
-- `public` - No authentication required
-- `protected` - Requires authenticated user
-- `premium` - Requires premium subscription
-- `onboarding` - Onboarding flow only
-
-**Route Renderer**: `@/src/pages/routing/RouteRenderer.tsx`
-- Generates React Router routes from config
-- Applies guards via `AppGate` component
-- Handles lazy loading with Suspense
-- Manages returnTo logic for auth redirects
-
-### Adding a New Route
-
-1. Add to `routes` array in `@/src/shared/config/routes.tsx`
-2. Create lazy-loaded component import at top of file
-3. Specify guard, title, icon, section
-4. Route automatically appears in sidebar (unless `hideInNav: true`)
-
-**Example**:
-```typescript
-// At top of routes.tsx
-const MyNewPage = React.lazy(() => import('@/modules/mymodule/screens/MyNewPage'));
-
-// In routes array
-{
-  path: '/my-new-feature',
-  element: <MyNewPage />,
-  guard: 'protected',
-  title: 'My Feature',
-  icon: 'Sparkles',
-  section: 'main',
-}
-```
-
-### Deep Links & Navigation
-
-**Programmatic Navigation**:
-```typescript
-import { useNavigate } from 'react-router-dom';
-
-const navigate = useNavigate();
-navigate('/invoices/123');
-```
-
-**Link Components**:
-```typescript
-import { Link } from 'react-router-dom';
-
-<Link to="/customers/456">View Customer</Link>
-```
-
-**Auth Redirects**:
-- Unauthenticated users → `ksiegai.pl/auth/login?returnTo=<current_path>`
-- After login → redirected back to original path
-- Cross-domain token flow handles session transfer
+- **Centralized Config**: All routes in `src/shared/config/routes.tsx`
+- **Lazy Loading**: Use `React.lazy()` for all route components
+- **Route Guards**: `public`, `protected`, `premium`, `onboarding`
+- **Navigation**: Routes auto-appear in sidebar unless `hideInNav: true`
 
 ---
 
-## State Management
+## State Management Rules
 
-### TanStack Query (React Query)
+**TanStack Query**: All server state via React Query
+- **Query Client**: `@/src/shared/lib/queryClient.ts`
+- **Cache Persistence**: Queries persist to localStorage automatically
+- **Pattern**: Repository functions + custom hooks
 
-**Primary data fetching pattern**. All server state managed via React Query.
+**React Context**:
+- **AuthContext**: User auth and premium status
+- **BusinessProfileContext**: Active business profile
+- **DepartmentContext**: Operations module departments
 
-**Query Client**: `@/src/shared/lib/queryClient.ts`
-
-**Common Patterns**:
-
-**1. Fetching Data**:
+**Data Access Pattern**:
 ```typescript
-import { useQuery } from '@tanstack/react-query';
-import { supabase } from '@/integrations/supabase/client';
-
-export const useInvoices = (businessProfileId: string) => {
-  return useQuery({
-    queryKey: ['invoices', businessProfileId],
-    queryFn: async () => {
-      const { data, error } = await supabase
-        .from('invoices')
-        .select('*')
-        .eq('business_profile_id', businessProfileId)
-        .order('issue_date', { ascending: false });
-      
-      if (error) throw error;
-      return data;
-    },
-    enabled: !!businessProfileId,
-  });
-};
-```
-
-**2. Mutations**:
-```typescript
-import { useMutation, useQueryClient } from '@tanstack/react-query';
-
-export const useCreateInvoice = () => {
-  const queryClient = useQueryClient();
-  
-  return useMutation({
-    mutationFn: async (invoice: NewInvoice) => {
-      const { data, error } = await supabase
-        .from('invoices')
-        .insert(invoice)
-        .select()
-        .single();
-      
-      if (error) throw error;
-      return data;
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['invoices'] });
-    },
-  });
-};
-```
-
-**3. Optimistic Updates**:
-```typescript
-const mutation = useMutation({
-  mutationFn: updateInvoice,
-  onMutate: async (newData) => {
-    await queryClient.cancelQueries({ queryKey: ['invoice', id] });
-    const previous = queryClient.getQueryData(['invoice', id]);
-    queryClient.setQueryData(['invoice', id], newData);
-    return { previous };
-  },
-  onError: (err, newData, context) => {
-    queryClient.setQueryData(['invoice', id], context.previous);
-  },
-  onSettled: () => {
-    queryClient.invalidateQueries({ queryKey: ['invoice', id] });
-  },
-});
-```
-
-**Cache Persistence** (Unique Feature):
-- `@/src/shared/lib/queryPersistence.ts`
-- Saves query cache to localStorage
-- Restores on app load for instant UI
-- Configured queries persist automatically
-
-### React Context
-
-**Provider Hierarchy** (from `@/src/App.tsx`):
-```
-ThemeProvider (dark mode)
-└── QueryClientProvider (TanStack Query)
-    └── TooltipProvider (Radix UI)
-        └── Router (React Router)
-            └── AuthProvider ⭐
-                └── DepartmentProvider
-                    └── BusinessProfileProvider ⭐
-                        └── WorkspaceTabsProvider
-```
-
-**Key Contexts**:
-
-**1. AuthContext** (`@/src/shared/context/AuthContext.tsx`):
-```typescript
-interface AuthContextType {
-  user: User | null;
-  isLoading: boolean;
-  isPremium: boolean;
-  setIsPremium: (value: boolean) => void;
-  login: (email: string, password: string) => Promise<...>;
-  logout: () => Promise<void>;
-  openPremiumDialog: (planId?: string) => void;
-  signInWithGoogle: () => Promise<void>;
-}
-
-// Usage
-const { user, isPremium, logout } = useAuth();
-```
-
-**2. BusinessProfileContext** (`@/src/shared/context/BusinessProfileContext.tsx`):
-```typescript
-// Manages active business profile selection
-const { activeProfile, setActiveProfile, profiles } = useBusinessProfile();
-```
-
-**3. DepartmentContext** (`@/src/shared/context/DepartmentContext.tsx`):
-```typescript
-// For operations module (transport, funeral, etc.)
-const { activeDepartment, setActiveDepartment } = useDepartment();
-```
-
----
-
-## Module Structure
-
-### Standard Module Pattern
-
-Each module in `src/modules/` follows this structure:
-
-```
-modules/mymodule/
-├── screens/              # Page components
-│   ├── MyList.tsx
-│   ├── MyDetail.tsx
-│   └── MyNew.tsx
-├── components/           # Module-specific components
-│   ├── MyCard.tsx
-│   └── MyForm.tsx
-├── hooks/                # Module-specific hooks
-│   ├── useMyData.ts
-│   └── useMyMutation.ts
-├── data/                 # Data access layer (Supabase queries)
-│   └── MyRepository.ts
-├── types/                # Module-specific types
-│   └── index.ts
-└── utils/                # Module-specific utilities
-    └── helpers.ts
-```
-
-### Key Modules
-
-**invoices/** - Invoice management
-- Screens: `IncomeList`, `ExpenseList`, `NewInvoice`, `EditInvoice`, `InvoiceDetail`
-- Handles both income and expense invoices
-- PDF generation, email sending
-- KSeF integration for sending invoices
-
-**ksef/** - KSeF integration UI
-- Screens: `KsefPage`, `KsefInboxScreen`
-- KSeF status dashboard
-- Invoice sending interface
-- Received invoice management
-
-**accounting/** - Advanced accounting features
-- Screens: `Accounting`, `BalanceSheet`, `GeneralLedger`, `KpirPage`, `VatPage`, `PitPage`
-- Premium-only features
-- Full double-entry bookkeeping
-- Tax report generation
-
-**operations/** - Multi-industry operations module
-- Screens: `OperationsPage`, `JobDetailPage`, `JobsListPage`
-- Department-based (Transport, Funeral, Construction, SaaS)
-- Job/case management with documents, contracts, resources
-- Operational workflow tracking
-
-**documents/** - Document management system
-- Screens: `DocumentsHubRedesigned`, `SectionDocumentsPage`, `DocumentDetailPage`
-- Section-based organization (contracts, financial, operations, audit)
-- Document templates and generation
-- Attachment management
-
-**customers/** - Kontrahenci (business partners)
-- Screens: `CustomerList`, `NewCustomer`, `EditCustomer`, `CustomerDetail`
-- NIP validation
-- Transaction history
-- Integration with invoices
-
-**premium/** - Subscription management
-- Screens: `Premium`, `PremiumPlanDetails`
-- Stripe integration
-- Plan selection and checkout
-- Feature gating
-
----
-
-## KSeF Integration
-
-### Architecture Overview
-
-**KSeF** = Krajowy System e-Faktur (Polish national e-invoicing system)
-
-**Service Layer**: `@/src/shared/services/ksef/`
-
-**Key Services**:
-
-| Service | Purpose |
-|---------|---------|
-| `ksefAuthCoordinator.ts` | Manages auth lifecycle, session coordination |
-| `ksefContextManager.ts` | Session context and state management |
-| `ksefApiClient.ts` | HTTP client with retry/rate limiting |
-| `ksefCryptographyService.ts` | XML signing, encryption |
-| `ksefInvoiceRetrievalService.ts` | Fetch invoices from KSeF |
-| `ksefSyncJob.ts` | Background sync orchestration |
-| `ksefXmlGenerator.ts` | FA_VAT XML generation |
-| `ksefValidator.ts` | Invoice validation before sending |
-| `ksefService.ts` | High-level service facade |
-
-### Configuration
-
-**File**: `@/src/shared/services/ksef/config.ts`
-
-```typescript
-export const KSEF_CONFIGS: Record<KsefEnvironment, KsefConfig> = {
-  test: {
-    environment: 'test',
-    baseUrl: 'https://rncrzxjyffxmfbnxlqtm.supabase.co/functions/v1/ksef-challenge',
-    // ... proxied through Supabase Edge Function to avoid CORS
-  },
-  production: {
-    environment: 'production',
-    baseUrl: 'https://api.ksef.mf.gov.pl/v2',
-    // ... direct to KSeF API
-  },
-};
-```
-
-**Important**: Test environment uses Supabase Edge Function proxy to handle CORS issues.
-
-### Authentication Flow
-
-1. User provides NIP + token from KSeF portal
-2. Token encrypted via `ksefSecretManager.encryptToken()`
-3. Stored in `business_profiles.ksef_token_encrypted`
-4. Session initialized via `ksefAuthCoordinator.initializeSession()`
-5. Session context stored in `ksefContextManager`
-6. All API calls use active session token
-7. Token refresh handled automatically
-
-### Sending Invoices
-
-**Flow**:
-1. User creates invoice in ksef-ai
-2. Validation via `ksefValidator.validateInvoice()`
-3. XML generation via `ksefXmlGenerator.generateFaVat()`
-4. Signing via `ksefCryptographyService.signXml()`
-5. Send via `ksefApiClient.sendInvoice()`
-6. Log operation in `ksef_audit_log`
-7. Store raw XML in `ksef_documents_raw`
-
-**Code Example**:
-```typescript
-import { ksefService } from '@/shared/services/ksef';
-
-const sendToKsef = async (invoice: Invoice) => {
-  try {
-    const result = await ksefService.sendInvoice(
-      invoice,
-      businessProfile,
-      'test' // or 'production'
-    );
-    
-    console.log('KSeF Number:', result.ksefNumber);
-    console.log('Reference:', result.referenceNumber);
-  } catch (error) {
-    console.error('KSeF send failed:', error);
-  }
-};
-```
-
-### Receiving Invoices
-
-**Background Sync**:
-- Orchestrated by `ksefSyncJob.ts`
-- Triggered periodically (via n8n or cron)
-- Fetches new invoices since last sync
-- Stores in `ksef_invoices_received` table
-
-**Manual Fetch**:
-```typescript
-import { ksefInvoiceRetrievalService } from '@/shared/services/ksef';
-
-const fetchInvoices = async () => {
-  const invoices = await ksefInvoiceRetrievalService.fetchInvoices(
-    businessProfileId,
-    { fromDate: '2024-01-01', toDate: '2024-12-31' }
-  );
-  
-  // Process invoices...
-};
-```
-
-### Audit Logging
-
-**All KSeF operations logged** in `ksef_audit_log`:
-- Operation type (send, fetch, auth, etc.)
-- Request/response payloads
-- HTTP status codes
-- Error messages
-- Duration
-- User/business profile context
-
-**Query Example**:
-```typescript
-const { data } = await supabase
-  .from('ksef_audit_log')
-  .select('*')
-  .eq('business_profile_id', profileId)
-  .order('created_at', { ascending: false });
-```
-
-### Reference Validation
-
-**ALWAYS** check `z-all-ksef-repos/` for:
-- Crypto/signing flows (`ksef-client-java/`)
-- Endpoint usage patterns
-- XML structure validation
-- Edge case handling
-
-**Official Docs**: `@/docs/ksef/official-docs/`
-
----
-
-## Data Access Patterns
-
-### Supabase Client
-
-**File**: `@/src/integrations/supabase/client.ts`
-
-```typescript
-import { supabase } from '@/integrations/supabase/client';
-
-// Auto-configured with project URL and anon key
-// TypeScript types auto-generated from database schema
-```
-
-### Standard Query Pattern
-
-**Repository Pattern** (preferred):
-
-```typescript
-// modules/mymodule/data/MyRepository.ts
-import { supabase } from '@/integrations/supabase/client';
-
+// Repository: modules/mymodule/data/MyRepository.ts
 export const fetchMyData = async (businessProfileId: string) => {
   const { data, error } = await supabase
     .from('my_table')
     .select('*')
     .eq('business_profile_id', businessProfileId);
-  
   if (error) throw error;
   return data;
 };
 
-export const createMyRecord = async (record: NewRecord) => {
-  const { data, error } = await supabase
-    .from('my_table')
-    .insert(record)
-    .select()
-    .single();
-  
-  if (error) throw error;
-  return data;
-};
-```
-
-**Hook Pattern** (for React components):
-
-```typescript
-// modules/mymodule/hooks/useMyData.ts
-import { useQuery } from '@tanstack/react-query';
-import { fetchMyData } from '../data/MyRepository';
-
+// Hook: modules/mymodule/hooks/useMyData.ts
 export const useMyData = (businessProfileId: string) => {
   return useQuery({
     queryKey: ['myData', businessProfileId],
@@ -597,13 +107,68 @@ export const useMyData = (businessProfileId: string) => {
 };
 ```
 
-### RLS (Row Level Security)
+---
 
-**All user-facing tables have RLS enabled**.
+## Module Structure
 
-**Standard Policy Pattern**:
+**Standard Pattern**:
+```
+modules/mymodule/
+├── screens/              # Page components
+├── components/           # Module-specific components  
+├── hooks/                # Module-specific hooks
+├── data/                 # Data access layer (Supabase queries)
+├── types/                # Module-specific types
+└── utils/                # Module-specific utilities
+```
+
+**Key Modules**:
+- **invoices/** - Invoice management, PDF generation, KSeF
+- **ksef/** - KSeF integration UI and services
+- **accounting/** - Advanced accounting, premium-only
+- **customers/** - Business partners (kontrahenci)
+- **premium/** - Subscription management
+
+---
+
+## KSeF Integration Rules
+
+**Environment**: Default to test environment unless explicitly production
+**Service Layer**: `@/src/shared/services/ksef/`
+**Authentication**: Token encrypted in `business_profiles.ksef_token_encrypted`
+**Audit**: All operations logged in `ksef_audit_log`
+
+**Key Services**:
+- `ksefAuthCoordinator` - Session management
+- `ksefApiClient` - HTTP client with retry
+- `ksefXmlGenerator` - FA_VAT XML generation
+- `ksefValidator` - Invoice validation
+
+**Reference**: Check `z-all-ksef-repos/` for implementation patterns
+
+---
+
+## Data Access Rules
+
+**Supabase Client**: `@/src/integrations/supabase/client.ts`
+**Pattern**: Repository functions + React Query hooks
+**RLS**: All user-facing tables have Row Level Security enabled
+
+**Standard Query**:
+```typescript
+// Repository: modules/mymodule/data/MyRepository.ts
+export const fetchMyData = async (businessProfileId: string) => {
+  const { data, error } = await supabase
+    .from('my_table')
+    .select('*')
+    .eq('business_profile_id', businessProfileId);
+  if (error) throw error;
+  return data;
+};
+```
+
+**RLS Policy Pattern**:
 ```sql
--- Users see only their own data
 CREATE POLICY "Users see own records"
 ON my_table FOR SELECT
 USING (
@@ -614,779 +179,326 @@ USING (
 );
 ```
 
-**Admin Override**:
-```sql
--- Admins see all data
-CREATE POLICY "Admins see all"
-ON my_table FOR SELECT
-USING (
-  EXISTS (
-    SELECT 1 FROM admin_users 
-    WHERE user_id = auth.uid()
-  )
-);
-```
-
-**Important**: Frontend permissions are NOT a security boundary. Always rely on RLS.
-
 ---
 
 ## Common Tasks
 
-### Adding a New Feature
-
-1. **Identify Module**: Determine which module owns the feature
-2. **Create Components**: Add screens/components in module directory
-3. **Add Route**: Update `@/src/shared/config/routes.tsx`
-4. **Data Layer**: Create repository functions if new queries needed
-5. **Hooks**: Create custom hooks for data fetching
-6. **Types**: Add TypeScript types in module `types/` directory
-7. **Test**: Verify with actual data, not mocks
-
-### Modifying Supabase Schema
-
-**CRITICAL**: Use Supabase MCP tools, never guess schema.
-
-```typescript
-// 1. Apply migration
-mcp0_apply_migration({
-  project_id: 'rncrzxjyffxmfbnxlqtm',
-  name: 'add_my_feature_table',
-  query: `
-    CREATE TABLE my_feature (
-      id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-      business_profile_id UUID REFERENCES business_profiles(id),
-      created_at TIMESTAMPTZ DEFAULT now()
-    );
-    
-    ALTER TABLE my_feature ENABLE ROW LEVEL SECURITY;
-    
-    CREATE POLICY "Users see own" ON my_feature
-    FOR SELECT USING (
-      business_profile_id IN (
-        SELECT id FROM business_profiles WHERE user_id = auth.uid()
-      )
-    );
-  `
-});
-
-// 2. Generate TypeScript types
-mcp0_generate_typescript_types({ project_id: 'rncrzxjyffxmfbnxlqtm' });
-
-// 3. Check for security issues
-mcp0_get_advisors({ project_id: 'rncrzxjyffxmfbnxlqtm', type: 'security' });
-```
-
-### Working with KSeF
-
-1. **Read Official Docs**: `@/docs/ksef/official-docs/`
-2. **Check Reference**: `z-all-ksef-repos/ksef-client-java/`
-3. **Use Test Environment**: Default to `test` unless explicitly told otherwise
-4. **Follow Service Pattern**: Use existing services in `@/src/shared/services/ksef/`
-5. **Log Operations**: All KSeF calls automatically logged in `ksef_audit_log`
-6. **Handle Errors**: KSeF can be unreliable, implement retry logic
-
-### Adding a New Invoice Type
-
-1. Update `TransactionType` enum in `@/src/shared/types/common.ts`
-2. Add validation logic in `@/modules/invoices/utils/validators.ts`
-3. Update PDF generation in `@/modules/invoices/utils/pdfGenerator.ts`
-4. Add KSeF XML generation if applicable
-5. Update invoice list screens to filter by type
-
----
-
-## Environment & Configuration
-
-### Development
-
-```bash
-npm run dev  # Start Vite dev server on http://localhost:5173
-```
-
-### Build
-
-```bash
-npm run build        # Production build
-npm run build:dev    # Development build (with debug info)
-```
-
-### Environment Variables
-
-**Supabase**:
-- URL and key auto-configured in `@/src/integrations/supabase/client.ts`
-- No `.env` file needed for Supabase connection
-
-**KSeF**:
-- Endpoints configured in `@/src/shared/services/ksef/config.ts`
-- Test environment proxied through Supabase Edge Function
-
-**Stripe** (if using):
-- `VITE_STRIPE_PUBLIC_KEY` - Stripe publishable key
-
-### TypeScript Configuration
-
-**File**: `tsconfig.json`
-
-**Path Aliases**:
-```json
-{
-  "compilerOptions": {
-    "paths": {
-      "@/*": ["./src/*"]
-    }
-  }
-}
-```
-
-**Usage**:
-```typescript
-import { supabase } from '@/integrations/supabase/client';
-import { useAuth } from '@/shared/context/AuthContext';
-import { Dashboard } from '@/pages/Dashboard';
-```
-
----
-
-## Testing
-
-### Current Setup
-
-**Framework**: Jest + React Testing Library
-
-**Config**: `jest.config.js`
-
-**Run Tests**:
-```bash
-npm run test        # Run all tests
-npm run test:watch  # Watch mode
-```
-
-### Testing Patterns
-
-**Component Tests**:
-```typescript
-import { render, screen } from '@testing-library/react';
-import { MyComponent } from './MyComponent';
-
-test('renders correctly', () => {
-  render(<MyComponent />);
-  expect(screen.getByText('Hello')).toBeInTheDocument();
-});
-```
-
-**Hook Tests**:
-```typescript
-import { renderHook } from '@testing-library/react';
-import { useMyHook } from './useMyHook';
-
-test('returns correct data', () => {
-  const { result } = renderHook(() => useMyHook());
-  expect(result.current.data).toBeDefined();
-});
-```
-
-**Supabase Mocking**:
-```typescript
-jest.mock('@/integrations/supabase/client', () => ({
-  supabase: {
-    from: jest.fn(() => ({
-      select: jest.fn(() => ({
-        eq: jest.fn(() => Promise.resolve({ data: [], error: null }))
-      }))
-    }))
-  }
-}));
-```
-
----
-
-## Performance Optimization
-
-### Query Caching
-
-**Default Cache Time**: 5 minutes (configurable per query)
-
-**Cache Persistence**:
-- Queries automatically persisted to localStorage
-- Restored on app load for instant UI
-- Configured in `@/src/shared/lib/queryPersistence.ts`
-
-### Code Splitting
-
-**Lazy Loading**:
-- All routes lazy-loaded via `React.lazy()`
-- Suspense boundaries for loading states
-- Automatic code splitting by Vite
-
-**Example**:
-```typescript
-const Dashboard = React.lazy(() => import('@/pages/Dashboard'));
-
-<Suspense fallback={<LoadingSpinner />}>
-  <Dashboard />
-</Suspense>
-```
-
-### Bundle Optimization
-
-**Vite Configuration**:
-- Tree-shaking enabled by default
-- Dynamic imports for large modules
-- CSS code splitting
-
----
-
-## Debugging & Troubleshooting
-
-### Common Issues
-
-**"User not authenticated"**:
-1. Check `AuthContext` - is `user` null?
-2. Verify Supabase session in browser DevTools → Application → Local Storage
-3. Check cross-domain token flow if coming from ksiegai.pl
-4. Verify RLS policies allow access
-
-**"KSeF integration not working"**:
-1. Check environment (test vs production)
-2. Verify token not expired (`ksef_token_expires_at`)
-3. Check `ksef_audit_log` for error details
-4. Validate against reference implementation
-5. Check CORS (test env uses proxy)
-
-**"Data not loading"**:
-1. Check React Query DevTools (enabled in dev mode)
-2. Verify Supabase query in Network tab
-3. Check RLS policies
-4. Verify `business_profile_id` is correct
-5. Check query key for cache issues
-
-### Logging
-
-**Console Logs**:
-- Auth state changes logged in `AuthContext`
-- KSeF operations logged to console + database
-- Query cache operations logged in dev mode
-
-**Supabase Logs**:
-- Use Supabase MCP: `mcp0_get_logs({ project_id, service: 'api' })`
-
-**KSeF Audit Log**:
-```typescript
-const { data } = await supabase
-  .from('ksef_audit_log')
-  .select('*')
-  .order('created_at', { ascending: false })
-  .limit(50);
-```
-
----
-
-## Code Style & Conventions
-
-### File Naming
-
-- **Components**: PascalCase (`MyComponent.tsx`)
-- **Hooks**: camelCase with `use` prefix (`useMyHook.ts`)
-- **Utilities**: camelCase (`myUtil.ts`)
-- **Types**: PascalCase (`MyType.ts` or `index.ts`)
-
-### Import Order
-
-1. React imports
-2. Third-party libraries
-3. Absolute imports (`@/...`)
-4. Relative imports (`./...`)
-5. Types (if separate)
-
-### Component Structure
-
-```typescript
-import React from 'react';
-import { useQuery } from '@tanstack/react-query';
-import { Button } from '@/shared/ui/button';
-import { useAuth } from '@/shared/context/AuthContext';
-
-interface MyComponentProps {
-  id: string;
-}
-
-export const MyComponent: React.FC<MyComponentProps> = ({ id }) => {
-  const { user } = useAuth();
-  const { data, isLoading } = useMyData(id);
-  
-  if (isLoading) return <div>Loading...</div>;
-  
-  return (
-    <div>
-      {/* Component content */}
-    </div>
-  );
-};
-```
-
-### Don't Add Comments Unless Asked
-
-- Code should be self-documenting
-- Only add comments for complex business logic
-- Don't add TODO comments without discussion
-
----
-
-## Integration Points
-
-### With ksiegai-next
-
-**Auth Flow**:
-1. User registers/logs in on `ksiegai.pl`
-2. Cross-domain token set in localStorage
-3. Redirect to `app.ksiegai.pl` with token
-4. ksef-ai validates token and establishes session
-
-**Code**: `@/src/shared/lib/crossDomainAuth.ts`
-
-### With admin-ksiegai
-
-**Shared Data**:
-- `business_profiles` - Admin can view all
-- `invoices` - Admin can view all
-- `ksef_audit_log` - Admin monitors operations
-
-**No Direct Integration**: Communication via Supabase database only
-
-### With n8n
-
-**Automation Triggers**:
-- KSeF background sync (calls `ksefSyncJob.ts` logic)
-- Email sending (uses `emailService.ts`)
-- Scheduled tasks (data cleanup, reminders)
-
-**Integration**: n8n calls Supabase Edge Functions or direct DB access
-
----
-
-## Security Best Practices
-
-### Authentication
-
-- **Never** store tokens in plain text
-- Use `ksefSecretManager` for KSeF token encryption
-- Validate sessions on every protected route
-- Clear auth state on logout
-
-### Data Access
-
-- **Always** filter by `business_profile_id`
-- **Never** trust frontend permissions
-- Rely on RLS for security boundary
-- Validate user input before Supabase queries
-
-### KSeF Integration
-
-- **Default to test environment**
-- Log all operations for audit trail
-- Encrypt tokens at rest
-- Validate XML before sending
-- Handle errors gracefully (don't expose internals)
+**Adding New Feature**:
+1. Identify module or create new one
+2. Add screens/components in module directory
+3. Add route to `@/src/shared/config/routes.tsx`
+4. Create repository functions for data access
+5. Create custom hooks for React components
+6. Add TypeScript types in module `types/` directory
+
+**Working with KSeF**:
+1. Default to test environment
+2. Check reference in `z-all-ksef-repos/`
+3. Use existing services in `@/src/shared/services/ksef/`
+4. All operations auto-logged in `ksef_audit_log`
 
 ---
 
 ## Premium System Rules
 
-### 🚫 NEVER DO - Premium Anti-Patterns
+**🚨 NEVER USE OLD PREMIUM PATTERNS**:
+- ❌ Never use `isPremium` boolean from AuthContext (deprecated)
+- ❌ Never make direct API calls to subscription tables
+- ❌ Never trust client-side premium checks
 
-- **NEVER** use old `isPremium` boolean from AuthContext (deprecated)
-- **NEVER** make direct API calls to `premium_subscriptions` or `enhanced_subscriptions` tables
-- **NEVER** trust client-side premium status checks
-- **NEVER** use stored `is_active` field from database
-- **NEVER** implement premium checks without server verification
-- **NEVER** store premium tokens in localStorage or sessionStorage
-
-### ✅ ALWAYS DO - Premium Best Practices
-
-- **ALWAYS** use `usePremiumSync()` hook for premium status
-- **ALWAYS** let SyncManager handle premium verification (integrated)
-- **ALWAYS** use server-side verification for sensitive operations
-- **ALWAYS** check premium token validity before API calls
-- **ALWAYS** rely on Edge Function `verify-premium-access` for verification
-- **ALWAYS** use `usePremiumFeature(feature)` for specific feature checks
-- **ALWAYS** protect premium routes with `usePremiumRoute()`
-
-### 🔐 Premium Security Architecture
-
-**Multi-Layer Security**:
-1. **Real-Time Sync** - WebSocket monitors subscription changes
-2. **Server Verification** - Edge Function validates and generates tokens
-3. **Token-Based Access** - 5-minute encrypted JWT tokens
-4. **Audit Logging** - All verification attempts tracked
-5. **Database RLS** - Final security layer
+**✅ ALWAYS USE NEW PREMIUM SYSTEM**:
+- ✅ Always use `usePremiumSync()` hook for premium status
+- ✅ Always use server-side verification for sensitive operations
+- ✅ Always use `usePremiumFeature(feature)` for specific features
+- ✅ Always protect premium routes with `usePremiumRoute()`
 
 **Premium Tiers**: `free` | `jdg_premium` | `spolka_premium` | `enterprise`
 
-**Subscription Priority**:
-1. Enterprise Benefits (highest)
-2. Enhanced Subscriptions
-3. Business Profile (legacy)
+---
 
-### 📋 Premium Feature Requirements
+## Security Rules
 
-```typescript
-// Feature access by tier
-FEATURE_TIERS = {
-  'advanced_analytics': ['jdg_premium', 'spolka_premium', 'enterprise'],
-  'unlimited_invoices': ['jdg_premium', 'spolka_premium', 'enterprise'],
-  'ksef_integration': ['jdg_premium', 'spolka_premium', 'enterprise'],
-  'multi_business': ['enterprise'],
-  'api_access': ['enterprise'],
-  'priority_support': ['enterprise'],
-}
-```
+**Authentication**:
+- Never store tokens in plain text
+- Use `ksefSecretManager` for KSeF token encryption
+- Validate sessions on every protected route
 
-### 🎯 Premium Hook Usage
+**Data Access**:
+- Always filter by `business_profile_id`
+- Never trust frontend permissions
+- Rely on RLS for security boundary
 
-**Main Premium Hook**:
-```typescript
-const { isActive, tier, token, isLoading } = usePremiumSync();
-```
-
-**Feature-Specific Hook**:
-```typescript
-const { hasAccess, isLoading } = usePremiumFeature('advanced_analytics');
-```
-
-**Route Protection Hook**:
-```typescript
-const { isAllowed, isLoading } = usePremiumRoute();
-```
-
-**Token Access Hook**:
-```typescript
-const { token, isValid } = usePremiumToken();
-```
-
-### 🚨 Premium Debugging
-
-**Check Status**:
-```typescript
-import { premiumSyncService } from '@/shared/services/premiumSyncService';
-const status = premiumSyncService.getStatus();
-```
-
-**Common Issues**:
-- Token expired → Auto-refreshes, check network
-- WebSocket disconnected → Auto-reconnects (max 5 attempts)
-- Verification failing → Check Edge Function logs
-- Old API calls → Remove direct table queries
-
-### 🔄 Migration Rules
-
-**Replace Old Code**:
-```typescript
-// ❌ OLD - Remove
-const { isPremium } = useAuth();
-
-// ✅ NEW - Use
-const { isActive } = usePremiumSync();
-```
-
-**Remove Direct Queries**:
-```typescript
-// ❌ OLD - Remove
-supabase.from('premium_subscriptions').select('*')
-
-// ✅ NEW - Use hooks
-const { isActive } = usePremiumSync();
-```
-
-### 📊 Premium Monitoring
-
-**Audit Logs**: Check `premium_access_logs` table
-**Edge Function**: Monitor `verify-premium-access` logs
-**Real-Time Status**: Use `premiumSyncService.getStatus()`
-
-### 🚀 Deployment
-
-**Edge Function**: Deployed via MCP tools
-**Secret**: `PREMIUM_TOKEN_SECRET` set via Supabase Dashboard (CLI not available)
-**Database**: `premium_access_logs` table with RLS policies
+**KSeF Integration**:
+- Default to test environment
+- Log all operations for audit trail
+- Handle errors gracefully
 
 ---
 
-## 🚨 **IMPORTANT: CLI Limitations & Manual Setup**
+## Code Style
 
-### **Supabase CLI Not Available**
-- ❌ **CLI commands don't work** in this environment
-- ✅ **Use MCP tools** for all database operations
-- ✅ **Use Supabase Dashboard** for secrets and manual setup
-- ✅ **Manual panel access** required for environment variables
+**File Naming**:
+- Components: PascalCase (`MyComponent.tsx`)
+- Hooks: camelCase with `use` prefix (`useMyHook.ts`)
+- Utilities: camelCase (`myUtil.ts`)
 
-### **Setting Secrets Without CLI**
+**Import Order**:
+1. React imports
+2. Third-party libraries  
+3. Absolute imports (`@/...`)
+4. Relative imports (`./...`)
 
-Since Supabase CLI is not available, set secrets via Dashboard:
+# ksef-ai Agent Guide
 
-1. **Go to Supabase Dashboard**: https://supabase.com/dashboard
-2. **Select Project**: `rncrzxjyffxmfbnxlqtm`
-3. **Navigate**: Settings → Edge Functions
-4. **Add Secret**: `PREMIUM_TOKEN_SECRET`
-5. **Set Value**: Your generated secure secret
+## 🚨 CRITICAL: MCP SUPABASE TOOLS REQUIRED
 
-**Example Secret Value**:YOYO
-```
-YOUR_GENERATED_SECRET_HERE (use your own from pre-key.64 file)
-```
+**NEVER make backend changes without using MCP Supabase tools first!**
 
-### **Why Manual Setup is Required**
+**MANDATORY WORKFLOW**:
+1. **ALWAYS** use `mcp1_list_tables` to see current database structure
+2. **ALWAYS** use `mcp1_execute_sql` to examine table schemas before changes  
+3. **ALWAYS** validate assumptions with actual database queries
+4. **ALWAYS** use `mcp1_apply_migration` for schema changes - NEVER create migration files manually
+5. **ALWAYS** generate migration file after successful MCP migration for version control
+6. **NEVER** guess column names, data types, or table structures
 
-- **MCP tools don't include** secret management functions
-- **CLI access restricted** in current environment  
-- **Dashboard provides** full control over environment variables
-- **Manual setup ensures** secrets are properly configured
+**FAILURE TO FOLLOW THIS RULE WILL CAUSE DATA CORRUPTION AND DEPLOYMENT FAILURES**
 
-### **Alternative: Generate Secret via Node.js**
-
-```bash
-# Generate secure secret without OpenSSL
-node -e "console.log(require('crypto').randomBytes(64).toString('base64'))"
-```
-
-### **Verification Steps**
-
-After setting secret in Dashboard:
-
-1. **Test Edge Function**: Use browser or curl to test `verify-premium-access`
-2. **Check Logs**: Use `get_logs` MCP tool to verify function works
-3. **Monitor Premium System**: Check if premium verification works in app
+**🚨 THIS IS AGENT RULES ONLY - NO DEV LOGS OR CODE EXAMPLES**
+- These rules are for AI agents working on this project
+- Do not write development logs, progress updates, or implementation notes
+- Focus on rules, patterns, and constraints only
+- New agents should load this and start working immediately
 
 ---
 
+## Application Overview
+
+**Name**: ksef-ai (KsięgaI Accounting Application)  
+**Tech Stack**: React 18 + Vite + TypeScript + TanStack Query + Supabase  
+**Purpose**: Polish accounting system with KSeF e-invoicing integration
+
 ---
 
-## Premium Invoicing System
+## Critical Context
 
-### 🎯 **Multi-Company Billing Architecture**
+### This App is Authoritative For:
+- ✅ Accounting logic and tax calculations
+- ✅ KSeF integration patterns and flows
+- ✅ Invoice generation and validation
+- ✅ Business profile data model
+- ✅ Polish tax compliance rules
 
-**Core Principle**: Users receive ONE consolidated invoice for ALL their premium companies.
+### Non-Negotiables:
+- **Correctness > Speed**: Accounting errors have legal/financial consequences
+- **KSeF Test Mode**: Default to test environment unless explicitly production
+- **Supabase MCP**: ALWAYS use MCP tools for backend queries and schema changes - NEVER guess
+- **Schema Verification**: ALWAYS check database structure with MCP before any backend changes
+- **Reference Validation**: Check `z-all-ksef-repos/` for KSeF patterns
 
-### **Billing Model**
-- **One invoice per user per billing period**
-- **Multiple line items** - one per premium company
-- **Aggregated total** - sum of all company subscriptions
-- **Automatic generation** - 1st of each month
-- **Payment methods** - Stripe (card, BLIK, Przelewy24)
+---
 
-### **Example Scenario**
-```
-User has 3 companies:
-- Company A: JDG Premium (19 PLN/month)
-- Company B: Spółka Premium (89 PLN/month)
-- Company C: Spółka Premium (89 PLN/month)
+## Project Structure
 
-Invoice Total: 197 PLN + 23% VAT = 242.31 PLN
+**Key Modules**:
+- `src/modules/accounting/` - Accounting features, ledger, balance sheet
+- `src/modules/invoices/` - Invoice management (income/expense)
+- `src/modules/ksef/` - KSeF integration UI and services
+- `src/modules/customers/` - Business partners (kontrahenci)
+- `src/shared/` - Reusable components, utilities, context
+
+**Important Files**:
+- `src/shared/config/routes.tsx` - Centralized route configuration
+- `src/shared/context/AuthContext.tsx` - Auth and premium state
+- `src/shared/context/BusinessProfileContext.tsx` - Active profile management
+
+---
+
+## Routing Rules
+
+- **Centralized Config**: All routes in `src/shared/config/routes.tsx`
+- **Lazy Loading**: Use `React.lazy()` for all route components
+- **Route Guards**: `public`, `protected`, `premium`, `onboarding`
+- **Navigation**: Routes auto-appear in sidebar unless `hideInNav: true`
+
+---
+
+## State Management Rules
+
+**TanStack Query**: All server state via React Query
+- **Query Client**: `@/src/shared/lib/queryClient.ts`
+- **Cache Persistence**: Queries persist to localStorage automatically
+- **Pattern**: Repository functions + custom hooks
+
+**React Context**:
+- **AuthContext**: User auth and premium status
+- **BusinessProfileContext**: Active business profile
+- **DepartmentContext**: Operations module departments
+
+**Data Access Pattern**:
+```typescript
+// Repository: modules/mymodule/data/MyRepository.ts
+export const fetchMyData = async (businessProfileId: string) => {
+  const { data, error } = await supabase
+    .from('my_table')
+    .select('*')
+    .eq('business_profile_id', businessProfileId);
+  if (error) throw error;
+  return data;
+};
+
+// Hook: modules/mymodule/hooks/useMyData.ts
+export const useMyData = (businessProfileId: string) => {
+  return useQuery({
+    queryKey: ['myData', businessProfileId],
+    queryFn: () => fetchMyData(businessProfileId),
+    enabled: !!businessProfileId,
+  });
+};
 ```
 
 ---
 
-### 📊 **Database Tables**
+## Module Structure
 
-#### **subscription_invoices**
-Main invoice records with status tracking
-- `invoice_number` - Format: INV-YYYY-MM-NNNN
-- `subtotal_amount` - In grosze (cents)
-- `tax_amount` - 23% VAT
-- `total_amount` - Final amount to pay
-- `status` - draft, pending, paid, failed, cancelled, overdue
-- `billing_period_start/end` - Period covered
-- `due_date` - Payment deadline (7 days default)
-- `stripe_checkout_session_id` - Stripe session reference
-- `pdf_url` - Generated invoice PDF
+**Standard Pattern**:
+```
+modules/mymodule/
+├── screens/              # Page components
+├── components/           # Module-specific components  
+├── hooks/                # Module-specific hooks
+├── data/                 # Data access layer (Supabase queries)
+├── types/                # Module-specific types
+└── utils/                # Module-specific utilities
+```
 
-#### **subscription_invoice_items**
-Line items showing each company in invoice
-- `business_profile_id` - Company reference
-- `subscription_id` - Subscription reference
-- `description` - "Premium JDG - Company Name"
-- `subscription_type` - jdg_premium, spolka_premium
-- `billing_cycle` - monthly, annual
-- `unit_price` - Price in grosze
-- `period_start/end` - Coverage period
-
-#### **invoice_payment_attempts**
-Payment tracking and audit trail
-- `invoice_id` - Invoice reference
-- `amount` - Payment amount
-- `payment_method` - stripe_checkout, bank_transfer, blik
-- `status` - pending, succeeded, failed, cancelled
-- `stripe_payment_intent_id` - Stripe payment reference
+**Key Modules**:
+- **invoices/** - Invoice management, PDF generation, KSeF
+- **ksef/** - KSeF integration UI and services
+- **accounting/** - Advanced accounting, premium-only
+- **customers/** - Business partners (kontrahenci)
+- **premium/** - Subscription management
 
 ---
 
-### ⚡ **Edge Functions**
+## KSeF Integration Rules
 
-#### **generate-subscription-invoice**
-**Purpose**: Generate consolidated invoice for all user's premium companies
+**Environment**: Default to test environment unless explicitly production
+**Service Layer**: `@/src/shared/services/ksef/`
+**Authentication**: Token encrypted in `business_profiles.ksef_token_encrypted`
+**Audit**: All operations logged in `ksef_audit_log`
 
-**Usage**:
+**Key Services**:
+- `ksefAuthCoordinator` - Session management
+- `ksefApiClient` - HTTP client with retry
+- `ksefXmlGenerator` - FA_VAT XML generation
+- `ksefValidator` - Invoice validation
+
+**Reference**: Check `z-all-ksef-repos/` for implementation patterns
+
+---
+
+## Data Access Rules
+
+**Supabase Client**: `@/src/integrations/supabase/client.ts`
+**Pattern**: Repository functions + React Query hooks
+**RLS**: All user-facing tables have Row Level Security enabled
+
+**Standard Query**:
 ```typescript
-// Auto-generate for current month
-const { data, error } = await supabase.functions.invoke(
-  'generate-subscription-invoice'
-);
+// Repository: modules/mymodule/data/MyRepository.ts
+export const fetchMyData = async (businessProfileId: string) => {
+  const { data, error } = await supabase
+    .from('my_table')
+    .select('*')
+    .eq('business_profile_id', businessProfileId);
+  if (error) throw error;
+  return data;
+};
+```
 
-// Generate for specific period
-const { data, error } = await supabase.functions.invoke(
-  'generate-subscription-invoice',
-  {
-    body: {
-      billingPeriodStart: '2026-01-01',
-      billingPeriodEnd: '2026-01-31'
-    }
-  }
+**RLS Policy Pattern**:
+```sql
+CREATE POLICY "Users see own records"
+ON my_table FOR SELECT
+USING (
+  business_profile_id IN (
+    SELECT id FROM business_profiles 
+    WHERE user_id = auth.uid()
+  )
 );
 ```
 
-**Response**:
-```typescript
-{
-  success: true,
-  invoice: {
-    id: "uuid",
-    invoice_number: "INV-2026-01-0001",
-    total_amount: 24231, // in grosze
-    items: [...]
-  },
-  summary: {
-    invoice_number: "INV-2026-01-0001",
-    total_companies: 3,
-    subtotal: 197.00,
-    tax: 45.31,
-    total: 242.31,
-    due_date: "2026-01-08T00:00:00Z"
-  }
-}
-```
+---
 
-**Key Features**:
-- Aggregates ALL active premium subscriptions
-- Calculates VAT (23%)
-- Generates unique invoice number
-- Creates line items per company
-- Sets due date (7 days)
+## Common Tasks
 
-#### **create-invoice-checkout**
-**Purpose**: Create Stripe checkout session for invoice payment
+**Adding New Feature**:
+1. Identify module or create new one
+2. Add screens/components in module directory
+3. Add route to `@/src/shared/config/routes.tsx`
+4. Create repository functions for data access
+5. Create custom hooks for React components
+6. Add TypeScript types in module `types/` directory
 
-**Usage**:
-```typescript
-const { data, error } = await supabase.functions.invoke(
-  'create-invoice-checkout',
-  {
-    body: {
-      invoiceId: 'invoice-uuid',
-      successUrl: 'https://app.com/invoices/success',
-      cancelUrl: 'https://app.com/invoices'
-    }
-  }
-);
-
-// Redirect to checkout
-window.location.href = data.checkout_url;
-```
-
-**Response**:
-```typescript
-{
-  success: true,
-  checkout_url: "https://checkout.stripe.com/...",
-  session_id: "cs_xxx",
-  invoice: {
-    id: "uuid",
-    invoice_number: "INV-2026-01-0001",
-    total_amount: 242.31,
-    currency: "pln"
-  }
-}
-```
-
-**Key Features**:
-- Multi-company line items
-- Polish payment methods (card, BLIK, P24)
-- VAT included
-- Automatic customer creation
-- Payment attempt logging
+**Working with KSeF**:
+1. Default to test environment
+2. Check reference in `z-all-ksef-repos/`
+3. Use existing services in `@/src/shared/services/ksef/`
+4. All operations auto-logged in `ksef_audit_log`
 
 ---
 
-### 🔄 **Invoice Generation Flow**
+## Premium System Rules
 
-```
-1. Monthly Cron Job (1st of month)
-   ↓
-2. Get all users with active premium subscriptions
-   ↓
-3. For each user:
-   - Get all premium companies
-   - Calculate total (sum of all subscriptions)
-   - Generate invoice with line items
-   - Set due date (7 days)
-   ↓
-4. Invoice created with status: pending
-   ↓
-5. User receives email notification
-```
+**🚨 NEVER USE OLD PREMIUM PATTERNS**:
+- ❌ Never use `isPremium` boolean from AuthContext (deprecated)
+- ❌ Never make direct API calls to subscription tables
+- ❌ Never trust client-side premium checks
 
-### 💳 **Payment Flow**
+**✅ ALWAYS USE NEW PREMIUM SYSTEM**:
+- ✅ Always use `usePremiumSync()` hook for premium status
+- ✅ Always use server-side verification for sensitive operations
+- ✅ Always use `usePremiumFeature(feature)` for specific features
+- ✅ Always protect premium routes with `usePremiumRoute()`
 
-```
-User → Invoice List → Select Invoice → Pay Now
-  ↓
-Create Checkout Session (Edge Function)
-  ↓
-Stripe Checkout (card/BLIK/P24)
-  ↓
-Payment Success Webhook
-  ↓
-Update Invoice Status → paid
-Update Subscriptions → active
-Generate PDF Invoice
-Send Email with PDF
-```
+**Premium Tiers**: `free` | `jdg_premium` | `spolka_premium` | `enterprise`
 
 ---
 
-### 📝 **Invoice Queries**
+## Security Rules
 
-#### **Get User Invoices**
-```typescript
-const { data: invoices } = await supabase
-  .from('subscription_invoices')
-  .select(`
-    *,
-    items:subscription_invoice_items (
-      *,
-      business_profile:business_profiles (
-        id,
-        name
-      )
-    )
-  `)
-  .order('issued_at', { ascending: false });
-```
+**Authentication**:
+- Never store tokens in plain text
+- Use `ksefSecretManager` for KSeF token encryption
+- Validate sessions on every protected route
 
-#### **Get Pending Invoices**
-```typescript
-const { data: pending } = await supabase
-  .from('subscription_invoices')
-  .select('*')
-  .eq('status', 'pending')
-  .lt('due_date', new Date().toISOString())
-  .order('due_date', { ascending: true });
-```
+**Data Access**:
+- Always filter by `business_profile_id`
+- Never trust frontend permissions
+- Rely on RLS for security boundary
 
-#### **Get Invoice by Number**
-```typescript
-const { data: invoice } = await supabase
-  .from('subscription_invoices')
-  .select(`
+**KSeF Integration**:
+- Default to test environment
+- Log all operations for audit trail
+- Handle errors gracefully
+
+---
+
+## Code Style
+
+**File Naming**:
+- Components: PascalCase (`MyComponent.tsx`)
+- Hooks: camelCase with `use` prefix (`useMyHook.ts`)
+- Utilities: camelCase (`myUtil.ts`)
+
+**Import Order**:
+1. React imports
+2. Third-party libraries  
+3. Absolute imports (`@/...`)
+4. Relative imports (`./...`)
+
+**No Comments**: Code should be self-documenting
     *,
     items:subscription_invoice_items (*)
   `)

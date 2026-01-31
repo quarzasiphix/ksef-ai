@@ -274,34 +274,37 @@ export async function calculateYTDFinancials(
   // Get income invoices
   const { data: incomeData, error: incomeError } = await supabase
     .from('invoices')
-    .select('total_gross, total_net, currency, exchange_rate')
+    .select('total_gross_value, total_net_value, currency, exchange_rate')
     .eq('business_profile_id', businessProfileId)
     .eq('transaction_type', 'income')
     .gte('issue_date', startOfYear)
     .lte('issue_date', upToDate);
-  
+
   if (incomeError) throw incomeError;
-  
-  // Get expenses
+
+  // Get expenses (also from invoices table with transaction_type = 'expense')
   const { data: expenseData, error: expenseError } = await supabase
-    .from('expenses')
-    .select('total_gross, total_net, currency')
+    .from('invoices')
+    .select('total_gross_value, total_net_value, currency, exchange_rate')
     .eq('business_profile_id', businessProfileId)
-    .gte('date', startOfYear)
-    .lte('date', upToDate);
-  
+    .eq('transaction_type', 'expense')
+    .gte('issue_date', startOfYear)
+    .lte('issue_date', upToDate);
+
   if (expenseError) throw expenseError;
-  
-  // Calculate revenue (net amounts in PLN)
+
+  // Calculate revenue (net amounts in PLN) - CIT is calculated from dochód (income)
   const revenue = (incomeData || []).reduce((sum, inv) => {
-    const amount = inv.total_net || inv.total_gross || 0;
+    const amount = inv.total_net_value || inv.total_gross_value || 0;
     const rate = inv.exchange_rate || 1;
     return sum + (amount * rate);
   }, 0);
-  
-  // Calculate costs (net amounts in PLN)
+
+  // Calculate costs (net amounts in PLN) - expenses reduce the dochód
   const costs = (expenseData || []).reduce((sum, exp) => {
-    return sum + (exp.total_net || exp.total_gross || 0);
+    const amount = exp.total_net_value || exp.total_gross_value || 0;
+    const rate = exp.exchange_rate || 1;
+    return sum + (amount * rate);
   }, 0);
   
   return {

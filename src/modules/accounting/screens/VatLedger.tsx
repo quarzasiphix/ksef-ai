@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/shared/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/shared/ui/tabs';
 import { useBusinessProfile } from '@/shared/context/BusinessProfileContext';
@@ -8,51 +8,140 @@ import { Badge } from '@/shared/ui/badge';
 import { formatCurrency } from '@/shared/lib/invoice-utils';
 import { format } from 'date-fns';
 import { pl } from 'date-fns/locale';
+import { supabase } from '@/integrations/supabase/client';
 
 export default function VatLedger() {
   const { selectedProfileId } = useBusinessProfile();
   const { period } = useAccountingPeriod();
+  const [salesVat, setSalesVat] = useState<any[]>([]);
+  const [purchaseVat, setPurchaseVat] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+  const debounceTimer = useRef<NodeJS.Timeout>();
 
-  // Mock data - replace with actual data fetching
-  const [salesVat] = useState([
-    {
-      id: '1',
-      date: new Date('2026-01-15'),
-      document_number: 'F/1/2026',
-      counterparty: 'ABC Sp. z o.o.',
-      net: 10000,
-      vat_rate: 23,
-      vat_amount: 2300,
-      gross: 12300,
-    },
-    {
-      id: '2',
-      date: new Date('2026-01-20'),
-      document_number: 'F/2/2026',
-      counterparty: 'XYZ S.A.',
-      net: 5000,
-      vat_rate: 23,
-      vat_amount: 1150,
-      gross: 6150,
-    },
-  ]);
+  useEffect(() => {
+    if (!selectedProfileId || !period?.key) return;
+    
+    // Clear previous timer
+    if (debounceTimer.current) {
+      clearTimeout(debounceTimer.current);
+    }
+    
+    // Debounce the request to prevent spam
+    debounceTimer.current = setTimeout(async () => {
+      await loadVatData();
+    }, 300); // 300ms debounce
 
-  const [purchaseVat] = useState([
-    {
-      id: '1',
-      date: new Date('2026-01-10'),
-      document_number: 'FZ/123/2026',
-      counterparty: 'Dostawca Sp. z o.o.',
-      net: 3000,
-      vat_rate: 23,
-      vat_amount: 690,
-      gross: 3690,
-    },
-  ]);
+    return () => {
+      if (debounceTimer.current) {
+        clearTimeout(debounceTimer.current);
+      }
+    };
+  }, [selectedProfileId, period?.key?.year, period?.key?.month]);
+
+  const loadVatData = async () => {
+      setLoading(true);
+      try {
+        // Calculate period boundaries
+        const periodKey = period.key;
+        const periodStart = new Date(periodKey.year, periodKey.month - 1, 1);
+        const periodEnd = new Date(periodKey.year, periodKey.month, 0, 23, 59, 59);
+
+        // Fetch sales invoices (income) with VAT - simplified query
+        const { data: salesData, error: salesError } = await supabase
+          .from('invoices')
+          .select(`
+            id,
+            number,
+            issue_date,
+            total_net_value,
+            total_vat_value,
+            total_gross_value
+          `)
+          .eq('business_profile_id', selectedProfileId)
+          .eq('transaction_type', 'income')
+          .eq('accounting_status', 'posted')
+          .gte('issue_date', periodStart.toISOString())
+          .lte('issue_date', periodEnd.toISOString())
+          .not('total_vat_value', 'eq', 0)
+          .order('issue_date', { ascending: false });
+
+        if (salesError) throw salesError;
+
+        // Fetch expense invoices with VAT - simplified query
+        const { data: expenseData, error: expenseError } = await supabase
+          .from('invoices')
+          .select(`
+            id,
+            number,
+            issue_date,
+            total_net_value,
+            total_vat_value,
+            total_gross_value
+          `)
+          .eq('business_profile_id', selectedProfileId)
+          .eq('transaction_type', 'expense')
+          .eq('accounting_status', 'posted')
+          .gte('issue_date', periodStart.toISOString())
+          .lte('issue_date', periodEnd.toISOString())
+          .not('total_vat_value', 'eq', 0)
+          .order('issue_date', { ascending: false });
+
+        if (expenseError) throw expenseError;
+
+        // Transform sales data
+        const transformedSales = (salesData || []).map((invoice: any) => ({
+          id: invoice.id,
+          date: new Date(invoice.issue_date),
+          document_number: invoice.number || 'Brak numeru',
+          counterparty: 'Klient', // Simplified - no customer join
+          net: invoice.total_net_value || 0,
+          vat_rate: invoice.total_vat_value && invoice.total_net_value ? 
+            Math.round((invoice.total_vat_value / invoice.total_net_value) * 100) : 0,
+          vat_amount: invoice.total_vat_value || 0,
+          gross: invoice.total_gross_value || 0,
+        }));
+
+        // Transform expense data
+        const transformedExpenses = (expenseData || []).map((invoice: any) => ({
+          id: invoice.id,
+          date: new Date(invoice.issue_date),
+          document_number: invoice.number || 'Brak numeru',
+          counterparty: 'Dostawca', // Simplified - no customer join
+          net: invoice.total_net_value || 0,
+          vat_rate: invoice.total_vat_value && invoice.total_net_value ? 
+            Math.round((invoice.total_vat_value / invoice.total_net_value) * 100) : 0,
+          vat_amount: invoice.total_vat_value || 0,
+          gross: invoice.total_gross_value || 0,
+        }));
+
+        setSalesVat(transformedSales);
+        setPurchaseVat(transformedExpenses);
+      } catch (error) {
+        console.error('Error loading VAT data:', error);
+      } finally {
+        setLoading(false);
+      }
+    };
 
   const totalSalesVat = salesVat.reduce((sum, item) => sum + item.vat_amount, 0);
   const totalPurchaseVat = purchaseVat.reduce((sum, item) => sum + item.vat_amount, 0);
   const vatToPay = totalSalesVat - totalPurchaseVat;
+
+  if (loading) {
+    return (
+      <div className="space-y-6">
+        <div>
+          <h1 className="text-3xl font-bold">Ewidencja VAT</h1>
+          <p className="text-muted-foreground">
+            {period.label}
+          </p>
+        </div>
+        <div className="flex items-center justify-center h-64">
+          <p className="text-muted-foreground">Ładowanie danych VAT...</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">

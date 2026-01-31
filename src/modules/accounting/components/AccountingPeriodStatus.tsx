@@ -2,12 +2,18 @@ import React, { useEffect, useState } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/shared/ui/card';
 import { Badge } from '@/shared/ui/badge';
 import { Button } from '@/shared/ui/button';
-import { Lock, Unlock, Calendar } from 'lucide-react';
+import { Lock, Unlock, Calendar, FileText, Receipt, Banknote, Plus } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { format } from 'date-fns';
 import { pl } from 'date-fns/locale';
-import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/shared/ui/dialog';
 import { toast } from 'sonner';
+import { useNavigate } from 'react-router-dom';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@/shared/ui/dropdown-menu';
 
 interface AccountingPeriodStatusProps {
   businessProfileId: string;
@@ -15,17 +21,18 @@ interface AccountingPeriodStatusProps {
 
 interface AccountingPeriod {
   id: string;
-  period_year: number;
-  period_month: number;
+  year: number;
+  month: number;
   status: 'open' | 'closing' | 'locked';
+  is_locked: boolean;
   locked_at: string | null;
 }
 
 export function AccountingPeriodStatus({ businessProfileId }: AccountingPeriodStatusProps) {
   const [currentPeriod, setCurrentPeriod] = useState<AccountingPeriod | null>(null);
   const [loading, setLoading] = useState(true);
-  const [showCreateDialog, setShowCreateDialog] = useState(false);
-  const [creating, setCreating] = useState(false);
+  const [hasFinancialEvents, setHasFinancialEvents] = useState<boolean | null>(null);
+  const navigate = useNavigate();
 
   useEffect(() => {
     loadCurrentPeriod();
@@ -38,7 +45,8 @@ export function AccountingPeriodStatus({ businessProfileId }: AccountingPeriodSt
       const year = now.getFullYear();
       const month = now.getMonth() + 1;
 
-      const { data, error } = await supabase
+      // Check if period exists
+      const { data: periodData, error: periodError } = await supabase
         .from('accounting_periods')
         .select('*')
         .eq('business_profile_id', businessProfileId)
@@ -46,8 +54,23 @@ export function AccountingPeriodStatus({ businessProfileId }: AccountingPeriodSt
         .eq('period_month', month)
         .maybeSingle();
 
-      if (error && error.code !== 'PGRST116') throw error;
-      setCurrentPeriod(data);
+      if (periodError && periodError.code !== 'PGRST116') throw periodError;
+      setCurrentPeriod(periodData);
+
+      // Check if any financial events exist for this business
+      const { data: hasEvents, error: eventsError } = await supabase
+        .rpc('has_financial_events', {
+          p_business_profile_id: businessProfileId,
+          p_year: year,
+          p_month: month
+        });
+
+      if (eventsError) {
+        console.error('Error checking financial events:', eventsError);
+        setHasFinancialEvents(null);
+      } else {
+        setHasFinancialEvents(hasEvents);
+      }
     } catch (error) {
       console.error('Error loading period:', error);
     } finally {
@@ -55,52 +78,11 @@ export function AccountingPeriodStatus({ businessProfileId }: AccountingPeriodSt
     }
   };
 
-  const createPeriod = async () => {
-    setCreating(true);
-    try {
-      const now = new Date();
-      const year = now.getFullYear();
-      const month = now.getMonth() + 1;
-
-      // First, migrate legacy invoices
-      const { data: migrateResult, error: migrateError } = await supabase.rpc('migrate_legacy_invoices', {
-        p_business_profile_id: businessProfileId
-      });
-
-      if (migrateError) throw migrateError;
-
-      if (migrateResult?.updated_count > 0) {
-        toast.success(`Zaktualizowano ${migrateResult.updated_count} starszych faktur`);
-      }
-
-      // Create period
-      const { data, error } = await supabase.rpc('create_accounting_period', {
-        p_business_profile_id: businessProfileId,
-        p_year: year,
-        p_month: month
-      });
-
-      if (error) throw error;
-
-      if (data?.success) {
-        toast.success('Okres księgowy utworzony');
-        setShowCreateDialog(false);
-        loadCurrentPeriod();
-      } else {
-        toast.error(data?.error || 'Nie udało się utworzyć okresu');
-      }
-    } catch (error) {
-      console.error('Error creating period:', error);
-      toast.error('Błąd podczas tworzenia okresu');
-    } finally {
-      setCreating(false);
+  const getStatusBadge = (status: string, isLocked: boolean) => {
+    if (isLocked) {
+      return <Badge variant="destructive"><Lock className="h-3 w-3 mr-1" />Zamknięty</Badge>;
     }
-  };
-
-  const getStatusBadge = (status: string) => {
     switch (status) {
-      case 'locked':
-        return <Badge variant="destructive"><Lock className="h-3 w-3 mr-1" />Zamknięty</Badge>;
       case 'closing':
         return <Badge variant="secondary">Zamykanie...</Badge>;
       default:
@@ -111,44 +93,7 @@ export function AccountingPeriodStatus({ businessProfileId }: AccountingPeriodSt
   const currentMonth = format(new Date(), 'LLLL yyyy', { locale: pl });
 
   return (
-    <>
-      <Dialog open={showCreateDialog} onOpenChange={setShowCreateDialog}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Utwórz okres księgowy</DialogTitle>
-            <DialogDescription>
-              Utworzysz okres księgowy dla {currentMonth}. System automatycznie zaktualizuje starsze faktury, aby były zgodne z nowym systemem księgowym.
-            </DialogDescription>
-          </DialogHeader>
-          <div className="space-y-4 py-4">
-            <div className="p-4 bg-amber-50 dark:bg-amber-950 rounded-lg">
-              <p className="text-sm text-amber-900 dark:text-amber-100">
-                <strong>Migracja starszych faktur:</strong> System automatycznie ustawi status akceptacji i księgowania dla wszystkich wcześniejszych faktur.
-              </p>
-            </div>
-            <div className="space-y-2">
-              <p className="text-sm text-muted-foreground">
-                Po utworzeniu okresu będziesz mógł:
-              </p>
-              <ul className="text-sm text-muted-foreground list-disc list-inside space-y-1">
-                <li>Księgować dokumenty z tego okresu</li>
-                <li>Zamknąć okres po zakończeniu miesiąca</li>
-                <li>Generować raporty i deklaracje</li>
-              </ul>
-            </div>
-          </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setShowCreateDialog(false)} disabled={creating}>
-              Anuluj
-            </Button>
-            <Button onClick={createPeriod} disabled={creating}>
-              {creating ? 'Tworzenie...' : 'Utwórz okres'}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-
-      <Card>
+    <Card>
       <CardHeader>
         <CardTitle className="flex items-center gap-2">
           <Calendar className="h-5 w-5" />
@@ -166,14 +111,14 @@ export function AccountingPeriodStatus({ businessProfileId }: AccountingPeriodSt
             <>
               <div className="flex items-center justify-between">
                 <span className="text-sm text-muted-foreground">Status okresu:</span>
-                {getStatusBadge(currentPeriod.status)}
+                {getStatusBadge(currentPeriod.status, currentPeriod.is_locked)}
               </div>
               {currentPeriod.locked_at && (
                 <div className="text-sm text-muted-foreground">
                   Zamknięty: {format(new Date(currentPeriod.locked_at), 'dd.MM.yyyy HH:mm', { locale: pl })}
                 </div>
               )}
-              {currentPeriod.status === 'locked' && (
+              {currentPeriod.is_locked && (
                 <div className="p-3 bg-red-50 dark:bg-red-950 rounded-lg text-sm">
                   <p className="text-red-900 dark:text-red-100">
                     Okres zamknięty. Nie można księgować dokumentów z tego okresu.
@@ -182,24 +127,81 @@ export function AccountingPeriodStatus({ businessProfileId }: AccountingPeriodSt
               )}
             </>
           ) : (
-            <div className="space-y-2">
-              <p className="text-sm text-muted-foreground">
-                Okres nie został jeszcze utworzony
-              </p>
-              <Button variant="outline" size="sm" onClick={() => setShowCreateDialog(true)}>
-                Utwórz okres
-              </Button>
+            <div className="space-y-3">
+              {hasFinancialEvents === false ? (
+                // Zero state: No financial events exist
+                <>
+                  <div className="p-4 bg-blue-50 dark:bg-blue-950 rounded-lg">
+                    <p className="text-sm font-medium text-blue-900 dark:text-blue-100 mb-2">
+                      Brak zdarzeń finansowych
+                    </p>
+                    <p className="text-xs text-blue-700 dark:text-blue-300">
+                      Okresy księgowe tworzą się automatycznie, gdy dodasz pierwszy dokument w danym miesiącu.
+                    </p>
+                  </div>
+                  
+                  <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                      <Button className="w-full">
+                        <Plus className="h-4 w-4 mr-2" />
+                        Dodaj pierwszy dokument
+                      </Button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="end" className="w-56">
+                      <DropdownMenuItem onClick={() => navigate('/invoices/income/new')}>
+                        <FileText className="h-4 w-4 mr-2" />
+                        Faktura sprzedaży
+                      </DropdownMenuItem>
+                      <DropdownMenuItem onClick={() => navigate('/invoices/expense/new')}>
+                        <Receipt className="h-4 w-4 mr-2" />
+                        Faktura zakupu
+                      </DropdownMenuItem>
+                      <DropdownMenuItem onClick={() => navigate('/expenses')}>
+                        <Banknote className="h-4 w-4 mr-2" />
+                        Wydatek
+                      </DropdownMenuItem>
+                    </DropdownMenuContent>
+                  </DropdownMenu>
+                  
+                  <Button 
+                    variant="outline" 
+                    size="sm" 
+                    className="w-full"
+                    onClick={() => navigate('/accounting/chart-of-accounts')}
+                  >
+                    Zobacz plan kont
+                  </Button>
+                </>
+              ) : (
+                // Events exist but period not created - should auto-create
+                <div className="space-y-2">
+                  <div className="p-3 bg-amber-50 dark:bg-amber-950 rounded-lg">
+                    <p className="text-sm text-amber-900 dark:text-amber-100">
+                      Wykryto zdarzenia bez okresu księgowego. System automatycznie utworzy brakujące okresy.
+                    </p>
+                  </div>
+                  <Button 
+                    variant="outline" 
+                    size="sm"
+                    onClick={() => {
+                      toast.info('Odśwież stronę - okresy powinny być już utworzone');
+                      loadCurrentPeriod();
+                    }}
+                  >
+                    Odśwież
+                  </Button>
+                </div>
+              )}
             </div>
           )}
 
           <div className="pt-4 border-t">
             <p className="text-xs text-muted-foreground">
-              Okresy są automatycznie zamykane 20. dnia miesiąca
+              Okresy są automatycznie zamykane 20. dnia następnego miesiąca
             </p>
           </div>
         </div>
       </CardContent>
     </Card>
-    </>
   );
 }

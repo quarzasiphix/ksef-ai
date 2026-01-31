@@ -58,8 +58,12 @@ export const getExpenses = async (userId: string, businessProfileId?: string, pe
   }
 
   let query = supabase
-    .from('expenses') // Assuming your expenses table is named 'expenses'
-    .select('*') // Select all columns for now, can be optimized later
+    .from('invoices') // Query invoices table with transaction_type = 'expense'
+    .select(`
+      *,
+      customers(name)
+    `)
+    .eq('transaction_type', 'expense')
     .eq('user_id', userId);
 
   if (businessProfileId) {
@@ -68,11 +72,11 @@ export const getExpenses = async (userId: string, businessProfileId?: string, pe
 
   if (period) {
     const { startDate, endDate } = getPeriodDates(period);
-    // Assuming 'issue_date' is the column to filter by period
+    // Use issue_date for expenses (invoice_date doesn't exist)
     query = query.gte('issue_date', startDate).lte('issue_date', endDate);
   }
 
-  const { data, error } = await query.order("issue_date", { ascending: false }); // Assuming an issue_date field for ordering
+  const { data, error } = await query.order("issue_date", { ascending: false });
 
   if (error) {
     console.error('Error fetching expenses:', error);
@@ -111,9 +115,9 @@ export const getExpenses = async (userId: string, businessProfileId?: string, pe
       dueDate: inv.due_date,
       amount: Number(inv.total_gross_value) || 0,
       currency: inv.currency || 'PLN',
-      description: `Faktura od ${inv.business_profiles?.name || 'kontrahenta'} (${inv.number})`,
-      customerName: inv.business_profiles?.name || null,
-      counterpartyName: inv.business_profiles?.name || null,
+      description: `Faktura od ${inv.customers?.name || inv.business_profiles?.name || 'kontrahenta'} (${inv.number})`,
+      customerName: inv.customers?.name || inv.business_profiles?.name || null,
+      counterpartyName: inv.customers?.name || inv.business_profiles?.name || null,
       createdAt: share.shared_at,
       transactionType: TransactionType.EXPENSE,
       date: inv.issue_date,
@@ -124,26 +128,34 @@ export const getExpenses = async (userId: string, businessProfileId?: string, pe
   }).filter(Boolean) as Expense[];
 
   // Map the raw data to the Expense interface
-  // Assuming Expense type has fields like id, user_id, business_profile_id, issue_date, amount, currency, description, created_at
-  const mappedExpenses = data.map((dbExpense: any) => ({
-    id: dbExpense.id,
-    userId: dbExpense.user_id,
-    businessProfileId: dbExpense.business_profile_id,
-    issueDate: dbExpense.issue_date,
-    dueDate: dbExpense.due_date,
-    amount: Number(dbExpense.amount) || 0,
-    currency: dbExpense.currency || 'PLN',
-    description: dbExpense.description || '',
-    customerName: dbExpense.customer_name || null,
-    counterpartyName: dbExpense.customer_name || null,
-    createdAt: dbExpense.created_at,
-    // Add other fields as per your Expense type and database schema
-    // For now, we are assuming a basic structure based on the SQL provided.
-    // You might need to adjust this mapping based on your actual Expense type definition.
-    transactionType: TransactionType.EXPENSE, // Assuming all fetched here are expenses
-    date: dbExpense.issue_date, // Alias for compatibility if needed
+  // Map invoice data to expense format
+  const mappedExpenses = data.map((dbInvoice: any) => ({
+    id: dbInvoice.id,
+    userId: dbInvoice.user_id,
+    businessProfileId: dbInvoice.business_profile_id,
+    issueDate: dbInvoice.issue_date,
+    dueDate: dbInvoice.due_date,
+    amount: Number(dbInvoice.total_gross_value) || 0,
+    currency: dbInvoice.currency || 'PLN',
+    description: dbInvoice.description || '',
+    customerName: dbInvoice.customers?.name || null,
+    counterpartyName: dbInvoice.customers?.name || null,
+    createdAt: dbInvoice.created_at,
+    // Map invoice fields to expense interface
+    transactionType: TransactionType.EXPENSE,
+    date: dbInvoice.issue_date, // Use issue_date for expenses (invoice_date doesn't exist)
     linkedInvoiceId: null,
     isShared: false,
+    // Additional invoice fields
+    number: dbInvoice.number,
+    totalNetValue: Number(dbInvoice.total_net_value) || 0,
+    totalGrossValue: Number(dbInvoice.total_gross_value) || 0,
+    totalVatValue: Number(dbInvoice.total_vat_value) || 0,
+    isPaid: dbInvoice.is_paid || false,
+    paid: dbInvoice.is_paid || false,
+    status: dbInvoice.status,
+    paymentMethod: dbInvoice.payment_method,
+    items: dbInvoice.invoice_items || [],
   }));
 
   // Combine real expenses with shared ones
@@ -153,11 +165,19 @@ export const getExpenses = async (userId: string, businessProfileId?: string, pe
 export const saveExpense = async (expense: Omit<Expense, 'id' | 'createdAt'> & { id?: string }) => {
   const payload: any = {
     user_id: expense.userId,
+    transaction_type: 'expense',
     issue_date: expense.issueDate,
-    amount: expense.amount,
+    due_date: expense.dueDate,
+    total_gross_value: expense.amount,
+    total_net_value: (expense as any).totalNetValue || (expense.amount * 0.77), // Approximate if not provided
+    total_vat_value: (expense as any).totalVatValue || (expense.amount * 0.23), // Approximate if not provided
     currency: expense.currency || 'PLN',
     description: expense.description || '',
-    customer_id: expense.customerId || null,
+    customer_id: (expense as any).customerId || null,
+    number: (expense as any).number || `EXP/${new Date().getFullYear()}/${String(Math.floor(Math.random() * 1000)).padStart(3, '0')}`,
+    status: 'draft',
+    is_paid: (expense as any).isPaid || false,
+    payment_method: (expense as any).paymentMethod || 'gotówka',
     // Additional optional fields below
   };
 
@@ -171,7 +191,7 @@ export const saveExpense = async (expense: Omit<Expense, 'id' | 'createdAt'> & {
   if (expense.id) {
     // Update existing expense
     const updateRes = await supabase
-      .from('expenses')
+      .from('invoices')
       .update(payload)
       .eq('id', expense.id)
       .select()
@@ -180,11 +200,11 @@ export const saveExpense = async (expense: Omit<Expense, 'id' | 'createdAt'> & {
     data = updateRes.data;
     expenseId = data.id;
     // Remove old items
-    await supabase.from('expense_items').delete().eq('expense_id', expenseId);
+    await supabase.from('invoice_items').delete().eq('invoice_id', expenseId);
   } else {
     // Insert new expense
     const insertRes = await supabase
-      .from('expenses')
+      .from('invoices')
       .insert(payload)
       .select()
       .single();

@@ -129,12 +129,16 @@ export function LedgerRowMobile({
         <div className="flex items-center justify-between gap-3">
           <div className="flex items-center gap-1.5">
             {getStatusBadge()}
-            {invoice.ryczalt_account_id ? (
-              <Badge variant="outline" className="bg-green-100 text-green-800 border-green-300 flex items-center gap-1 p-1.5">
+            {(invoice as any).accounting_status === 'posted' ? (
+              <Badge variant="outline" className="bg-green-100 text-green-800 border-green-300 flex items-center gap-1 p-1.5" title="Zaksięgowane">
+                <BookOpen className="w-3 h-3" />
+              </Badge>
+            ) : (invoice as any).accounting_status === 'needs_review' ? (
+              <Badge variant="outline" className="bg-yellow-100 text-yellow-800 border-yellow-300 flex items-center gap-1 p-1.5" title="Wymaga przeglądu">
                 <BookOpen className="w-3 h-3" />
               </Badge>
             ) : (
-              <Badge variant="outline" className="bg-red-100 text-red-800 border-red-300 flex items-center gap-1 p-1.5">
+              <Badge variant="outline" className="bg-gray-100 text-gray-600 border-gray-300 flex items-center gap-1 p-1.5" title="Niezaksięgowane">
                 <BookOpen className="w-3 h-3" />
               </Badge>
             )}

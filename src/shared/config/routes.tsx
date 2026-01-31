@@ -34,6 +34,7 @@ const InventoryPage = React.lazy(() => import('@/pages/inventory/InventoryPage')
 const Accounting = React.lazy(() => import('@/modules/accounting/screens/Accounting'));
 const BalanceSheet = React.lazy(() => import('@/modules/accounting/screens/BalanceSheet'));
 const Shareholders = React.lazy(() => import('@/modules/accounting/screens/Shareholders'));
+const PostingQueue = React.lazy(() => import('@/modules/accounting/screens/PostingQueue'));
 const EquityModule = React.lazy(() => import('@/modules/accounting/screens/EquityModule'));
 const Premium = React.lazy(() => import('@/modules/premium/screens/Premium'));
 const PremiumPlanDetails = React.lazy(() => import('@/modules/premium/screens/PremiumPlanDetails'));
@@ -598,6 +599,10 @@ export const routes: RouteConfig[] = [
       {
         path: '/accounting/coa',
         element: <ChartOfAccounts />,
+      },
+      {
+        path: '/accounting/posting-queue',
+        element: <PostingQueue />,
       },
       {
         path: '/accounting/profit-loss',

@@ -45,9 +45,10 @@ export function PostInvoiceDialog({
   const [periodInfo, setPeriodInfo] = useState<{ year: number; month: number; label: string } | null>(null);
 
   const isJdg = businessProfile.entityType === 'dzialalnosc';
+  const isSpolka = businessProfile.entityType === 'sp_zoo' || businessProfile.entityType === 'sa';
   const isRyczalt = businessProfile.tax_type === 'ryczalt';
   const isIncome = invoice.transactionType === 'income';
-  const needsRyczaltCategory = isJdg && isRyczalt && isIncome;
+  const needsRyczaltCategory = isJdg && isRyczalt && isIncome && !isSpolka;
 
   // Debug logging
   console.log('PostInvoiceDialog debug:', {

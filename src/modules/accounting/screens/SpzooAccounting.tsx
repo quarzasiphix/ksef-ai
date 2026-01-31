@@ -86,11 +86,11 @@ export default function SpzooAccounting() {
         </Badge>
       </div>
 
-      {/* Period Status & Auto-Post */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        <AccountingPeriodStatus businessProfileId={selectedProfile.id} />
-        <UnpostedQueueWidget businessProfileId={selectedProfile.id} />
-      </div>
+      {/* Period Status - Always visible */}
+      <AccountingPeriodStatus businessProfileId={selectedProfile.id} />
+      
+      {/* Unposted Queue - Conditional */}
+      <UnpostedQueueWidget businessProfileId={selectedProfile.id} />
 
       {/* Main Content Tabs */}
       <Tabs value={activeTab} onValueChange={setActiveTab}>

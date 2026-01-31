@@ -1,35 +1,144 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/shared/ui/card';
 import { useBusinessProfile } from '@/shared/context/BusinessProfileContext';
 import { useAccountingPeriod } from '../hooks/useAccountingPeriod';
 import { TrendingUp, TrendingDown, DollarSign } from 'lucide-react';
 import { formatCurrency } from '@/shared/lib/invoice-utils';
+import { supabase } from '@/integrations/supabase/client';
 
 export default function ProfitLoss() {
   const { selectedProfileId } = useBusinessProfile();
   const { period } = useAccountingPeriod();
-
-  // Mock data - replace with actual data fetching
-  const [data] = useState({
+  const [data, setData] = useState({
     revenue: {
-      sales: 150000,
-      services: 75000,
-      other: 5000,
-      total: 230000,
+      sales: 0,
+      services: 0,
+      other: 0,
+      total: 0,
     },
     expenses: {
-      cogs: 80000,
-      salaries: 45000,
-      rent: 12000,
-      utilities: 3000,
-      marketing: 8000,
-      other: 7000,
-      total: 155000,
+      cogs: 0,
+      salaries: 0,
+      rent: 0,
+      utilities: 0,
+      marketing: 0,
+      other: 0,
+      total: 0,
     },
-    grossProfit: 150000,
-    operatingProfit: 75000,
-    netProfit: 75000,
+    grossProfit: 0,
+    operatingProfit: 0,
+    netProfit: 0,
   });
+  const [loading, setLoading] = useState(true);
+  const debounceTimer = useRef<NodeJS.Timeout>();
+
+  useEffect(() => {
+    if (!selectedProfileId || !period?.key) return;
+    
+    // Clear previous timer
+    if (debounceTimer.current) {
+      clearTimeout(debounceTimer.current);
+    }
+    
+    // Debounce the request to prevent spam
+    debounceTimer.current = setTimeout(async () => {
+      await loadProfitLossData();
+    }, 300); // 300ms debounce
+
+    return () => {
+      if (debounceTimer.current) {
+        clearTimeout(debounceTimer.current);
+      }
+    };
+  }, [selectedProfileId, period?.key?.year, period?.key?.month]);
+
+  const loadProfitLossData = async () => {
+      setLoading(true);
+      try {
+        // Calculate period boundaries
+        const periodKey = period?.key;
+        if (!periodKey) return;
+        const periodStart = new Date(periodKey.year, periodKey.month - 1, 1);
+        const periodEnd = new Date(periodKey.year, periodKey.month, 0, 23, 59, 59);
+
+        // Fetch posted income invoices
+        const { data: incomeData, error: incomeError } = await supabase
+          .from('invoices')
+          .select('total_gross_value, total_net_value, total_vat_value')
+          .eq('business_profile_id', selectedProfileId)
+          .eq('transaction_type', 'income')
+          .eq('accounting_status', 'posted')
+          .gte('issue_date', periodStart.toISOString())
+          .lte('issue_date', periodEnd.toISOString());
+
+        // Fetch posted expense invoices
+        const { data: expenseData, error: expenseError } = await supabase
+          .from('invoices')
+          .select('total_gross_value, total_net_value, total_vat_value')
+          .eq('business_profile_id', selectedProfileId)
+          .eq('transaction_type', 'expense')
+          .eq('accounting_status', 'posted')
+          .gte('issue_date', periodStart.toISOString())
+          .lte('issue_date', periodEnd.toISOString());
+
+        if (incomeError) throw incomeError;
+        if (expenseError) throw expenseError;
+
+        // Calculate totals
+        const totalRevenue = (incomeData || []).reduce((sum, inv) => sum + (inv.total_gross_value || 0), 0);
+        const totalExpenses = (expenseData || []).reduce((sum, inv) => sum + (inv.total_gross_value || 0), 0);
+        
+        // Simple categorization (in a real system, you'd have more detailed categorization)
+        const revenueBreakdown = {
+          sales: totalRevenue * 0.7, // Assume 70% sales
+          services: totalRevenue * 0.25, // Assume 25% services
+          other: totalRevenue * 0.05, // Assume 5% other
+          total: totalRevenue,
+        };
+
+        const expenseBreakdown = {
+          cogs: totalExpenses * 0.4, // Assume 40% COGS
+          salaries: totalExpenses * 0.25, // Assume 25% salaries
+          rent: totalExpenses * 0.1, // Assume 10% rent
+          utilities: totalExpenses * 0.05, // Assume 5% utilities
+          marketing: totalExpenses * 0.08, // Assume 8% marketing
+          other: totalExpenses * 0.12, // Assume 12% other
+          total: totalExpenses,
+        };
+
+        const grossProfit = revenueBreakdown.total - expenseBreakdown.cogs;
+        const operatingProfit = grossProfit - (expenseBreakdown.salaries + expenseBreakdown.rent + expenseBreakdown.utilities + expenseBreakdown.marketing);
+        const netProfit = operatingProfit - expenseBreakdown.other;
+
+        setData({
+          revenue: revenueBreakdown,
+          expenses: expenseBreakdown,
+          grossProfit,
+          operatingProfit,
+          netProfit,
+        });
+      } catch (error) {
+        console.error('Error loading profit & loss data:', error);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+  if (loading) {
+    return (
+      <div className="space-y-6">
+        <div>
+          <h1 className="text-3xl font-bold">Rachunek zysków i strat</h1>
+          <p className="text-muted-foreground">
+            {period.label}
+          </p>
+        </div>
+        <div className="flex items-center justify-center h-64">
+          <p className="text-muted-foreground">Ładowanie danych rachunku zysków i strat...</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">

@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { X, Link2, FileText, Calculator, Shield, CheckCircle, XCircle, AlertCircle, Sparkles, RefreshCcw } from 'lucide-react';
+import { X, Link2, FileText, Shield, CheckCircle, XCircle, AlertCircle, Sparkles, RefreshCcw } from 'lucide-react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/shared/hooks/useAuth';
@@ -9,7 +9,6 @@ import { Separator } from '@/shared/ui/separator';
 import { formatCurrency } from '@/shared/lib/invoice-utils';
 import { format } from 'date-fns';
 import { pl } from 'date-fns/locale';
-import { AccountPicker } from './AccountPicker';
 import { AttachFileDialog } from '@/modules/decisions/components/AttachFileDialog';
 
 interface EventDetailDrawerProps {
@@ -49,10 +48,6 @@ export function EventDetailDrawer({ eventId, isOpen, onClose }: EventDetailDrawe
   const { user } = useAuth();
   const queryClient = useQueryClient();
   
-  // Local state for posting mode
-  const [isManualMode, setIsManualMode] = useState(false);
-  const [debitAccount, setDebitAccount] = useState<string | null>(null);
-  const [creditAccount, setCreditAccount] = useState<string | null>(null);
   const [isProofDialogOpen, setIsProofDialogOpen] = useState(false);
 
   // Fetch event detail
@@ -73,115 +68,17 @@ export function EventDetailDrawer({ eventId, isOpen, onClose }: EventDetailDrawe
     refetchOnWindowFocus: false,
   });
   
-  // Initialize local state from event readiness
-  useEffect(() => {
-    if (eventDetail) {
-      setDebitAccount(eventDetail.readiness.debit_account);
-      setCreditAccount(eventDetail.readiness.credit_account);
-    }
-  }, [eventDetail]);
   
-  // Fetch posting rule suggestion
-  const { data: postingRule } = useQuery({
-    queryKey: ['posting-rule', eventDetail?.event.business_profile_id, eventDetail?.event.entity_type, eventDetail?.event.metadata],
-    queryFn: async () => {
-      if (!eventDetail) return null;
 
-      const metadata = eventDetail.event.metadata || {};
-      const documentType =
-        metadata.document_type ||
-        eventDetail.event.entity_type ||
-        eventDetail.event.event_type ||
-        'sales_invoice';
-      const transactionType =
-        metadata.transaction_type ||
-        (eventDetail.event.direction === 'incoming'
-          ? 'income'
-          : eventDetail.event.direction === 'outgoing'
-            ? 'expense'
-            : null);
-      const paymentMethod = metadata.payment_method || metadata.cash_channel || null;
-      const vatScheme =
-        metadata.vat_scheme ||
-        (metadata.vat_status === 'no_vat'
-          ? 'no_vat'
-          : metadata.vat_status === 'vat'
-            ? 'vat'
-            : null);
-      const vatRate = metadata.vat_rate ?? null;
-
-      const { data, error } = await supabase.rpc('find_posting_rule', {
-        p_business_profile_id: eventDetail.event.business_profile_id,
-        p_document_type: documentType,
-        p_transaction_type: transactionType,
-        p_payment_method: paymentMethod,
-        p_vat_scheme: vatScheme,
-        p_vat_rate: vatRate,
-      });
-      
-      if (error) throw error;
-      return data?.[0] || null;
-    },
-    enabled: !!eventDetail && !eventDetail.readiness.is_closed,
-  });
-
-  // Set event accounts mutation
-  const setAccountsMutation = useMutation({
-    mutationFn: async ({ debit, credit }: { debit: string; credit: string }) => {
-      const { data, error } = await supabase.rpc('set_event_accounts', {
-        p_event_id: eventId,
-        p_debit_account_code: debit,
-        p_credit_account_code: credit,
-      });
-      
-      if (error) throw error;
-      if (!data.success) throw new Error(data.error);
-      return data;
-    },
-    onSuccess: async (data) => {
-      // Update local state immediately
-      setDebitAccount(data.debit_account.code);
-      setCreditAccount(data.credit_account.code);
-      
-      // Invalidate and refetch queries
-      await queryClient.invalidateQueries({ queryKey: ['event-detail', eventId] });
-      await queryClient.refetchQueries({ queryKey: ['event-detail', eventId] });
-    },
-  });
   
-  // Toggle manual mode
-  const handleToggleManualMode = () => {
-    setIsManualMode(!isManualMode);
-  };
   
   // Close event mutation
   const closeEventMutation = useMutation({
     mutationFn: async () => {
-      // Auto mode: use posting rule
-      if (!isManualMode && postingRule) {
-        const { data, error } = await supabase.rpc('close_accounting_event', {
-          p_event_id: eventId,
-          p_actor_id: user?.id,
-          p_actor_name: user?.email || 'Unknown',
-          p_posting_rule_id: postingRule.rule_id,
-        });
-        
-        if (error) throw error;
-        if (!data.success) throw new Error(data.error);
-        return data;
-      }
-      
-      // Manual mode: use selected accounts
-      if (!debitAccount || !creditAccount) {
-        throw new Error('Both debit and credit accounts must be selected');
-      }
-      
       const { data, error } = await supabase.rpc('close_accounting_event', {
         p_event_id: eventId,
         p_actor_id: user?.id,
         p_actor_name: user?.email || 'Unknown',
-        p_debit_account_code: debitAccount,
-        p_credit_account_code: creditAccount,
       });
 
       if (error) throw error;
@@ -364,150 +261,7 @@ export function EventDetailDrawer({ eventId, isOpen, onClose }: EventDetailDrawe
                   </>
                 )}
 
-                {/* Section 3: Accounting (Wn/Ma) */}
-                <Section
-                  icon={Calculator}
-                  title="Księgowanie"
-                  badge={
-                    eventDetail.readiness.is_closed ? (
-                      <Badge variant="outline" className="bg-green-500/10 text-green-600">Zaksięgowane</Badge>
-                    ) : postingRule ? (
-                      <Badge variant="outline" className="bg-blue-500/10 text-blue-600">Automatyczne</Badge>
-                    ) : (
-                      <Badge variant="outline" className="bg-amber-500/10 text-amber-600">Ręczne</Badge>
-                    )
-                  }
-                >
-                  <div className="space-y-3">
-                    {!eventDetail.readiness.is_closed ? (
-                      <>
-                        {/* Auto-posting mode */}
-                        {!isManualMode && postingRule ? (
-                          <div className="space-y-3">
-                            {/* Rule header */}
-                            <div className="flex items-center justify-between">
-                              <div className="flex items-center gap-2">
-                                <div className="h-2 w-2 rounded-full bg-green-500" />
-                                <span className="text-sm font-medium text-slate-300">
-                                  Automatyczne księgowanie
-                                </span>
-                              </div>
-                              <Button
-                                variant="ghost"
-                                size="sm"
-                                onClick={handleToggleManualMode}
-                                className="text-xs text-slate-400 hover:text-slate-200"
-                              >
-                                Tryb ręczny
-                              </Button>
-                            </div>
-
-                            {/* Rule name */}
-                            <div className="rounded-lg border border-blue-500/20 bg-blue-500/5 p-3">
-                              <div className="text-xs text-slate-400 mb-1">Reguła:</div>
-                              <div className="text-sm font-medium text-white">{postingRule.rule_name}</div>
-                            </div>
-
-                            {/* Account preview */}
-                            <div className="space-y-2">
-                              <div className="text-xs font-medium text-slate-400">Zapisy księgowe:</div>
-                              {postingRule.lines && JSON.parse(postingRule.lines).map((line: any, idx: number) => (
-                                <div key={idx} className="flex items-center gap-3 text-sm">
-                                  <Badge variant="outline" className={line.side === 'debit' ? 'bg-red-500/10 text-red-400' : 'bg-green-500/10 text-green-400'}>
-                                    {line.side === 'debit' ? 'Wn' : 'Ma'}
-                                  </Badge>
-                                  <span className="font-mono text-xs text-slate-400">{line.account_code}</span>
-                                  <span className="text-slate-300">{line.account_name}</span>
-                                  <span className="ml-auto text-xs text-slate-500">{line.amount_type}</span>
-                                </div>
-                              ))}
-                            </div>
-                          </div>
-                        ) : (
-                          /* Manual mode - show account pickers */
-                          <div className="space-y-3">
-                            <div className="flex items-center justify-between">
-                              <span className="text-sm font-medium text-slate-300">Tryb ręczny</span>
-                              {postingRule && (
-                                <Button
-                                  variant="ghost"
-                                  size="sm"
-                                  onClick={handleToggleManualMode}
-                                  className="text-xs text-slate-400 hover:text-slate-200"
-                                >
-                                  Tryb automatyczny
-                                </Button>
-                              )}
-                            </div>
-                            <div className="grid grid-cols-2 gap-4">
-                              <AccountPicker
-                                businessProfileId={eventDetail.event.business_profile_id}
-                                value={debitAccount}
-                                onChange={(code) => {
-                                  setDebitAccount(code);
-                                  if (code && creditAccount) {
-                                    setAccountsMutation.mutate({ debit: code, credit: creditAccount });
-                                  }
-                                }}
-                                label="Wn (Debet)"
-                                placeholder="Wybierz konto Wn..."
-                              />
-                              <AccountPicker
-                                businessProfileId={eventDetail.event.business_profile_id}
-                                value={creditAccount}
-                                onChange={(code) => {
-                                  setCreditAccount(code);
-                                  if (debitAccount && code) {
-                                    setAccountsMutation.mutate({ debit: debitAccount, credit: code });
-                                  }
-                                }}
-                                label="Ma (Kredyt)"
-                                placeholder="Wybierz konto Ma..."
-                              />
-                            </div>
-                          </div>
-                        )}
-                      </>
-                    ) : (
-                      /* Closed - show posted accounts */
-                      <div className="space-y-2">
-                        <div className="text-xs font-medium text-slate-400 mb-2">Zaksięgowano:</div>
-                        <div className="grid grid-cols-2 gap-4">
-                          <div>
-                            <div className="text-xs font-medium text-gray-500">Wn (Debet)</div>
-                            <div className="mt-1 text-sm font-mono">
-                              {eventDetail.readiness.debit_account || (
-                                <span className="text-red-600">Nie przypisano</span>
-                              )}
-                            </div>
-                          </div>
-                          <div>
-                            <div className="text-xs font-medium text-gray-500">Ma (Kredyt)</div>
-                            <div className="mt-1 text-sm font-mono">
-                              {eventDetail.readiness.credit_account || (
-                                <span className="text-red-600">Nie przypisano</span>
-                              )}
-                            </div>
-                          </div>
-                        </div>
-                      </div>
-                    )}
-
-                    {/* Amount display */}
-                    <div className="rounded-lg border border-white/5 bg-white/5 p-4 text-sm">
-                      <div className="flex items-center justify-between text-slate-300">
-                        <span>Kwota księgowania:</span>
-                        <span className="font-semibold text-white">
-                          {formatCurrency(eventDetail.event.amount, eventDetail.event.currency)}
-                        </span>
-                      </div>
-                    </div>
-                  </div>
-                </Section>
-
-                <Separator className="border-white/5" />
-
-                {/* Section 4: Proof */}
+                {/* Section 3: Proof */}
                 <Section
                   icon={Shield}
                   title="Dowody"

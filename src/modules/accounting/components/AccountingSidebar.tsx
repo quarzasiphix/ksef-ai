@@ -143,6 +143,13 @@ const spolkaNavSections: NavSection[] = [
         description: 'Zarządzaj kontami',
         color: 'text-amber-500',
       },
+      {
+        label: 'Kolejka księgowań',
+        href: '/accounting/posting-queue',
+        icon: <FileText className="h-5 w-5" />,
+        description: 'Faktury do zaksięgowania',
+        color: 'text-orange-500',
+      },
     ],
   },
   {
